@@ -1,2 +1,5 @@
 (library
- (name typee))
+ (name typee)
+ (inline_tests)
+ (preprocess (pps ppx_inline_test))
+ (libraries opal))

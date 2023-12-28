@@ -1,5 +1,5 @@
-type node 
-   = Call of node list
-   | Symbol of string;;
+type parse_err
+   = ExpectedEOF
+;;
 
-val parse : string -> node;;
+val parse : string -> (Ast.node list, parse_err) result;;

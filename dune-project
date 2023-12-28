@@ -19,7 +19,7 @@
  (name typee)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml dune opal)
+ (depends ocaml dune opal ppx_inline_test)
  (tags
   (topics "to describe" your project)))
 
