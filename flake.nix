@@ -1,7 +1,6 @@
 {
   description = "A very basic flake";
   inputs = {
-    roc.url = "github:roc-lang/roc";
   };
   outputs = {
     self,
@@ -32,7 +31,7 @@
       pkgs = pkgsFor.${system};
     in {
       default = pkgs.mkShell {
-        nativeBuildInputs = with pkgs; [inputs.roc.packages.${system}.default];
+        nativeBuildInputs = with pkgs; [ocaml dune_3 opam];
       };
     });
   };
