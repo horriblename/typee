@@ -10,5 +10,9 @@ type expr
       args: argument list;
       body: expr;
    }
+   | Assign of {
+      name: string;
+      value: expr;
+   }
 ;;
 
