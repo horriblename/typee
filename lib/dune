@@ -3,3 +3,5 @@
  (inline_tests)
  (preprocess (pps ppx_inline_test))
  (libraries opal))
+
+(include_subdirs qualified)

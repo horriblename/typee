@@ -2,4 +2,4 @@ type parse_err
    = ExpectedEOF
 ;;
 
-val parse : string -> (Ast.node list, parse_err) result;;
+val parse : string -> (Ast.expr list, parse_err) result;;
