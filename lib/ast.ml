@@ -1,4 +1,6 @@
-type argument = string;;
+open! Core
+
+type argument = string [@@deriving sexp];;
 
 type expr
    = Call of expr * expr list
@@ -14,5 +16,6 @@ type expr
       name: string;
       value: expr;
    }
+   [@@deriving sexp]
 ;;
 

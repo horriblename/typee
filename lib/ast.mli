@@ -16,3 +16,4 @@ type expr
    }
 ;;
 
+val sexp_of_expr : expr -> Sexplib0.Sexp.t
