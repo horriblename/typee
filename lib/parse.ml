@@ -53,8 +53,8 @@ let parse source =
    source
       |> LazyStream.of_string
       |> many1 parse_expr
-      |> Option.map (fun (syntax_tree, _rest) -> syntax_tree)
-      |> Option.to_result ~none:ExpectedEOF
+      |> Option.to_result ~none:ParseFailed
+      |> Result.map (fun (syntax_tree, _rest) -> syntax_tree)
 ;;
 
 
