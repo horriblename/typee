@@ -1,6 +1,10 @@
 {
   description = "A very basic flake";
   inputs = {
+    opal = {
+      url = "github:pyrocat101/opal";
+      flake = false;
+    };
   };
   outputs = {
     self,
@@ -20,12 +24,16 @@
     overlays = {
       default = final: prev: {
         hello = final.callPackage ./hello.nix {};
+        opal = final.callPackage ./opal.nix {
+          source = inputs.opal;
+          inherit (final.ocamlPackages) findlib;
+        };
       };
     };
 
     packages = eachSystem (system: {
       default = self.packages.${system}.hello;
-      inherit (pkgsFor.${system}) hello;
+      inherit (pkgsFor.${system}) hello opal;
     });
     devShells = eachSystem (system: let
       pkgs = pkgsFor.${system};
