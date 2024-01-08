@@ -160,6 +160,7 @@ pub fn main() !void {
             OpCode.bit_and => try op_bit_and(&state, instruction),
             OpCode.jmp => try op_jump(&state, instruction),
             OpCode.jump_to_routine => try op_jump_to_routine(&state, instruction),
+            OpCode.load => try op_load(&state, instruction),
             else => unreachable,
         }
     }
@@ -324,7 +325,7 @@ fn op_jump_to_routine(state: *State, instruction: Instruction) !void {
 
     state.reg.set(RegName.r7, state.reg.get(RegName.pc));
     if (offset_mode) {
-        const offset = sign_extend(u10, bit_range(instruction, 0, 10));
+        const offset = sign_extend(u11, bit_range(instruction, 0, 10));
         state.reg.set(RegName.pc, state.reg.get(RegName.pc) + offset);
     } else {
         const base_reg = try RegName.fromInt(bit_range(instruction, 6, 8));
@@ -365,6 +366,31 @@ test "jump_to_routine: from register" {
     try std.testing.expectEqual(state.reg.get(RegName.r7), pc_init);
     try std.testing.expectEqual(state.reg.get(RegName.pc), destination);
 }
+
+fn op_load(state: *State, instruction: Instruction) !void {
+    const dest_reg = try RegName.fromInt(bit_range(instruction, 9, 11));
+    const pc_offset = sign_extend(u9, bit_range(instruction, 0, 8));
+
+    state.reg.set(dest_reg, mem_read(state.reg.get(RegName.pc) + pc_offset));
+
+    update_flags(&state.reg, dest_reg);
+}
+
+// test "load" {
+//     const pc_init = 0x3000;
+//     const pc_offset = 32;
+//     var state = State.init();
+//     state.reg.set(RegName.pc, pc_init);
+//
+//     const instruction = build_instruction(OpCode.load, &[_]InstructionComponent{
+//         .{.payload = RegName.r0.toInt(), .offset = 9},
+//         .{.payload = pc_offset, .offset = 0},
+//     });
+//
+//     try op_load(&state, instruction);
+//
+//     try std.testing.expectEqual(state.reg.get(RegName.r0), actual: @TypeOf(expected))
+// }
 
 const InstructionComponent = struct {
     payload: u16,
