@@ -494,7 +494,19 @@ fn mem_read(addr: u16) u16 {
     unreachable;
 }
 
-fn read_image(file_path: [:0]u8) !void {
-    _ = file_path;
-    unreachable;
+fn read_image(file_path: [:0]u8) ![]u8 {
+    var file = try std.fs.cwd().openFile(file_path, .{});
+    defer file.close();
+    var buffer = try file.readToEndAlloc(allocator, std.math.maxInt(usize));
+
+    var tmp: u8 = undefined;
+
+    for (0..buffer.len / 2) |i| {
+        const j = i * 2;
+        tmp = buffer[j];
+        buffer[j] = buffer[j + 1];
+        buffer[j + 1] = tmp;
+    }
+
+    return buffer;
 }
