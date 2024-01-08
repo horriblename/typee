@@ -87,7 +87,7 @@ const OpCode = enum(u4) {
     add,
     load,
     store,
-    jump_reg,
+    jump_to_routine,
     bit_and,
     load_reg,
     store_reg,
@@ -157,6 +157,9 @@ pub fn main() !void {
             OpCode.add => try op_add(&state, instruction),
             // 1010 | dest_reg(3-bits) | PC_offset(9 bits)
             OpCode.load_indirect => try op_load_indirect(&state, instruction),
+            OpCode.bit_and => try op_bit_and(&state, instruction),
+            OpCode.jmp => try op_jump(&state, instruction),
+            OpCode.jump_to_routine => try op_jump_to_routine(&state, instruction),
             else => unreachable,
         }
     }
@@ -203,6 +206,7 @@ test "add: non-immediate mode" {
 }
 
 fn sign_extend(comptime From: type, x: u16) u16 {
+    // FIXME: make type checking work when x: From
     const orig_size = switch (@typeInfo(From)) {
         .Int => |info| if (info.bits <= 16) info.bits else @compileError("int too large"),
         else => @compileError("only ints accepted"),
@@ -296,6 +300,35 @@ fn op_branch(state: *State, instruction: Instruction) void {
 
     if ((negative and state.reg.negative_flag()) || (zero and state.reg.zero_flag()) || (positive and state.reg.positive_flag())) {
         state.reg.set(RegName.pc, state.reg.get(RegName.pc) + pc_offset);
+    }
+}
+
+// TODO: test op_branch
+
+fn op_jump(state: *State, instruction: Instruction) !void {
+    const base_reg_index = (bit_range(instruction, 6, 8));
+
+    // return
+    if (base_reg_index == 0b111) {
+        state.reg.set(RegName.pc, state.reg.get(RegName.r7));
+    } else {
+        const base_reg = try RegName.fromInt(base_reg_index);
+        state.reg.set(RegName.pc, state.reg.get(base_reg));
+    }
+}
+
+// TODO: test op_jump
+
+fn op_jump_to_routine(state: *State, instruction: Instruction) !void {
+    const offset_mode = (1 << 11) & instruction != 0;
+
+    state.reg.set(RegName.r7, state.reg.get(RegName.pc));
+    if (offset_mode) {
+        const offset = sign_extend(u10, bit_range(instruction, 0, 10));
+        state.reg.set(RegName.pc, state.reg.get(RegName.pc) + offset);
+    } else {
+        const base_reg = try RegName.fromInt(bit_range(instruction, 6, 8));
+        state.reg.set(RegName.pc, state.reg.get(base_reg));
     }
 }
 
