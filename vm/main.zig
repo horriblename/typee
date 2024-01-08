@@ -332,6 +332,55 @@ fn op_jump_to_routine(state: *State, instruction: Instruction) !void {
     }
 }
 
+test "jump_to_routine: with offset" {
+    const pc_init = 0x3000;
+    const pc_offset = 12;
+    var state = State.init();
+    state.reg.set(RegName.pc, pc_init);
+
+    const instruction = build_instruction(OpCode.jump_to_routine, &[_]InstructionComponent{
+        .{ .payload = 1, .offset = 11 }, // offset flag
+        .{ .payload = pc_offset, .offset = 0 }, // offset
+    });
+
+    try op_jump_to_routine(&state, instruction);
+
+    try std.testing.expectEqual(state.reg.get(RegName.r7), pc_init);
+    try std.testing.expectEqual(state.reg.get(RegName.pc), pc_init + pc_offset);
+}
+
+test "jump_to_routine: from register" {
+    const pc_init = 0x3000;
+    const destination = 0x4000;
+    var state = State.init();
+    state.reg.set(RegName.pc, pc_init);
+    state.reg.set(RegName.r0, destination);
+
+    const instruction = build_instruction(OpCode.jump_to_routine, &[_]InstructionComponent{
+        .{ .payload = @intFromEnum(RegName.r0), .offset = 6 }, // offset
+    });
+
+    try op_jump_to_routine(&state, instruction);
+
+    try std.testing.expectEqual(state.reg.get(RegName.r7), pc_init);
+    try std.testing.expectEqual(state.reg.get(RegName.pc), destination);
+}
+
+const InstructionComponent = struct {
+    payload: u16,
+    offset: u4,
+};
+
+fn build_instruction(comptime opcode: OpCode, codes: []const InstructionComponent) u16 {
+    var instruction = @as(u16, @intFromEnum(opcode));
+
+    for (codes) |code| {
+        instruction |= code.payload << code.offset;
+    }
+
+    return instruction;
+}
+
 fn update_flags(reg: *Registers, r: RegName) void {
     if (reg.get(r) == 0) {
         reg.set(RegName.cond, @intFromEnum(ConditionFlag.zro));
