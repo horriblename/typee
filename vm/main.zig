@@ -223,7 +223,7 @@ test "op_load_indirect" {
     // TODO
 }
 
-fn op_logical_and(state: *State, instruction: Instruction) !void {
+fn op_bit_and(state: *State, instruction: Instruction) !void {
     const dest_reg = try RegName.fromInt(bit_range(instruction, 9, 11));
     const src1_reg = try RegName.fromInt(bit_range(instruction, 6, 8));
     const immediate_mode_flag = bit_range(instruction, 5, 5) != 0;
@@ -237,7 +237,7 @@ fn op_logical_and(state: *State, instruction: Instruction) !void {
     }
 }
 
-test "op_logical_and: non-immediate mode" {
+test "op_bit_and: non-immediate mode" {
     var state = State.init();
     const operand_1 = 0b1010;
     const operand_2 = 0b1100;
@@ -251,12 +251,12 @@ test "op_logical_and: non-immediate mode" {
     const src2_code = @as(u16, @intFromEnum(RegName.r1));
     const instruction = opcode | dest_code | src1_code | src2_code;
 
-    try op_logical_and(&state, instruction);
+    try op_bit_and(&state, instruction);
 
     try std.testing.expectEqual(state.reg.get(RegName.r2), operand_1 & operand_2);
 }
 
-test "op_logical_and: immediate mode" {
+test "op_bit_and: immediate mode" {
     var state = State.init();
     const operand_1 = 0b1010;
     const operand_2: u5 = 0b1100;
@@ -270,7 +270,7 @@ test "op_logical_and: immediate mode" {
     const immediate_flag = 1 << 5;
     const instruction = opcode | dest_code | src1_code | immediate_flag | operand_2;
 
-    try op_logical_and(&state, instruction);
+    try op_bit_and(&state, instruction);
 
     try std.testing.expectEqual(state.reg.get(RegName.r2), operand_1 & operand_2);
 }
