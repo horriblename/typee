@@ -413,6 +413,28 @@ fn op_load_effective_addr(state: *State, instruction: Instruction) !void {
 
 // TODO: test load_effective_addr
 
+fn op_not(state: *State, instruction: Instruction) !void {
+    const dest_reg = try RegName.fromInt(bit_range(instruction, 9, 11));
+    const src_reg = try RegName.fromInt(bit_range(instruction, 6, 8));
+
+    state.reg.set(dest_reg, if (state.reg.get(src_reg) == 0) 1 else 0);
+    update_flags(&state.reg, dest_reg);
+}
+
+test "op not" {
+    var state = State.init();
+    state.reg.set(RegName.r0, 2);
+
+    const instruction = build_instruction(OpCode.not, &[_]InstructionComponent{
+        .{ .payload = @intFromEnum(RegName.r1), .offset = 9 }, // destination
+        .{ .payload = @intFromEnum(RegName.r0), .offset = 6 }, // source
+    });
+
+    try op_not(&state, instruction);
+
+    try std.testing.expectEqual(state.reg.get(RegName.r1), 0);
+}
+
 const InstructionComponent = struct {
     payload: u16,
     offset: u4,
