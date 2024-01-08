@@ -89,7 +89,7 @@ const OpCode = enum(u4) {
     store,
     jump_to_routine,
     bit_and,
-    load_reg,
+    load_base_offset,
     store_reg,
     rti, // unused
     not,
@@ -391,6 +391,27 @@ fn op_load(state: *State, instruction: Instruction) !void {
 //
 //     try std.testing.expectEqual(state.reg.get(RegName.r0), actual: @TypeOf(expected))
 // }
+
+fn op_load_base_offset(state: *State, instruction: Instruction) !void {
+    const dest_reg = try RegName.fromInt(bit_range(instruction, 9, 11));
+    const base_reg = try RegName.fromInt(bit_range(instruction, 6, 8));
+    const offset = sign_extend(u6, bit_range(instruction, 0, 5));
+
+    state.reg.set(dest_reg, mem_read(state.reg.get(base_reg) + offset));
+}
+
+// TODO: test load_base_offset
+
+fn op_load_effective_addr(state: *State, instruction: Instruction) !void {
+    const dest_reg = try RegName.fromInt(bit_range(instruction, 9, 11));
+    const pc_offset = sign_extend(u9, bit_range(instruction, 0, 8));
+
+    state.reg.set(dest_reg, state.reg.get(RegName.pc) + pc_offset);
+
+    update_flags(&state.reg, dest_reg);
+}
+
+// TODO: test load_effective_addr
 
 const InstructionComponent = struct {
     payload: u16,
