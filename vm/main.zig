@@ -188,9 +188,9 @@ fn op_add(state: *State, instruction: Instruction) !void {
     const immediate_mode_flag = bit_range(instruction, 5, 5) == 1;
 
     if (immediate_mode_flag) {
-        // const operand = sign_extend(u5, instruction & 0x1F);
-        // const answer = state.reg.get(src_reg) + operand;
-        // state.reg.set(dest_reg, answer);
+        const operand = sign_extend(u5, instruction & 0x1F);
+        const answer = state.reg.get(src_reg) + operand;
+        state.reg.set(dest_reg, answer);
     } else {
         const src_reg_2 = try RegName.fromInt(bit_range(instruction, 0, 2));
         const answer = state.reg.get(src_reg) + state.reg.get(src_reg_2);
@@ -218,6 +218,22 @@ test "add: non-immediate mode" {
     try op_add(&state, instruction);
 
     try std.testing.expectEqual(state.reg.get(dest_reg), 15);
+}
+
+test "add: immediate mode" {
+    var state = State.init();
+    state.reg.set(RegName.r0, 10);
+
+    const instruction = build_instruction(OpCode.add, &[_]InstructionComponent{
+        .{ .payload = @intFromEnum(RegName.r1), .offset = 9 }, // destination reg
+        .{ .payload = @intFromEnum(RegName.r0), .offset = 6 }, // source 1 reg
+        .{ .payload = 1, .offset = 5 }, // immediate mode flag
+        .{ .payload = 5, .offset = 0 }, // immediate mode operand
+    });
+
+    try op_add(&state, instruction);
+
+    try std.testing.expectEqual(state.reg.get(RegName.r1), 15);
 }
 
 fn sign_extend(comptime From: type, x: u16) u16 {
