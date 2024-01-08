@@ -40,6 +40,7 @@ const RegName = enum(u4) {
         return @enumFromInt(reg_num);
     }
 };
+
 const Registers = struct {
     regs: [RegName.maxValue()]u16,
 
@@ -49,6 +50,18 @@ const Registers = struct {
 
     fn set(self: *Registers, name: RegName, value: u16) void {
         self.regs[@intFromEnum(name)] = value;
+    }
+
+    fn negative_flag(self: *Registers) bool {
+        return (self.regs[RegName.cond] & ConditionFlag.neg) != 0;
+    }
+
+    fn positive_flag(self: *Registers) bool {
+        return (self.regs[RegName.cond] & ConditionFlag.pos) != 0;
+    }
+
+    fn zero_flag(self: *Registers) bool {
+        return (self.regs[RegName.cond] & ConditionFlag.zro) != 0;
     }
 };
 
@@ -273,6 +286,17 @@ test "op_bit_and: immediate mode" {
     try op_bit_and(&state, instruction);
 
     try std.testing.expectEqual(state.reg.get(RegName.r2), operand_1 & operand_2);
+}
+
+fn op_branch(state: *State, instruction: Instruction) void {
+    const negative = (1 << 11) & instruction != 0;
+    const zero = (1 << 10) & instruction != 0;
+    const positive = (1 << 9) & instruction != 0;
+    const pc_offset = bit_range(instruction, 0, 8);
+
+    if ((negative and state.reg.negative_flag()) || (zero and state.reg.zero_flag()) || (positive and state.reg.positive_flag())) {
+        state.reg.set(RegName.pc, state.reg.get(RegName.pc) + pc_offset);
+    }
 }
 
 fn update_flags(reg: *Registers, r: RegName) void {
