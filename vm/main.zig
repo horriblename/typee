@@ -470,21 +470,29 @@ fn op_load(state: *State, instruction: Instruction) !void {
     update_flags(&state.reg, dest_reg);
 }
 
-// test "load" {
-//     const pc_init = 0x3000;
-//     const pc_offset = 32;
-//     var state = State.init();
-//     state.reg.set(RegName.pc, pc_init);
-//
-//     const instruction = build_instruction(OpCode.load, &[_]InstructionComponent{
-//         .{.payload = RegName.r0.toInt(), .offset = 9},
-//         .{.payload = pc_offset, .offset = 0},
-//     });
-//
-//     try op_load(&state, instruction);
-//
-//     try std.testing.expectEqual(state.reg.get(RegName.r0), actual: @TypeOf(expected))
-// }
+test "load" {
+    const pc_init = 0x3000;
+    const pc_offset = 32;
+    var state = State.init();
+    state.program_size = pc_init;
+    state.reg.set(RegName.pc, pc_init);
+
+    const instruction = build_instruction(OpCode.load, &[_]InstructionComponent{
+        .{ .payload = RegName.r0.toInt(), .offset = 9 },
+        .{ .payload = pc_offset, .offset = 0 },
+    });
+    state.mem_write(pc_init, instruction);
+    std.debug.print("read; {}\n", .{state.mem_read(pc_init)});
+    state.mem_write(pc_init + pc_offset, 42);
+    std.debug.print("read; {}\n", .{state.mem_read(pc_init + pc_offset)});
+
+    state.mem_dump();
+
+    // try op_load(&state, instruction);
+    try state.step();
+
+    try std.testing.expectEqual(state.reg.get(RegName.r0), 42);
+}
 
 fn op_load_base_offset(state: *State, instruction: Instruction) !void {
     const dest_reg = try RegName.fromInt(bit_range(instruction, 9, 11));
