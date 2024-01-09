@@ -114,8 +114,22 @@ const ConditionFlag = enum(u16) {
     neg = 1 << 2,
 };
 
+const TrapCode = enum(u16) {
+    getc = 0x20, // get character from keyboard, not echoed onto terminal
+    out = 0x21, // output a character
+    puts = 0x22, // output a word string
+    in = 0x23, // get character from keyboard, echoed onto terminal
+    putsp = 0x24, // output a byte string
+    halt = 0x25, // halt the program
+};
+
+const MemoryMappedRegName = enum(u16) {
+    kbsr = 0xfe00, // keyboard status
+    kbdr = 0xfe02, // keyboard data
+};
+
+const allocator = std.heap.page_allocator;
 pub fn main() !void {
-    const allocator = std.heap.page_allocator;
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
