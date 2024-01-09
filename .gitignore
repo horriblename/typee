@@ -1,3 +1,9 @@
 _build
 .direnv
 .nixd.json
+
+
+# Added by cargo
+
+/target
+zig-cache
