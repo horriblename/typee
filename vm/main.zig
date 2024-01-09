@@ -206,6 +206,7 @@ pub fn main() !void {
             OpCode.jmp => try op_jump(&state, instruction),
             OpCode.jump_to_routine => try op_jump_to_routine(&state, instruction),
             OpCode.load => try op_load(&state, instruction),
+            OpCode.not => try op_not(&state, instruction),
             else => unreachable,
         }
     }
