@@ -91,6 +91,22 @@ const State = struct {
         self.memory[addr] = val;
     }
 
+    fn mem_dump(self: *State) void {
+        const max_col: u16 = 16;
+        for (self.memory, 0..) |slot, i| {
+            if (i % max_col == 0) {
+                std.debug.print("\n0x{x}\t", .{i});
+            }
+
+            std.debug.print("{x:0>2} ", .{slot});
+            if (i % 8 == 0) {
+                std.debug.print(" ", .{});
+            }
+        }
+
+        std.debug.print("\n", .{});
+    }
+
     fn step(self: *State) !void {
         // FETCH
         if (self.reg.get(RegName.pc) > self.program_size) {
