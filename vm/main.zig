@@ -235,6 +235,8 @@ pub fn main() !void {
     // set the PC to starting position
     // the first "instruction" points to the starting position
     const pc_start = state.mem_read(0);
+    std.debug.print("memory[..10] = {*}\n", .{state.memory[0..10]});
+    std.debug.print("pc_start = {x}\n", .{pc_start});
     state.reg.set(RegName.pc, pc_start);
 
     const running = true;
