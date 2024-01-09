@@ -174,10 +174,10 @@ pub fn main() !void {
         };
     }
 
-    // TODO: setup
-    var state = State.init();
     const terminal = Terminal.disable_input_buffering();
-    defer terminal.restore_input_buffering();
+    defer if (terminal) |term| {
+        term.restore_input_buffering() catch {};
+    } else |_| {};
 
     // TODO: how to trap SIGINT
     // std.os.signalfd(fd: fd_t, mask: *const sigset_t, flags: u32)
