@@ -519,7 +519,7 @@ const InstructionComponent = struct {
 };
 
 fn build_instruction(comptime opcode: OpCode, codes: []const InstructionComponent) u16 {
-    var instruction = @as(u16, @intFromEnum(opcode));
+    var instruction = @as(u16, @intFromEnum(opcode)) << 12;
 
     for (codes) |code| {
         instruction |= code.payload << code.offset;
