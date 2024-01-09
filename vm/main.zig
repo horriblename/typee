@@ -467,7 +467,9 @@ fn op_load(state: *State, instruction: Instruction) !void {
     const dest_reg = try RegName.fromInt(bit_range(instruction, 9, 11));
     const pc_offset = sign_extend(u9, bit_range(instruction, 0, 8));
 
-    state.reg.set(dest_reg, state.mem_read(state.reg.get(RegName.pc) + pc_offset));
+    const value = state.mem_read(state.reg.get(RegName.pc) + pc_offset);
+    std.debug.print("value: {d}", .{value});
+    state.reg.set(dest_reg, value);
 
     update_flags(&state.reg, dest_reg);
 }
