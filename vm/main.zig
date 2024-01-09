@@ -53,15 +53,15 @@ const Registers = struct {
     }
 
     fn negative_flag(self: *Registers) bool {
-        return (self.regs[RegName.cond] & ConditionFlag.neg) != 0;
+        return (self.get(RegName.cond) & @intFromEnum(ConditionFlag.neg)) != 0;
     }
 
     fn positive_flag(self: *Registers) bool {
-        return (self.regs[RegName.cond] & ConditionFlag.pos) != 0;
+        return (self.get(RegName.cond) & @intFromEnum(ConditionFlag.pos)) != 0;
     }
 
     fn zero_flag(self: *Registers) bool {
-        return (self.regs[RegName.cond] & ConditionFlag.zro) != 0;
+        return (self.get(RegName.cond) & @intFromEnum(ConditionFlag.zro)) != 0;
     }
 };
 
