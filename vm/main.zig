@@ -81,6 +81,24 @@ const State = struct {
     }
 };
 
+const Terminal = struct {
+    original_tio: std.os.termios,
+
+    fn disable_input_buffering() !Terminal {
+        const original_tio = try std.os.tcgetattr(std.os.STDIN_FILENO);
+        var new_tio = original_tio;
+        new_tio.c_lflag &= ~std.os.linux.ICANON & ~std.os.linux.ECHO;
+
+        try std.os.tcsetattr(std.os.STDIN_FILENO, std.os.TCSA, new_tio);
+
+        return .{ .original_tio = original_tio };
+    }
+
+    fn restore_input_buffering(self: Terminal) !void {
+        try std.os.tcsetattr(std.os.STDIN_FILENO, std.os.TCSA, self.original_tio);
+    }
+};
+
 // note that LC-3 opcodes are 4-bits long
 const OpCode = enum(u4) {
     branch = 0,
@@ -147,6 +165,11 @@ pub fn main() !void {
 
     // TODO: setup
     var state = State.init();
+    const terminal = Terminal.disable_input_buffering();
+    defer terminal.restore_input_buffering();
+
+    // TODO: how to trap SIGINT
+    // std.os.signalfd(fd: fd_t, mask: *const sigset_t, flags: u32)
 
     // since exactly one condition flag should be set at any given time, set the z flag
     state.reg.set(RegName.cond, @intFromEnum(ConditionFlag.zro));
