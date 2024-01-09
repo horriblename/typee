@@ -552,6 +552,27 @@ fn build_instruction(comptime opcode: OpCode, codes: []const InstructionComponen
     return instruction;
 }
 
+test "build instruction" {
+    const instructions = [_]Instruction{
+        16,
+        build_instruction(OpCode.load, &[_]InstructionComponent{
+            .{ .payload = @intFromEnum(RegName.r1), .offset = 9 },
+            .{ .payload = @as(u9, 2), .offset = 0 },
+        }),
+        build_instruction(OpCode.add, &[_]InstructionComponent{
+            .{ .payload = @intFromEnum(RegName.r1), .offset = 9 }, // destination reg
+            .{ .payload = @intFromEnum(RegName.r0), .offset = 6 }, // source 1 reg
+            .{ .payload = 1, .offset = 5 }, // immediate mode flag
+            .{ .payload = 5, .offset = 0 }, // immediate mode operand
+        }),
+    };
+
+    const file = try std.fs.cwd().createFile("test.bin", .{ .read = true });
+    defer file.close();
+    _ = try file.write(&[_]u8{ 0, 2 }); // origin
+    _ = try file.write(@as(*const [instructions.len * 2]u8, @ptrCast(&instructions)));
+}
+
 fn update_flags(reg: *Registers, r: RegName) void {
     if (reg.get(r) == 0) {
         reg.set(RegName.cond, @intFromEnum(ConditionFlag.zro));
