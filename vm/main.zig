@@ -165,9 +165,11 @@ pub fn main() !void {
         std.process.exit(2);
     }
 
-    for (args[2..]) |arg| {
-        read_image(arg) catch |err| {
-            std.log.err("failed to load image at '{s}': {s}", arg, err);
+    var state = State.init();
+
+    for (args[2..]) |file_path| {
+        read_image_from_path(&state.memory, file_path) catch |err| {
+            std.log.err("failed to load image at '{s}': {}", .{ file_path, err });
             std.process.exit(1);
         };
     }
@@ -184,8 +186,8 @@ pub fn main() !void {
     state.reg.set(RegName.cond, @intFromEnum(ConditionFlag.zro));
 
     // set the PC to starting position
-    // 0x3000 is the default
-    const pc_start = 0x3000;
+    // the first "instruction" points to the starting position
+    const pc_start = state.mem_read(0);
     state.reg.set(RegName.pc, pc_start);
 
     const running = true;
@@ -538,19 +540,29 @@ test "bit range" {
     try std.testing.expectEqual(bit_range(0b11110000, 2, 5), 0b1100);
 }
 
-fn read_image(file_path: [:0]u8) ![]u8 {
-    var file = try std.fs.cwd().openFile(file_path, .{});
-    defer file.close();
-    var buffer = try file.readToEndAlloc(allocator, std.math.maxInt(usize));
+fn read_image(memory: *Memory, file: std.fs.File) !void {
+    // the first 16 bits specify the origin address (where the program should start)
+    // var first_instruction: [2]u8 = undefined;
+    // try file.read(&first_instruction);
+    // const origin = first_instruction[1] << 8 | first_instruction[0];
 
-    var tmp: u8 = undefined;
+    // const max_read = MEMORY_MAX - origin;
+    // file.readAll(@as([]u8, memory));
+    var read = try file.readAll(@as(*[memory.len * 2]u8, @ptrCast(memory)));
 
-    for (0..buffer.len / 2) |i| {
-        const j = i * 2;
-        tmp = buffer[j];
-        buffer[j] = buffer[j + 1];
-        buffer[j + 1] = tmp;
+    // swap to little endian (by every 16 bits)
+    for (0..read / 2) |i| {
+        memory[i] = swap16(memory[i]);
     }
+}
 
-    return buffer;
+fn swap16(x: u16) u16 {
+    return (x << 8) | (x >> 8);
+}
+
+fn read_image_from_path(memory: *Memory, image_path: []const u8) !void {
+    var file = try std.fs.cwd().openFile(image_path, .{});
+    defer file.close();
+
+    return read_image(memory, file);
 }
