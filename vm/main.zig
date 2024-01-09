@@ -371,7 +371,7 @@ fn op_branch(state: *State, instruction: Instruction) void {
     const positive = (1 << 9) & instruction != 0;
     const pc_offset = bit_range(instruction, 0, 8);
 
-    if ((negative and state.reg.negative_flag()) || (zero and state.reg.zero_flag()) || (positive and state.reg.positive_flag())) {
+    if ((negative and state.reg.negative_flag()) or (zero and state.reg.zero_flag()) or (positive and state.reg.positive_flag())) {
         state.reg.set(RegName.pc, state.reg.get(RegName.pc) + pc_offset);
     }
 }
