@@ -87,6 +87,29 @@ const State = struct {
     fn mem_write(self: *State, addr: u16, val: u16) void {
         self.memory[addr] = val;
     }
+
+    fn step(self: *State) !void {
+        // FETCH
+        const instruction = self.mem_read(self.reg.get(RegName.pc));
+
+        self.reg.set(RegName.pc, self.reg.get(RegName.pc) + 1);
+        const op = OpCode.fromInt(instruction >> 12) orelse return Error.UnknownOpCode;
+
+        std.debug.print("PC = {x}; ", .{self.reg.get(RegName.pc)});
+        std.debug.print("Op = {}; \n", .{op});
+
+        switch (op) {
+            OpCode.branch => op_branch(self, instruction),
+            OpCode.add => try op_add(self, instruction),
+            OpCode.load_indirect => try op_load_indirect(self, instruction),
+            OpCode.bit_and => try op_bit_and(self, instruction),
+            OpCode.jmp => try op_jump(self, instruction),
+            OpCode.jump_to_routine => try op_jump_to_routine(self, instruction),
+            OpCode.load => try op_load(self, instruction),
+            OpCode.not => try op_not(self, instruction),
+            else => unreachable,
+        }
+    }
 };
 
 const Terminal = struct {
@@ -193,25 +216,7 @@ pub fn main() !void {
     const running = true;
 
     while (running) {
-        // FETCH
-        const instruction = state.mem_read(state.reg.get(RegName.pc));
-        state.reg.set(RegName.pc, state.reg.get(RegName.pc));
-        const op = OpCode.fromInt(instruction >> 12) orelse return Error.UnknownOpCode;
-
-        switch (op) {
-            // 0001 | dest_reg(3-bits) | source_reg(3-bits) | mode_bit | args (5-bits)
-            // if mode == 0 (called register mode) => args is: 00 | source2 (3-bits)
-            // if mode == 1 (called immediate mode) => args is: constant(5-bits)
-            OpCode.add => try op_add(&state, instruction),
-            // 1010 | dest_reg(3-bits) | PC_offset(9 bits)
-            OpCode.load_indirect => try op_load_indirect(&state, instruction),
-            OpCode.bit_and => try op_bit_and(&state, instruction),
-            OpCode.jmp => try op_jump(&state, instruction),
-            OpCode.jump_to_routine => try op_jump_to_routine(&state, instruction),
-            OpCode.load => try op_load(&state, instruction),
-            OpCode.not => try op_not(&state, instruction),
-            else => unreachable,
-        }
+        try state.step();
     }
 
     // TODO: shutdown
