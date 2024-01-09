@@ -285,7 +285,7 @@ test "sign_extend" {
 
 fn op_load_indirect(state: *State, instruction: Instruction) !void {
     const dest_reg = try RegName.fromInt(bit_range(instruction, 9, 11));
-    const pc_offset = bit_range(instruction, 0, 8);
+    const pc_offset = sign_extend(u9, bit_range(instruction, 0, 8));
 
     state.reg.set(dest_reg, mem_read(mem_read(state.reg.get(RegName.pc) + pc_offset)));
 }
