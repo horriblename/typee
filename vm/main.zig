@@ -4,6 +4,7 @@ const std = @import("std");
 const Error = error{
     UnknownOpCode,
     BadRegisterNumber,
+    SteppingOverProgramSize,
 };
 
 const MEMORY_MAX = 1 << 16;
@@ -68,7 +69,7 @@ const Registers = struct {
 const State = struct {
     memory: Memory,
     reg: Registers,
-    program_size: u4,
+    program_size: u16,
 
     pub fn init() State {
         return State{
@@ -92,6 +93,11 @@ const State = struct {
 
     fn step(self: *State) !void {
         // FETCH
+        if (self.reg.get(RegName.pc) > self.program_size) {
+            std.debug.print("stepping over program size; current PC: {}, program size: {}\n", .{ self.reg.get(RegName.pc), self.program_size });
+            return Error.SteppingOverProgramSize;
+        }
+
         const instruction = self.mem_read(self.reg.get(RegName.pc));
 
         self.reg.set(RegName.pc, self.reg.get(RegName.pc) + 1);
@@ -549,7 +555,7 @@ test "bit range" {
 
 const ImageError = error{ProgramTooLarge} || std.fs.File.ReadError || std.fs.File.OpenError;
 
-fn read_image(memory: *Memory, file: std.fs.File) ImageError!u4 {
+fn read_image(memory: *Memory, file: std.fs.File) ImageError!u16 {
     // the first 16 bits specify the origin address (where the program should start)
     // var first_instruction: [2]u8 = undefined;
     // try file.read(&first_instruction);
@@ -564,7 +570,7 @@ fn read_image(memory: *Memory, file: std.fs.File) ImageError!u4 {
         memory[i] = swap16(memory[i]);
     }
 
-    if (read / 2 > std.math.maxInt(u4)) {
+    if (read / 2 > std.math.maxInt(u16)) {
         return ImageError.ProgramTooLarge;
     }
 
@@ -575,7 +581,7 @@ fn swap16(x: u16) u16 {
     return (x << 8) | (x >> 8);
 }
 
-fn read_image_from_path(memory: *Memory, image_path: []const u8) ImageError!u4 {
+fn read_image_from_path(memory: *Memory, image_path: []const u8) ImageError!u16 {
     var file = try std.fs.cwd().openFile(image_path, .{});
     defer file.close();
 
