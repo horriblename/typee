@@ -77,7 +77,7 @@ const State = struct {
     }
 
     fn mem_read(self: *const State, addr: u16) u16 {
-        if (addr == MemoryMappedRegName.kbsr) {
+        if (addr == @intFromEnum(MemoryMappedRegName.kbsr)) {
             // if (check_key()) {...}
         }
 
@@ -95,15 +95,16 @@ const Terminal = struct {
     fn disable_input_buffering() !Terminal {
         const original_tio = try std.os.tcgetattr(std.os.STDIN_FILENO);
         var new_tio = original_tio;
-        new_tio.c_lflag &= ~std.os.linux.ICANON & ~std.os.linux.ECHO;
+        // FIXME:
+        // new_tio.c_lflag &= ~std.os.linux.ICANON & ~std.os.linux.ECHO;
 
-        try std.os.tcsetattr(std.os.STDIN_FILENO, std.os.TCSA, new_tio);
+        try std.os.tcsetattr(std.os.STDIN_FILENO, std.os.linux.TCSA.NOW, new_tio);
 
         return .{ .original_tio = original_tio };
     }
 
     fn restore_input_buffering(self: Terminal) !void {
-        try std.os.tcsetattr(std.os.STDIN_FILENO, std.os.TCSA, self.original_tio);
+        try std.os.tcsetattr(std.os.STDIN_FILENO, std.os.linux.TCSA.NOW, self.original_tio);
     }
 };
 
@@ -191,7 +192,7 @@ pub fn main() !void {
 
     while (running) {
         // FETCH
-        const instruction = &state.memory.mem_read(state.reg.get(RegName.pc));
+        const instruction = state.mem_read(state.reg.get(RegName.pc));
         state.reg.set(RegName.pc, state.reg.get(RegName.pc));
         const op = OpCode.fromInt(instruction >> 12) orelse return Error.UnknownOpCode;
 
