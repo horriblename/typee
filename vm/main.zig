@@ -193,10 +193,10 @@ pub fn main() !void {
     var state = State.init();
 
     for (args[2..]) |file_path| {
-        state.program_size = @intCast(read_image_from_path(&state.memory, file_path) catch |err| {
+        state.program_size = read_image_from_path(&state.memory, file_path) catch |err| {
             std.log.err("failed to load image at '{s}': {}", .{ file_path, err });
             std.process.exit(1);
-        });
+        };
     }
 
     const terminal = Terminal.disable_input_buffering();
@@ -547,7 +547,9 @@ test "bit range" {
     try std.testing.expectEqual(bit_range(0b11110000, 2, 5), 0b1100);
 }
 
-fn read_image(memory: *Memory, file: std.fs.File) !usize {
+const ImageError = error{ProgramTooLarge} || std.fs.File.ReadError || std.fs.File.OpenError;
+
+fn read_image(memory: *Memory, file: std.fs.File) ImageError!u4 {
     // the first 16 bits specify the origin address (where the program should start)
     // var first_instruction: [2]u8 = undefined;
     // try file.read(&first_instruction);
@@ -562,14 +564,18 @@ fn read_image(memory: *Memory, file: std.fs.File) !usize {
         memory[i] = swap16(memory[i]);
     }
 
-    return read / 2;
+    if (read / 2 > std.math.maxInt(u4)) {
+        return ImageError.ProgramTooLarge;
+    }
+
+    return @intCast(read / 2);
 }
 
 fn swap16(x: u16) u16 {
     return (x << 8) | (x >> 8);
 }
 
-fn read_image_from_path(memory: *Memory, image_path: []const u8) !usize {
+fn read_image_from_path(memory: *Memory, image_path: []const u8) ImageError!u4 {
     var file = try std.fs.cwd().openFile(image_path, .{});
     defer file.close();
 
