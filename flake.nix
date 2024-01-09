@@ -24,10 +24,6 @@
     overlays = {
       default = final: prev: {
         hello = final.callPackage ./hello.nix {};
-        opal = final.callPackage ./opal.nix {
-          source = inputs.opal;
-          inherit (final.ocamlPackages) findlib;
-        };
       };
     };
 
@@ -39,7 +35,11 @@
       pkgs = pkgsFor.${system};
     in {
       default = pkgs.mkShell {
-        nativeBuildInputs = with pkgs; [ocaml dune_3 opam];
+        nativeBuildInputs = with pkgs; [
+          cargo
+          zig
+        ];
+        buildInputs = with pkgs; [];
       };
     });
   };
