@@ -115,11 +115,11 @@ const State = struct {
         }
 
         const instruction = self.mem_read(self.reg.get(RegName.pc));
-
+        std.debug.print("PC = 0x{x}; ", .{self.reg.get(RegName.pc)});
         self.reg.set(RegName.pc, self.reg.get(RegName.pc) + 1);
-        const op = OpCode.fromInt(instruction >> 12) orelse return Error.UnknownOpCode;
 
-        std.debug.print("PC = {x}; ", .{self.reg.get(RegName.pc)});
+        const op = OpCode.fromInt(instruction >> 12) orelse return Error.UnknownOpCode;
+        std.debug.print("instruction = 0x{x}; ", .{instruction});
         std.debug.print("Op = {}; \n", .{op});
 
         switch (op) {
