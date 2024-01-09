@@ -68,11 +68,13 @@ const Registers = struct {
 const State = struct {
     memory: Memory,
     reg: Registers,
+    program_size: u4,
 
     pub fn init() State {
         return State{
             .memory = undefined,
             .reg = undefined,
+            .program_size = undefined,
         };
     }
 
@@ -191,10 +193,10 @@ pub fn main() !void {
     var state = State.init();
 
     for (args[2..]) |file_path| {
-        read_image_from_path(&state.memory, file_path) catch |err| {
+        state.program_size = @intCast(read_image_from_path(&state.memory, file_path) catch |err| {
             std.log.err("failed to load image at '{s}': {}", .{ file_path, err });
             std.process.exit(1);
-        };
+        });
     }
 
     const terminal = Terminal.disable_input_buffering();
@@ -545,7 +547,7 @@ test "bit range" {
     try std.testing.expectEqual(bit_range(0b11110000, 2, 5), 0b1100);
 }
 
-fn read_image(memory: *Memory, file: std.fs.File) !void {
+fn read_image(memory: *Memory, file: std.fs.File) !usize {
     // the first 16 bits specify the origin address (where the program should start)
     // var first_instruction: [2]u8 = undefined;
     // try file.read(&first_instruction);
@@ -559,13 +561,15 @@ fn read_image(memory: *Memory, file: std.fs.File) !void {
     for (0..read / 2) |i| {
         memory[i] = swap16(memory[i]);
     }
+
+    return read / 2;
 }
 
 fn swap16(x: u16) u16 {
     return (x << 8) | (x >> 8);
 }
 
-fn read_image_from_path(memory: *Memory, image_path: []const u8) !void {
+fn read_image_from_path(memory: *Memory, image_path: []const u8) !usize {
     var file = try std.fs.cwd().openFile(image_path, .{});
     defer file.close();
 
