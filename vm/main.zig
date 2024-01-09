@@ -76,8 +76,16 @@ const State = struct {
         };
     }
 
-    pub fn zeroed() State {
-        return std.mem.zeroes(State);
+    fn mem_read(self: *const State, addr: u16) u16 {
+        if (addr == MemoryMappedRegName.kbsr) {
+            // if (check_key()) {...}
+        }
+
+        return self.memory[addr];
+    }
+
+    fn mem_write(self: *State, addr: u16, val: u16) void {
+        self.memory[addr] = val;
     }
 };
 
@@ -183,7 +191,7 @@ pub fn main() !void {
 
     while (running) {
         // FETCH
-        const instruction = mem_read(state.reg.get(RegName.pc));
+        const instruction = &state.memory.mem_read(state.reg.get(RegName.pc));
         state.reg.set(RegName.pc, state.reg.get(RegName.pc));
         const op = OpCode.fromInt(instruction >> 12) orelse return Error.UnknownOpCode;
 
@@ -287,7 +295,7 @@ fn op_load_indirect(state: *State, instruction: Instruction) !void {
     const dest_reg = try RegName.fromInt(bit_range(instruction, 9, 11));
     const pc_offset = sign_extend(u9, bit_range(instruction, 0, 8));
 
-    state.reg.set(dest_reg, mem_read(mem_read(state.reg.get(RegName.pc) + pc_offset)));
+    state.reg.set(dest_reg, state.mem_read(state.mem_read(state.reg.get(RegName.pc) + pc_offset)));
 }
 
 test "op_load_indirect" {
@@ -424,7 +432,7 @@ fn op_load(state: *State, instruction: Instruction) !void {
     const dest_reg = try RegName.fromInt(bit_range(instruction, 9, 11));
     const pc_offset = sign_extend(u9, bit_range(instruction, 0, 8));
 
-    state.reg.set(dest_reg, mem_read(state.reg.get(RegName.pc) + pc_offset));
+    state.reg.set(dest_reg, state.mem_read(state.reg.get(RegName.pc) + pc_offset));
 
     update_flags(&state.reg, dest_reg);
 }
@@ -450,7 +458,7 @@ fn op_load_base_offset(state: *State, instruction: Instruction) !void {
     const base_reg = try RegName.fromInt(bit_range(instruction, 6, 8));
     const offset = sign_extend(u6, bit_range(instruction, 0, 5));
 
-    state.reg.set(dest_reg, mem_read(state.reg.get(base_reg) + offset));
+    state.reg.set(dest_reg, state.mem_read(state.reg.get(base_reg) + offset));
 }
 
 // TODO: test load_base_offset
@@ -526,11 +534,6 @@ test "bit range" {
     try std.testing.expectEqual(bit_range(0b110, 0, 1), 0b10);
     try std.testing.expectEqual(bit_range(0b1100, 1, 2), 0b10);
     try std.testing.expectEqual(bit_range(0b11110000, 2, 5), 0b1100);
-}
-
-fn mem_read(addr: u16) u16 {
-    _ = addr;
-    unreachable;
 }
 
 fn read_image(file_path: [:0]u8) ![]u8 {
