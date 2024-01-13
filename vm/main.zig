@@ -468,7 +468,6 @@ fn op_load(state: *State, instruction: Instruction) !void {
     const pc_offset = sign_extend(u9, bit_range(instruction, 0, 8));
 
     const value = state.mem_read(state.reg.get(RegName.pc) + pc_offset);
-    std.debug.print("value: {d}", .{value});
     state.reg.set(dest_reg, value);
 
     update_flags(&state.reg, dest_reg);
@@ -486,10 +485,6 @@ test "load" {
         .{ .payload = pc_offset, .offset = 0 },
     });
     state.mem_write(pc_init, instruction);
-    std.debug.print("read; {}\n", .{state.mem_read(pc_init)});
-    std.debug.print("read; {}\n", .{state.mem_read(pc_init + pc_offset)});
-
-    state.mem_dump();
     state.mem_write(pc_init + pc_offset + 1, 42);
 
     // try op_load(&state, instruction);
