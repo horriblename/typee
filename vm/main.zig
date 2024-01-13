@@ -487,10 +487,10 @@ test "load" {
     });
     state.mem_write(pc_init, instruction);
     std.debug.print("read; {}\n", .{state.mem_read(pc_init)});
-    state.mem_write(pc_init + pc_offset, 42);
     std.debug.print("read; {}\n", .{state.mem_read(pc_init + pc_offset)});
 
     state.mem_dump();
+    state.mem_write(pc_init + pc_offset + 1, 42);
 
     // try op_load(&state, instruction);
     try state.step();
