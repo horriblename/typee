@@ -52,7 +52,7 @@ pub const Operation = packed struct {
         store: void,
         jump_to_routine: JumpToRoutineInstruction,
         bit_and: BitAndInstruction,
-        load_base_offset: void,
+        load_base_offset: LoadBaseOffsetInstruction,
         store_reg: void,
         rti: void, // unused
         not: void,
@@ -97,7 +97,7 @@ pub const Operation = packed struct {
             // .store => {},
             .jump_to_routine => try op.instruction.jump_to_routine.run(mem, reg),
             .bit_and => try op.instruction.bit_and.run(mem, reg),
-            // .load_base_offset => {},
+            .load_base_offset => try op.instruction.load_base_offset.run(mem, reg),
             // .store_reg => {},
             // .rti => {}, // unused
             // .not => {},
@@ -414,6 +414,48 @@ test "load" {
 
     try std.testing.expectEqual(mach.reg.get(Registers.RegName.r0), 42);
 }
+
+const LoadBaseOffsetInstruction = packed struct {
+    dest_reg: u3,
+    base_reg: u3,
+    offset: u6,
+
+    fn run(self: LoadBaseOffsetInstruction, mem: *Memory, reg: *Registers) !void {
+        const dest_reg = try Registers.RegName.fromInt(self.dest_reg);
+        const base_reg = try Registers.RegName.fromInt(self.base_reg);
+        const offset = sign_extend(u6, self.offset);
+
+        reg.set(dest_reg, mem.read(reg.get(base_reg) + offset));
+    }
+};
+
+test "load_base_offset" {
+    const base_addr = 0x3000;
+    const offset = 0x10;
+
+    var mach = setup_machine(&.{.{ .addr = base_addr + offset, .val = 42 }}, &.{.{ .name = Registers.RegName.r0, .val = base_addr }});
+
+    const instruction = Operation{ .op_code = OpCode.load_base_offset, .instruction = .{ .load_base_offset = LoadBaseOffsetInstruction{
+        .dest_reg = 1,
+        .base_reg = 0,
+        .offset = offset,
+    } } };
+
+    try instruction.run(&mach.mem, &mach.reg);
+
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.r1), 42);
+}
+
+// fn op_load_effective_addr(state: *State, instruction: Instruction) !void {
+//     const dest_reg = try RegName.fromInt(bit_range(instruction, 9, 11));
+//     const pc_offset = sign_extend(u9, bit_range(instruction, 0, 8));
+//
+//     state.reg.set(dest_reg, state.reg.get(RegName.pc) + pc_offset);
+//
+//     update_flags(&state.reg, dest_reg);
+// }
+//
+// // TODO: test load_effective_addr
 
 const MemMap = []const struct { addr: u16, val: u16 };
 const RegMap = []const struct { name: Registers.RegName, val: u16 };
