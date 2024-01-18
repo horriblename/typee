@@ -154,14 +154,7 @@ const AddInstruction = packed struct {
 };
 
 test "add: non-immediate mode" {
-    var mem: Memory = undefined;
-    var reg: Registers = undefined;
-    const dest_reg = Registers.RegName.r5;
-    const src1_reg = Registers.RegName.r0;
-    const src2_reg = Registers.RegName.r1;
-
-    reg.set(src1_reg, 10);
-    reg.set(src2_reg, 5);
+    var mach = setup_machine(&.{}, &.{ .{ .name = Registers.RegName.r0, .val = 10 }, .{ .name = Registers.RegName.r1, .val = 5 } });
 
     const instruction = Operation{ .op_code = .add, .instruction = .{
         .add = .{
@@ -175,15 +168,13 @@ test "add: non-immediate mode" {
         },
     } };
 
-    try instruction.run(&mem, &reg);
+    try instruction.run(&mach.mem, &mach.reg);
 
-    try std.testing.expectEqual(reg.get(dest_reg), 15);
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.r5), 15);
 }
 
 test "add: immediate mode" {
-    var mem: Memory = undefined;
-    var reg: Registers = undefined;
-    reg.set(Registers.RegName.r0, 10);
+    var mach = setup_machine(&.{}, &.{.{ .name = Registers.RegName.r0, .val = 10 }});
 
     const instruction = Operation{
         .op_code = OpCode.add,
@@ -197,9 +188,9 @@ test "add: immediate mode" {
         },
     };
 
-    try instruction.run(&mem, &reg);
+    try instruction.run(&mach.mem, &mach.reg);
 
-    try std.testing.expectEqual(reg.get(Registers.RegName.r1), 15);
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.r1), 15);
 }
 
 const LoadIndirectInstruction = packed struct {
@@ -213,6 +204,21 @@ const LoadIndirectInstruction = packed struct {
         reg.set(dest_reg, mem.read(.pc) + pc_offset);
     }
 };
+
+const MemMap = []const struct { addr: u16, val: u16 };
+const RegMap = []const struct { name: Registers.RegName, val: u16 };
+const Machine = struct { mem: Memory, reg: Registers };
+fn setup_machine(mem_init: MemMap, reg_init: RegMap) Machine {
+    var machine: Machine = undefined;
+    for (mem_init) |pair| {
+        machine.mem.write(pair.addr, pair.val);
+    }
+
+    for (reg_init) |pair| {
+        machine.reg.set(pair.name, pair.val);
+    }
+    return machine;
+}
 
 fn bit_range(bits: u16, comptime from: u4, comptime to: u4) u16 {
     if (from > to) {
