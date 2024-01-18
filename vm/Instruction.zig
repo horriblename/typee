@@ -50,7 +50,7 @@ pub const Operation = packed struct {
         add: AddInstruction,
         load: void,
         store: void,
-        jump_to_routine: void,
+        jump_to_routine: JumpToRoutineInstruction,
         bit_and: BitAndInstruction,
         load_base_offset: void,
         store_reg: void,
@@ -95,7 +95,7 @@ pub const Operation = packed struct {
             .add => try op.instruction.add.run(mem, reg),
             // .load => {},
             // .store => {},
-            // .jump_to_routine => {},
+            .jump_to_routine => try op.instruction.jump_to_routine.run(mem, reg),
             .bit_and => try op.instruction.bit_and.run(mem, reg),
             // .load_base_offset => {},
             // .store_reg => {},
@@ -329,6 +329,59 @@ test "jump" {
     try instruction.run(&mach.mem, &mach.reg);
 
     try std.testing.expectEqual(mach.reg.get(Registers.RegName.pc), 0x4000);
+}
+
+const JumpToRoutineInstruction = packed struct {
+    offset_mode: bool,
+    dest: packed union { offset: u11, from_reg: packed struct {
+        filler1: u2,
+        base_reg: u3,
+        filler2: u6,
+    } },
+
+    fn run(self: JumpToRoutineInstruction, mem: *Memory, reg: *Registers) !void {
+        _ = mem;
+        reg.set(Registers.RegName.r7, reg.get(Registers.RegName.pc));
+        if (self.offset_mode) {
+            const offset = sign_extend(u11, self.dest.offset);
+            reg.set(Registers.RegName.pc, reg.get(Registers.RegName.pc) + offset);
+        } else {
+            const base_reg = try Registers.RegName.fromInt(self.dest.from_reg.base_reg);
+            reg.set(Registers.RegName.pc, reg.get(base_reg));
+        }
+    }
+};
+
+test "jump_to_routine: with offset" {
+    const pc_init = 0x3000;
+    const pc_offset = 12;
+    var mach = setup_machine(&.{}, &.{.{ .name = Registers.RegName.pc, .val = pc_init }});
+
+    const instruction = Operation{
+        .op_code = OpCode.jump_to_routine,
+        .instruction = .{ .jump_to_routine = JumpToRoutineInstruction{
+            .offset_mode = true,
+            .dest = .{ .offset = pc_offset },
+        } },
+    };
+
+    try instruction.run(&mach.mem, &mach.reg);
+
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.r7), pc_init);
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.pc), pc_init + pc_offset);
+}
+
+test "jump_to_routine: from register" {
+    const pc_init = 0x3000;
+    const destination = 0x4000;
+    var mach = setup_machine(&.{}, &.{ .{ .name = Registers.RegName.pc, .val = pc_init }, .{ .name = Registers.RegName.r0, .val = destination } });
+
+    const instruction = Operation{ .op_code = OpCode.jump_to_routine, .instruction = .{ .jump_to_routine = JumpToRoutineInstruction{ .offset_mode = false, .dest = .{ .from_reg = .{ .base_reg = 0, .filler1 = 0, .filler2 = 0 } } } } };
+
+    try instruction.run(&mach.mem, &mach.reg);
+
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.r7), pc_init);
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.pc), destination);
 }
 
 const MemMap = []const struct { addr: u16, val: u16 };
