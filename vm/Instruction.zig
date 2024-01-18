@@ -56,7 +56,7 @@ pub const Operation = packed struct {
         store_reg: void,
         rti: void, // unused
         not: void,
-        load_indirect: void,
+        load_indirect: LoadIndirectInstruction,
         store_indirect: void,
         jmp: void,
         res: void, // reserved (unused)
@@ -204,6 +204,20 @@ const LoadIndirectInstruction = packed struct {
         reg.set(dest_reg, mem.read(reg.get(Registers.RegName.pc) + pc_offset));
     }
 };
+
+test "load_indirect" {
+    const pc_init = 0x3000;
+    const pc_offset = 0x10;
+    var machine = setup_machine(&.{.{ .addr = pc_init + pc_offset, .val = 42 }}, &.{.{ .name = Registers.RegName.pc, .val = pc_init }});
+
+    const instruction = Operation{ .op_code = OpCode.load_indirect, .instruction = .{ .load_indirect = LoadIndirectInstruction{
+        .dest_reg = @intFromEnum(Registers.RegName.r0),
+        .pc_offset = pc_offset,
+    } } };
+
+    try instruction.run(&machine.mem, &machine.reg);
+    try std.testing.expectEqual(machine.reg.get(Registers.RegName.r0), 42);
+}
 
 const MemMap = []const struct { addr: u16, val: u16 };
 const RegMap = []const struct { name: Registers.RegName, val: u16 };
