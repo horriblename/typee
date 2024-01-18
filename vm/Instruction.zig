@@ -60,7 +60,7 @@ pub const Operation = packed struct {
         store_indirect: void,
         jmp: JumpInstruction,
         res: void, // reserved (unused)
-        load_effective_addr: void,
+        load_effective_addr: LoadEffectiveAddrInstruction,
         trap: void,
     },
 
@@ -105,7 +105,7 @@ pub const Operation = packed struct {
             // .store_indirect => {},
             .jmp => try op.instruction.jmp.run(mem, reg),
             // .res => {}, // reserved (unused)
-            // .load_effective_addr => {},
+            .load_effective_addr => try op.instruction.load_effective_addr.run(mem, reg),
             // .trap => {},
             else => unreachable,
         }
@@ -446,16 +446,37 @@ test "load_base_offset" {
     try std.testing.expectEqual(mach.reg.get(Registers.RegName.r1), 42);
 }
 
-// fn op_load_effective_addr(state: *State, instruction: Instruction) !void {
-//     const dest_reg = try RegName.fromInt(bit_range(instruction, 9, 11));
-//     const pc_offset = sign_extend(u9, bit_range(instruction, 0, 8));
-//
-//     state.reg.set(dest_reg, state.reg.get(RegName.pc) + pc_offset);
-//
-//     update_flags(&state.reg, dest_reg);
-// }
-//
-// // TODO: test load_effective_addr
+const LoadEffectiveAddrInstruction = packed struct {
+    dest_reg: u3,
+    pc_offset: u9,
+
+    fn run(self: LoadEffectiveAddrInstruction, mem: *Memory, reg: *Registers) !void {
+        _ = mem;
+        const dest_reg = try Registers.RegName.fromInt(self.dest_reg);
+        const pc_offset = sign_extend(u9, self.pc_offset);
+
+        reg.set(dest_reg, reg.get(Registers.RegName.pc) + pc_offset);
+
+        reg.update_flags(dest_reg);
+    }
+};
+
+test "load_effective_addr" {
+    const pc_init = 0x3002;
+    const offset = 100;
+    var mach = setup_machine(&.{}, &.{
+        .{ .name = Registers.RegName.pc, .val = pc_init },
+    });
+
+    const instruction = Operation{ .op_code = OpCode.load_effective_addr, .instruction = .{ .load_effective_addr = LoadEffectiveAddrInstruction{
+        .dest_reg = 1,
+        .pc_offset = offset,
+    } } };
+
+    try instruction.run(&mach.mem, &mach.reg);
+
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.r1), pc_init + offset);
+}
 
 const MemMap = []const struct { addr: u16, val: u16 };
 const RegMap = []const struct { name: Registers.RegName, val: u16 };
