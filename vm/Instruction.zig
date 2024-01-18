@@ -144,12 +144,11 @@ const AddInstruction = packed struct {
         const dest_reg = try Registers.RegName.fromInt(self.dest_reg);
         const src_reg1 = try Registers.RegName.fromInt(self.src_reg1);
 
-        switch (self.immediate_mode) {
-            false => {
-                const src_reg2 = try Registers.RegName.fromInt(self.src2.non_immediate.src_reg2);
-                reg.set(dest_reg, reg.get(src_reg1) + reg.get(src_reg2));
-            },
-            true => reg.set(dest_reg, reg.get(src_reg1) + sign_extend(u5, self.src2.immediate)),
+        if (self.immediate_mode) {
+            reg.set(dest_reg, reg.get(src_reg1) + sign_extend(u5, self.src2.immediate));
+        } else {
+            const src_reg2 = try Registers.RegName.fromInt(self.src2.non_immediate.src_reg2);
+            reg.set(dest_reg, reg.get(src_reg1) + reg.get(src_reg2));
         }
     }
 };
