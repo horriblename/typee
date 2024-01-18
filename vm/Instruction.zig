@@ -58,7 +58,7 @@ pub const Operation = packed struct {
         not: void,
         load_indirect: LoadIndirectInstruction,
         store_indirect: void,
-        jmp: void,
+        jmp: JumpInstruction,
         res: void, // reserved (unused)
         load_effective_addr: void,
         trap: void,
@@ -103,7 +103,7 @@ pub const Operation = packed struct {
             // .not => {},
             .load_indirect => try op.instruction.load_indirect.run(mem, reg),
             // .store_indirect => {},
-            // .jmp => {},
+            .jmp => try op.instruction.jmp.run(mem, reg),
             // .res => {}, // reserved (unused)
             // .load_effective_addr => {},
             // .trap => {},
@@ -305,7 +305,31 @@ test "bit_and: immediate mode" {
     try std.testing.expectEqual(mach.reg.get(Registers.RegName.r2), operand_1 & operand_2);
 }
 
-// TODO: test op_branch
+const JumpInstruction = packed struct {
+    filler1: u3,
+    base_reg: u3,
+    filler2: u6,
+
+    fn run(self: JumpInstruction, mem: *Memory, reg: *Registers) !void {
+        _ = mem;
+        const base_reg = try Registers.RegName.fromInt(self.base_reg);
+        reg.set(Registers.RegName.pc, reg.get(base_reg));
+    }
+};
+
+test "jump" {
+    var mach = setup_machine(&.{}, &.{ .{ .name = Registers.RegName.pc, .val = 0x3000 }, .{ .name = Registers.RegName.r1, .val = 0x4000 } });
+
+    const instruction = Operation{ .op_code = OpCode.jmp, .instruction = .{ .jmp = JumpInstruction{
+        .filler1 = 0,
+        .base_reg = 1,
+        .filler2 = 0,
+    } } };
+
+    try instruction.run(&mach.mem, &mach.reg);
+
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.pc), 0x4000);
+}
 
 const MemMap = []const struct { addr: u16, val: u16 };
 const RegMap = []const struct { name: Registers.RegName, val: u16 };
