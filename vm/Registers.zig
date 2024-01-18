@@ -68,4 +68,13 @@ pub fn positive_flag(self: *Self) bool {
 pub fn zero_flag(self: *Self) bool {
     return (self.get(RegName.cond) & @intFromEnum(ConditionFlag.zro)) != 0;
 }
-//};
+
+pub fn update_flags(self: *Self, r: RegName) void {
+    if (self.get(r) == 0) {
+        self.set(RegName.cond, @intFromEnum(ConditionFlag.zro));
+    } else if ((self.get(r) >> 15) != 0) { // 1 in the left-most bit indicates negative
+        self.set(RegName.cond, @intFromEnum(ConditionFlag.neg));
+    } else {
+        self.set(RegName.cond, @intFromEnum(ConditionFlag.pos));
+    }
+}

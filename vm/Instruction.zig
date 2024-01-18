@@ -48,7 +48,7 @@ pub const Operation = packed struct {
     instruction: packed union {
         branch: BranchInstruction,
         add: AddInstruction,
-        load: void,
+        load: LoadInstruction,
         store: void,
         jump_to_routine: JumpToRoutineInstruction,
         bit_and: BitAndInstruction,
@@ -93,7 +93,7 @@ pub const Operation = packed struct {
         switch (op.op_code) {
             .branch => try op.instruction.branch.run(mem, reg),
             .add => try op.instruction.add.run(mem, reg),
-            // .load => {},
+            .load => try op.instruction.load.run(mem, reg),
             // .store => {},
             .jump_to_routine => try op.instruction.jump_to_routine.run(mem, reg),
             .bit_and => try op.instruction.bit_and.run(mem, reg),
@@ -384,8 +384,41 @@ test "jump_to_routine: from register" {
     try std.testing.expectEqual(mach.reg.get(Registers.RegName.pc), destination);
 }
 
+const LoadInstruction = packed struct {
+    dest_reg: u3,
+    pc_offset: u9,
+
+    fn run(self: LoadInstruction, mem: *Memory, reg: *Registers) !void {
+        const dest_reg = try Registers.RegName.fromInt(self.dest_reg);
+        const pc_offset = sign_extend(u9, self.pc_offset);
+
+        const value = mem.read(reg.get(Registers.RegName.pc) + pc_offset);
+        reg.set(dest_reg, value);
+
+        reg.update_flags(dest_reg);
+    }
+};
+
+test "load" {
+    const pc_init = 0x3000;
+    const pc_offset = 32;
+    var mach = setup_machine(&.{.{ .addr = pc_init + pc_offset, .val = 42 }}, &.{.{ .name = Registers.RegName.pc, .val = pc_init }});
+
+    const instruction = Operation{ .op_code = OpCode.load, .instruction = .{ .load = LoadInstruction{
+        .dest_reg = 0,
+        .pc_offset = pc_offset,
+    } } };
+
+    // try op_load(&state, instruction);
+    try instruction.run(&mach.mem, &mach.reg);
+
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.r0), 42);
+}
+
 const MemMap = []const struct { addr: u16, val: u16 };
 const RegMap = []const struct { name: Registers.RegName, val: u16 };
+
+/// for testing purposes
 const Machine = struct { mem: Memory, reg: Registers };
 fn setup_machine(mem_init: MemMap, reg_init: RegMap) Machine {
     var machine: Machine = undefined;
