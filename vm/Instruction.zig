@@ -55,7 +55,7 @@ pub const Operation = packed struct {
         load_base_offset: LoadBaseOffsetInstruction,
         store_reg: void,
         rti: void, // unused
-        not: void,
+        not: NotInstruction,
         load_indirect: LoadIndirectInstruction,
         store_indirect: void,
         jmp: JumpInstruction,
@@ -100,7 +100,7 @@ pub const Operation = packed struct {
             .load_base_offset => try op.instruction.load_base_offset.run(mem, reg),
             // .store_reg => {},
             // .rti => {}, // unused
-            // .not => {},
+            .not => try op.instruction.not.run(mem, reg),
             .load_indirect => try op.instruction.load_indirect.run(mem, reg),
             // .store_indirect => {},
             .jmp => try op.instruction.jmp.run(mem, reg),
@@ -476,6 +476,45 @@ test "load_effective_addr" {
     try instruction.run(&mach.mem, &mach.reg);
 
     try std.testing.expectEqual(mach.reg.get(Registers.RegName.r1), pc_init + offset);
+}
+
+const NotInstruction = packed struct {
+    dest_reg: u3,
+    src_reg: u3,
+    filler: u6,
+
+    fn run(self: NotInstruction, mem: *Memory, reg: *Registers) !void {
+        _ = mem;
+        const dest_reg = try Registers.RegName.fromInt(self.dest_reg);
+        const src_reg = try Registers.RegName.fromInt(self.src_reg);
+
+        reg.set(dest_reg, if (reg.get(src_reg) == 0) 1 else 0);
+        reg.update_flags(dest_reg);
+    }
+};
+
+test "op not: input true" {
+    var mach = setup_machine(&.{}, &.{.{ .name = Registers.RegName.r0, .val = 1 }});
+
+    const instruction = Operation{ .op_code = OpCode.not, .instruction = .{ .not = NotInstruction{ .dest_reg = 1, .src_reg = 0, .filler = 0 } } };
+
+    try instruction.run(&mach.mem, &mach.reg);
+
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.r1), 0);
+}
+
+test "op not: input false" {
+    var mach = setup_machine(&.{}, &.{.{ .name = Registers.RegName.r0, .val = 0 }});
+
+    const instruction = Operation{ .op_code = OpCode.not, .instruction = .{ .not = NotInstruction{
+        .dest_reg = 1,
+        .src_reg = 0,
+        .filler = 0,
+    } } };
+
+    try instruction.run(&mach.mem, &mach.reg);
+
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.r1), 1);
 }
 
 const MemMap = []const struct { addr: u16, val: u16 };
