@@ -51,7 +51,7 @@ pub const Operation = packed struct {
         load: void,
         store: void,
         jump_to_routine: void,
-        bit_and: void,
+        bit_and: BitAndInstruction,
         load_base_offset: void,
         store_reg: void,
         rti: void, // unused
@@ -96,7 +96,7 @@ pub const Operation = packed struct {
             // .load => {},
             // .store => {},
             // .jump_to_routine => {},
-            // .bit_and => {},
+            .bit_and => try op.instruction.bit_and.run(mem, reg),
             // .load_base_offset => {},
             // .store_reg => {},
             // .rti => {}, // unused
@@ -217,6 +217,74 @@ test "load_indirect" {
 
     try instruction.run(&machine.mem, &machine.reg);
     try std.testing.expectEqual(machine.reg.get(Registers.RegName.r0), 42);
+}
+
+const BitAndInstruction = packed struct {
+    dest_reg: u3,
+    src1_reg: u3,
+    immediate_mode: bool,
+    src2: Src2,
+
+    const Src2 = packed union {
+        immediate: u5,
+        non_immediate: packed struct {
+            filler: u2,
+            src2_reg: u3,
+        },
+    };
+
+    fn run(self: BitAndInstruction, mem: *Memory, reg: *Registers) !void {
+        _ = mem;
+        const dest_reg = try Registers.RegName.fromInt(self.dest_reg);
+        const src1_reg = try Registers.RegName.fromInt(self.src1_reg);
+
+        if (self.immediate_mode) {
+            const operand = sign_extend(u5, self.src2.immediate);
+            reg.set(dest_reg, reg.get(src1_reg) & operand);
+        } else {
+            const src2_reg = try Registers.RegName.fromInt(self.src2.non_immediate.src2_reg);
+            reg.set(dest_reg, reg.get(src1_reg) & reg.get(src2_reg));
+        }
+    }
+};
+
+test "bit_and: non-immediate mode" {
+    const operand_1 = 0b1010;
+    const operand_2 = 0b1100;
+    var mach = setup_machine(&.{}, &.{ .{ .name = Registers.RegName.r0, .val = operand_1 }, .{ .name = Registers.RegName.r1, .val = operand_2 } });
+
+    const instruction = Operation{
+        .op_code = OpCode.bit_and,
+        .instruction = .{
+            .bit_and = .{
+                .dest_reg = 2,
+                .src1_reg = 0,
+                .immediate_mode = false,
+                .src2 = .{ .non_immediate = .{ .filler = 0, .src2_reg = 1 } },
+            },
+        },
+    };
+
+    try instruction.run(&mach.mem, &mach.reg);
+
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.r2), operand_1 & operand_2);
+}
+
+test "bit_and: immediate mode" {
+    const operand_1 = 0b1010;
+    const operand_2: u5 = 0b1100;
+    var mach = setup_machine(&.{}, &.{ .{ .name = Registers.RegName.r0, .val = operand_1 }, .{ .name = Registers.RegName.r1, .val = operand_2 } });
+
+    const instruction = Operation{ .op_code = OpCode.bit_and, .instruction = .{ .bit_and = .{
+        .dest_reg = 2,
+        .src1_reg = 0,
+        .immediate_mode = true,
+        .src2 = .{ .immediate = operand_2 },
+    } } };
+
+    try instruction.run(&mach.mem, &mach.reg);
+
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.r2), operand_1 & operand_2);
 }
 
 const MemMap = []const struct { addr: u16, val: u16 };
