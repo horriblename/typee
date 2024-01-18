@@ -11,8 +11,7 @@ const State = @import("State.zig");
 const Registers = @import("Registers.zig");
 const RegName = Registers.RegName;
 const Memory = @import("Memory.zig");
-const Instruction = @import("Instruction.zig");
-const Operation = Instruction.Operation;
+const Operation = @import("instruction.zig").Operation;
 
 const Terminal = struct {
     original_tio: std.os.termios,

@@ -2,8 +2,8 @@ const std = @import("std");
 
 const Registers = @import("Registers.zig");
 const Memory = @import("Memory.zig");
-const Instruction = @import("Instruction.zig");
-const Operation = Instruction.Operation;
+const instruction = @import("instruction.zig");
+const Operation = instruction.Operation;
 
 pub const Error = error{
     UnknownOpCode,
