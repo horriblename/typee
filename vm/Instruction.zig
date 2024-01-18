@@ -101,7 +101,7 @@ pub const Operation = packed struct {
             // .store_reg => {},
             // .rti => {}, // unused
             // .not => {},
-            // .load_indirect => {},
+            .load_indirect => try op.instruction.load_indirect.run(mem, reg),
             // .store_indirect => {},
             // .jmp => {},
             // .res => {}, // reserved (unused)
@@ -201,7 +201,7 @@ const LoadIndirectInstruction = packed struct {
         const dest_reg = try Registers.RegName.fromInt(self.dest_reg);
         const pc_offset = sign_extend(u9, self.pc_offset);
 
-        reg.set(dest_reg, mem.read(.pc) + pc_offset);
+        reg.set(dest_reg, mem.read(reg.get(Registers.RegName.pc) + pc_offset));
     }
 };
 
