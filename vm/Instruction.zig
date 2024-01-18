@@ -3,18 +3,12 @@ const std = @import("std");
 const Memory = @import("Memory.zig");
 const Registers = @import("Registers.zig");
 
-const Self = @This();
-
 const Code = packed struct {
     op_code: u4, // TODO: use OpCode
     body: u12,
 };
 
 code: Code,
-
-fn fromU16(code: u16) Self {
-    return Self{ .code = @bitCast(code) };
-}
 
 pub const OpCode = enum(u4) {
     branch = 0,
@@ -66,25 +60,6 @@ pub const Operation = packed struct {
 
     pub fn fromU16(code: u16) ?Operation {
         _ = OpCode.fromInt(code) orelse return null;
-
-        // const instruction = switch (op_code) {
-        //     .branch => .{ .branch = BranchInstruction },
-        //     .add => .{ .add = AddInstruction },
-        //     .load => .{ .load = void },
-        //     .store => .{ .store = void },
-        //     .jump_to_routine => .{ .jump_to_routine = void },
-        //     .bit_and => .{ .bit_and = void },
-        //     .load_base_offset => .{ .load_base_offset = void },
-        //     .store_reg => .{ .store_reg = void },
-        //     .rti => .{ .rti = void }, // unused
-        //     .not => .{ .not = void },
-        //     .load_indirect => .{ .load_indirect = void },
-        //     .store_indirect => .{ .store_indirect = void },
-        //     .jmp => .{ .jmp = void },
-        //     .res => .{ .res = void }, // reserved (unused)
-        //     .load_effective_addr => .{ .load_effective_addr = void },
-        //     .trap => .{ .trap = void },
-        // };
 
         return @bitCast(code);
     }
