@@ -121,11 +121,29 @@ const BranchInstruction = packed struct {
 
     fn run(self: BranchInstruction, mem: *Memory, reg: *Registers) !void {
         _ = mem;
+        const pc_offset = sign_extend(u9, self.pc_offset);
         if ((self.negative and reg.negative_flag()) or (self.zero and reg.zero_flag()) or (self.positive and reg.positive_flag())) {
-            reg.set(Registers.RegName.pc, reg.get(Registers.RegName.pc) + self.pc_offset);
+            reg.set(Registers.RegName.pc, reg.get(Registers.RegName.pc) + pc_offset);
         }
     }
 };
+
+test "branch" {
+    const pc_init = 0x3000;
+    const pc_offset = 0x10;
+    var mach = setup_machine(&.{}, &.{ .{ .name = Registers.RegName.pc, .val = pc_init }, .{ .name = Registers.RegName.cond, .val = @intFromEnum(Registers.ConditionFlag.pos) } });
+
+    const instruction = Operation{ .op_code = OpCode.branch, .instruction = .{ .branch = BranchInstruction{
+        .positive = true,
+        .zero = false,
+        .negative = false,
+        .pc_offset = pc_offset,
+    } } };
+
+    try instruction.run(&mach.mem, &mach.reg);
+
+    try std.testing.expectEqual(mach.reg.get(Registers.RegName.pc), pc_init + pc_offset);
+}
 
 const AddInstruction = packed struct {
     const ImmediateModeFlag = bool;
@@ -286,6 +304,8 @@ test "bit_and: immediate mode" {
 
     try std.testing.expectEqual(mach.reg.get(Registers.RegName.r2), operand_1 & operand_2);
 }
+
+// TODO: test op_branch
 
 const MemMap = []const struct { addr: u16, val: u16 };
 const RegMap = []const struct { name: Registers.RegName, val: u16 };
