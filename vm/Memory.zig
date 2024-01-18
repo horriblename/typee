@@ -27,9 +27,10 @@ fn mem_write(self: *Self, addr: u16, val: u16) void {
     self.data[addr] = val;
 }
 
-fn mem_dump(self: *const Self) void {
+pub fn dump(self: *const Self, from: usize, to: ?usize) void {
     const max_col: u16 = 16;
-    for (self.data, 0..) |slot, i| {
+    const to_val = to orelse self.data.len;
+    for (self.data[from..to_val], from..to_val) |slot, i| {
         if (i % max_col == 0) {
             std.debug.print("\n0x{x}\t", .{i});
         }
