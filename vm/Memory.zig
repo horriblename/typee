@@ -27,6 +27,15 @@ fn mem_write(self: *Self, addr: u16, val: u16) void {
     self.data[addr] = val;
 }
 
+pub fn addSigned(self: *Self, addr: u16, val: i16) void {
+    var ptr: i16 = @bitCast(self.data[addr]);
+    ptr.* += val;
+}
+
+pub fn addUnsigned(self: *Self, addr: u16, val: u16) void {
+    self.data[addr] += val;
+}
+
 pub fn dump(self: *const Self, from: usize, to: ?usize) void {
     const max_col: u16 = 16;
     const to_val = to orelse self.data.len;
@@ -35,11 +44,15 @@ pub fn dump(self: *const Self, from: usize, to: ?usize) void {
             std.debug.print("\n0x{x}\t", .{i});
         }
 
-        std.debug.print("{x:0>2} ", .{slot});
-        if (i % 8 == 0) {
+        std.debug.print("{x:0>4} ", .{slot});
+        if (i % 4 == 0) {
             std.debug.print(" ", .{});
         }
     }
 
     std.debug.print("\n", .{});
+}
+
+pub fn as_slice(self: *Self) []u16 {
+    return &self.data;
 }

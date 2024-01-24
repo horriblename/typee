@@ -11,7 +11,9 @@ const State = @import("State.zig");
 const Registers = @import("Registers.zig");
 const RegName = Registers.RegName;
 const Memory = @import("Memory.zig");
-const Operation = @import("instruction.zig").Operation;
+const instruction = @import("instruction.zig");
+const Operation = instruction.Operation;
+const OpCode = instruction.OpCode;
 
 const Terminal = struct {
     original_tio: std.os.termios,
@@ -38,18 +40,43 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     if (args.len < 2) {
+        var state = State.init();
+        const codes = [_]u16{
+            0x0001,
+            0xF026, //  1111 0000 0010 0110  TRAP tinu16      ;read an uint16_t in R0
+            0x1220, //  0001 0010 0010 0000  ADD R1,R0,x0     ;add contents of R0 to R1
+            0xF026, //  1111 0000 0010 0110  TRAP tinu16      ;read an uint16_t in R0
+            0x1240, //  0001 0010 0010 0000  ADD R1,R1,R0     ;add contents of R0 to R1
+            0x1060, //  0001 0000 0110 0000  ADD R0,R1,x0     ;add contents of R1 to R0
+            0xF027, //  1111 0000 0010 0111  TRAP toutu16     ;show the contents of R0 to stdout
+            0xF025, //  1111 0000 0010 0101  HALT             ;halt
+        };
+
+        for (&codes, 0..) |code, addr| {
+            state.mem.write(@intCast(addr), code);
+        }
+        state.mem.dump(0, 10);
+        state.program_size = @intCast(codes.len);
+        state.reg.set(Registers.RegName.pc, state.mem.read(0));
+        try state.loop();
+
         std.log.err("lc3 [image-file1] ...\n", .{});
         std.process.exit(2);
     }
 
     var state = State.init();
 
-    for (args[2..]) |file_path| {
-        state.program_size = read_image_from_path(&state.mem, file_path) catch |err| {
-            std.log.err("failed to load image at '{s}': {}", .{ file_path, err });
-            std.process.exit(1);
-        };
-    }
+    // for (args[2..]) |file_path| {
+    //     // if (file_path == "--gen") {
+    //     //     Operation {}
+    //     //     return;
+    //     // }
+    //
+    //     state.program_size = read_image_from_path(&state.mem, file_path) catch |err| {
+    //         std.log.err("failed to load image at '{s}': {}", .{ file_path, err });
+    //         std.process.exit(1);
+    //     };
+    // }
 
     const terminal = Terminal.disable_input_buffering();
     defer if (terminal) |term| {
@@ -59,19 +86,12 @@ pub fn main() !void {
     // TODO: how to trap SIGINT
     // std.os.signalfd(fd: fd_t, mask: *const sigset_t, flags: u32)
 
-    // since exactly one condition flag should be set at any given time, set the z flag
-    state.reg.set(RegName.cond, @intFromEnum(Registers.ConditionFlag.zro));
-
     // set the PC to starting position
     // the first "instruction" points to the starting position
     const pc_start = state.mem_read(0);
     state.reg.set(RegName.pc, pc_start);
 
-    const running = true;
-
-    while (running) {
-        try state.step();
-    }
+    try state.loop();
 
     // TODO: shutdown
 }

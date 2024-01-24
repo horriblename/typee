@@ -27,11 +27,16 @@ reg: Registers,
 program_size: u16,
 
 pub fn init() Self {
-    return Self{
+    var state = Self{
         .mem = undefined,
         .reg = undefined,
         .program_size = undefined,
     };
+
+    // since exactly one condition flag should be set at any given time, set the z flag
+    state.reg.set(Registers.RegName.cond, @intFromEnum(Registers.ConditionFlag.zro));
+
+    return state;
 }
 
 pub fn mem_read(self: *const Self, addr: u16) u16 {
@@ -70,8 +75,20 @@ pub fn step(self: *Self) !void {
     }
 
     const op = Operation.fromU16(self.mem.read(self.reg.get(Registers.RegName.pc))) orelse return Error.UnknownOpCode;
-    std.debug.print("PC = 0x{x}; ", .{self.reg.get(Registers.RegName.pc)});
-    self.reg.set(Registers.RegName.pc, self.reg.get(Registers.RegName.pc) + 1);
+    std.debug.print("PC = 0x{x}; OpCode = {}\n", .{ self.reg.get(Registers.RegName.pc), op });
+    self.reg.increment_by(Registers.RegName.pc, 1);
 
     try op.run(&self.mem, &self.reg);
+}
+
+pub fn loop(self: *Self) !void {
+    while (true) {
+        if (self.step()) {} else |err| {
+            if (err == instruction.TrapError.Halt) {
+                return;
+            }
+
+            return err;
+        }
+    }
 }

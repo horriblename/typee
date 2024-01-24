@@ -10,6 +10,8 @@ const Code = packed struct {
 
 code: Code,
 
+pub const TrapError = error{ BadTrapVect, Halt } || std.os.ReadError || std.os.WriteError;
+
 pub const OpCode = enum(u4) {
     branch = 0,
     add,
@@ -28,10 +30,7 @@ pub const OpCode = enum(u4) {
     load_effective_addr,
     trap,
 
-    pub fn fromInt(n: u16) ?OpCode {
-        if (n > @intFromEnum(OpCode.trap)) {
-            return null;
-        }
+    pub fn fromInt(n: u16) OpCode {
         return @enumFromInt(n);
     }
 };
@@ -55,13 +54,15 @@ pub const Operation = packed struct {
         jmp: JumpInstruction,
         res: void, // reserved (unused)
         load_effective_addr: LoadEffectiveAddrInstruction,
-        trap: void,
+        trap: TrapInstruction,
     },
 
-    pub fn fromU16(code: u16) ?Operation {
-        _ = OpCode.fromInt(code) orelse return null;
-
+    pub inline fn fromU16(code: u16) ?Operation {
         return @bitCast(code);
+    }
+
+    pub inline fn toU16(self: Operation) u16 {
+        return @bitCast(self);
     }
 
     pub fn run(op: Operation, mem: *Memory, reg: *Registers) !void {
@@ -81,7 +82,7 @@ pub const Operation = packed struct {
             .jmp => try op.instruction.jmp.run(mem, reg),
             // .res => {}, // reserved (unused)
             .load_effective_addr => try op.instruction.load_effective_addr.run(mem, reg),
-            // .trap => {},
+            .trap => try op.instruction.trap.run(mem, reg),
             else => unreachable,
         }
     }
@@ -102,6 +103,17 @@ const BranchInstruction = packed struct {
         }
     }
 };
+
+test "temp" {
+    const op = Operation.fromU16(0xf026);
+
+    const expected = Operation{ .op_code = @enumFromInt(0xf), .instruction = .{ .trap = TrapInstruction{
+        .filler = 0,
+        .trap_vect = @enumFromInt(26),
+    } } };
+
+    std.testing.expectEqual(@intFromEnum(op), @intFromEnum(expected));
+}
 
 test "branch" {
     const pc_init = 0x3000;
@@ -491,6 +503,83 @@ test "op not: input false" {
 
     try std.testing.expectEqual(mach.reg.get(Registers.RegName.r1), 1);
 }
+
+const TrapInstruction = packed struct {
+    filler: u4,
+    trap_vect: u8,
+
+    const TrapVect = enum(u8) {
+        tgetc = 0x20,
+        tout,
+        tputs,
+        tin,
+        tputsp,
+        thalt,
+        tinu16,
+        toutu16,
+    };
+
+    fn run(self: TrapInstruction, mem: *Memory, reg: *Registers) TrapError!void {
+        if (self.trap_vect < @intFromEnum(TrapVect.tgetc) or self.trap_vect > @intFromEnum(TrapVect.toutu16)) {
+            return TrapError.BadTrapVect;
+        }
+
+        switch (@as(TrapVect, @enumFromInt(self.trap_vect))) {
+            .tgetc => try TrapInstruction.tgetc(reg),
+            .tout => try TrapInstruction.tout(reg),
+            .tputs => try TrapInstruction.tputs(mem, reg),
+            .tin => try TrapInstruction.tin(reg),
+            .tputsp => TrapInstruction.tputsp(reg),
+            .thalt => return TrapError.Halt,
+            .tinu16 => TrapInstruction.tinu16(reg),
+            .toutu16 => TrapInstruction.toutu16(reg),
+        }
+    }
+
+    fn tgetc(reg: *Registers) std.os.ReadError!void {
+        var buf: [1]u8 = undefined;
+        _ = try std.io.getStdIn().read(&buf);
+        reg.set(Registers.RegName.r0, buf[0]);
+    }
+
+    fn tout(reg: *Registers) std.os.WriteError!void {
+        _ = try std.io.getStdOut().write(@as([2]u8, @bitCast(reg.get(Registers.RegName.r0)))[0..1]);
+    }
+
+    fn tputs(mem: *Memory, reg: *Registers) std.os.WriteError!void {
+        const from = reg.get(Registers.RegName.r0);
+        var stdout = std.io.getStdOut().writer();
+        // defer stdout.close();
+        for (mem.as_slice()[from..]) |slot| {
+            if (slot == 0) {
+                break;
+            }
+
+            const bytes: [2]u8 = @bitCast(slot);
+            try stdout.writeByte(bytes[0]);
+        }
+    }
+
+    fn tputsp(reg: *Registers) void {
+        _ = reg;
+        unreachable;
+    }
+
+    fn tin(reg: *Registers) !void {
+        try TrapInstruction.tgetc(reg);
+        try TrapInstruction.tout(reg);
+    }
+
+    fn tinu16(reg: *Registers) void {
+        _ = reg;
+        unreachable;
+    }
+
+    fn toutu16(reg: *Registers) void {
+        _ = reg;
+        unreachable;
+    }
+};
 
 const MemMap = []const struct { addr: u16, val: u16 };
 const RegMap = []const struct { name: Registers.RegName, val: u16 };

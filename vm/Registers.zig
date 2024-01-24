@@ -78,3 +78,7 @@ pub fn update_flags(self: *Self, r: RegName) void {
         self.set(RegName.cond, @intFromEnum(ConditionFlag.pos));
     }
 }
+
+pub fn increment_by(self: *Self, r: RegName, val: u16) void {
+    self.regs[@intFromEnum(r)] += val;
+}
