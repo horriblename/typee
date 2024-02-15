@@ -39,6 +39,9 @@
         nativeBuildInputs = with pkgs; [
           cargo
           zig
+          libgccjit
+          glibc
+          libgcc
         ];
         buildInputs = with pkgs; [];
       };
