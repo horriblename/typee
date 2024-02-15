@@ -24,12 +24,13 @@
     overlays = {
       default = final: prev: {
         hello = final.callPackage ./hello.nix {};
+        test-prg = final.callPackage ./test.nix {};
       };
     };
 
     packages = eachSystem (system: {
       default = self.packages.${system}.hello;
-      inherit (pkgsFor.${system}) hello opal;
+      inherit (pkgsFor.${system}) hello opal test-prg;
     });
     devShells = eachSystem (system: let
       pkgs = pkgsFor.${system};
