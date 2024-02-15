@@ -1,5 +1,6 @@
 mod scope;
 mod object;
+mod gc;
 pub mod error;
 
 use crate::{ast, parse::parse_tokens, lex::lex};
