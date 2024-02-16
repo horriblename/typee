@@ -12,6 +12,8 @@ pub enum Token<'a> {
 }
 
 type Span<'a> = LocatedSpan<&'a str>;
+pub type LexResult<'src> = IResult<Span<'src>, Vec<Token<'src>>>;
+pub type LexError<'src> = nom::Err<nom::error::Error<Span<'src>>>;
 
 pub fn lex<'a>(source: &'a str) -> IResult<Span<'a>, Vec<Token<'a>>> {
     lex_span(source.into())

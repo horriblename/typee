@@ -8,16 +8,17 @@ use crate::lex::Token;
 use crate::ast;
 
 type PResult<'a, O> = IResult<&'a [Token<'a>], O>;
+pub type PError<'tok> = nom::Err<nom::error::Error<&'tok [Token<'tok>]>>;
 
 // pub fn parse_string<'a>(source: &'a str) -> PResult<'a, ast::Program> {
 //     parse_tokens(&crate::lex::lex(source).expect.1);
 // }
 
-pub fn parse_tokens<'a>(tokens: &'a [Token]) -> PResult<'a, ast::Program<'a>> {
+pub fn parse_tokens<'tok>(tokens: &'tok [Token]) -> PResult<'tok, ast::Program<'tok>> {
     many0(parse_expr)(tokens)
 }
 
-fn parse_expr<'a>(source: &'a [Token]) -> PResult<'a, ast::Expr<'a>> {
+fn parse_expr<'tok>(source: &'tok [Token]) -> PResult<'tok, ast::Expr<'tok>> {
     alt((
         parse_list,
         parse_symbol,
