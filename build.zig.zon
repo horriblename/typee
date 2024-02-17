@@ -1,0 +1,11 @@
+.{
+	.name = "typee",
+	.version = "0.1.0",
+
+	.dependencies = .{
+		.mecha = .{
+			.url = "https://github.com/Hejsil/mecha/archive/refs/tags/0.7.0.tar.gz",
+			.hash = "122032d209f3d4c83a0aacd0d9411412ed44c9c4bb586e20c8baeb8cd41631089c3e",
+		},
+	},
+}
