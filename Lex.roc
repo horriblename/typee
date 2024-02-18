@@ -2,13 +2,13 @@ interface Lex exposes [lex]
     imports [
         parc.Parser,
         parc.Parser.{ Parser },
-        parc.Byte.{ char, strToRaw, RawStr, isAsciiDigit, int },
-        parc.Combinator.{ prefixed, suffixed, many0, alt, complete },
+        parc.Byte.{ char, strToRaw, RawStr, isAsciiDigit, int, charIs },
+        parc.Combinator.{ prefixed, suffixed, many0, alt, complete, andThen },
         Bool.{true, false},
         Debug
     ]
 
-Token : [LParen, RParen, Symbol RawStr, IntLiteral I32]
+Token : [LParen, RParen, Symbol Str, IntLiteral I32]
 
 lparen : Parser RawStr Token
 lparen = char '('
@@ -20,18 +20,14 @@ rparen = char ')'
 
 
 symbol : Parser RawStr Token
-symbol = \input ->
-    when input is
-        [first, .. as rest] if identFirst first ->
-            len = List.walkUntil rest 1 \i, c ->
-                if identBody c then
-                    Continue (i+1)
-                else
-                    Break i
-
-            {before, others} = List.split input len 
-            Ok (others, Symbol before)
-        _ -> Err Parser.genericError
+symbol = 
+    str = charIs identFirst |> andThen (many0 (charIs identBody))
+    (first, body) <- Parser.try str
+    body
+        |> List.prepend first
+        |> Str.fromUtf8
+        |> Result.mapErr \_ -> Parser.genericError
+        |> Result.map Symbol
 
 number : Parser RawStr Token
 number = int
@@ -82,4 +78,4 @@ lex = \input ->
 expect 
     Debug.expectEql
         (lex "(hi 4)") 
-        (Ok [LParen, Symbol ['h', 'i'], IntLiteral 4, RParen])
+        (Ok [LParen, Symbol "hi", IntLiteral 4, RParen])
