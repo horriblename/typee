@@ -7,3 +7,5 @@ _build
 
 /target
 zig-cache
+platform/vendored
+platform/zig-out/lib
