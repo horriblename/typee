@@ -114,34 +114,34 @@ runAndCheck = \instr, pred ->
             crash "error running code"
 
 expect
-    code = toNum
     runAndCheck
-        [code Push, 1, code Halt]
+        [toNum Push, 1, toNum Halt]
         \mach -> tag (mach.stack) FinalStack == [1]
 
 expect
-    code = toNum
     runAndCheck
-        [code Push, 1, code Push, 2, code Add, code Halt]
+        [toNum Push, 1, toNum Push, 2, toNum Add, toNum Halt]
         \mach -> tag (mach.stack) FinalStack == [3]
 
 expect
-    code = toNum
     runAndCheck
-        [code Push, 3, code Push, 2, code Sub, code Halt]
+        [toNum Push, 3, toNum Push, 2, toNum Sub, toNum Halt]
         \mach -> tag (mach.stack) FinalStack == [1]
 
 expect
-    code = toNum
     runAndCheck
-        [code Push, 2, code Push, 3, code Mul, code Halt]
+        [toNum Push, 2, toNum Push, 3, toNum Mul, toNum Halt]
         \mach -> tag (mach.stack) FinalStack == [6]
 
 expect
-    code = toNum
     runAndCheck
-        [code Push, 7, code Push, 3, code Div, code Halt]
+        [toNum Push, 7, toNum Push, 3, toNum Div, toNum Halt]
         \mach -> tag (mach.stack) FinalStack == [2]
+
+expect
+    runAndCheck
+        [toNum Push, 0, toNum Not, toNum Halt]
+        \mach -> tag (mach.stack) FinalStack == [1]
 
 checkState : ({} -> Bool) -> Result {} [CheckStateFailed]
 checkState = \test ->
