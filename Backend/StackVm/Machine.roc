@@ -105,6 +105,16 @@ decodeInstruction = \@Machine self, instruction ->
             (mach1, n1, n2) <- Result.try (popTwo self)
             Ok (push mach1 (if n1 != 0 || n2 != 0 then 1 else 0))
 
+        Ok Pop ->
+            (mach1, _) <- popStack (@Machine self) |> Result.try
+            Ok mach1
+
+        Ok Dup ->
+            last <- List.last self.stack
+                |> Result.mapErr \_ -> NotEnoughOperands
+                |> Result.try
+            Ok (push (@Machine self) last)
+
         Err _ -> Err (InvalidProgram UnknownInstruction)
 
 and = \res, pred ->
@@ -160,6 +170,16 @@ expect
     runAndCheck
         [toNum Push, 0, toNum Push, 1, toNum Or, toNum Halt]
         \mach -> mach.stack == [1]
+
+expect
+    runAndCheck
+        [toNum Push, 0, toNum Push, 1, toNum Pop, toNum Halt]
+        \mach -> mach.stack == [0]
+
+expect
+    runAndCheck
+        [toNum Push, 0, toNum Dup, toNum Halt]
+        \mach -> mach.stack == [0, 0]
 
 checkState : ({} -> Bool) -> Result {} [CheckStateFailed]
 checkState = \test ->

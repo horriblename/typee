@@ -12,6 +12,8 @@ OpCode : [
     Not,
     And,
     Or,
+    Pop,
+    Dup,
 ]
 
 # rename to fromInstruction?
@@ -27,6 +29,8 @@ fromNum = \num ->
         6 -> Ok Not
         7 -> Ok And
         8 -> Ok Or
+        9 -> Ok Pop
+        10 -> Ok Dup
         _ -> Err NotFound
 
 toNum : OpCode -> Num *
@@ -41,3 +45,5 @@ toNum = \opcode ->
         Not -> 6
         And -> 7
         Or -> 8
+        Pop -> 9
+        Dup -> 10
