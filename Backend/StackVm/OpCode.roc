@@ -14,6 +14,10 @@ OpCode : [
     Or,
     Pop,
     Dup,
+    ## `Jmp addr` jumps to an address
+    Jmp,
+    ## Conditional `Jmp`: `Jif addr` jumps to the address if the value on the stack is truthy
+    Jif,
 ]
 
 # rename to fromInstruction?
@@ -31,6 +35,8 @@ fromNum = \num ->
         8 -> Ok Or
         9 -> Ok Pop
         10 -> Ok Dup
+        11 -> Ok Jmp
+        12 -> Ok Jif
         _ -> Err NotFound
 
 toNum : OpCode -> Num *
@@ -47,3 +53,5 @@ toNum = \opcode ->
         Or -> 8
         Pop -> 9
         Dup -> 10
+        Jmp -> 11
+        Jif -> 12

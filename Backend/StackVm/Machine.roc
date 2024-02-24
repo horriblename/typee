@@ -10,7 +10,10 @@ RuntimeProblem : [
     InvalidProgram [
         UnknownInstruction,
         PushAtEndOfProgram,
+        JmpAtEndOfProgram,
+        JifAtEndOfProgram,
         StepAtEndOfProgram,
+        JumpOutOfProgram,
     ],
 
     ## not enough items on stack
@@ -115,6 +118,33 @@ decodeInstruction = \@Machine self, instruction ->
                 |> Result.try
             Ok (push (@Machine self) last)
 
+        Ok Jmp ->
+            (mach1, addr) <- nextWord self
+                |> Result.mapErr \_ -> InvalidProgram JmpAtEndOfProgram
+                |> Result.try
+            if addr >= List.len self.program then
+                Err (InvalidProgram JumpOutOfProgram)
+            else
+                Ok (@Machine{mach1 & instructionAddr: addr})
+
+        Ok Jif ->
+            (mach1, addr) <- nextWord self
+                |> Result.mapErr \_ -> InvalidProgram JifAtEndOfProgram
+                |> Result.try
+
+            cond <- topOfStack (@Machine self)
+                |> Result.mapErr \_ -> NotEnoughOperands
+                |> Result.try
+
+            if addr >= List.len self.program then
+                Err (InvalidProgram JumpOutOfProgram)
+            else
+                if cond != 0 then
+                    Ok (@Machine{mach1 & instructionAddr: addr})
+                else
+                    Ok (@Machine mach1)
+
+
         Err _ -> Err (InvalidProgram UnknownInstruction)
 
 and = \res, pred ->
@@ -181,6 +211,16 @@ expect
         [toNum Push, 0, toNum Dup, toNum Halt]
         \mach -> mach.stack == [0, 0]
 
+expect
+    runAndCheck
+        [toNum Jmp, 3, toNum Halt, toNum Jmp, 2]
+        \mach -> mach.instructionAddr == 3
+
+expect
+    runAndCheck
+        [toNum Push, 1, toNum Jif, 5, toNum Pop, toNum Push, 0, toNum Jif, 4, toNum Halt]
+        \mach -> mach.instructionAddr == 10
+
 checkState : ({} -> Bool) -> Result {} [CheckStateFailed]
 checkState = \test ->
     if test {} then
@@ -213,6 +253,9 @@ popStack = \@Machine self ->
 
 push = \@Machine self, item ->
     @Machine {self & stack: List.append self.stack item}
+
+topOfStack = \@Machine self ->
+    List.last self.stack
 
 tag = \x, f ->
     dbg (f x)
