@@ -1,8 +1,7 @@
-interface Parse exposes []
+interface Parse exposes [Expr, Program]
     imports [
         parc.Parser.{Parser},
-        parc.Byte,
-        parc.Combinator.{matches, many0, complete, surrounded},
+        parc.Combinator.{matches, many0, surrounded},
         Lex.{Token},
         Debug,
     ]
@@ -10,6 +9,7 @@ interface Parse exposes []
 
 ## A node in the Abstract Syntax Tree
 Expr : [Form (List Expr), Symbol Str, Int I32]
+Program : List Expr
 
 lparen = matches LParen
 rparen = matches RParen
@@ -27,12 +27,11 @@ expr = \input ->
         [IntLiteral num, .. as rest] -> Ok (rest, Int num)
         _ -> Err Parser.genericError
 
-program = many0 expr |> complete
+program = many0 expr
 
 parseTokens : List Token -> Result (List Expr) Parser.Problem
 parseTokens = \input ->
-    (_, prog) <- Result.map (program input)
-    prog
+    Parser.complete program input
 
 parseSource : Str -> Result (List Expr) Parser.Problem
 parseSource = \source ->

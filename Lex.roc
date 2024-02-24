@@ -2,25 +2,25 @@ interface Lex exposes [lex]
     imports [
         parc.Parser,
         parc.Parser.{ Parser },
-        parc.Byte.{ char, strToRaw, RawStr, isAsciiDigit, int, charIs },
-        parc.Combinator.{ prefixed, suffixed, many0, alt, complete, andThen },
+        parc.Ascii.{ char, StrBuf, isDigit, int, charIs },
+        parc.Combinator.{ prefixed, suffixed, many0, alt, andThen },
         Bool.{true, false},
         Debug
     ]
 
 Token : [LParen, RParen, Symbol Str, IntLiteral I32]
 
-lparen : Parser RawStr Token
+lparen : Parser StrBuf Token
 lparen = char '('
     |> Parser.map \_ -> LParen
 
-rparen : Parser RawStr Token
+rparen : Parser StrBuf Token
 rparen = char ')' 
     |> Parser.map \_ -> RParen
 
 
-symbol : Parser RawStr Token
-symbol = 
+symbol : Parser StrBuf Token
+symbol =
     str = charIs identFirst |> andThen (many0 (charIs identBody))
     (first, body) <- Parser.try str
     body
@@ -29,7 +29,7 @@ symbol =
         |> Result.mapErr \_ -> Parser.genericError
         |> Result.map Symbol
 
-number : Parser RawStr Token
+number : Parser StrBuf Token
 number = int
     |> Parser.map \numStr -> 
         numRes = numStr
@@ -40,7 +40,7 @@ number = int
             Ok num -> IntLiteral num
             _ -> crash "unreachable"
 
-identFirst = \c -> c != '(' && c != ')' && !(isWhitespace c) && !(isAsciiDigit c)
+identFirst = \c -> c != '(' && c != ')' && !(isWhitespace c) && !(isDigit c)
 identBody = \c -> c != '(' && c != ')' && !(isWhitespace c)
 
 isWhitespace = \c ->
@@ -49,7 +49,7 @@ isWhitespace = \c ->
         _ -> Bool.false
 
 # whitespace = tag " "
-# skipWhitespaces : Parser RawStr {}
+# skipWhitespaces : Parser StrBuf {}
 skipWhitespaces = \input ->
     count = input |> List.walkUntil 0 \i, c ->
         if isWhitespace c
@@ -61,19 +61,15 @@ skipWhitespaces = \input ->
 
 lex : Str -> Result (List Token) Parser.Problem
 lex = \input ->
-    rawInput = strToRaw input
-
-    token : Parser RawStr Token
+    token : Parser StrBuf Token
     token = alt [lparen, rparen, symbol, number]
         |> suffixed skipWhitespaces
 
-    parser : Parser RawStr (List Token)
+    parser : Parser StrBuf (List Token)
     parser = skipWhitespaces
         |> prefixed (many0 token)
-        |> complete
 
-    (_, out) <- Result.try (Parser.run parser rawInput)
-    Ok out
+    Parser.complete parser (Str.toUtf8 input)
 
 expect 
     Debug.expectEql
