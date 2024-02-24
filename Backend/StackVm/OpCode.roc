@@ -10,6 +10,8 @@ OpCode : [
     Mul,
     Div,
     Not,
+    And,
+    Or,
 ]
 
 # rename to fromInstruction?
@@ -23,6 +25,8 @@ fromNum = \num ->
         4 -> Ok Mul
         5 -> Ok Div
         6 -> Ok Not
+        7 -> Ok And
+        8 -> Ok Or
         _ -> Err NotFound
 
 toNum : OpCode -> Num *
@@ -35,3 +39,5 @@ toNum = \opcode ->
         Mul -> 4
         Div -> 5
         Not -> 6
+        And -> 7
+        Or -> 8

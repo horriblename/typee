@@ -97,6 +97,14 @@ decodeInstruction = \@Machine self, instruction ->
 
             Ok (mach1 |> push (if n1 == 0 then 1 else 0))
 
+        Ok And ->
+            (mach1, n1, n2) <- Result.try (popTwo self)
+            Ok (push mach1 (if n1 != 0 && n2 != 0 then 1 else 0))
+
+        Ok Or ->
+            (mach1, n1, n2) <- Result.try (popTwo self)
+            Ok (push mach1 (if n1 != 0 || n2 != 0 then 1 else 0))
+
         Err _ -> Err (InvalidProgram UnknownInstruction)
 
 and = \res, pred ->
@@ -116,32 +124,42 @@ runAndCheck = \instr, pred ->
 expect
     runAndCheck
         [toNum Push, 1, toNum Halt]
-        \mach -> tag (mach.stack) FinalStack == [1]
+        \mach -> mach.stack == [1]
 
 expect
     runAndCheck
         [toNum Push, 1, toNum Push, 2, toNum Add, toNum Halt]
-        \mach -> tag (mach.stack) FinalStack == [3]
+        \mach -> mach.stack == [3]
 
 expect
     runAndCheck
         [toNum Push, 3, toNum Push, 2, toNum Sub, toNum Halt]
-        \mach -> tag (mach.stack) FinalStack == [1]
+        \mach -> mach.stack == [1]
 
 expect
     runAndCheck
         [toNum Push, 2, toNum Push, 3, toNum Mul, toNum Halt]
-        \mach -> tag (mach.stack) FinalStack == [6]
+        \mach -> mach.stack == [6]
 
 expect
     runAndCheck
         [toNum Push, 7, toNum Push, 3, toNum Div, toNum Halt]
-        \mach -> tag (mach.stack) FinalStack == [2]
+        \mach -> mach.stack == [2]
 
 expect
     runAndCheck
         [toNum Push, 0, toNum Not, toNum Halt]
-        \mach -> tag (mach.stack) FinalStack == [1]
+        \mach -> mach.stack == [1]
+
+expect
+    runAndCheck
+        [toNum Push, 1, toNum Push, 0, toNum And, toNum Halt]
+        \mach -> mach.stack == [0]
+
+expect
+    runAndCheck
+        [toNum Push, 0, toNum Push, 1, toNum Or, toNum Halt]
+        \mach -> mach.stack == [1]
 
 checkState : ({} -> Bool) -> Result {} [CheckStateFailed]
 checkState = \test ->
