@@ -18,6 +18,12 @@ OpCode : [
     Jmp,
     ## Conditional `Jmp`: `Jif addr` jumps to the address if the value on the stack is truthy
     Jif,
+    ## Next word should be the variable number (id of the variable)
+    ## pushes the variable value onto the stack
+    Load,
+    ## Next word should be the variable number (id of the variable)
+    ## pops a value and store into the given variable
+    Store,
 ]
 
 # rename to fromInstruction?
@@ -37,6 +43,8 @@ fromNum = \num ->
         10 -> Ok Dup
         11 -> Ok Jmp
         12 -> Ok Jif
+        13 -> Ok Load
+        14 -> Ok Store
         _ -> Err NotFound
 
 toNum : OpCode -> Num *
@@ -55,3 +63,5 @@ toNum = \opcode ->
         Dup -> 10
         Jmp -> 11
         Jif -> 12
+        Load -> 13
+        Store -> 14

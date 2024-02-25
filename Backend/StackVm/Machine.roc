@@ -1,34 +1,43 @@
 interface Backend.StackVm.Machine
     exposes [Machine, new, run]
     imports [
-        Backend.StackVm.OpCode.{OpCode, fromNum, toNum},
+        # NOTE: compiler bug made it so that I can't use functions by Module.func
+        Backend.StackVm.OpCode.{ OpCode, fromNum, toNum },
+        Backend.StackVm.Frame.{ Frame, empty, getVariable, setVariable },
+        Debug,
     ]
 
-Instr: Nat
+Instr : U64
 
 RuntimeProblem : [
-    InvalidProgram [
-        UnknownInstruction,
-        PushAtEndOfProgram,
-        JmpAtEndOfProgram,
-        JifAtEndOfProgram,
-        StepAtEndOfProgram,
-        JumpOutOfProgram,
-    ],
+    InvalidProgram
+        [
+            UnknownInstruction,
+            PushAtEndOfProgram,
+            JmpAtEndOfProgram,
+            JifAtEndOfProgram,
+            StepAtEndOfProgram,
+            JumpOutOfProgram,
+            LoadAtEndOfProgram,
+            StoreAtEndOfProgram,
+            UnknownVariable U64,
+            StoreMissingValueOnStack,
+        ],
 
     ## not enough items on stack
     NotEnoughOperands,
 ]
 
 MachineInner : {
-    program: List Instr,
-    stack: List Nat,
-    instructionAddr: Nat,
-    halted: Bool,
+    program : List Instr,
+    stack : List U64,
+    instructionAddr : U64,
+    halted : Bool,
+    currentFrame : Frame,
 }
 Machine := MachineInner
 
-new : List Nat -> Machine
+new : List U64 -> Machine
 new = \instructions ->
     if List.len instructions < 0 then
         crash "A program should have at least an instruction"
@@ -38,6 +47,7 @@ new = \instructions ->
             stack: [],
             instructionAddr: 0,
             halted: Bool.false,
+            currentFrame: empty {},
         }
 
 run : Machine -> Result Machine RuntimeProblem
@@ -46,16 +56,17 @@ run = \@Machine self ->
         Ok (@Machine self)
     else
         step (@Machine self)
-            |> Result.try run
+        |> Result.try run
 
 step = \@Machine self ->
     (mach, instr) <- nextWord self
         |> Result.mapErr \_ -> InvalidProgram StepAtEndOfProgram
         |> Result.try
     dbg StepNextInstr instr
+
     decodeInstruction (@Machine mach) instr
 
-decodeInstruction : Machine, Nat -> Result Machine RuntimeProblem
+decodeInstruction : Machine, U64 -> Result Machine RuntimeProblem
 decodeInstruction = \@Machine self, instruction ->
     popTwo = \mach ->
         {} <- checkStackItemCount (@Machine mach) 2 |> Result.try
@@ -67,19 +78,23 @@ decodeInstruction = \@Machine self, instruction ->
 
     when fromNum instruction is
         Ok Halt ->
-            Ok (@Machine {self & halted: Bool.true})
+            Ok (@Machine { self & halted: Bool.true })
+
         Ok Push ->
             (self1, value) <- nextWord self
                 |> Result.mapErr \_ -> InvalidProgram PushAtEndOfProgram
                 |> Result.try
-            Ok (@Machine {
-                self1 &
-                stack: List.append self.stack value,
-            })
+            Ok
+                (
+                    @Machine
+                        { self1 &
+                            stack: List.append self.stack value,
+                        }
+                )
 
         Ok Add ->
             (mach1, n1, n2) <- Result.try (popTwo self)
-            Ok (push mach1 (n1+n2))
+            Ok (push mach1 (n1 + n2))
 
         Ok Sub ->
             (mach1, n1, n2) <- Result.try (popTwo self)
@@ -87,7 +102,7 @@ decodeInstruction = \@Machine self, instruction ->
 
         Ok Mul ->
             (mach1, n1, n2) <- Result.try (popTwo self)
-            Ok (push mach1 (n1*n2))
+            Ok (push mach1 (n1 * n2))
 
         Ok Div ->
             (mach1, n1, n2) <- Result.try (popTwo self)
@@ -125,7 +140,7 @@ decodeInstruction = \@Machine self, instruction ->
             if addr >= List.len self.program then
                 Err (InvalidProgram JumpOutOfProgram)
             else
-                Ok (@Machine{mach1 & instructionAddr: addr})
+                Ok (@Machine { mach1 & instructionAddr: addr })
 
         Ok Jif ->
             (mach1, addr) <- nextWord self
@@ -138,27 +153,44 @@ decodeInstruction = \@Machine self, instruction ->
 
             if addr >= List.len self.program then
                 Err (InvalidProgram JumpOutOfProgram)
+            else if cond != 0 then
+                Ok (@Machine { mach1 & instructionAddr: addr })
             else
-                if cond != 0 then
-                    Ok (@Machine{mach1 & instructionAddr: addr})
-                else
-                    Ok (@Machine mach1)
+                Ok (@Machine mach1)
 
+        Ok Load ->
+            (self1, varNumber) <- nextWord self
+                |> Result.mapErr \_ -> InvalidProgram LoadAtEndOfProgram
+                |> Result.try
+
+            value <- getVariable self1.currentFrame varNumber
+                |> Result.mapErr \_ -> InvalidProgram (UnknownVariable varNumber)
+                |> Result.try
+
+            push (@Machine self1) value |> Ok
+
+        Ok Store ->
+            (self1, varNumber) <- nextWord self
+                |> Result.mapErr \_ -> InvalidProgram StoreAtEndOfProgram
+                |> Result.try
+
+            (mach2, value) <- popStack (@Machine self1)
+                |> Result.mapErr \_ -> InvalidProgram StoreMissingValueOnStack
+                |> Result.try
+
+            setVar mach2 varNumber value |> Ok
 
         Err _ -> Err (InvalidProgram UnknownInstruction)
 
-and = \res, pred ->
-    when res is
-        Ok ok -> pred ok
-        Err _ -> Bool.false
-
 runAndCheck = \instr, pred ->
-    result = new instr
+    result =
+        new instr
         |> run
     when result is
         Ok (@Machine mach) -> pred mach
         Err err ->
             dbg ExecuteError err
+
             crash "error running code"
 
 expect
@@ -221,6 +253,22 @@ expect
         [toNum Push, 1, toNum Jif, 5, toNum Pop, toNum Push, 0, toNum Jif, 4, toNum Halt]
         \mach -> mach.instructionAddr == 10
 
+# store variable
+expect
+    runAndCheck
+        [toNum Push, 42, toNum Store, 0, toNum Halt]
+        \mach -> Debug.expectEql mach.instructionAddr 5
+            && Debug.expectEql mach.stack []
+            && Debug.expectEql (getVariable mach.currentFrame 0) (Ok 42)
+
+# store and load variable
+expect
+    runAndCheck
+        [toNum Push, 42, toNum Store, 0, toNum Load, 0, toNum Halt]
+        \mach -> Debug.expectEql mach.instructionAddr 7
+            && Debug.expectEql mach.stack [42]
+            && Debug.expectEql (getVariable mach.currentFrame 0) (Ok 42)
+
 checkState : ({} -> Bool) -> Result {} [CheckStateFailed]
 checkState = \test ->
     if test {} then
@@ -237,26 +285,34 @@ checkStackItemCount = \@Machine mach, atLeast ->
 nextWord : MachineInner -> Result (MachineInner, Instr) [EndOfProgram]
 nextWord = \self ->
     dbg StartNextWord self
-    word <- List.get self.program self.instructionAddr 
+
+    word <- List.get self.program self.instructionAddr
         |> tag NextWordResult
         |> Result.mapErr \_ -> EndOfProgram
         |> Result.try
     Ok (
-        {self & instructionAddr: self.instructionAddr + 1},
-        word
+        { self & instructionAddr: self.instructionAddr + 1 },
+        word,
     )
 
 popStack = \@Machine self ->
     when self.stack is
-        [.. as stack, last] -> Ok (@Machine {self & stack: stack}, last)
+        [.. as stack, last] -> Ok (@Machine { self & stack: stack }, last)
         _ -> Err NotEnoughOperands
 
 push = \@Machine self, item ->
-    @Machine {self & stack: List.append self.stack item}
+    @Machine { self & stack: List.append self.stack item }
+
+getVar = \@Machine self, varNumber -> getVariable self.currentFrame varNumber
+setVar = \@Machine self, varNumber, newValue ->
+    newFrame = setVariable self.currentFrame varNumber newValue
+
+    @Machine { self & currentFrame: newFrame }
 
 topOfStack = \@Machine self ->
     List.last self.stack
 
 tag = \x, f ->
-    dbg (f x)
+    dbg f x
+
     x
