@@ -1,4 +1,4 @@
-interface Debug exposes [expectEql, what]
+interface Debug exposes [expectEql, what, okAnd]
     imports []
 
 expectEql = \left, right ->
@@ -17,3 +17,12 @@ what = \x ->
     dbg x
 
     x
+
+okAnd = \result, pred ->
+    when result is
+        Ok ok -> pred ok
+        Err err ->
+            dbg NotOk err
+
+            Bool.false
+

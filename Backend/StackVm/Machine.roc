@@ -1,5 +1,5 @@
 interface Backend.StackVm.Machine
-    exposes [Machine, new, run]
+    exposes [Machine, new, run, Instr]
     imports [
         # NOTE: compiler bug made it so that I can't use functions by Module.func
         Backend.StackVm.OpCode.{ OpCode, fromNum, toNum },
