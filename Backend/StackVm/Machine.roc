@@ -316,13 +316,6 @@ expect
         \mach -> Debug.expectEql mach.instructionAddr 5
             && Debug.expectEql mach.stack [6]
 
-checkState : ({} -> Bool) -> Result {} [CheckStateFailed]
-checkState = \test ->
-    if test {} then
-        Ok {}
-    else
-        Err CheckStateFailed
-
 checkStackItemCount = \@Machine mach, atLeast ->
     if List.len mach.stack >= atLeast then
         Ok {}
