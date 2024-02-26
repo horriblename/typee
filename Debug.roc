@@ -5,11 +5,15 @@ expectEql = \left, right ->
     res = left == right
 
     if !res then
-        dbg Eql left right
+        dbg left
+
+        dbg right
+
         res
     else
         res
 
 what = \x ->
     dbg x
+
     x
