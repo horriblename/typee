@@ -1,38 +1,41 @@
-interface Lex exposes [lex]
+interface Lex exposes [lex, lexStr]
     imports [
         parc.Parser,
         parc.Parser.{ Parser },
         parc.Ascii.{ char, StrBuf, isDigit, int, charIs },
         parc.Combinator.{ prefixed, suffixed, many0, alt, andThen },
-        Bool.{true, false},
-        Debug
+        Bool.{ true, false },
+        Debug,
     ]
 
 Token : [LParen, RParen, Symbol Str, IntLiteral I32]
 
 lparen : Parser StrBuf Token
-lparen = char '('
+lparen =
+    char '('
     |> Parser.map \_ -> LParen
 
 rparen : Parser StrBuf Token
-rparen = char ')' 
+rparen =
+    char ')'
     |> Parser.map \_ -> RParen
-
 
 symbol : Parser StrBuf Token
 symbol =
     str = charIs identFirst |> andThen (many0 (charIs identBody))
     (first, body) <- Parser.try str
     body
-        |> List.prepend first
-        |> Str.fromUtf8
-        |> Result.mapErr \_ -> Parser.genericError
-        |> Result.map Symbol
+    |> List.prepend first
+    |> Str.fromUtf8
+    |> Result.mapErr \_ -> Parser.genericError
+    |> Result.map Symbol
 
 number : Parser StrBuf Token
-number = int
-    |> Parser.map \numStr -> 
-        numRes = numStr
+number =
+    int
+    |> Parser.map \numStr ->
+        numRes =
+            numStr
             |> Str.fromUtf8
             |> Result.try Str.toI32
 
@@ -51,27 +54,36 @@ isWhitespace = \c ->
 # whitespace = tag " "
 # skipWhitespaces : Parser StrBuf {}
 skipWhitespaces = \input ->
-    count = input |> List.walkUntil 0 \i, c ->
-        if isWhitespace c
-        then Continue (i+1)
-        else Break i
+    count =
+        input
+        |> List.walkUntil 0 \i, c ->
+            if
+                isWhitespace c
+            then
+                Continue (i + 1)
+            else
+                Break i
 
     rest = List.dropFirst input count
     Ok (rest, {})
 
-lex : Str -> Result (List Token) Parser.Problem
+lex : List U8 -> Result (List Token) Parser.Problem
 lex = \input ->
     token : Parser StrBuf Token
-    token = alt [lparen, rparen, symbol, number]
+    token =
+        alt [lparen, rparen, symbol, number]
         |> suffixed skipWhitespaces
 
     parser : Parser StrBuf (List Token)
-    parser = skipWhitespaces
+    parser =
+        skipWhitespaces
         |> prefixed (many0 token)
 
-    Parser.complete parser (Str.toUtf8 input)
+    Parser.complete parser input
 
-expect 
+lexStr = \input -> lex (Str.toUtf8 input)
+
+expect
     Debug.expectEql
-        (lex "(hi 4)") 
+        (lexStr "(hi 4)")
         (Ok [LParen, Symbol "hi", IntLiteral 4, RParen])
