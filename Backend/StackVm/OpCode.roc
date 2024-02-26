@@ -24,6 +24,8 @@ OpCode : [
     ## Next word should be the variable number (id of the variable)
     ## pops a value and store into the given variable
     Store,
+    Call,
+    Ret,
 ]
 
 # rename to fromInstruction?
@@ -45,6 +47,8 @@ fromNum = \num ->
         12 -> Ok Jif
         13 -> Ok Load
         14 -> Ok Store
+        15 -> Ok Call
+        16 -> Ok Ret
         _ -> Err NotFound
 
 toNum : OpCode -> Num *
@@ -65,3 +69,5 @@ toNum = \opcode ->
         Jif -> 12
         Load -> 13
         Store -> 14
+        Call -> 15
+        Ret -> 16

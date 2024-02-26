@@ -3,7 +3,8 @@ interface Backend.StackVm.Machine
     imports [
         # NOTE: compiler bug made it so that I can't use functions by Module.func
         Backend.StackVm.OpCode.{ OpCode, fromNum, toNum },
-        Backend.StackVm.Frame.{ Frame, empty, getVariable, setVariable },
+        Backend.StackVm.Frame.{ Frame, empty, getVariable, setVariable, returnAddr },
+        Backend.StackVm.NonEmptyStack.{ NonEmptyStack, single, updateLast, last, pushNES, popNES },
         Debug,
     ]
 
@@ -20,8 +21,11 @@ RuntimeProblem : [
             JumpOutOfProgram,
             LoadAtEndOfProgram,
             StoreAtEndOfProgram,
+            CallAtEndOfProgram,
             UnknownVariable U64,
             StoreMissingValueOnStack,
+            AttemptToPopLastFrame,
+            BadReturnAddress,
         ],
 
     ## not enough items on stack
@@ -33,7 +37,7 @@ MachineInner : {
     stack : List U64,
     instructionAddr : U64,
     halted : Bool,
-    currentFrame : Frame,
+    frames : NonEmptyStack Frame,
 }
 Machine := MachineInner
 
@@ -47,7 +51,8 @@ new = \instructions ->
             stack: [],
             instructionAddr: 0,
             halted: Bool.false,
-            currentFrame: empty {},
+            # TODO: return addr of main?
+            frames: single (empty 0),
         }
 
 run : Machine -> Result Machine RuntimeProblem
@@ -128,20 +133,23 @@ decodeInstruction = \@Machine self, instruction ->
             Ok mach1
 
         Ok Dup ->
-            last <- List.last self.stack
+            lastItem <- List.last self.stack
                 |> Result.mapErr \_ -> NotEnoughOperands
                 |> Result.try
-            Ok (push (@Machine self) last)
+            Ok (push (@Machine self) lastItem)
 
         Ok Jmp ->
             (mach1, addr) <- nextWord self
                 |> Result.mapErr \_ -> InvalidProgram JmpAtEndOfProgram
                 |> Result.try
-            if addr >= List.len self.program then
-                Err (InvalidProgram JumpOutOfProgram)
-            else
-                Ok (@Machine { mach1 & instructionAddr: addr })
 
+            checkJumpAddress (@Machine mach1) addr
+            |> Result.map \{} ->
+                @Machine { mach1 & instructionAddr: addr }
+
+        # if addr >= List.len self.program then
+        #     Err (InvalidProgram JumpOutOfProgram)
+        # else
         Ok Jif ->
             (mach1, addr) <- nextWord self
                 |> Result.mapErr \_ -> InvalidProgram JifAtEndOfProgram
@@ -163,7 +171,7 @@ decodeInstruction = \@Machine self, instruction ->
                 |> Result.mapErr \_ -> InvalidProgram LoadAtEndOfProgram
                 |> Result.try
 
-            value <- getVariable self1.currentFrame varNumber
+            value <- getVar (@Machine self1) varNumber
                 |> Result.mapErr \_ -> InvalidProgram (UnknownVariable varNumber)
                 |> Result.try
 
@@ -180,6 +188,24 @@ decodeInstruction = \@Machine self, instruction ->
 
             setVar mach2 varNumber value |> Ok
 
+        Ok Call ->
+            (self1, callAddress) <- nextWord self
+                |> Result.mapErr \_ -> InvalidProgram CallAtEndOfProgram
+                |> Result.try
+            returnAddress = self1.instructionAddr
+
+            {} <- checkJumpAddress (@Machine self1) callAddress |> Result.try
+            (@Machine self2) = pushFrame (@Machine self1) (empty returnAddress)
+
+            Ok (@Machine { self2 & instructionAddr: callAddress })
+
+        Ok Ret ->
+            {} <- checkReturnAddressExists (@Machine self) |> Result.try
+
+            returnAddress = currReturnAddr (@Machine self)
+            (mach1, _) <- popFrame (@Machine self) |> Result.try
+            Ok (updateInstructionAddr mach1 returnAddress)
+
         Err _ -> Err (InvalidProgram UnknownInstruction)
 
 runAndCheck = \instr, pred ->
@@ -189,7 +215,7 @@ runAndCheck = \instr, pred ->
     when result is
         Ok (@Machine mach) -> pred mach
         Err err ->
-            dbg ExecuteError err
+            dbg err
 
             crash "error running code"
 
@@ -259,7 +285,7 @@ expect
         [toNum Push, 42, toNum Store, 0, toNum Halt]
         \mach -> Debug.expectEql mach.instructionAddr 5
             && Debug.expectEql mach.stack []
-            && Debug.expectEql (getVariable mach.currentFrame 0) (Ok 42)
+            && Debug.expectEql (getVar (@Machine mach) 0) (Ok 42)
 
 # store and load variable
 expect
@@ -267,7 +293,28 @@ expect
         [toNum Push, 42, toNum Store, 0, toNum Load, 0, toNum Halt]
         \mach -> Debug.expectEql mach.instructionAddr 7
             && Debug.expectEql mach.stack [42]
-            && Debug.expectEql (getVariable mach.currentFrame 0) (Ok 42)
+            && Debug.expectEql (getVar (@Machine mach) 0) (Ok 42)
+
+# function call no args no return
+expect
+    runAndCheck
+        [toNum Call, 3, toNum Halt, toNum Ret]
+        \mach -> Debug.expectEql mach.instructionAddr 3
+            && Debug.expectEql mach.stack []
+
+# function call no args returns int
+expect
+    runAndCheck
+        [toNum Call, 3, toNum Halt, toNum Push, 7, toNum Ret]
+        \mach -> Debug.expectEql mach.instructionAddr 3
+            && Debug.expectEql mach.stack [7]
+
+# function doubles givene argument
+expect
+    runAndCheck
+        [toNum Push, 3, toNum Call, 5, toNum Halt, toNum Push, 2, toNum Mul, toNum Ret]
+        \mach -> Debug.expectEql mach.instructionAddr 5
+            && Debug.expectEql mach.stack [6]
 
 checkState : ({} -> Bool) -> Result {} [CheckStateFailed]
 checkState = \test ->
@@ -281,6 +328,18 @@ checkStackItemCount = \@Machine mach, atLeast ->
         Ok {}
     else
         Err NotEnoughOperands
+
+checkJumpAddress = \@Machine self, addr ->
+    if addr >= List.len self.program then
+        Err (InvalidProgram JumpOutOfProgram)
+    else
+        Ok {}
+
+checkReturnAddressExists = \@Machine self ->
+    if (last self.frames |> returnAddr) == 0 then
+        Err (InvalidProgram BadReturnAddress)
+    else
+        Ok {}
 
 nextWord : MachineInner -> Result (MachineInner, Instr) [EndOfProgram]
 nextWord = \self ->
@@ -297,17 +356,32 @@ nextWord = \self ->
 
 popStack = \@Machine self ->
     when self.stack is
-        [.. as stack, last] -> Ok (@Machine { self & stack: stack }, last)
+        [.. as stack, lastItem] -> Ok (@Machine { self & stack: stack }, lastItem)
         _ -> Err NotEnoughOperands
 
 push = \@Machine self, item ->
     @Machine { self & stack: List.append self.stack item }
 
-getVar = \@Machine self, varNumber -> getVariable self.currentFrame varNumber
-setVar = \@Machine self, varNumber, newValue ->
-    newFrame = setVariable self.currentFrame varNumber newValue
+pushFrame = \@Machine self, frame ->
+    @Machine { self & frames: pushNES self.frames frame }
 
-    @Machine { self & currentFrame: newFrame }
+popFrame = \@Machine self ->
+    (frames1, popped) <- popNES self.frames
+        |> Result.mapErr \_ -> InvalidProgram AttemptToPopLastFrame
+        |> Result.try
+    Ok (@Machine { self & frames: frames1 }, popped)
+
+currReturnAddr = \@Machine self ->
+    last self.frames |> returnAddr
+
+updateInstructionAddr = \@Machine self, address ->
+    @Machine { self & instructionAddr: address }
+
+getVar = \@Machine self, varNumber -> last self.frames |> getVariable varNumber
+setVar = \@Machine self, varNumber, newValue ->
+    frames1 = self.frames |> updateLast \frame -> setVariable frame varNumber newValue
+
+    @Machine { self & frames: frames1 }
 
 topOfStack = \@Machine self ->
     List.last self.stack
