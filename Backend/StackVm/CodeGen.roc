@@ -1,5 +1,5 @@
 interface Backend.StackVm.CodeGen
-    exposes [genAssembly, asmInstr, Assembly]
+    exposes [genAssembly, asmInstr, Assembly, AsmInstr]
     imports [
         Parse.{ Expr, parseStr },
         Debug,

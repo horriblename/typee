@@ -7,6 +7,7 @@ interface Cli
         pf.Path,
         Parse.{ parse },
         Backend.StackVm.CodeGen.{ gen },
+        Backend.StackVm.Assembler.{ gen },
     ]
 
 # Arg Parser seems to be broken, I'll hold off complex args for now
