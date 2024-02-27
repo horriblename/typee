@@ -2,6 +2,7 @@ interface Backend.StackVm.Machine
     exposes [Machine, new, run, Instr]
     imports [
         # NOTE: compiler bug made it so that I can't use functions by Module.func
+        pf.Task.{ Task, await },
         Backend.StackVm.OpCode.{ OpCode, fromNum, toNum },
         Backend.StackVm.Frame.{ Frame, empty, getVariable, setVariable, returnAddr },
         Backend.StackVm.NonEmptyStack.{ NonEmptyStack, single, updateLast, last, pushNES, popNES },
@@ -55,13 +56,29 @@ new = \instructions ->
             frames: single (empty 0),
         }
 
-run : Machine -> Result Machine RuntimeProblem
-run = \@Machine self ->
-    if self.halted then
-        Ok (@Machine self)
+run : Machine -> Task Machine RuntimeProblem
+run = \self ->
+    if halted self then
+        Task.ok self
     else
-        step (@Machine self)
-        |> Result.try run
+        when step self is
+            Ok (self1, NoTask) -> run self1
+            Ok (self1, WithTask task) ->
+                result <- await task
+                run self1
+
+            Err err -> Task.err err
+
+## For testing only, like run but crashes when a Task is encountered
+runPure : Machine -> Result Machine RuntimeProblem
+runPure = \self ->
+    if halted self then
+        Ok self
+    else
+        when step self is
+            Ok (self1, NoTask) -> runPure self1
+            Ok (_, WithTask _) -> crash "runPure encountered a Task"
+            Err err -> Err err
 
 step = \@Machine self ->
     (mach, instr) <- nextWord self
@@ -71,7 +88,10 @@ step = \@Machine self ->
 
     decodeInstruction (@Machine mach) instr
 
-decodeInstruction : Machine, U64 -> Result Machine RuntimeProblem
+halted = \@Machine self -> self.halted
+
+# To make testing a little easier, I decided to make Tasks "optional"
+decodeInstruction : Machine, U64 -> Result (Machine, [NoTask, WithTask (Task Machine RuntimeProblem)]) RuntimeProblem
 decodeInstruction = \@Machine self, instruction ->
     popTwo = \mach ->
         {} <- checkStackItemCount (@Machine mach) 2 |> Result.try
@@ -83,60 +103,60 @@ decodeInstruction = \@Machine self, instruction ->
 
     when fromNum instruction is
         Ok Halt ->
-            Ok (@Machine { self & halted: Bool.true })
+            Ok (@Machine { self & halted: Bool.true }, NoTask)
 
         Ok Push ->
             (self1, value) <- nextWord self
                 |> Result.mapErr \_ -> InvalidProgram PushAtEndOfProgram
                 |> Result.try
-            Ok
-                (
-                    @Machine
-                        { self1 &
-                            stack: List.append self.stack value,
-                        }
-                )
+            Ok (
+                @Machine
+                    { self1 &
+                        stack: List.append self.stack value,
+                    },
+                NoTask,
+            )
 
         Ok Add ->
             (mach1, n1, n2) <- Result.try (popTwo self)
-            Ok (push mach1 (n1 + n2))
+            Ok (push mach1 (n1 + n2), NoTask)
 
         Ok Sub ->
             (mach1, n1, n2) <- Result.try (popTwo self)
-            Ok (push mach1 (n2 - n1))
+            Ok (push mach1 (n2 - n1), NoTask)
 
         Ok Mul ->
             (mach1, n1, n2) <- Result.try (popTwo self)
-            Ok (push mach1 (n1 * n2))
+            Ok (push mach1 (n1 * n2), NoTask)
 
         Ok Div ->
             (mach1, n1, n2) <- Result.try (popTwo self)
-            Ok (push mach1 (n2 // n1))
+            Ok (push mach1 (n2 // n1), NoTask)
 
         Ok Not ->
             (mach1, n1) <- popStack (@Machine self)
                 |> Result.mapErr \_ -> NotEnoughOperands
                 |> Result.try
 
-            Ok (mach1 |> push (if n1 == 0 then 1 else 0))
+            Ok (mach1 |> push (if n1 == 0 then 1 else 0), NoTask)
 
         Ok And ->
             (mach1, n1, n2) <- Result.try (popTwo self)
-            Ok (push mach1 (if n1 != 0 && n2 != 0 then 1 else 0))
+            Ok (push mach1 (if n1 != 0 && n2 != 0 then 1 else 0), NoTask)
 
         Ok Or ->
             (mach1, n1, n2) <- Result.try (popTwo self)
-            Ok (push mach1 (if n1 != 0 || n2 != 0 then 1 else 0))
+            Ok (push mach1 (if n1 != 0 || n2 != 0 then 1 else 0), NoTask)
 
         Ok Pop ->
             (mach1, _) <- popStack (@Machine self) |> Result.try
-            Ok mach1
+            Ok (mach1, NoTask)
 
         Ok Dup ->
             lastItem <- List.last self.stack
                 |> Result.mapErr \_ -> NotEnoughOperands
                 |> Result.try
-            Ok (push (@Machine self) lastItem)
+            Ok (push (@Machine self) lastItem, NoTask)
 
         Ok Jmp ->
             (mach1, addr) <- nextWord self
@@ -145,7 +165,7 @@ decodeInstruction = \@Machine self, instruction ->
 
             checkJumpAddress (@Machine mach1) addr
             |> Result.map \{} ->
-                @Machine { mach1 & instructionAddr: addr }
+                (@Machine { mach1 & instructionAddr: addr }, NoTask)
 
         # if addr >= List.len self.program then
         #     Err (InvalidProgram JumpOutOfProgram)
@@ -162,9 +182,9 @@ decodeInstruction = \@Machine self, instruction ->
             if addr >= List.len self.program then
                 Err (InvalidProgram JumpOutOfProgram)
             else if cond != 0 then
-                Ok (@Machine { mach1 & instructionAddr: addr })
+                Ok (@Machine { mach1 & instructionAddr: addr }, NoTask)
             else
-                Ok (@Machine mach1)
+                Ok (@Machine mach1, NoTask)
 
         Ok Load ->
             (self1, varNumber) <- nextWord self
@@ -175,7 +195,7 @@ decodeInstruction = \@Machine self, instruction ->
                 |> Result.mapErr \_ -> InvalidProgram (UnknownVariable varNumber)
                 |> Result.try
 
-            push (@Machine self1) value |> Ok
+            Ok (push (@Machine self1) value, NoTask)
 
         Ok Store ->
             (self1, varNumber) <- nextWord self
@@ -186,7 +206,7 @@ decodeInstruction = \@Machine self, instruction ->
                 |> Result.mapErr \_ -> InvalidProgram StoreMissingValueOnStack
                 |> Result.try
 
-            setVar mach2 varNumber value |> Ok
+            Ok (setVar mach2 varNumber value, NoTask)
 
         Ok Call ->
             (self1, callAddress) <- nextWord self
@@ -197,21 +217,21 @@ decodeInstruction = \@Machine self, instruction ->
             {} <- checkJumpAddress (@Machine self1) callAddress |> Result.try
             (@Machine self2) = pushFrame (@Machine self1) (empty returnAddress)
 
-            Ok (@Machine { self2 & instructionAddr: callAddress })
+            Ok (@Machine { self2 & instructionAddr: callAddress }, NoTask)
 
         Ok Ret ->
             {} <- checkReturnAddressExists (@Machine self) |> Result.try
 
             returnAddress = currReturnAddr (@Machine self)
             (mach1, _) <- popFrame (@Machine self) |> Result.try
-            Ok (updateInstructionAddr mach1 returnAddress)
+            Ok (updateInstructionAddr mach1 returnAddress, NoTask)
 
         Err _ -> Err (InvalidProgram UnknownInstruction)
 
 runAndCheck = \instr, pred ->
     result =
         new instr
-        |> run
+        |> runPure
     when result is
         Ok (@Machine mach) -> pred mach
         Err err ->
