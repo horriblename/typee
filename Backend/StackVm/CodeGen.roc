@@ -1,5 +1,5 @@
 interface Backend.StackVm.CodeGen
-    exposes [genAssembly, genAssemblyFromStr, asmInstr, Assembly, AsmInstr]
+    exposes [genAssembly, genAssemblyFromStr, asmInstr, Assembly, AsmInstr, dump]
     imports [
         parc.Parser,
         Parse.{ Expr, parseStr },
@@ -18,6 +18,23 @@ BuildProblem : [EmptyFormOrBadFunctionName, WrongArgCount]
 
 ## An intermediate representation of the final byte code, with labels that are resolved by the assembler
 Assembly : List AsmInstr
+
+dump = \asm ->
+    dumpInstr = \{ label, instr } ->
+        prefix =
+            when label is
+                None -> "\t\t"
+                Some name -> "\(name)\t"
+        data =
+            when instr is
+                OpCode opcode -> Inspect.toStr opcode
+                Raw code -> Num.toStr code
+                Label name -> "LABEL \(name)"
+
+        Str.concat prefix data
+
+    List.map asm dumpInstr
+    |> Str.joinWith "\n"
 
 AsmInstr : {
     label : [None, Some Str],
