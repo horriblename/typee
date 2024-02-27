@@ -55,7 +55,7 @@ newBuilder = \{} -> @AssemblyBuilder {
     }
 
 finish : AssemblyBuilder -> Assembly
-finish = \@AssemblyBuilder builder -> builder.instructions
+finish = \@AssemblyBuilder builder -> List.append builder.instructions (opCodeInstr Halt)
 
 genAssembly : List Expr -> Result Assembly BuildProblem
 genAssembly = \program ->
