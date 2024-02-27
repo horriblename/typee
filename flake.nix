@@ -36,7 +36,6 @@
     in {
       default = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [
-          cargo
           zig
         ];
         buildInputs = with pkgs; [];
