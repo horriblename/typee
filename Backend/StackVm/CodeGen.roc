@@ -7,7 +7,6 @@ interface Backend.StackVm.CodeGen
         Backend.StackVm.OpCode.{ OpCode },
     ]
 
-## An intermediate representation of the final byte code, with tags that are resolved by the assembler
 AssemblyBuilder := {
     symbolsInCurrentTable : U64,
     localSymbolTable : Dict Str U64,
@@ -16,6 +15,7 @@ AssemblyBuilder := {
 
 BuildProblem : [EmptyFormOrBadFunctionName, WrongArgCount]
 
+## An intermediate representation of the final byte code, with labels that are resolved by the assembler
 Assembly : List AsmInstr
 
 AsmInstr : {
