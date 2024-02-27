@@ -1,8 +1,8 @@
 interface Backend.StackVm.Assembler
-    exposes [assemble]
+    exposes [assemble, compileFromSource]
     imports [
         Debug,
-        Backend.StackVm.CodeGen.{ Assembly, asmInstr, AsmInstr },
+        Backend.StackVm.CodeGen.{ Assembly, asmInstr, AsmInstr, genAssemblyFromStr },
         Backend.StackVm.Machine.{ Instr },
         Backend.StackVm.OpCode.{ toNum },
     ]
@@ -38,6 +38,11 @@ assemble = \asm ->
             Label labelName -> assembler1 |> appendLabel labelName
 
     assemblerUnresolved |> Result.try finish
+
+compileFromSource = \source ->
+    genAssemblyFromStr source
+    |> Result.try \asm ->
+        assemble asm |> Result.mapErr Assembler
 
 appendCode = \self, code -> { self & code: List.append self.code (Code code) }
 appendLabel = \self, labelName -> { self & code: List.append self.code (UnresolvedLabel labelName) }

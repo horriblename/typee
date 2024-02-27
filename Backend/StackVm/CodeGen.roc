@@ -1,6 +1,7 @@
 interface Backend.StackVm.CodeGen
-    exposes [genAssembly, asmInstr, Assembly, AsmInstr]
+    exposes [genAssembly, genAssemblyFromStr, asmInstr, Assembly, AsmInstr]
     imports [
+        parc.Parser,
         Parse.{ Expr, parseStr },
         Debug,
         Backend.StackVm.Machine.{ Instr },
@@ -164,9 +165,10 @@ addStoreInstr = \@AssemblyBuilder self, varNum ->
 
     @AssemblyBuilder { self & instructions }
 
-gen : List Expr -> List Instr
-gen = \exprs ->
-    # genAssembly exprs
-    # |> assemblyToByteCode
-    crash ""
+genAssemblyFromStr : Str -> Result Assembly [Parser Parser.Problem, CodeGen BuildProblem]
+genAssemblyFromStr = \source ->
+    parseStr source
+    |> Result.mapErr Parser
+    |> Result.try \ast -> genAssembly ast
+        |> Result.mapErr CodeGen
 
