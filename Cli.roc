@@ -29,15 +29,7 @@ tryOr = \result, onErr, onOk ->
         Ok ok -> onOk ok
         Err err -> onErr err
 
-handleErr : Task ok err, (err -> out), (ok -> out) -> Task out *
-handleErr = \task, onErr, onOk ->
-    result <- task |> Task.attempt
-
-    when result is
-        Ok ok -> onOk ok |> Task.ok
-        Err err -> onErr err |> Task.ok
-
-# main : Task {} *
+main : Task {} *
 main =
     # config <- parseArgs
     #     |> handleErr \err -> Task.ok {}
