@@ -100,6 +100,7 @@ genCallBuiltin = \self, name, args ->
         "-" -> genBinaryOperator self Sub args |> Found
         "*" -> genBinaryOperator self Mul args |> Found
         "/" -> genBinaryOperator self Div args |> Found
+        "println" -> genUnaryOperator self Print args |> Found
         _ -> NotFound
 
 genBinaryOperator = \self, opCode, args ->
@@ -113,6 +114,19 @@ genBinaryOperator = \self, opCode, args ->
         |> Result.try
 
     self2
+    |> appendInstr (opCodeInstr opCode)
+    |> Ok
+
+genUnaryOperator = \self, opCode, args ->
+    argResult =
+        when args is
+            [arg] -> Ok arg
+            _ -> Err WrongArgCount
+    arg <- argResult |> Result.try
+
+    self1 <- genForExpr self { expr: arg } |> Result.try
+
+    self1
     |> appendInstr (opCodeInstr opCode)
     |> Ok
 

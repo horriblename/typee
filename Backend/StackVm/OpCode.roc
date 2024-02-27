@@ -26,6 +26,9 @@ OpCode : [
     Store,
     Call,
     Ret,
+    # Temporary OpCode to make my life easier
+    # prints the top item on the stack
+    Print,
 ]
 
 # rename to fromInstruction?
@@ -49,6 +52,7 @@ fromNum = \num ->
         14 -> Ok Store
         15 -> Ok Call
         16 -> Ok Ret
+        17 -> Ok Print
         _ -> Err NotFound
 
 toNum : OpCode -> Num *
@@ -71,3 +75,4 @@ toNum = \opcode ->
         Store -> 14
         Call -> 15
         Ret -> 16
+        Print -> 17

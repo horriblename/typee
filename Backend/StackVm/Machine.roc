@@ -2,6 +2,7 @@ interface Backend.StackVm.Machine
     exposes [Machine, new, run, Instr]
     imports [
         # NOTE: compiler bug made it so that I can't use functions by Module.func
+        pf.Stdout,
         pf.Task.{ Task, await },
         Backend.StackVm.OpCode.{ OpCode, fromNum, toNum },
         Backend.StackVm.Frame.{ Frame, empty, getVariable, setVariable, returnAddr },
@@ -225,6 +226,17 @@ decodeInstruction = \@Machine self, instruction ->
             returnAddress = currReturnAddr (@Machine self)
             (mach1, _) <- popFrame (@Machine self) |> Result.try
             Ok (updateInstructionAddr mach1 returnAddress, NoTask)
+
+        Ok Print ->
+            task =
+                topOfStack (@Machine self)
+                |> Result.mapErr \_ -> NotEnoughOperands
+                |> Result.map Num.toStr
+                |> Task.fromResult
+                |> await \str ->
+                    Stdout.line str
+                    |> await \{} -> Task.ok (@Machine self)
+            Ok (@Machine self, WithTask task)
 
         Err _ -> Err (InvalidProgram UnknownInstruction)
 
