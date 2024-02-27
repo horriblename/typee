@@ -1,8 +1,8 @@
 interface Backend.StackVm.CodeGen
-    exposes [genAssembly, genAssemblyFromStr, asmInstr, Assembly, AsmInstr, dump]
+    exposes [genAssembly, genAssemblyFromStr, genAssemblyFromAscii, asmInstr, Assembly, AsmInstr, dump]
     imports [
         parc.Parser,
-        Parse.{ Expr, parseStr },
+        Parse.{ Expr, parseStr, parse },
         Debug,
         Backend.StackVm.Machine.{ Instr },
         Backend.StackVm.OpCode.{ OpCode },
@@ -189,3 +189,9 @@ genAssemblyFromStr = \source ->
     |> Result.try \ast -> genAssembly ast
         |> Result.mapErr CodeGen
 
+genAssemblyFromAscii : List U8 -> Result Assembly [Parser Parser.Problem, CodeGen BuildProblem]
+genAssemblyFromAscii = \source ->
+    parse source
+    |> Result.mapErr Parser
+    |> Result.try \ast -> genAssembly ast
+        |> Result.mapErr CodeGen

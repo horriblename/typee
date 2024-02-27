@@ -1,8 +1,8 @@
 interface Backend.StackVm.Assembler
-    exposes [assemble, compileFromSource]
+    exposes [assemble, compileFromSource, compileFromAsciiSource]
     imports [
         Debug,
-        Backend.StackVm.CodeGen.{ Assembly, asmInstr, AsmInstr, genAssemblyFromStr },
+        Backend.StackVm.CodeGen.{ Assembly, asmInstr, AsmInstr, genAssemblyFromStr, genAssemblyFromAscii },
         Backend.StackVm.Machine.{ Instr },
         Backend.StackVm.OpCode.{ toNum },
     ]
@@ -41,6 +41,11 @@ assemble = \asm ->
 
 compileFromSource = \source ->
     genAssemblyFromStr source
+    |> Result.try \asm ->
+        assemble asm |> Result.mapErr Assembler
+
+compileFromAsciiSource = \source ->
+    genAssemblyFromAscii source
     |> Result.try \asm ->
         assemble asm |> Result.mapErr Assembler
 
