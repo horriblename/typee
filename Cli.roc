@@ -6,8 +6,8 @@ interface Cli
         pf.File,
         pf.Path,
         Parse.{ parse },
-        Backend.StackVm.CodeGen.{ gen },
-        Backend.StackVm.Assembler.{ gen },
+        Backend.StackVm.Assembler.{ compileFromAsciiSource },
+        Backend.StackVm.Machine.{ new, run },
     ]
 
 # Arg Parser seems to be broken, I'll hold off complex args for now
@@ -19,7 +19,7 @@ Config : {
 parseArgs : Task Config [MissingArgument]
 parseArgs =
     args <- await Arg.list
-    infile <- List.first args
+    infile <- List.get args 1
         |> tryOr \_ -> Task.err MissingArgument
 
     Task.ok { infile }
@@ -44,15 +44,24 @@ main =
     configRes <- parseArgs |> Task.attempt
     config <- tryOr configRes \err -> crash "Error parsing args: \(Inspect.toStr err)"
 
+    dbg config.infile
+
     sourceRes <- File.readBytes (Path.fromStr config.infile) |> attempt
     source <- sourceRes
         |> tryOr \err -> crash "Error reading file \(config.infile): \(Inspect.toStr err)"
 
-    syntaxTree = parse source
-    # code = gen syntaxTree
+    dbg Str.fromUtf8 source
 
-    # TODO: handle err
-    # _ <- File.writeBytes (Path.fromStr "out") |> attempt
+    program <-
+        compileFromAsciiSource source
+        |> Task.fromResult
+        |> Task.onErr \err -> crash "Compile error: \(Inspect.toStr err)"
+        |> await
+
+    _ <- new program
+        |> run
+        |> Task.onErr \err -> crash "Runtime error: \(Inspect.toStr err)"
+        |> await
 
     Task.ok {}
 
