@@ -34,9 +34,9 @@ last = \@NonEmptyStack stack ->
 
 updateLast : NonEmptyStack t, (t -> t) -> NonEmptyStack t
 updateLast = \@NonEmptyStack stack, f ->
-    lastIdx = List.len stack.others
-    if lastIdx > 0 then
-        others = List.update stack.others lastIdx f
+    len = List.len stack.others
+    if len > 0 then
+        others = List.update stack.others (len - 1) f
         @NonEmptyStack { stack & others }
     else
         first = f stack.first
