@@ -17,7 +17,8 @@ AssemblyBuilder := {
 BuildProblem : [
     EmptyFormOrBadFunctionName,
     WrongArgCount,
-    UndeclaredVariable,
+    UndeclaredVariable Str,
+    VariableRedefined Str,
 ]
 
 ## An intermediate representation of the final byte code, with labels that are resolved by the assembler
@@ -31,9 +32,10 @@ dump = \asm ->
                 Some name -> "\(name)\t"
         data =
             when instr is
-                OpCode opcode -> Inspect.toStr opcode
-                Raw code -> Num.toStr code
-                Label name -> "LABEL \(name)"
+                OpCode opcode -> "\t\(Inspect.toStr opcode)"
+                Raw code -> "\t\(Num.toStr code)"
+                Label name -> "\tLABEL \(name)"
+                LabelDef name -> "\(name):"
 
         Str.concat prefix data
 
@@ -46,10 +48,11 @@ AsmInstr : {
         OpCode OpCode,
         Raw Instr,
         Label Str,
+        LabelDef Str,
     ],
 }
 
-asmInstr : { label ? [None, Some Str], instr : [OpCode OpCode, Raw Instr, Label Str] } -> AsmInstr
+asmInstr : { label ? [None, Some Str], instr : [OpCode OpCode, Raw Instr, Label Str, LabelDef Str] } -> AsmInstr
 asmInstr = \{ label ? None, instr } -> { label, instr }
 
 newBuilder = \{} -> @AssemblyBuilder {
@@ -72,13 +75,14 @@ genAssembly = \program ->
                     Ok ok -> Continue (Ok ok)
     |> Result.map finish
 
+# TODO: deprecate label
 genForExpr : AssemblyBuilder, { expr : Expr, label ? [None, Some Str] } -> Result AssemblyBuilder BuildProblem
 genForExpr = \self, { expr, label ? None } ->
     when expr is
         Form form -> self |> genCall form
         Symbol varName ->
             lookupSymbol self varName
-            |> Result.mapErr \_ -> UndeclaredVariable
+            |> Result.mapErr \_ -> UndeclaredVariable varName
             |> Result.map \varNum -> self |> addLoadInstr varNum
 
         Int n ->
@@ -87,9 +91,18 @@ genForExpr = \self, { expr, label ? None } ->
             |> Ok
 
         FunctionDef { name, args, body } ->
-            self
-            |> genArgList args
+            (self1, varNum) <- declareVariableChecked self name
+                |> Result.try
+
+            (self2, oldTable) = self1 |> swapSymbolTable (Dict.empty {})
+
+            self2
+            |> addInstr { instr: LabelDef name, label: None }
+            |> genDefArgList args
             |> genForExpr { expr: body, label: Some name }
+            |> Result.map \self3 ->
+                (self4, _) = swapSymbolTable self3 oldTable
+                self4 |> addInstr { instr: OpCode Ret, label: None }
 
         Set { name, rvalue } ->
             (self1, varNum) = getOrDeclareVariableNum self name
@@ -98,8 +111,8 @@ genForExpr = \self, { expr, label ? None } ->
             |> genForExpr { expr: rvalue }
             |> Result.map \self2 -> addStoreInstr self2 varNum
 
-genArgList : AssemblyBuilder, List Str -> AssemblyBuilder
-genArgList = \self, args ->
+genDefArgList : AssemblyBuilder, List Str -> AssemblyBuilder
+genDefArgList = \self, args ->
     List.walk args self \asmBuilder, arg ->
         (builder1, varNum) = declareVariable asmBuilder arg
         addStoreInstr builder1 varNum
@@ -112,10 +125,17 @@ getOrDeclareVariableNum = \self, varName ->
 lookupSymbol = \@AssemblyBuilder self, varName ->
     Dict.get self.localSymbolTable varName
 
+## declare a variable and returns its variableNumber, if the variable already exists, returns an error
+declareVariableChecked = \self, name ->
+    # TODO: use Dict.contatins
+    lookupSymbol self name
+    |> Result.try \_ -> Err (VariableRedefined name)
+    |> Result.onErr \_ -> Ok (declareVariable self name)
+
 declareVariable : AssemblyBuilder, Str -> (AssemblyBuilder, U64)
 declareVariable = \@AssemblyBuilder self, name ->
     expect
-        lookupSymbol (@AssemblyBuilder self) name == Err KeyNotFound
+        Debug.expectEql (lookupSymbol (@AssemblyBuilder self) name) (Err KeyNotFound)
 
     (
         @AssemblyBuilder
@@ -127,15 +147,25 @@ declareVariable = \@AssemblyBuilder self, name ->
     )
 
 genCall : AssemblyBuilder, List Expr -> Result AssemblyBuilder BuildProblem
-genCall = \@AssemblyBuilder self, formBody ->
+genCall = \self, formBody ->
     when formBody is
         [Symbol name, .. as args] ->
-            when genCallBuiltin (@AssemblyBuilder self) name args is
+            when genCallBuiltin self name args is
                 Found result -> result
                 NotFound ->
                     genCallUserFunction self name args
 
         _ -> Err EmptyFormOrBadFunctionName
+
+expect
+    compileAndTest "(foo 1)" \asm ->
+        Debug.expectEql asm [
+            asmInstr { instr: OpCode Push },
+            asmInstr { instr: Raw 1 },
+            asmInstr { instr: OpCode Call },
+            asmInstr { instr: Label "foo" },
+            asmInstr { instr: OpCode Halt },
+        ]
 
 genCallBuiltin : AssemblyBuilder, Str, List Expr -> [NotFound, Found (Result AssemblyBuilder BuildProblem)]
 genCallBuiltin = \self, name, args ->
@@ -145,7 +175,12 @@ genCallBuiltin = \self, name, args ->
         "*" -> genBinaryOperator self Mul args |> Found
         "/" -> genBinaryOperator self Div args |> Found
         "println" -> genUnaryOperator self Print args |> Found
+        "die" -> addInstr self { instr: OpCode Halt, label: None } |> Ok |> Found
         _ -> NotFound
+
+expect
+    compileAndTest "(die)" \asm ->
+        Debug.expectEql asm [asmInstr { instr: OpCode Halt }, asmInstr { instr: OpCode Halt }]
 
 genBinaryOperator = \self, opCode, args ->
     (arg1, arg2) <- Result.try (twoArgs args)
@@ -175,7 +210,20 @@ genUnaryOperator = \self, opCode, args ->
     |> Ok
 
 genCallUserFunction = \self, name, args ->
-    crash "TODO"
+    # TODO: do top-level functions properly
+    # TODO: should probably use separate symbolTable for functions
+    # _ <- lookupSymbol self name
+    #    |> Result.mapErr \_ -> UndeclaredVariable name
+    #    |> Result.try
+
+    # TODO: arity check
+    self1 <- args
+        |> List.reverse
+        |> List.walkTry self \currSelf, arg ->
+            genForExpr currSelf { expr: arg }
+        |> Result.try
+
+    Ok (self1 |> addCallInstr name)
 
 twoArgs : List Expr -> Result (Expr, Expr) [WrongArgCount]
 twoArgs = \args ->
@@ -193,6 +241,10 @@ expect
 
 opCodeInstr = \code -> { label: None, instr: OpCode code }
 rawInstr = \code -> { label: None, instr: Raw code }
+
+addInstr = \@AssemblyBuilder self, instruction ->
+    instructions = List.append self.instructions instruction
+    @AssemblyBuilder { self & instructions }
 
 addPushInstr = \@AssemblyBuilder self, val ->
     instructions =
@@ -215,6 +267,16 @@ addLoadInstr = \@AssemblyBuilder self, varNum ->
 
     @AssemblyBuilder { self & instructions }
 
+addCallInstr = \@AssemblyBuilder self, labelName ->
+    instructions =
+        List.append self.instructions (opCodeInstr Call)
+        |> List.append { label: None, instr: Label labelName }
+
+    @AssemblyBuilder { self & instructions }
+
+swapSymbolTable = \@AssemblyBuilder self, localSymbolTable ->
+    (@AssemblyBuilder { self & localSymbolTable }, self.localSymbolTable)
+
 genAssemblyFromStr : Str -> Result Assembly [Parser Parser.Problem, CodeGen BuildProblem]
 genAssemblyFromStr = \source ->
     parseStr source
@@ -228,3 +290,14 @@ genAssemblyFromAscii = \source ->
     |> Result.mapErr Parser
     |> Result.try \ast -> genAssembly ast
         |> Result.mapErr CodeGen
+        |> Result.map \asm ->
+            dbg dump asm
+
+            asm
+
+compileAndTest = \source, pred ->
+    ast <- parseStr source |> Debug.okAnd
+    asm <- genAssembly ast |> Debug.okAnd
+
+    pred asm
+

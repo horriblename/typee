@@ -30,12 +30,13 @@ assemble : Assembly -> Result (List Instr) Problem
 assemble = \asm ->
     assembler0 = new {}
     assemblerUnresolved = List.walkTry asm assembler0 \assembler, instr ->
-        assembler1 <- resolveLabel assembler instr (currAddr assembler) |> Result.map
+        # assembler1 <- resolveLabel assembler instr (currAddr assembler) |> Result.map
 
         when instr.instr is
-            OpCode code -> assembler1 |> appendCode (toNum code)
-            Raw code -> assembler1 |> appendCode code
-            Label labelName -> assembler1 |> appendLabel labelName
+            OpCode code -> assembler |> appendCode (toNum code) |> Ok
+            Raw code -> assembler |> appendCode code |> Ok
+            Label labelName -> assembler |> appendLabel labelName |> Ok
+            LabelDef labelName -> resolveLabel assembler labelName
 
     assemblerUnresolved |> Result.try finish
 
@@ -52,24 +53,17 @@ compileFromAsciiSource = \source ->
 appendCode = \self, code -> { self & code: List.append self.code (Code code) }
 appendLabel = \self, labelName -> { self & code: List.append self.code (UnresolvedLabel labelName) }
 
-LabelResolutionProblem : [
-    LabelRedefined Str,
-]
+resolveLabel : Assembler, Str -> Result Assembler Problem
+resolveLabel = \self, name ->
+    ensureUnresolved =
+        when Dict.get self.labelTable name is
+            Ok (Resolved _) -> Err (LabelRedefined name)
+            _ -> Ok {}
+    {} <- Result.try ensureUnresolved
 
-resolveLabel : Assembler, AsmInstr, U64 -> Result Assembler LabelResolutionProblem
-resolveLabel = \self, { label }, addr ->
-    when label is
-        None -> Ok self
-        Some name ->
-            ensureUnresolved =
-                when Dict.get self.labelTable name is
-                    Ok (Resolved _) -> Err (LabelRedefined name)
-                    _ -> Ok {}
-            {} <- Result.try ensureUnresolved
+    labelTable = Dict.insert self.labelTable name (Resolved (List.len self.code))
 
-            labelTable = Dict.insert self.labelTable name (Resolved addr)
-
-            Ok { self & labelTable }
+    Ok { self & labelTable }
 
 ## Resolves all labels and outputs a `List Instr` byte code program
 finish : Assembler -> Result (List Instr) [UnresolvedLabel Str]
@@ -91,6 +85,7 @@ expect
         asmInstr { instr: OpCode Call },
         asmInstr { instr: Label "foo" },
         asmInstr { instr: OpCode Halt },
+        { instr: LabelDef "foo", label: None },
         asmInstr { label: Some "foo", instr: OpCode Push },
         asmInstr { instr: Raw 42 },
         asmInstr { instr: OpCode Ret },
