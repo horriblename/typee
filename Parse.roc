@@ -17,6 +17,7 @@ Expr : [
             args : List Str,
             body : Expr,
         },
+    Set { name : Str, rvalue : Expr },
 ]
 Program : List Expr
 
@@ -26,14 +27,15 @@ kwDef = matches Def
 kwSet = matches Set
 parenthesized = \token -> surrounded lparen token rparen
 
+symName =
+    symbol
+    |> Parser.try \tok ->
+        when tok is
+            Symbol name -> Ok name
+            _ -> Err Parser.genericError
+
 functionDefinition : Parser (List Token) Expr
 functionDefinition =
-    symName =
-        symbol
-        |> Parser.try \tok ->
-            when tok is
-                Symbol name -> Ok name
-                _ -> Err Parser.genericError
 
     argDef = parenthesized (many0 symName)
     formBody =
@@ -45,6 +47,16 @@ functionDefinition =
             FunctionDef { name, args, body }
 
     parenthesized formBody
+
+setStatement : Parser (List Token) Expr
+setStatement =
+    parenthesized
+        (
+            kwSet
+            |> prefixed symName
+            |> andThen expr
+        )
+    |> Parser.map \(name, rvalue) -> Set { name, rvalue }
 
 symbol =
     \tokens ->
@@ -61,6 +73,7 @@ form =
 expr = \input ->
     when input is
         [LParen, Def, ..] -> functionDefinition input
+        [LParen, Set, ..] -> setStatement input
         [LParen, ..] -> form input
         [Symbol sym, .. as rest] -> Ok (rest, Symbol sym)
         [IntLiteral num, .. as rest] -> Ok (rest, Int num)
@@ -88,6 +101,18 @@ expect
     Debug.expectEql
         (parseStr "(+ 1 y)")
         (Ok [Form [Symbol "+", Int 1, Symbol "y"]])
+
+expect
+    Debug.expectEql
+        (parseStr "(set foo (+ 1 x))")
+        (
+            Ok [
+                Set {
+                    name: "foo",
+                    rvalue: Form [Symbol "+", Int 1, Symbol "x"],
+                },
+            ]
+        )
 
 expect
     Debug.expectEql

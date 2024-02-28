@@ -14,7 +14,11 @@ AssemblyBuilder := {
     instructions : Assembly,
 }
 
-BuildProblem : [EmptyFormOrBadFunctionName, WrongArgCount]
+BuildProblem : [
+    EmptyFormOrBadFunctionName,
+    WrongArgCount,
+    UndeclaredVariable,
+]
 
 ## An intermediate representation of the final byte code, with labels that are resolved by the assembler
 Assembly : List AsmInstr
@@ -72,7 +76,11 @@ genForExpr : AssemblyBuilder, { expr : Expr, label ? [None, Some Str] } -> Resul
 genForExpr = \self, { expr, label ? None } ->
     when expr is
         Form form -> self |> genCall form
-        Symbol _ -> crash ""
+        Symbol varName ->
+            lookupSymbol self varName
+            |> Result.mapErr \_ -> UndeclaredVariable
+            |> Result.map \varNum -> self |> addLoadInstr varNum
+
         Int n ->
             self
             |> addPushInstr (Num.toU64 n)
@@ -83,14 +91,32 @@ genForExpr = \self, { expr, label ? None } ->
             |> genArgList args
             |> genForExpr { expr: body, label: Some name }
 
+        Set { name, rvalue } ->
+            (self1, varNum) = getOrDeclareVariableNum self name
+
+            self1
+            |> genForExpr { expr: rvalue }
+            |> Result.map \self2 -> addStoreInstr self2 varNum
+
 genArgList : AssemblyBuilder, List Str -> AssemblyBuilder
 genArgList = \self, args ->
     List.walk args self \asmBuilder, arg ->
-        (builder1, varNum) = uninitializedVariable asmBuilder arg
+        (builder1, varNum) = declareVariable asmBuilder arg
         addStoreInstr builder1 varNum
 
-uninitializedVariable : AssemblyBuilder, Str -> (AssemblyBuilder, U64)
-uninitializedVariable = \@AssemblyBuilder self, name ->
+getOrDeclareVariableNum = \self, varName ->
+    when lookupSymbol self varName is
+        Ok varNum -> (self, varNum)
+        Err KeyNotFound -> declareVariable self varName
+
+lookupSymbol = \@AssemblyBuilder self, varName ->
+    Dict.get self.localSymbolTable varName
+
+declareVariable : AssemblyBuilder, Str -> (AssemblyBuilder, U64)
+declareVariable = \@AssemblyBuilder self, name ->
+    expect
+        lookupSymbol (@AssemblyBuilder self) name == Err KeyNotFound
+
     (
         @AssemblyBuilder
             { self &
@@ -149,7 +175,7 @@ genUnaryOperator = \self, opCode, args ->
     |> Ok
 
 genCallUserFunction = \self, name, args ->
-    crash ""
+    crash "TODO"
 
 twoArgs : List Expr -> Result (Expr, Expr) [WrongArgCount]
 twoArgs = \args ->
@@ -178,6 +204,13 @@ addPushInstr = \@AssemblyBuilder self, val ->
 addStoreInstr = \@AssemblyBuilder self, varNum ->
     instructions =
         List.append self.instructions (opCodeInstr Store)
+        |> List.append (rawInstr varNum)
+
+    @AssemblyBuilder { self & instructions }
+
+addLoadInstr = \@AssemblyBuilder self, varNum ->
+    instructions =
+        List.append self.instructions (opCodeInstr Load)
         |> List.append (rawInstr varNum)
 
     @AssemblyBuilder { self & instructions }
