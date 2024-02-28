@@ -22,6 +22,8 @@ Program : List Expr
 
 lparen = matches LParen
 rparen = matches RParen
+kwDef = matches Def
+kwSet = matches Set
 parenthesized = \token -> surrounded lparen token rparen
 
 functionDefinition : Parser (List Token) Expr
@@ -35,7 +37,7 @@ functionDefinition =
 
     argDef = parenthesized (many0 symName)
     formBody =
-        keyword "def"
+        kwDef
         |> prefixed symName
         |> andThen argDef
         |> andThen expr
@@ -44,18 +46,11 @@ functionDefinition =
 
     parenthesized formBody
 
-# FIXME: symbols must not be keywords
 symbol =
     \tokens ->
         when tokens is
             [Symbol name, .. as rest] -> Ok (rest, Symbol name)
             _ -> Err Parser.genericError
-
-keyword = \name ->
-    passes \token ->
-        when token is
-            Symbol str if str == name -> Bool.true
-            _ -> Bool.false
 
 # form : Parser (List Token) Expr
 form =
@@ -65,7 +60,7 @@ form =
 # expr : Parser (List Token) Expr
 expr = \input ->
     when input is
-        [LParen, Symbol "def", ..] -> functionDefinition input
+        [LParen, Def, ..] -> functionDefinition input
         [LParen, ..] -> form input
         [Symbol sym, .. as rest] -> Ok (rest, Symbol sym)
         [IntLiteral num, .. as rest] -> Ok (rest, Int num)

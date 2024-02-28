@@ -2,13 +2,22 @@ interface Lex exposes [lex, lexStr]
     imports [
         parc.Parser,
         parc.Parser.{ Parser },
-        parc.Ascii.{ char, StrBuf, isDigit, int, charIs },
+        parc.Ascii.{ char, StrBuf, isDigit, int, charIs, tag },
         parc.Combinator.{ prefixed, suffixed, many0, alt, andThen },
         Bool.{ true, false },
         Debug,
     ]
 
-Token : [LParen, RParen, Symbol Str, IntLiteral I32]
+Token : [
+    LParen,
+    RParen,
+    Symbol Str,
+    IntLiteral I32,
+
+    # Keywords
+    Def,
+    Set,
+]
 
 lparen : Parser StrBuf Token
 lparen =
@@ -51,6 +60,10 @@ isWhitespace = \c ->
         0x0020 | 0x000A | 0x000D | 0x0009 -> Bool.true
         _ -> Bool.false
 
+# keywords
+kwDef = tag "def" |> Parser.map \_ -> Def
+kwSet = tag "set" |> Parser.map \_ -> Set
+
 # whitespace = tag " "
 # skipWhitespaces : Parser StrBuf {}
 skipWhitespaces = \input ->
@@ -71,7 +84,7 @@ lex : List U8 -> Result (List Token) Parser.Problem
 lex = \input ->
     token : Parser StrBuf Token
     token =
-        alt [lparen, rparen, symbol, number]
+        alt [lparen, rparen, kwDef, kwSet, symbol, number]
         |> suffixed skipWhitespaces
 
     parser : Parser StrBuf (List Token)
@@ -87,3 +100,8 @@ expect
     Debug.expectEql
         (lexStr "(hi 4)")
         (Ok [LParen, Symbol "hi", IntLiteral 4, RParen])
+
+expect
+    Debug.expectEql
+        (lexStr "def foo set")
+        (Ok [Def, Symbol "foo", Set])
