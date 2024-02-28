@@ -85,7 +85,7 @@ step = \@Machine self ->
     (mach, instr) <- nextWord self
         |> Result.mapErr \_ -> InvalidProgram StepAtEndOfProgram
         |> Result.try
-    dbg StepNextInstr instr
+    dbg StepNextInstr (fromNum instr) instr
 
     decodeInstruction (@Machine mach) instr
 
