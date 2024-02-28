@@ -52,7 +52,7 @@ newBuilder = \{} -> @AssemblyBuilder {
     }
 
 finish : AssemblyBuilder -> Assembly
-finish = \@AssemblyBuilder builder -> List.append builder.instructions (opCodeInstr Halt)
+finish = \@AssemblyBuilder builder -> List.append builder.instructions (OpCode Halt)
 
 genAssembly : List Expr -> Result Assembly BuildProblem
 genAssembly = \program ->
@@ -182,7 +182,7 @@ genBinaryOperator = \self, opCode, args ->
         |> Result.try
 
     self2
-    |> appendInstr (opCodeInstr opCode)
+    |> appendInstr (OpCode opCode)
     |> Ok
 
 genUnaryOperator = \self, opCode, args ->
@@ -195,7 +195,7 @@ genUnaryOperator = \self, opCode, args ->
     self1 <- genForExpr self arg |> Result.try
 
     self1
-    |> appendInstr (opCodeInstr opCode)
+    |> appendInstr (OpCode opCode)
     |> Ok
 
 genCallUserFunction = \self, name, args ->
@@ -228,37 +228,34 @@ expect
     asm <- genAssembly exprs |> Debug.okAnd
     Debug.expectEql asm (addPushInstr (newBuilder {}) 1 |> finish)
 
-opCodeInstr = \code -> OpCode code
-rawInstr = \code -> Raw code
-
 addInstr = \@AssemblyBuilder self, instruction ->
     instructions = List.append self.instructions instruction
     @AssemblyBuilder { self & instructions }
 
 addPushInstr = \@AssemblyBuilder self, val ->
     instructions =
-        List.append self.instructions (opCodeInstr Push)
-        |> List.append (rawInstr val)
+        List.append self.instructions (OpCode Push)
+        |> List.append (Raw val)
 
     @AssemblyBuilder { self & instructions }
 
 addStoreInstr = \@AssemblyBuilder self, varNum ->
     instructions =
-        List.append self.instructions (opCodeInstr Store)
-        |> List.append (rawInstr varNum)
+        List.append self.instructions (OpCode Store)
+        |> List.append (Raw varNum)
 
     @AssemblyBuilder { self & instructions }
 
 addLoadInstr = \@AssemblyBuilder self, varNum ->
     instructions =
-        List.append self.instructions (opCodeInstr Load)
-        |> List.append (rawInstr varNum)
+        List.append self.instructions (OpCode Load)
+        |> List.append (Raw varNum)
 
     @AssemblyBuilder { self & instructions }
 
 addCallInstr = \@AssemblyBuilder self, labelName ->
     instructions =
-        List.append self.instructions (opCodeInstr Call)
+        List.append self.instructions (OpCode Call)
         |> List.append (Label labelName)
 
     @AssemblyBuilder { self & instructions }
