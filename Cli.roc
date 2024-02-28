@@ -36,13 +36,9 @@ main =
     configRes <- parseArgs |> Task.attempt
     config <- tryOr configRes \err -> crash "Error parsing args: \(Inspect.toStr err)"
 
-    dbg config.infile
-
     sourceRes <- File.readBytes (Path.fromStr config.infile) |> attempt
     source <- sourceRes
         |> tryOr \err -> crash "Error reading file \(config.infile): \(Inspect.toStr err)"
-
-    dbg Str.fromUtf8 source
 
     program <-
         compileFromAsciiSource source

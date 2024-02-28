@@ -30,7 +30,6 @@ assemble : Assembly -> Result (List Instr) Problem
 assemble = \asm ->
     assembler0 = new {}
     assemblerUnresolved = List.walkTry asm assembler0 \assembler, instr ->
-        # assembler1 <- resolveLabel assembler instr (currAddr assembler) |> Result.map
 
         when instr.instr is
             OpCode code -> assembler |> appendCode (toNum code) |> Ok
@@ -61,7 +60,7 @@ resolveLabel = \self, name ->
             _ -> Ok {}
     {} <- Result.try ensureUnresolved
 
-    labelTable = Dict.insert self.labelTable name (Resolved (List.len self.code))
+    labelTable = Dict.insert self.labelTable name (Resolved (currAddr self))
 
     Ok { self & labelTable }
 
