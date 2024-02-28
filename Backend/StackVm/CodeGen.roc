@@ -56,14 +56,13 @@ finish = \@AssemblyBuilder builder -> List.append builder.instructions (opCodeIn
 
 genAssembly : List Expr -> Result Assembly BuildProblem
 genAssembly = \program ->
-    List.walkUntil program (Ok (newBuilder {})) \buiderRes, expr ->
-        when buiderRes is
-            Err err -> Break (Err err)
-            Ok builder ->
-                when genForExpr builder expr is
-                    Err err -> Break (Err err)
-                    Ok ok -> Continue (Ok ok)
+    newBuilder {}
+    |> genExprs program
     |> Result.map finish
+
+genExprs = \self, exprs ->
+    List.walkTry exprs self \builder, expr ->
+        genForExpr builder expr
 
 # TODO: deprecate label
 genForExpr : AssemblyBuilder, Expr -> Result AssemblyBuilder BuildProblem
