@@ -21,7 +21,7 @@ BuildProblem : [
     VariableRedefined Str,
 ]
 
-## An intermediate representation of the final byte code, with labels that are resolved by the assembler
+## An intermediate representation of the final byte code, with labels that are to be resolved by the assembler
 Assembly : List AsmInstr
 
 dump = \asm ->
