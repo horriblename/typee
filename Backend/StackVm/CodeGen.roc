@@ -282,10 +282,6 @@ genAssemblyFromAscii = \source ->
     |> Result.mapErr Parser
     |> Result.try \ast -> genAssembly ast
         |> Result.mapErr CodeGen
-        |> Result.map \asm ->
-            dbg dump asm
-
-            asm
 
 compileAndTest = \source, pred ->
     ast <- parseStr source |> Debug.okAnd
