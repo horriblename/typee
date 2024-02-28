@@ -25,25 +25,17 @@ BuildProblem : [
 Assembly : List AsmInstr
 
 dump = \asm ->
-    dumpInstr = \{ label, instr } ->
-        prefix =
-            when label is
-                None -> "\t\t"
-                Some name -> "\(name)\t"
-        data =
-            when instr is
-                OpCode opcode -> "\t\(Inspect.toStr opcode)"
-                Raw code -> "\t\(Num.toStr code)"
-                Label name -> "\tLABEL \(name)"
-                LabelDef name -> "\(name):"
-
-        Str.concat prefix data
+    dumpInstr = \{ instr } ->
+        when instr is
+            OpCode opcode -> "\t\(Inspect.toStr opcode)"
+            Raw code -> "\t\(Num.toStr code)"
+            Label name -> "\tLABEL \(name)"
+            LabelDef name -> "\(name):"
 
     List.map asm dumpInstr
     |> Str.joinWith "\n"
 
 AsmInstr : {
-    label : [None, Some Str],
     instr : [
         OpCode OpCode,
         Raw Instr,
@@ -52,8 +44,8 @@ AsmInstr : {
     ],
 }
 
-asmInstr : { label ? [None, Some Str], instr : [OpCode OpCode, Raw Instr, Label Str, LabelDef Str] } -> AsmInstr
-asmInstr = \{ label ? None, instr } -> { label, instr }
+asmInstr : { instr : [OpCode OpCode, Raw Instr, Label Str, LabelDef Str] } -> AsmInstr
+asmInstr = \{ instr } -> { instr }
 
 newBuilder = \{} -> @AssemblyBuilder {
         symbolsInCurrentTable: 0,
@@ -76,8 +68,8 @@ genAssembly = \program ->
     |> Result.map finish
 
 # TODO: deprecate label
-genForExpr : AssemblyBuilder, { expr : Expr, label ? [None, Some Str] } -> Result AssemblyBuilder BuildProblem
-genForExpr = \self, { expr, label ? None } ->
+genForExpr : AssemblyBuilder, { expr : Expr } -> Result AssemblyBuilder BuildProblem
+genForExpr = \self, { expr } ->
     when expr is
         Form form -> self |> genCall form
         Symbol varName ->
@@ -97,12 +89,12 @@ genForExpr = \self, { expr, label ? None } ->
             (self2, oldTable) = self1 |> swapSymbolTable (Dict.empty {})
 
             self2
-            |> addInstr { instr: LabelDef name, label: None }
+            |> addInstr { instr: LabelDef name }
             |> genDefArgList args
-            |> genForExpr { expr: body, label: Some name }
+            |> genForExpr { expr: body }
             |> Result.map \self3 ->
                 (self4, _) = swapSymbolTable self3 oldTable
-                self4 |> addInstr { instr: OpCode Ret, label: None }
+                self4 |> addInstr { instr: OpCode Ret }
 
         Set { name, rvalue } ->
             (self1, varNum) = getOrDeclareVariableNum self name
@@ -175,7 +167,7 @@ genCallBuiltin = \self, name, args ->
         "*" -> genBinaryOperator self Mul args |> Found
         "/" -> genBinaryOperator self Div args |> Found
         "println" -> genUnaryOperator self Print args |> Found
-        "die" -> addInstr self { instr: OpCode Halt, label: None } |> Ok |> Found
+        "die" -> addInstr self { instr: OpCode Halt } |> Ok |> Found
         _ -> NotFound
 
 expect
@@ -239,8 +231,8 @@ expect
     asm <- genAssembly exprs |> Debug.okAnd
     Debug.expectEql asm (addPushInstr (newBuilder {}) 1 |> finish)
 
-opCodeInstr = \code -> { label: None, instr: OpCode code }
-rawInstr = \code -> { label: None, instr: Raw code }
+opCodeInstr = \code -> { instr: OpCode code }
+rawInstr = \code -> { instr: Raw code }
 
 addInstr = \@AssemblyBuilder self, instruction ->
     instructions = List.append self.instructions instruction
@@ -270,7 +262,7 @@ addLoadInstr = \@AssemblyBuilder self, varNum ->
 addCallInstr = \@AssemblyBuilder self, labelName ->
     instructions =
         List.append self.instructions (opCodeInstr Call)
-        |> List.append { label: None, instr: Label labelName }
+        |> List.append { instr: Label labelName }
 
     @AssemblyBuilder { self & instructions }
 

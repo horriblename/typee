@@ -84,8 +84,8 @@ expect
         asmInstr { instr: OpCode Call },
         asmInstr { instr: Label "foo" },
         asmInstr { instr: OpCode Halt },
-        { instr: LabelDef "foo", label: None },
-        asmInstr { label: Some "foo", instr: OpCode Push },
+        { instr: LabelDef "foo" },
+        asmInstr { instr: OpCode Push },
         asmInstr { instr: Raw 42 },
         asmInstr { instr: OpCode Ret },
     ]
