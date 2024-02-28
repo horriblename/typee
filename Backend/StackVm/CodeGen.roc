@@ -35,17 +35,15 @@ dump = \asm ->
     List.map asm dumpInstr
     |> Str.joinWith "\n"
 
-AsmInstr : {
-    instr : [
-        OpCode OpCode,
-        Raw Instr,
-        Label Str,
-        LabelDef Str,
-    ],
-}
+AsmInstr : [
+    OpCode OpCode,
+    Raw Instr,
+    Label Str,
+    LabelDef Str,
+]
 
-asmInstr : { instr : [OpCode OpCode, Raw Instr, Label Str, LabelDef Str] } -> AsmInstr
-asmInstr = \{ instr } -> { instr }
+asmInstr : AsmInstr -> AsmInstr
+asmInstr = \i -> i
 
 newBuilder = \{} -> @AssemblyBuilder {
         symbolsInCurrentTable: 0,
@@ -62,14 +60,14 @@ genAssembly = \program ->
         when buiderRes is
             Err err -> Break (Err err)
             Ok builder ->
-                when genForExpr builder { expr } is
+                when genForExpr builder expr is
                     Err err -> Break (Err err)
                     Ok ok -> Continue (Ok ok)
     |> Result.map finish
 
 # TODO: deprecate label
-genForExpr : AssemblyBuilder, { expr : Expr } -> Result AssemblyBuilder BuildProblem
-genForExpr = \self, { expr } ->
+genForExpr : AssemblyBuilder, Expr -> Result AssemblyBuilder BuildProblem
+genForExpr = \self, expr ->
     when expr is
         Form form -> self |> genCall form
         Symbol varName ->
@@ -89,18 +87,18 @@ genForExpr = \self, { expr } ->
             (self2, oldTable) = self1 |> swapSymbolTable (Dict.empty {})
 
             self2
-            |> addInstr { instr: LabelDef name }
+            |> addInstr (LabelDef name)
             |> genDefArgList args
-            |> genForExpr { expr: body }
+            |> genForExpr body
             |> Result.map \self3 ->
                 (self4, _) = swapSymbolTable self3 oldTable
-                self4 |> addInstr { instr: OpCode Ret }
+                self4 |> addInstr (OpCode Ret)
 
         Set { name, rvalue } ->
             (self1, varNum) = getOrDeclareVariableNum self name
 
             self1
-            |> genForExpr { expr: rvalue }
+            |> genForExpr rvalue
             |> Result.map \self2 -> addStoreInstr self2 varNum
 
 genDefArgList : AssemblyBuilder, List Str -> AssemblyBuilder
@@ -152,11 +150,11 @@ genCall = \self, formBody ->
 expect
     compileAndTest "(foo 1)" \asm ->
         Debug.expectEql asm [
-            asmInstr { instr: OpCode Push },
-            asmInstr { instr: Raw 1 },
-            asmInstr { instr: OpCode Call },
-            asmInstr { instr: Label "foo" },
-            asmInstr { instr: OpCode Halt },
+            asmInstr (OpCode Push),
+            asmInstr (Raw 1),
+            asmInstr (OpCode Call),
+            asmInstr (Label "foo"),
+            asmInstr (OpCode Halt),
         ]
 
 genCallBuiltin : AssemblyBuilder, Str, List Expr -> [NotFound, Found (Result AssemblyBuilder BuildProblem)]
@@ -167,21 +165,21 @@ genCallBuiltin = \self, name, args ->
         "*" -> genBinaryOperator self Mul args |> Found
         "/" -> genBinaryOperator self Div args |> Found
         "println" -> genUnaryOperator self Print args |> Found
-        "die" -> addInstr self { instr: OpCode Halt } |> Ok |> Found
+        "die" -> addInstr self (OpCode Halt) |> Ok |> Found
         _ -> NotFound
 
 expect
     compileAndTest "(die)" \asm ->
-        Debug.expectEql asm [asmInstr { instr: OpCode Halt }, asmInstr { instr: OpCode Halt }]
+        Debug.expectEql asm [OpCode Halt, OpCode Halt]
 
 genBinaryOperator = \self, opCode, args ->
     (arg1, arg2) <- Result.try (twoArgs args)
     self1 <- self
-        |> genForExpr { expr: arg1 }
+        |> genForExpr arg1
         |> Result.try
 
     self2 <- self1
-        |> genForExpr { expr: arg2 }
+        |> genForExpr arg2
         |> Result.try
 
     self2
@@ -195,7 +193,7 @@ genUnaryOperator = \self, opCode, args ->
             _ -> Err WrongArgCount
     arg <- argResult |> Result.try
 
-    self1 <- genForExpr self { expr: arg } |> Result.try
+    self1 <- genForExpr self arg |> Result.try
 
     self1
     |> appendInstr (opCodeInstr opCode)
@@ -212,7 +210,7 @@ genCallUserFunction = \self, name, args ->
     self1 <- args
         |> List.reverse
         |> List.walkTry self \currSelf, arg ->
-            genForExpr currSelf { expr: arg }
+            genForExpr currSelf arg
         |> Result.try
 
     Ok (self1 |> addCallInstr name)
@@ -231,8 +229,8 @@ expect
     asm <- genAssembly exprs |> Debug.okAnd
     Debug.expectEql asm (addPushInstr (newBuilder {}) 1 |> finish)
 
-opCodeInstr = \code -> { instr: OpCode code }
-rawInstr = \code -> { instr: Raw code }
+opCodeInstr = \code -> OpCode code
+rawInstr = \code -> Raw code
 
 addInstr = \@AssemblyBuilder self, instruction ->
     instructions = List.append self.instructions instruction
@@ -262,7 +260,7 @@ addLoadInstr = \@AssemblyBuilder self, varNum ->
 addCallInstr = \@AssemblyBuilder self, labelName ->
     instructions =
         List.append self.instructions (opCodeInstr Call)
-        |> List.append { instr: Label labelName }
+        |> List.append (Label labelName)
 
     @AssemblyBuilder { self & instructions }
 

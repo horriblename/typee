@@ -31,7 +31,7 @@ assemble = \asm ->
     assembler0 = new {}
     assemblerUnresolved = List.walkTry asm assembler0 \assembler, instr ->
 
-        when instr.instr is
+        when instr is
             OpCode code -> assembler |> appendCode (toNum code) |> Ok
             Raw code -> assembler |> appendCode code |> Ok
             Label labelName -> assembler |> appendLabel labelName |> Ok
@@ -81,13 +81,13 @@ finish = \self ->
 
 expect
     asm = [
-        asmInstr { instr: OpCode Call },
-        asmInstr { instr: Label "foo" },
-        asmInstr { instr: OpCode Halt },
-        { instr: LabelDef "foo" },
-        asmInstr { instr: OpCode Push },
-        asmInstr { instr: Raw 42 },
-        asmInstr { instr: OpCode Ret },
+        asmInstr (OpCode Call),
+        asmInstr (Label "foo"),
+        asmInstr (OpCode Halt),
+        LabelDef "foo",
+        asmInstr (OpCode Push),
+        asmInstr (Raw 42),
+        asmInstr (OpCode Ret),
     ]
 
     assemble asm
