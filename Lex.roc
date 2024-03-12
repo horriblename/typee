@@ -17,6 +17,7 @@ Token : [
     # Keywords
     Def,
     Set,
+    Do,
 ]
 
 lparen : Parser StrBuf Token
@@ -65,6 +66,7 @@ keywordOrSymbol =
         when sym is
             "def" -> Def
             "set" -> Set
+            "do" -> Do
             _ -> Symbol sym
 
 # whitespace = tag " "

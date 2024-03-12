@@ -1,7 +1,7 @@
 interface Parse exposes [Expr, Program, parseTokens, parseStr, parse]
     imports [
         parc.Parser.{ Parser },
-        parc.Combinator.{ matches, many0, prefixed, surrounded, andThen },
+        parc.Combinator.{ matches, many, many0, prefixed, surrounded, andThen },
         Lex.{ Token },
         Debug,
     ]
@@ -18,6 +18,7 @@ Expr : [
             body : Expr,
         },
     Set { name : Str, rvalue : Expr },
+    Do (List Expr),
 ]
 Program : List Expr
 
@@ -25,6 +26,7 @@ lparen = matches LParen
 rparen = matches RParen
 kwDef = matches Def
 kwSet = matches Set
+kwDo = matches Do
 parenthesized = \token -> surrounded lparen token rparen
 
 symName =
@@ -58,6 +60,15 @@ setStatement =
         )
     |> Parser.map \(name, rvalue) -> Set { name, rvalue }
 
+doStatement : Parser (List Token) Expr
+doStatement =
+    parenthesized
+        (
+            kwDo
+            |> prefixed (many expr)
+        )
+    |> Parser.map \exprs -> Do exprs
+
 symbol =
     \tokens ->
         when tokens is
@@ -74,6 +85,7 @@ expr = \input ->
     when input is
         [LParen, Def, ..] -> functionDefinition input
         [LParen, Set, ..] -> setStatement input
+        [LParen, Do, ..] -> doStatement input
         [LParen, ..] -> form input
         [Symbol sym, .. as rest] -> Ok (rest, Symbol sym)
         [IntLiteral num, .. as rest] -> Ok (rest, Int num)
@@ -113,6 +125,11 @@ expect
                 },
             ]
         )
+
+expect
+    Debug.expectEql
+        (parseStr "(do (+ 1 2) (+ 3 4))")
+        (Ok [Do [Form [Symbol "+", Int 1, Int 2], Form [Symbol "+", Int 3, Int 4]]])
 
 expect
     Debug.expectEql

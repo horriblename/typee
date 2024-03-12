@@ -134,6 +134,10 @@ genForExpr = \self, expr ->
             |> genForExpr rvalue
             |> Result.map \self2 -> addStoreInstr self2 varNum
 
+        Do exprs ->
+            self
+            |> genExprs exprs
+
 genDefArgList : AssemblyBuilder, List Str -> AssemblyBuilder
 genDefArgList = \self, args ->
     List.walk args self \asmBuilder, arg ->
