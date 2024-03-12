@@ -2,7 +2,7 @@ interface Lex exposes [lex, lexStr]
     imports [
         parc.Parser,
         parc.Parser.{ Parser },
-        parc.Ascii.{ char, StrBuf, isDigit, int, charIs, tag },
+        parc.Ascii.{ char, StrBuf, isDigit, int, charIs },
         parc.Combinator.{ prefixed, suffixed, many0, alt, andThen },
         Bool.{ true, false },
         Debug,
@@ -29,15 +29,14 @@ rparen =
     char ')'
     |> Parser.map \_ -> RParen
 
-symbol : Parser StrBuf Token
-symbol =
+symbolStr : Parser StrBuf Str
+symbolStr =
     str = charIs identFirst |> andThen (many0 (charIs identBody))
     (first, body) <- Parser.try str
     body
     |> List.prepend first
     |> Str.fromUtf8
     |> Result.mapErr \_ -> Parser.genericError
-    |> Result.map Symbol
 
 number : Parser StrBuf Token
 number =
@@ -60,9 +59,13 @@ isWhitespace = \c ->
         0x0020 | 0x000A | 0x000D | 0x0009 -> Bool.true
         _ -> Bool.false
 
-# keywords
-kwDef = tag "def" |> Parser.map \_ -> Def
-kwSet = tag "set" |> Parser.map \_ -> Set
+keywordOrSymbol =
+    symbolStr
+    |> Parser.map \sym ->
+        when sym is
+            "def" -> Def
+            "set" -> Set
+            _ -> Symbol sym
 
 # whitespace = tag " "
 # skipWhitespaces : Parser StrBuf {}
@@ -84,7 +87,7 @@ lex : List U8 -> Result (List Token) Parser.Problem
 lex = \input ->
     token : Parser StrBuf Token
     token =
-        alt [lparen, rparen, kwDef, kwSet, symbol, number]
+        alt [lparen, rparen, keywordOrSymbol, number]
         |> suffixed skipWhitespaces
 
     parser : Parser StrBuf (List Token)
@@ -105,3 +108,8 @@ expect
     Debug.expectEql
         (lexStr "def foo set")
         (Ok [Def, Symbol "foo", Set])
+
+expect
+    Debug.expectEql
+        (lexStr "def define")
+        (Ok [Def, Symbol "define"])
