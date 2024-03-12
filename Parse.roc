@@ -1,7 +1,7 @@
 interface Parse exposes [Expr, Program, parseTokens, parseStr, parse]
     imports [
         parc.Parser.{ Parser },
-        parc.Combinator.{ matches, many0, prefixed, surrounded, andThen, passes },
+        parc.Combinator.{ matches, many0, prefixed, surrounded, andThen },
         Lex.{ Token },
         Debug,
     ]

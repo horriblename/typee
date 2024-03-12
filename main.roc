@@ -4,14 +4,13 @@ app "typee"
         parc: "/home/nixos/repo/parc/main.roc",
     }
     imports [
+        pf.Stdout,
+        pf.Stderr,
         pf.Task,
         pf.Arg,
         pf.File,
         pf.Path,
         parc.Parser,
-        Lex,
-        Parse,
-        Backend.StackVm.Machine,
         Cli,
     ]
     provides [main] to pf

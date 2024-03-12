@@ -5,7 +5,6 @@ interface Cli
         pf.Task.{ Task, await, attempt },
         pf.File,
         pf.Path,
-        Parse.{ parse },
         Backend.StackVm.Assembler.{ compileFromAsciiSource },
         Backend.StackVm.Machine.{ new, run },
     ]
