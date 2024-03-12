@@ -9,6 +9,7 @@ interface Backend.StackVm.CodeGen
     ]
 
 AssemblyBuilder := {
+    globalFunctions : Dict Str Assembly,
     symbolsInCurrentTable : U64,
     localSymbolTable : Dict Str U64,
     instructions : Assembly,
@@ -25,7 +26,7 @@ BuildProblem : [
 Assembly : List AsmInstr
 
 dump = \asm ->
-    dumpInstr = \{ instr } ->
+    dumpInstr = \instr ->
         when instr is
             OpCode opcode -> "\t\(Inspect.toStr opcode)"
             Raw code -> "\t\(Num.toStr code)"
@@ -46,13 +47,21 @@ asmInstr : AsmInstr -> AsmInstr
 asmInstr = \i -> i
 
 newBuilder = \{} -> @AssemblyBuilder {
+        globalFunctions: Dict.empty {},
         symbolsInCurrentTable: 0,
         localSymbolTable: Dict.empty {},
         instructions: [],
     }
 
 finish : AssemblyBuilder -> Assembly
-finish = \@AssemblyBuilder builder -> List.append builder.instructions (OpCode Halt)
+finish = \@AssemblyBuilder builder ->
+    Dict.values builder.globalFunctions
+    |> List.join
+    |> \globalFuncs -> List.join [
+            [OpCode Call, Label "main", OpCode Halt],
+            globalFuncs,
+            builder.instructions,
+        ]
 
 genAssembly : List Expr -> Result Assembly BuildProblem
 genAssembly = \program ->
@@ -84,14 +93,30 @@ genForExpr = \self, expr ->
                 |> Result.try
 
             (self2, oldTable) = self1 |> swapSymbolTable (Dict.empty {})
+            swapAsm = \@AssemblyBuilder inner, asm ->
+                (@AssemblyBuilder { inner & instructions: asm }, inner.instructions)
+            insertGlobal = \@AssemblyBuilder inner, key, value ->
+                expect
+                    Dict.get inner.globalFunctions key == Err KeyNotFound
 
-            self2
+                globalFunctions = Dict.insert inner.globalFunctions key value
+                @AssemblyBuilder { inner & globalFunctions }
+
+            # HACK: couldn't be assed to rework stuff so here's a lil hack to swap the assembly and swap it back later
+            (self3, parentAsm) = swapAsm self2 []
+
+            self3
             |> addInstr (LabelDef name)
             |> genDefArgList args
             |> genForExpr body
-            |> Result.map \self3 ->
-                (self4, _) = swapSymbolTable self3 oldTable
-                self4 |> addInstr (OpCode Ret)
+            |> Result.map \self4 ->
+                (self5, _) = swapSymbolTable self4 oldTable
+                (self6, funcAsm) =
+                    self5
+                    |> addInstr (OpCode Ret)
+                    |> swapAsm parentAsm
+
+                insertGlobal self6 name funcAsm
 
         Set { name, rvalue } ->
             (self1, varNum) = getOrDeclareVariableNum self name
