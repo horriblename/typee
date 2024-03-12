@@ -55,13 +55,22 @@ newBuilder = \{} -> @AssemblyBuilder {
 
 finish : AssemblyBuilder -> Assembly
 finish = \@AssemblyBuilder builder ->
-    Dict.values builder.globalFunctions
-    |> List.join
-    |> \globalFuncs -> List.join [
-            [OpCode Call, Label "main", OpCode Halt],
-            globalFuncs,
-            builder.instructions,
-        ]
+    if Dict.contains builder.globalFunctions "main" then
+        Dict.values builder.globalFunctions
+        |> List.join
+        |> \globalFuncs -> List.join [
+                [OpCode Call, Label "main", OpCode Halt],
+                globalFuncs,
+                builder.instructions, # uh, idk what to do with this
+            ]
+    else
+        Dict.values builder.globalFunctions
+        |> List.join
+        |> \globalFuncs -> List.join [
+                builder.instructions,
+                [OpCode Halt],
+                globalFuncs,
+            ]
 
 genAssembly : List Expr -> Result Assembly BuildProblem
 genAssembly = \program ->
