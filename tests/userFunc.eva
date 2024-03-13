@@ -1,0 +1,15 @@
+(def square (x)
+     (* x x))
+
+(def doublePlus (x y)
+     (+ (* x 2) y))
+
+(def factorAdd (x y z)
+     (+ y (* z 2)))
+
+
+(def main ()
+     (do
+       (println (square 5)) ; 25
+       (println (doublePlus 2 3)) ; 7
+       (println (factorAdd 2 3 4)))) ; 11

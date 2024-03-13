@@ -1,0 +1,10 @@
+(def main ()
+     (do
+       (set foo 2)
+
+       (println (* foo 3))
+
+       (set foo 3)
+       (set bar 4)
+
+       (println (* foo bar))))
