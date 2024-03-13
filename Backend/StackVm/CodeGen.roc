@@ -16,7 +16,7 @@ AssemblyBuilder := {
 }
 
 BuildProblem : [
-    EmptyFormOrBadFunctionName,
+    EmptyFormOrBadFunctionName { body : List Expr },
     WrongArgCount,
     UndeclaredVariable Str,
     VariableRedefined Str,
@@ -182,7 +182,7 @@ genCall = \self, formBody ->
                 NotFound ->
                     genCallUserFunction self name args
 
-        _ -> Err EmptyFormOrBadFunctionName
+        _ -> Err (EmptyFormOrBadFunctionName { body: formBody })
 
 expect
     compileAndTest "(foo 1)" \asm ->
