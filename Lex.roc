@@ -2,8 +2,8 @@ interface Lex exposes [lex, lexStr]
     imports [
         parc.Parser,
         parc.Parser.{ Parser },
-        parc.Ascii.{ char, StrBuf, isDigit, int, charIs },
-        parc.Combinator.{ prefixed, suffixed, many0, alt, andThen },
+        parc.Ascii.{ char, StrBuf, isDigit, int, charIs, isWhitespace, until },
+        parc.Combinator.{ prefixed, suffixed, many0, alt, andThen, surrounded, opt },
         Bool.{ true, false },
         Debug,
     ]
@@ -55,10 +55,10 @@ number =
 identFirst = \c -> c != '(' && c != ')' && !(isWhitespace c) && !(isDigit c)
 identBody = \c -> c != '(' && c != ')' && !(isWhitespace c)
 
-isWhitespace = \c ->
-    when c is
-        0x0020 | 0x000A | 0x000D | 0x0009 -> Bool.true
-        _ -> Bool.false
+# isWhitespace = \c ->
+#     when c is
+#         0x0020 | 0x000A | 0x000D | 0x0009 -> Bool.true
+#         _ -> Bool.false
 
 keywordOrSymbol =
     symbolStr
@@ -85,16 +85,49 @@ skipWhitespaces = \input ->
     rest = List.dropFirst input count
     Ok (rest, {})
 
+whitespaces = until \c -> !(isWhitespace c)
+
+alternate0 : Parser i o, Parser i o -> Parser i (List o)
+alternate0 = \p1, p2 -> \in ->
+        inner = \pi1, pi2, input, outputs ->
+            when pi1 input is
+                Ok (rest, out) ->
+                    inner pi2 pi1 rest (List.append outputs out)
+
+                Err _ -> Ok (input, outputs)
+
+        inner p1 p2 in []
+
+lift = \result, onErr, onOk ->
+    when result is
+        Ok ok -> onOk ok
+        Err err -> onErr err
+
+comment = \input ->
+    when input is
+        [';', ..] ->
+            { before, after } <- List.splitFirst input '\n'
+                |> lift \_ -> Ok ([], input)
+
+            Ok (after, before)
+
+        _ -> Err Parser.genericError
+
+skipWhitespacesAndComments =
+    alternate0
+        (opt whitespaces |> Parser.map \_ -> {})
+        (comment |> Parser.map \_ -> {})
+
 lex : List U8 -> Result (List Token) Parser.Problem
 lex = \input ->
     token : Parser StrBuf Token
     token =
         alt [lparen, rparen, keywordOrSymbol, number]
-        |> suffixed skipWhitespaces
+        |> suffixed skipWhitespacesAndComments
 
     parser : Parser StrBuf (List Token)
     parser =
-        skipWhitespaces
+        skipWhitespacesAndComments
         |> prefixed (many0 token)
 
     Parser.complete parser input
@@ -115,3 +148,8 @@ expect
     Debug.expectEql
         (lexStr "def define")
         (Ok [Def, Symbol "define"])
+
+expect
+    Debug.expectEql
+        (lexStr "(hi ; comment \n); comment 2")
+        (Ok [LParen, Symbol "hi", RParen])
