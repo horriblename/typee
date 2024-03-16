@@ -11,6 +11,7 @@ Expr : [
     Form (List Expr),
     Symbol Str,
     Int I32,
+    StrLit Str,
     FunctionDef
         {
             name : Str,
@@ -88,6 +89,7 @@ expr = \input ->
         [LParen, Do, ..] -> doStatement input
         [LParen, ..] -> form input
         [Symbol sym, .. as rest] -> Ok (rest, Symbol sym)
+        [StrLiteral str, .. as rest] -> Ok (rest, StrLit str)
         [IntLiteral num, .. as rest] -> Ok (rest, Int num)
         _ -> Err Parser.genericError
 
@@ -144,3 +146,8 @@ expect
             ]
 
         )
+
+expect
+    Debug.expectEql
+        (parseStr "(\"hello world\" 2)")
+        (Ok [Form [StrLit "hello world", Int 2]])

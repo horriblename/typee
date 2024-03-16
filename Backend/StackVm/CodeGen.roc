@@ -10,6 +10,7 @@ interface Backend.StackVm.CodeGen
 
 AssemblyBuilder := {
     globalFunctions : Dict Str Assembly,
+    staticData : List Instr,
     symbolsInCurrentTable : U64,
     localSymbolTable : Dict Str U64,
     instructions : Assembly,
@@ -49,6 +50,7 @@ asmInstr = \i -> i
 newBuilder = \{} -> @AssemblyBuilder {
         globalFunctions: Dict.empty {},
         symbolsInCurrentTable: 0,
+        staticData: [],
         localSymbolTable: Dict.empty {},
         instructions: [],
     }
@@ -97,6 +99,12 @@ genForExpr = \self, expr ->
             |> addPushInstr (Num.toU64 n)
             |> Ok
 
+        StrLit str ->
+            self
+            |> extendStaticData (strToWords str)
+            |> \(self1, strAddr) -> self1 |> addPushInstr strAddr
+            |> Ok
+
         FunctionDef { name, args, body } ->
             (self1, varNum) <- declareVariableChecked self name
                 |> Result.try
@@ -111,7 +119,8 @@ genForExpr = \self, expr ->
                 globalFunctions = Dict.insert inner.globalFunctions key value
                 @AssemblyBuilder { inner & globalFunctions }
 
-            # HACK: couldn't be assed to rework stuff so here's a lil hack to swap the assembly and swap it back later
+            # HACK: couldn't be assed to rework stuff so here's a lil hack to
+            # swap the assembly and swap it back later
             (self3, parentAsm) = swapAsm self2 []
 
             self3
@@ -258,6 +267,12 @@ twoArgs = \args ->
         [arg1, arg2] -> Ok (arg1, arg2)
         _ -> Err WrongArgCount
 
+extendStaticData = \@AssemblyBuilder self, data ->
+    addr = List.len self.staticData
+    staticData = List.join [self.staticData, data]
+
+    (@AssemblyBuilder { self & staticData }, addr)
+
 appendInstr = \@AssemblyBuilder self, instr ->
     @AssemblyBuilder { self & instructions: List.append self.instructions instr }
 
@@ -300,6 +315,69 @@ addCallInstr = \@AssemblyBuilder self, labelName ->
 
 swapSymbolTable = \@AssemblyBuilder self, localSymbolTable ->
     (@AssemblyBuilder { self & localSymbolTable }, self.localSymbolTable)
+
+# Turns a list of elements into a list of chunks of the elements.
+# Each chunk has the same given size, except the last one, which may be smaller
+#
+# Example:
+#
+# ```
+# expect chunks [1, 2, 3, 4 , 5, 6, 7, 8] 3 == [[1, 2, 3], [4, 5, 6], [7, 8]]
+# ```
+chunks : List a, U64 -> List (List a)
+chunks = \list, chunkSize ->
+    if List.len list == 0 then
+        []
+    else
+        outLen = List.len list |> Num.divCeil chunkSize
+        init = List.withCapacity outLen
+        List.walk list init \listOfChunks, el ->
+            withNewChunk =
+                List.withCapacity chunkSize
+                |> List.append el
+                |> \newChunk -> List.append listOfChunks newChunk
+
+            when List.last listOfChunks is
+                Err ListWasEmpty ->
+                    withNewChunk
+
+                Ok chunk if List.len chunk >= chunkSize ->
+                    withNewChunk
+
+                Ok _ ->
+                    List.update
+                        listOfChunks
+                        (List.len listOfChunks - 1)
+                        \chunk1 -> List.append chunk1 el
+
+expect chunks [] 3 == []
+expect chunks [1, 2, 3, 4, 5, 6, 7, 8] 3 == [[1, 2, 3], [4, 5, 6], [7, 8]]
+expect chunks [1, 2, 3, 4, 5, 6, 7, 8, 9] 3 == [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+
+u8ToBigEndianWords : List U8 -> List U64
+u8ToBigEndianWords = \bytes ->
+    # # U64 fits 8 * U8
+    bytesPerWord = 8_u8
+
+    bytes
+    |> chunks 8
+    |> List.map \chunk ->
+        List.walkWithIndex chunk 0_u64 \word, byte, i ->
+            idx = i |> Num.toU8
+            shiftSize = (bytesPerWord - 1 - idx) * 8
+            word
+            |> Num.bitwiseOr (byte |> Num.toU64 |> Num.shiftLeftBy shiftSize)
+
+expect
+    u8ToBigEndianWords [0x01, 0x02, 0x03]
+    |> Debug.expectEql [
+        Num.shiftLeftBy 0x01 (7 * 8)
+        |> Num.bitwiseOr (Num.shiftLeftBy 0x02 (6 * 8))
+        |> Num.bitwiseOr (Num.shiftLeftBy 0x03 (5 * 8)),
+    ]
+
+strToWords : Str -> List U64
+strToWords = \str -> str |> Str.toUtf8 |> u8ToBigEndianWords
 
 genAssemblyFromStr : Str -> Result Assembly [Parser Parser.Problem, CodeGen BuildProblem]
 genAssemblyFromStr = \source ->

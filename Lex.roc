@@ -2,7 +2,7 @@ interface Lex exposes [lex, lexStr]
     imports [
         parc.Parser,
         parc.Parser.{ Parser },
-        parc.Ascii.{ char, StrBuf, isDigit, int, charIs, isWhitespace, until },
+        parc.Ascii.{ char, StrBuf, isDigit, int, charIs, isWhitespace, until, until0 },
         parc.Combinator.{ prefixed, suffixed, many0, alt, andThen, surrounded, opt },
         Bool.{ true, false },
         Debug,
@@ -13,6 +13,7 @@ Token : [
     RParen,
     Symbol Str,
     IntLiteral I32,
+    StrLiteral Str,
 
     # Keywords
     Def,
@@ -55,11 +56,6 @@ number =
 identFirst = \c -> c != '(' && c != ')' && !(isWhitespace c) && !(isDigit c)
 identBody = \c -> c != '(' && c != ')' && !(isWhitespace c)
 
-# isWhitespace = \c ->
-#     when c is
-#         0x0020 | 0x000A | 0x000D | 0x0009 -> Bool.true
-#         _ -> Bool.false
-
 keywordOrSymbol =
     symbolStr
     |> Parser.map \sym ->
@@ -68,6 +64,15 @@ keywordOrSymbol =
             "set" -> Set
             "do" -> Do
             _ -> Symbol sym
+
+strLiteral =
+    doubleQuote = char '"'
+
+    surrounded doubleQuote (until0 \c -> c == '"') doubleQuote
+    |> Parser.try \utf8 ->
+        Str.fromUtf8 utf8
+        |> Result.mapErr \_ -> Parser.genericError
+    |> Parser.map StrLiteral
 
 # whitespace = tag " "
 # skipWhitespaces : Parser StrBuf {}
@@ -122,7 +127,7 @@ lex : List U8 -> Result (List Token) Parser.Problem
 lex = \input ->
     token : Parser StrBuf Token
     token =
-        alt [lparen, rparen, keywordOrSymbol, number]
+        alt [lparen, rparen, strLiteral, keywordOrSymbol, number]
         |> suffixed skipWhitespacesAndComments
 
     parser : Parser StrBuf (List Token)
@@ -153,3 +158,14 @@ expect
     Debug.expectEql
         (lexStr "(hi ; comment \n); comment 2")
         (Ok [LParen, Symbol "hi", RParen])
+
+expect
+    Debug.expectEql
+        (lexStr "hi \"hello\"")
+        (Ok [Symbol "hi", StrLiteral "hello"])
+
+expect
+    Debug.expectEql
+        (lexStr "hi\"hi\"")
+        (Ok [Symbol "hi", StrLiteral "hi"])
+    |> Debug.expectFail
