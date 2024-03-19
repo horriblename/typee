@@ -11,6 +11,9 @@ interface Lex exposes [lex, lexStr]
 Token : [
     LParen,
     RParen,
+    LBrace,
+    RBrace,
+    Colon,
     Symbol Str,
     IntLiteral I32,
     StrLiteral Str,
@@ -30,6 +33,10 @@ rparen : Parser StrBuf Token
 rparen =
     char ')'
     |> Parser.map \_ -> RParen
+
+lbrace = char '{' |> Parser.map \_ -> LBrace
+rbrace = char '}' |> Parser.map \_ -> RBrace
+colon = char ':' |> Parser.map \_ -> Colon
 
 symbolStr : Parser StrBuf Str
 symbolStr =
@@ -53,6 +60,7 @@ number =
             Ok num -> IntLiteral num
             _ -> crash "unreachable"
 
+# TODO: uninclude {}
 identFirst = \c -> c != '(' && c != ')' && !(isWhitespace c) && !(isDigit c)
 identBody = \c -> c != '(' && c != ')' && !(isWhitespace c)
 
@@ -127,7 +135,7 @@ lex : List U8 -> Result (List Token) Parser.Problem
 lex = \input ->
     token : Parser StrBuf Token
     token =
-        alt [lparen, rparen, strLiteral, keywordOrSymbol, number]
+        alt [lparen, rparen, lbrace, rbrace, colon, strLiteral, keywordOrSymbol, number]
         |> suffixed skipWhitespacesAndComments
 
     parser : Parser StrBuf (List Token)
@@ -169,3 +177,8 @@ expect
         (lexStr "hi\"hi\"")
         (Ok [Symbol "hi", StrLiteral "hi"])
     |> Debug.expectFail
+
+expect
+    Debug.expectEql
+        (lexStr "{}")
+        (Ok [LBrace, RBrace])
