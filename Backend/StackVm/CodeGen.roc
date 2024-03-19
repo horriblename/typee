@@ -165,8 +165,10 @@ lookupSymbol = \@AssemblyBuilder self, varName ->
 declareVariableChecked = \self, name ->
     # TODO: use Dict.contatins
     lookupSymbol self name
-    |> Result.try \_ -> Err (VariableRedefined name)
-    |> Result.onErr \_ -> Ok (declareVariable self name)
+    |> \sym ->
+        when sym is
+            Err KeyNotFound -> Ok (declareVariable self name)
+            Ok _ -> Err (VariableRedefined name)
 
 declareVariable : AssemblyBuilder, Str -> (AssemblyBuilder, U64)
 declareVariable = \@AssemblyBuilder self, name ->
@@ -377,7 +379,10 @@ expect
     ]
 
 strToWords : Str -> List U64
-strToWords = \str -> str |> Str.toUtf8 |> u8ToBigEndianWords
+strToWords = \str -> str
+    |> Str.toUtf8
+    |> u8ToBigEndianWords
+    |> List.append 0_u64 # strings are null-terminated (for now)
 
 genAssemblyFromStr : Str -> Result Assembly [Parser Parser.Problem, CodeGen BuildProblem]
 genAssemblyFromStr = \source ->
