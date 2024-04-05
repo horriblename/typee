@@ -1,7 +1,7 @@
 interface Parse exposes [Expr, Program, parseTokens, parseStr, parse]
     imports [
         parc.Parser.{ Parser },
-        parc.Combinator.{ matches, many, many0, prefixed, surrounded, andThen },
+        parc.Combinator.{ matches, many, many0, prefixed, suffixed, surrounded, andThen },
         Lex.{ Token },
         Debug,
     ]
@@ -19,12 +19,16 @@ Expr : [
             body : Expr,
         },
     Set { name : Str, rvalue : Expr },
+    Record { members : List { key : Str, value : Expr } },
     Do (List Expr),
 ]
 Program : List Expr
 
 lparen = matches LParen
 rparen = matches RParen
+lbrace = matches LBrace
+rbrace = matches RBrace
+colon = matches Colon
 kwDef = matches Def
 kwSet = matches Set
 kwDo = matches Do
@@ -81,6 +85,18 @@ form =
     surrounded lparen (many0 expr) rparen
     |> Parser.map Form
 
+record : Parser (List Token) Expr
+record =
+    entry : Parser (List Token) { key : Str, value : Expr }
+    entry =
+        symName
+        |> suffixed colon
+        |> andThen expr
+        |> Parser.map \(key, value) -> { key, value }
+
+    surrounded lbrace (many0 entry) rbrace
+    |> Parser.map \members -> Record { members }
+
 # expr : Parser (List Token) Expr
 expr = \input ->
     when input is
@@ -88,6 +104,7 @@ expr = \input ->
         [LParen, Set, ..] -> setStatement input
         [LParen, Do, ..] -> doStatement input
         [LParen, ..] -> form input
+        [LBrace, ..] -> record input
         [Symbol sym, .. as rest] -> Ok (rest, Symbol sym)
         [StrLiteral str, .. as rest] -> Ok (rest, StrLit str)
         [IntLiteral num, .. as rest] -> Ok (rest, Int num)
@@ -151,3 +168,8 @@ expect
     Debug.expectEql
         (parseStr "(\"hello world\" 2)")
         (Ok [Form [StrLit "hello world", Int 2]])
+
+# expect
+#     Debug.expectEql
+#         (parseStr "{x: 3}")
+#         (Ok [Form [Record { members: [{ key: "x", value: Int 3 }] }]])

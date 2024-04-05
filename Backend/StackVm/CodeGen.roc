@@ -29,10 +29,10 @@ Assembly : List AsmInstr
 dump = \asm ->
     dumpInstr = \instr ->
         when instr is
-            OpCode opcode -> "\t\(Inspect.toStr opcode)"
-            Raw code -> "\t\(Num.toStr code)"
-            Label name -> "\tLABEL \(name)"
-            LabelDef name -> "\(name):"
+            OpCode opcode -> "\t$(Inspect.toStr opcode)"
+            Raw code -> "\t$(Num.toStr code)"
+            Label name -> "\tLABEL $(name)"
+            LabelDef name -> "$(name):"
 
     List.map asm dumpInstr
     |> Str.joinWith "\n"
@@ -105,6 +105,7 @@ genForExpr = \self, expr ->
             |> \(self1, strAddr) -> self1 |> addPushInstr strAddr
             |> Ok
 
+        Record _ -> crash "todo"
         FunctionDef { name, args, body } ->
             (self1, varNum) <- declareVariableChecked self name
                 |> Result.try

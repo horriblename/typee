@@ -24,12 +24,13 @@
     overlays = {
       default = final: prev: {
         hello = final.callPackage ./hello.nix {};
+        testy = final.callPackage ./test.nix {};
       };
     };
 
     packages = eachSystem (system: {
       default = self.packages.${system}.hello;
-      inherit (pkgsFor.${system}) hello opal;
+      inherit (pkgsFor.${system}) hello testy;
     });
     devShells = eachSystem (system: let
       pkgs = pkgsFor.${system};
@@ -37,8 +38,18 @@
       default = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [
           zig
+          glibc
+          libgcc
+          meson
+          ninja
+          gcc
+          pkg-config
+          libgccjit
         ];
-        buildInputs = with pkgs; [];
+        buildInputs = with pkgs; [
+          libgccjit
+          glibc
+        ];
       };
     });
   };

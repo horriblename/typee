@@ -44,6 +44,7 @@ main =
     #     Stderr.line "Error building compiler: \n\(Inspect.toStr out)"
 
     {} <- Stdout.line " ----- Built Compiler: ./\(compiler) -----" |> await
+    {} <- Stdout.line " ----- Running tests... -----" |> await
 
     runFile = \file -> Cmd.new "./\(compiler)" |> Cmd.args [file]
 

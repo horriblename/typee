@@ -61,8 +61,12 @@ number =
             _ -> crash "unreachable"
 
 # TODO: uninclude {}
-identFirst = \c -> c != '(' && c != ')' && !(isWhitespace c) && !(isDigit c)
-identBody = \c -> c != '(' && c != ')' && !(isWhitespace c)
+identFirst = \c -> identBody c && !(isDigit c)
+identBody = \c ->
+    when c is
+        '(' | ')' | '{' | '}' | ':' -> Bool.false
+        _ if isWhitespace c -> Bool.false
+        _ -> Bool.true
 
 keywordOrSymbol =
     symbolStr
@@ -180,5 +184,5 @@ expect
 
 expect
     Debug.expectEql
-        (lexStr "{}")
-        (Ok [LBrace, RBrace])
+        (lexStr "{foo:bar}")
+        (Ok [LBrace, Symbol "foo", Colon, Symbol "bar", RBrace])

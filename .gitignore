@@ -9,3 +9,4 @@ _build
 zig-cache
 platform/vendored
 platform/zig-out/lib
+main
