@@ -237,12 +237,12 @@ const NewFunctionArgs = extern struct {
 };
 
 pub export fn roc_fx_newFunction(args: NewFunctionArgs) Function {
-    const func_kind: c_uint = if (args.export_flag) c.GCC_JIT_FUNCTION_EXPORTED else c.GCC_JIT_FUNCTION_INTERNAL;
+    const func_kind: c_uint = if (args.exportFlag) c.GCC_JIT_FUNCTION_EXPORTED else c.GCC_JIT_FUNCTION_INTERNAL;
     const name_buf = c_str(args.name);
     defer default_allocator.free(name_buf);
     // const params_slice = params.elements(c.gcc_jit_param);
     // var params_slice = [_]*c.gcc_jit_param{};
-    return Function{ .ptr = c.gcc_jit_context_new_function(args.context.ptr, null, func_kind, args.return_type.ptr, name_buf, 0, null, 0) orelse tempNullException() };
+    return Function{ .ptr = c.gcc_jit_context_new_function(args.context.ptr, null, func_kind, args.returnType.ptr, name_buf, 0, null, 0) orelse tempNullException() };
 }
 
 test "wtf" {

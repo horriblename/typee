@@ -15,7 +15,6 @@ pub fn build(b: *std.Build) !void {
     host_lib.force_pic = true;
     host_lib.disable_stack_probing = true;
 
-    // FIXME: gccjit broken in nix, use system libs
     host_lib.linkSystemLibrary("gccjit");
 
     const unit_tests = b.addTest(.{
