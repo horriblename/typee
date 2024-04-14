@@ -50,6 +50,7 @@
           libgccjit
           glibc
         ];
+        LIBRARY_PATH = "${pkgs.lib.getLib pkgs.stdenv.cc.libc}/lib";
       };
     });
   };
