@@ -2,10 +2,10 @@
   "nodes": {
     "nixpkgs": {
       "locked": {
-        "lastModified": 1703637592,
-        "narHash": "sha256-8MXjxU0RfFfzl57Zy3OfXCITS0qWDNLzlBAdwxGZwfY=",
-        "path": "/nix/store/lf2dq57rqn8d03ybrxxi6l8gg27a4av0-source",
-        "rev": "cfc3698c31b1fb9cdcf10f36c9643460264d0ca8",
+        "lastModified": 1712963716,
+        "narHash": "sha256-WKm9CvgCldeIVvRz87iOMi8CFVB1apJlkUT4GGvA0iM=",
+        "path": "/nix/store/yy5l09gfsagkv8rswblknmsjc2gyr20d-source",
+        "rev": "cfd6b5fc90b15709b780a5a1619695a88505a176",
         "type": "path"
       },
       "original": {
@@ -13,26 +13,9 @@
         "type": "indirect"
       }
     },
-    "opal": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1632042649,
-        "narHash": "sha256-hSvIlFC4Y+l2eAI4n03dMn06xO9j4++JG+gbODujfs8=",
-        "owner": "pyrocat101",
-        "repo": "opal",
-        "rev": "dd450a3a0112507c05f4fb14a38d9becc45417bb",
-        "type": "github"
-      },
-      "original": {
-        "owner": "pyrocat101",
-        "repo": "opal",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
-        "nixpkgs": "nixpkgs",
-        "opal": "opal"
+        "nixpkgs": "nixpkgs"
       }
     }
   },

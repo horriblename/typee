@@ -1,2 +1,0 @@
-NixRunTSGrammar ocaml
-lua require'lspconfig'.ocamllsp.setup {on_attach = default_on_attach}

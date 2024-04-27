@@ -1,11 +1,5 @@
 {
   description = "A very basic flake";
-  inputs = {
-    opal = {
-      url = "github:pyrocat101/opal";
-      flake = false;
-    };
-  };
   outputs = {
     self,
     nixpkgs,
@@ -29,15 +23,14 @@
 
     packages = eachSystem (system: {
       default = self.packages.${system}.hello;
-      inherit (pkgsFor.${system}) hello opal;
+      inherit (pkgsFor.${system}) hello;
     });
     devShells = eachSystem (system: let
       pkgs = pkgsFor.${system};
     in {
       default = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [
-          cargo
-          zig
+          go
         ];
         buildInputs = with pkgs; [];
       };
