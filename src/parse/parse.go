@@ -55,10 +55,10 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 	}
 }
 
-func lparen(in []lex.Token) ([]lex.Token, struct{}, error) { return firstEq[*lex.LParen](in) }
-func rparen(in []lex.Token) ([]lex.Token, struct{}, error) { return firstEq[*lex.RParen](in) }
+func lparen(in []lex.Token) ([]lex.Token, struct{}, error) { return matchOne[*lex.LParen](in) }
+func rparen(in []lex.Token) ([]lex.Token, struct{}, error) { return matchOne[*lex.RParen](in) }
 
-func firstEq[T lex.Token](in []lex.Token) ([]lex.Token, struct{}, error) {
+func matchOne[T lex.Token](in []lex.Token) ([]lex.Token, struct{}, error) {
 	if len(in) == 0 {
 		return nil, struct{}{}, ErrParse
 	}
