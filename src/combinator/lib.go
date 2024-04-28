@@ -62,12 +62,12 @@ func Surround[I, O, O1, O2 any](left Parser[I, O1], main Parser[I, O], right Par
 			return i, out, err
 		}
 
-		rest, out, err = main(i)
+		rest, out, err = main(rest)
 		if err != nil {
 			return i, out, err
 		}
 
-		rest, _, err = right(i)
+		rest, _, err = right(rest)
 		if err != nil {
 			return i, out, err
 		}
