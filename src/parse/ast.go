@@ -8,7 +8,7 @@ type Int struct{ Value int64 }
 type FuncDef struct {
 	Name string
 	Args []string
-	Body Expr
+	Body []Expr
 }
 type Set struct {
 	Name   string

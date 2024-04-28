@@ -28,12 +28,30 @@ func parseString(source string) ([]Expr, error) {
 
 func expr(in []lex.Token) ([]lex.Token, Expr, error) {
 	return combinator.Any(
-		form,
+		formLike,
 		symbol,
 	)(in)
 }
 
-func form(in []lex.Token) ([]lex.Token, Expr, error) {
+func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
+	if len(in) == 0 {
+		return nil, nil, ErrParse
+	}
+	if _, ok := in[0].(*lex.LParen); !ok {
+		return nil, nil, ErrParse
+	}
+
+	switch at(in, 1).(type) {
+	case *lex.Def:
+		return defForm(in)
+
+	case *lex.Set:
+		panic("unimpl")
+
+	case nil:
+		return nil, nil, ErrParse
+	}
+
 	rest, out, err := combinator.Surround(
 		lparen,
 		combinator.Many(expr),
@@ -41,6 +59,48 @@ func form(in []lex.Token) ([]lex.Token, Expr, error) {
 	)(in)
 
 	return rest, &Form{children: out}, err
+}
+
+type internalError struct{ error }
+
+// func (self *internalError) Error() string  { return self.error.Error() }
+
+func defForm(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			if e, ok := e.(*internalError); ok {
+				err = e.error
+			} else {
+				panic(err)
+			}
+		}
+	}()
+
+	in, _, err = lparen(in)
+	check(err)
+
+	in, _, err = kwDef(in)
+	check(err)
+
+	in, name, err := symbolName(in)
+	check(err)
+
+	in, args, err := combinator.Surround(
+		lparen,
+		combinator.Many(symbolName),
+		rparen,
+	)(in)
+
+	in, body, err := combinator.Many(expr)(in)
+	check(err)
+
+	def := FuncDef{
+		Name: name,
+		Args: args,
+		Body: body,
+	}
+
+	return in, &def, nil
 }
 
 func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
@@ -55,8 +115,21 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 	}
 }
 
+func symbolName(in []lex.Token) ([]lex.Token, string, error) {
+	if len(in) == 0 {
+		return nil, "", ErrParse
+	}
+
+	if sym, ok := in[0].(*lex.Symbol); ok {
+		return in[1:], sym.Name, nil
+	} else {
+		return nil, "", ErrParse
+	}
+}
+
 func lparen(in []lex.Token) ([]lex.Token, struct{}, error) { return matchOne[*lex.LParen](in) }
 func rparen(in []lex.Token) ([]lex.Token, struct{}, error) { return matchOne[*lex.RParen](in) }
+func kwDef(in []lex.Token) ([]lex.Token, struct{}, error)  { return matchOne[*lex.Def](in) }
 
 func matchOne[T lex.Token](in []lex.Token) ([]lex.Token, struct{}, error) {
 	if len(in) == 0 {
@@ -68,4 +141,31 @@ func matchOne[T lex.Token](in []lex.Token) ([]lex.Token, struct{}, error) {
 	} else {
 		return nil, struct{}{}, ErrParse
 	}
+}
+
+// returns in[idx] or nil if out of range
+func at(in []lex.Token, idx int) lex.Token {
+	if idx < 0 || idx >= len(in) {
+		return nil
+	}
+
+	return in[idx]
+}
+
+func check(err error) {
+	if err != nil {
+		panic(&internalError{err})
+	}
+}
+
+func handleCheck() error {
+	if err := recover(); err != nil {
+		if err, ok := err.(*internalError); ok {
+			return err.error
+		} else {
+			panic(err)
+		}
+	}
+
+	return nil
 }

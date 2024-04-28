@@ -21,6 +21,21 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			desc:  "def",
+			input: "(def foo (x y) (foo x y))",
+			output: []Expr{&FuncDef{
+				Name: "foo",
+				Args: []string{"x", "y"},
+				Body: []Expr{&Form{
+					children: []Expr{
+						&Symbol{"foo"},
+						&Symbol{"x"},
+						&Symbol{"y"},
+					},
+				}},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
