@@ -11,6 +11,8 @@ import (
 var ErrParse = errors.New("parse error")
 var LexError = errors.New("error in lex")
 
+type internalError struct{ error }
+
 func program(in []lex.Token) ([]lex.Token, []Expr, error) {
 	return combinator.Many(expr)(in)
 }
@@ -46,12 +48,20 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 		return defForm(in)
 
 	case *lex.Set:
-		panic("unimpl")
+		return setForm(in)
+
+	case *lex.Symbol:
+		return form(in)
 
 	case nil:
 		return nil, nil, ErrParse
-	}
 
+	default:
+		return nil, nil, ErrParse
+	}
+}
+
+func form(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
 	rest, out, err := combinator.Surround(
 		lparen,
 		combinator.Many(expr),
@@ -61,20 +71,8 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	return rest, &Form{children: out}, err
 }
 
-type internalError struct{ error }
-
-// func (self *internalError) Error() string  { return self.error.Error() }
-
-func defForm(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			if e, ok := e.(*internalError); ok {
-				err = e.error
-			} else {
-				panic(err)
-			}
-		}
-	}()
+func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
+	defer func() { err = handleCheck() }()
 
 	in, _, err = lparen(in)
 	check(err)
@@ -101,6 +99,29 @@ func defForm(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
 	}
 
 	return in, &def, nil
+}
+
+func setForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
+	defer func() { err = handleCheck() }()
+
+	in, _, err = lparen(in)
+	check(err)
+
+	in, _, err = kwSet(in)
+	check(err)
+
+	in, lval, err := symbolName(in)
+	check(err)
+
+	in, rval, err := expr(in)
+	check(err)
+
+	setExpr := &Set{
+		Name:   lval,
+		rvalue: rval,
+	}
+
+	return in, setExpr, nil
 }
 
 func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
@@ -130,6 +151,7 @@ func symbolName(in []lex.Token) ([]lex.Token, string, error) {
 func lparen(in []lex.Token) ([]lex.Token, struct{}, error) { return matchOne[*lex.LParen](in) }
 func rparen(in []lex.Token) ([]lex.Token, struct{}, error) { return matchOne[*lex.RParen](in) }
 func kwDef(in []lex.Token) ([]lex.Token, struct{}, error)  { return matchOne[*lex.Def](in) }
+func kwSet(in []lex.Token) ([]lex.Token, struct{}, error)  { return matchOne[*lex.Set](in) }
 
 func matchOne[T lex.Token](in []lex.Token) ([]lex.Token, struct{}, error) {
 	if len(in) == 0 {

@@ -36,6 +36,20 @@ func TestParse(t *testing.T) {
 				}},
 			}},
 		},
+		{
+			desc:  "set",
+			input: "(set foo (+ x y))",
+			output: []Expr{&Set{
+				Name: "foo",
+				rvalue: &Form{
+					children: []Expr{
+						&Symbol{"+"},
+						&Symbol{"x"},
+						&Symbol{"y"},
+					},
+				},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
