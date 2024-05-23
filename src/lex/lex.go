@@ -15,7 +15,7 @@ func LexString(source string) ([]Token, error) {
 	input, _, _ = skipWhitespace(input)
 
 	token := combinator.WithSuffix(
-		combinator.Any(lparen, rparen, keywordOrSymbol),
+		combinator.Any(lparen, rparen, strLiteral, keywordOrSymbol),
 		skipWhitespace,
 	)
 	parser := combinator.Many(token)
@@ -34,6 +34,34 @@ var ErrLex = errors.New("could not lex")
 
 func lparen(in []rune) ([]rune, Token, error) { return combinator.MatchOne(in, '(', &LParen{}) }
 func rparen(in []rune) ([]rune, Token, error) { return combinator.MatchOne(in, ')', &RParen{}) }
+func doubleQuote(in []rune) ([]rune, struct{}, error) {
+	return combinator.MatchOne(in, '"', struct{}{})
+}
+
+func strLiteral(in []rune) ([]rune, Token, error) {
+	rest, strContent, err := combinator.Surround(
+		doubleQuote,
+		notDoubleQuote,
+		doubleQuote,
+	)(in)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return rest, &StrLiteral{Content: strContent}, err
+}
+
+func notDoubleQuote(in []rune) ([]rune, string, error) {
+	// FIXME: probably some unicode bug here
+	for i, c := range in {
+		if c == '"' {
+			return in[i:], string(in[:i]), nil
+		}
+	}
+
+	return nil, "", ErrLex
+}
 
 func keywordOrSymbol(in []rune) ([]rune, Token, error) {
 	rest, symName, err := symbolStr(in)
