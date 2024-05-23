@@ -32,7 +32,20 @@ func expr(in []lex.Token) ([]lex.Token, Expr, error) {
 	return combinator.Any(
 		formLike,
 		symbol,
+		strLiteral,
 	)(in)
+}
+
+func strLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
+	if len(in) == 0 {
+		return nil, nil, ErrParse
+	}
+
+	if lit, ok := in[0].(*lex.StrLiteral); ok {
+		return in[1:], &StrLiteral{Content: lit.Content}, nil
+	}
+
+	return nil, nil, ErrParse
 }
 
 func formLike(in []lex.Token) ([]lex.Token, Expr, error) {

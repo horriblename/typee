@@ -14,9 +14,13 @@ type Set struct {
 	Name   string
 	rvalue Expr
 }
+type StrLiteral struct {
+	Content string
+}
 
-func (*Form) ast()    {}
-func (*Symbol) ast()  {}
-func (*Int) ast()     {}
-func (*FuncDef) ast() {}
-func (*Set) ast()     {}
+func (*Form) ast()       {}
+func (*Symbol) ast()     {}
+func (*Int) ast()        {}
+func (*FuncDef) ast()    {}
+func (*Set) ast()        {}
+func (*StrLiteral) ast() {}

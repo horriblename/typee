@@ -50,6 +50,11 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			desc:   "str literal",
+			input:  `"strlit"`,
+			output: []Expr{&StrLiteral{Content: "strlit"}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
