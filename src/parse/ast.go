@@ -14,9 +14,8 @@ type Set struct {
 	Name   string
 	rvalue Expr
 }
-type StrLiteral struct {
-	Content string
-}
+type StrLiteral struct{ Content string }
+type IntLiteral struct{ Number int64 }
 
 func (*Form) ast()       {}
 func (*Symbol) ast()     {}
@@ -24,3 +23,4 @@ func (*Int) ast()        {}
 func (*FuncDef) ast()    {}
 func (*Set) ast()        {}
 func (*StrLiteral) ast() {}
+func (*IntLiteral) ast() {}

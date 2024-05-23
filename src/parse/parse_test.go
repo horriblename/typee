@@ -55,6 +55,11 @@ func TestParse(t *testing.T) {
 			input:  `"strlit"`,
 			output: []Expr{&StrLiteral{Content: "strlit"}},
 		},
+		{
+			desc:   "int literal",
+			input:  "123",
+			output: []Expr{&IntLiteral{Number: 123}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

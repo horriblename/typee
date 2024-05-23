@@ -33,6 +33,7 @@ func expr(in []lex.Token) ([]lex.Token, Expr, error) {
 		formLike,
 		symbol,
 		strLiteral,
+		intLiteral,
 	)(in)
 }
 
@@ -43,6 +44,18 @@ func strLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
 
 	if lit, ok := in[0].(*lex.StrLiteral); ok {
 		return in[1:], &StrLiteral{Content: lit.Content}, nil
+	}
+
+	return nil, nil, ErrParse
+}
+
+func intLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
+	if len(in) == 0 {
+		return nil, nil, ErrParse
+	}
+
+	if lit, ok := in[0].(*lex.IntLiteral); ok {
+		return in[1:], &IntLiteral{Number: lit.Number}, nil
 	}
 
 	return nil, nil, ErrParse
