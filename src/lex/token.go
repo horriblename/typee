@@ -36,7 +36,7 @@ func (*LParen) String() string          { return "LParen" }
 func (*RParen) String() string          { return "RParen" }
 func (*Colon) String() string           { return "Colon" }
 func (self *Symbol) String() string     { return fmt.Sprintf("Symbol{\"%s\"}", self.Name) }
-func (*IntLiteral) String() string      { return "IntLiteral" }
+func (self *IntLiteral) String() string { return fmt.Sprintf("IntLiteral{%d}", self.Number) }
 func (self *StrLiteral) String() string { return fmt.Sprintf("StrLiteral{\"%s\"}", self.Content) }
 func (*Def) String() string             { return "Def" }
 func (*Set) String() string             { return "Set" }

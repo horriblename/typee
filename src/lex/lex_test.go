@@ -19,8 +19,8 @@ func TestLex(t *testing.T) {
 	}{
 		{
 			desc:   "All",
-			input:  `(foo)def set "str"`,
-			output: []Token{&lParen, &Symbol{Name: "foo"}, &rParen, &tokDef, &tokSet, &StrLiteral{Content: "str"}},
+			input:  `(foo)def set "str" 123`,
+			output: []Token{&lParen, &Symbol{Name: "foo"}, &rParen, &tokDef, &tokSet, &StrLiteral{Content: "str"}, &IntLiteral{Number: 123}},
 			err:    nil,
 		},
 		{

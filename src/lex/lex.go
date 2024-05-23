@@ -2,6 +2,7 @@ package lex
 
 import (
 	"errors"
+	"strconv"
 	"unicode"
 
 	"github.com/horriblename/typee/src/combinator"
@@ -15,7 +16,7 @@ func LexString(source string) ([]Token, error) {
 	input, _, _ = skipWhitespace(input)
 
 	token := combinator.WithSuffix(
-		combinator.Any(lparen, rparen, strLiteral, keywordOrSymbol),
+		combinator.Any(lparen, rparen, strLiteral, keywordOrSymbol, intLiteral),
 		skipWhitespace,
 	)
 	parser := combinator.Many(token)
@@ -61,6 +62,27 @@ func notDoubleQuote(in []rune) ([]rune, string, error) {
 	}
 
 	return nil, "", ErrLex
+}
+
+func intLiteral(in []rune) ([]rune, Token, error) {
+	i := 0
+	for i = 0; i < len(in); i++ {
+		c := in[i]
+		if c < '0' || c > '9' {
+			break
+		}
+	}
+
+	if i == 0 {
+		return nil, nil, ErrLex
+	}
+
+	num, err := strconv.Atoi(string(in[:i]))
+	if err != nil {
+		panic("failed assertion: " + err.Error())
+	}
+
+	return in[i:], &IntLiteral{Number: int64(num)}, nil
 }
 
 func keywordOrSymbol(in []rune) ([]rune, Token, error) {
