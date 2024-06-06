@@ -98,7 +98,7 @@ func form(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
 }
 
 func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
-	defer func() { err = handleCheck() }()
+	defer func() { err = handleCheck(recover()) }()
 
 	in, _, err = lparen(in)
 	check(err)
@@ -128,7 +128,7 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 }
 
 func setForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
-	defer func() { err = handleCheck() }()
+	defer func() { err = handleCheck(recover()) }()
 
 	in, _, err = lparen(in)
 	check(err)
@@ -206,8 +206,8 @@ func check(err error) {
 	}
 }
 
-func handleCheck() error {
-	if err := recover(); err != nil {
+func handleCheck(err any) error {
+	if err != nil {
 		if err, ok := err.(*internalError); ok {
 			return err.error
 		} else {
