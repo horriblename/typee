@@ -39,34 +39,34 @@ func expr(in []lex.Token) ([]lex.Token, Expr, error) {
 
 func strLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
 	if len(in) == 0 {
-		return nil, nil, ErrParse
+		return nil, nil, errAt(in)
 	}
 
 	if lit, ok := in[0].(*lex.StrLiteral); ok {
 		return in[1:], &StrLiteral{Content: lit.Content}, nil
 	}
 
-	return nil, nil, ErrParse
+	return nil, nil, errAt(in)
 }
 
 func intLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
 	if len(in) == 0 {
-		return nil, nil, ErrParse
+		return nil, nil, errAt(in)
 	}
 
 	if lit, ok := in[0].(*lex.IntLiteral); ok {
 		return in[1:], &IntLiteral{Number: lit.Number}, nil
 	}
 
-	return nil, nil, ErrParse
+	return nil, nil, errAt(in)
 }
 
 func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	if len(in) == 0 {
-		return nil, nil, ErrParse
+		return nil, nil, errAt(in)
 	}
 	if _, ok := in[0].(*lex.LParen); !ok {
-		return nil, nil, ErrParse
+		return nil, nil, errAt(in)
 	}
 
 	switch at(in, 1).(type) {
@@ -80,10 +80,10 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 		return form(in)
 
 	case nil:
-		return nil, nil, ErrParse
+		return nil, nil, errAt(in)
 
 	default:
-		return nil, nil, ErrParse
+		return nil, nil, errAt(in)
 	}
 }
 
@@ -152,25 +152,25 @@ func setForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 
 func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 	if len(in) == 0 {
-		return nil, nil, ErrParse
+		return nil, nil, errAt(in)
 	}
 
 	if sym, ok := in[0].(*lex.Symbol); ok {
 		return in[1:], &Symbol{Name: sym.Name}, nil
 	} else {
-		return nil, nil, ErrParse
+		return nil, nil, errAt(in)
 	}
 }
 
 func symbolName(in []lex.Token) ([]lex.Token, string, error) {
 	if len(in) == 0 {
-		return nil, "", ErrParse
+		return nil, "", errAt(in)
 	}
 
 	if sym, ok := in[0].(*lex.Symbol); ok {
 		return in[1:], sym.Name, nil
 	} else {
-		return nil, "", ErrParse
+		return nil, "", errAt(in)
 	}
 }
 
@@ -217,3 +217,9 @@ func handleCheck(err any) error {
 
 	return nil
 }
+// Error Handling
+
+func errAt(in []lex.Token) error {
+	return wrapIfErr(in, ErrParse)
+}
+
