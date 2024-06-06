@@ -16,7 +16,7 @@ func LexString(source string) ([]Token, error) {
 	input, _, _ = skipWhitespace(input)
 
 	token := combinator.WithSuffix(
-		combinator.Any(lparen, rparen, strLiteral, keywordOrSymbol, intLiteral),
+		combinator.Any(lparen, rparen, lbracket, rbracket, strLiteral, keywordOrSymbol, intLiteral),
 		skipWhitespace,
 	)
 	parser := combinator.Many(token)
@@ -33,8 +33,10 @@ type ParseResult[I any, O any] struct {
 
 var ErrLex = errors.New("could not lex")
 
-func lparen(in []rune) ([]rune, Token, error) { return combinator.MatchOne(in, '(', &LParen{}) }
-func rparen(in []rune) ([]rune, Token, error) { return combinator.MatchOne(in, ')', &RParen{}) }
+func lparen(in []rune) ([]rune, Token, error)   { return combinator.MatchOne(in, '(', &LParen{}) }
+func rparen(in []rune) ([]rune, Token, error)   { return combinator.MatchOne(in, ')', &RParen{}) }
+func lbracket(in []rune) ([]rune, Token, error) { return combinator.MatchOne(in, '[', &LBracket{}) }
+func rbracket(in []rune) ([]rune, Token, error) { return combinator.MatchOne(in, ']', &RBracket{}) }
 func doubleQuote(in []rune) ([]rune, struct{}, error) {
 	return combinator.MatchOne(in, '"', struct{}{})
 }
@@ -110,7 +112,7 @@ func symbolStr(in []rune) ([]rune, string, error) {
 	var char rune
 	for i, char = range in {
 		switch char {
-		case '(', ')', '{', '}', ':':
+		case '(', ')', '[', ']', '{', '}', ':':
 			if i == 0 {
 				return nil, "", ErrLex
 			}

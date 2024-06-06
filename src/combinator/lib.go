@@ -75,3 +75,21 @@ func Surround[I, O, O1, O2 any](left Parser[I, O1], main Parser[I, O], right Par
 		return rest, out, err
 	}
 }
+
+type Pair[T, U any] struct {
+	One T
+	Two U
+}
+
+func Then[I, O1, O2 any](first Parser[I, O1], second Parser[I, O2]) Parser[I, Pair[O1, O2]] {
+	return func(i I) (I, Pair[O1, O2], error) {
+		i, o1, err := first(i)
+		if err != nil {
+			return i, Pair[O1, O2]{}, ErrNoMatch
+		}
+
+		i, o2, err := second(i)
+		return i, Pair[O1, O2]{o1, o2}, err
+	}
+}
+

@@ -8,6 +8,8 @@ type Token interface {
 
 type LParen struct{}
 type RParen struct{}
+type LBracket struct{}
+type RBracket struct{}
 type Colon struct{}
 type Symbol struct {
 	Name string
@@ -25,6 +27,8 @@ type Set struct{}
 
 func (*LParen) token()     {}
 func (*RParen) token()     {}
+func (*LBracket) token()   {}
+func (*RBracket) token()   {}
 func (*Colon) token()      {}
 func (*Symbol) token()     {}
 func (*IntLiteral) token() {}
@@ -34,6 +38,8 @@ func (*Set) token()        {}
 
 func (*LParen) String() string          { return "LParen" }
 func (*RParen) String() string          { return "RParen" }
+func (*LBracket) String() string        { return "LParen" }
+func (*RBracket) String() string        { return "RParen" }
 func (*Colon) String() string           { return "Colon" }
 func (self *Symbol) String() string     { return fmt.Sprintf("Symbol{\"%s\"}", self.Name) }
 func (self *IntLiteral) String() string { return fmt.Sprintf("IntLiteral{%d}", self.Number) }
