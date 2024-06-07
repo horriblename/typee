@@ -7,8 +7,12 @@ type Symbol struct{ Name string }
 type Int struct{ Value int64 }
 type FuncDef struct {
 	Name string
-	Args []string
+	Args []FuncArgDef
 	Body []Expr
+}
+type FuncArgDef struct {
+	Name string
+	Type string
 }
 type Set struct {
 	Name   string

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/combinator"
 	"github.com/horriblename/typee/src/lex"
 )
@@ -109,11 +110,8 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	in, name, err := symbolName(in)
 	check(err)
 
-	in, args, err := combinator.Surround(
-		lparen,
-		combinator.Many(symbolName),
-		rparen,
-	)(in)
+	in, args, err := funcArgs(in)
+	check(err)
 
 	in, body, err := combinator.Many(expr)(in)
 	check(err)
@@ -125,6 +123,23 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	}
 
 	return in, &def, nil
+}
+
+func funcArgs(in []lex.Token) (_ []lex.Token, _ []FuncArgDef, err error) {
+	return combinator.Surround(
+		lbracket,
+		combinator.Many0(funcArg),
+		rbracket,
+	)(in)
+}
+
+func funcArg(in []lex.Token) (_ []lex.Token, _ FuncArgDef, err error) {
+	defer func() { err = handleCheck(recover()) }()
+
+	rest, pair, err := combinator.Then(symbolName, symbolName)(in)
+	check(wrapIfErr(in, err))
+
+	return rest, FuncArgDef{pair.One, pair.Two}, nil
 }
 
 func setForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
@@ -179,6 +194,12 @@ func lparen(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func rparen(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.RParen])(in)
+}
+func lbracket(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.LBracket])(in)
+}
+func rbracket(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.RBracket])(in)
 }
 func kwDef(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Def])(in)
