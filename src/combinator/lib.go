@@ -2,6 +2,23 @@ package combinator
 
 type Parser[I any, O any] func(I) (I, O, error)
 
+func Many0[I any, O any](parser Parser[I, O]) Parser[I, []O] {
+	return func(in I) (I, []O, error) {
+		outputs := make([]O, 0)
+		for {
+			rest, o, err := parser(in)
+			if err != nil {
+				break
+			}
+
+			outputs = append(outputs, o)
+			in = rest
+		}
+
+		return in, outputs, nil
+	}
+}
+
 func Many[I any, O any](parser Parser[I, O]) Parser[I, []O] {
 	return func(in I) (I, []O, error) {
 		outputs := make([]O, 0)
