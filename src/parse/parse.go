@@ -174,20 +174,28 @@ func symbolName(in []lex.Token) ([]lex.Token, string, error) {
 	}
 }
 
-func lparen(in []lex.Token) ([]lex.Token, struct{}, error) { return matchOne[*lex.LParen](in) }
-func rparen(in []lex.Token) ([]lex.Token, struct{}, error) { return matchOne[*lex.RParen](in) }
-func kwDef(in []lex.Token) ([]lex.Token, struct{}, error)  { return matchOne[*lex.Def](in) }
-func kwSet(in []lex.Token) ([]lex.Token, struct{}, error)  { return matchOne[*lex.Set](in) }
+func lparen(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.LParen])(in)
+}
+func rparen(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.RParen])(in)
+}
+func kwDef(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Def])(in)
+}
+func kwSet(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Set])(in)
+}
 
 func matchOne[T lex.Token](in []lex.Token) ([]lex.Token, struct{}, error) {
 	if len(in) == 0 {
-		return nil, struct{}{}, ErrParse
+		return nil, struct{}{}, errAt(in)
 	}
 
 	if _, ok := in[0].(T); ok {
 		return in[1:], struct{}{}, nil
 	} else {
-		return nil, struct{}{}, ErrParse
+		return nil, struct{}{}, errAt(in)
 	}
 }
 
@@ -217,9 +225,30 @@ func handleCheck(err any) error {
 
 	return nil
 }
+
 // Error Handling
 
 func errAt(in []lex.Token) error {
 	return wrapIfErr(in, ErrParse)
 }
 
+func wrapIfErr(in []lex.Token, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if len(in) == 0 {
+		return fmt.Errorf("at the end: %w", err)
+	} else if len(in) <= 10 {
+		return fmt.Errorf("at '%s': %w", in, err)
+	}
+
+	return fmt.Errorf("at '%s...': %w", in[:10], err)
+}
+
+func wrappedResult[I ~[]lex.Token, O any](parser combinator.Parser[I, O]) combinator.Parser[I, O] {
+	return func(in I) (I, O, error) {
+		rest, out, err := parser(in)
+		return rest, out, wrapIfErr(in, err)
+	}
+}
