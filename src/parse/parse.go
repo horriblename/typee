@@ -109,6 +109,7 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	in, name, err := symbolName(in)
 	check(err)
 
+	// optional (T1 T2 ...)
 	in, sig, err := combinator.Maybe(combinator.Surround(
 		lparen,
 		combinator.Many(symbolName),
@@ -116,10 +117,14 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	))(in)
 	check(err)
 
+	// [x y z ...]
 	in, args, err := combinator.Surround(lbracket, combinator.Many0(symbolName), rbracket)(in)
 	check(err)
 
 	in, body, err := combinator.Many(expr)(in)
+	check(err)
+
+	in, _, err = rparen(in)
 	check(err)
 
 	if sig, exist := sig.Unwrap(); exist && len(sig) != len(args)+1 {
