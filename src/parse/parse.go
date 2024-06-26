@@ -109,7 +109,11 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	in, name, err := symbolName(in)
 	check(err)
 
-	in, sig, err := combinator.Maybe(defSignature)(in)
+	in, sig, err := combinator.Maybe(combinator.Surround(
+		lparen,
+		combinator.Many(symbolName),
+		rparen,
+	))(in)
 	check(err)
 
 	in, args, err := combinator.Surround(lbracket, combinator.Many0(symbolName), rbracket)(in)
@@ -130,21 +134,6 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	}
 
 	return in, &def, nil
-}
-
-func defSignature(in []lex.Token) (_ []lex.Token, _ []string, err error) {
-	defer func() { err = handleCheck(recover()) }()
-
-	in, _, err = lparen(in)
-	check(err)
-
-	in, types, err := combinator.Many(symbolName)(in)
-	check(err)
-
-	in, _, err = rparen(in)
-	check(err)
-
-	return in, types, nil
 }
 
 func setForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
