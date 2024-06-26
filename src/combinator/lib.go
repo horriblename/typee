@@ -1,5 +1,7 @@
 package combinator
 
+import "github.com/horriblename/typee/src/opt"
+
 type Parser[I any, O any] func(I) (I, O, error)
 
 func Many0[I any, O any](parser Parser[I, O]) Parser[I, []O] {
@@ -110,3 +112,12 @@ func Then[I, O1, O2 any](first Parser[I, O1], second Parser[I, O2]) Parser[I, Pa
 	}
 }
 
+func Maybe[I, O any](parser Parser[I, O]) Parser[I, opt.Option[O]] {
+	return func(i I) (I, opt.Option[O], error) {
+		rest, o, err := parser(i)
+		if err != nil {
+			return i, opt.None[O](), nil
+		}
+		return rest, opt.Some(o), nil
+	}
+}

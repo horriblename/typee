@@ -1,18 +1,19 @@
 package parse
 
+import "github.com/horriblename/typee/src/opt"
+
 type Expr interface{ ast() }
+
+// Nodes
 
 type Form struct{ children []Expr }
 type Symbol struct{ Name string }
 type Int struct{ Value int64 }
 type FuncDef struct {
-	Name string
-	Args []FuncArgDef
-	Body []Expr
-}
-type FuncArgDef struct {
-	Name string
-	Type string
+	Name      string
+	Signature opt.Option[[]string]
+	Args      []string
+	Body      []Expr
 }
 type Set struct {
 	Name   string
@@ -20,6 +21,9 @@ type Set struct {
 }
 type StrLiteral struct{ Content string }
 type IntLiteral struct{ Number int64 }
+
+type FormAttr struct {
+}
 
 func (*Form) ast()       {}
 func (*Symbol) ast()     {}

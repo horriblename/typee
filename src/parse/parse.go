@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/combinator"
 	"github.com/horriblename/typee/src/lex"
 )
@@ -110,36 +109,42 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	in, name, err := symbolName(in)
 	check(err)
 
-	in, args, err := funcArgs(in)
+	in, sig, err := combinator.Maybe(defSignature)(in)
+	check(err)
+
+	in, args, err := combinator.Surround(lbracket, combinator.Many0(symbolName), rbracket)(in)
 	check(err)
 
 	in, body, err := combinator.Many(expr)(in)
 	check(err)
 
+	if sig, exist := sig.Unwrap(); exist && len(sig) != len(args)+1 {
+		return nil, nil, errors.New("function signature does not match arguments")
+	}
+
 	def := FuncDef{
-		Name: name,
-		Args: args,
-		Body: body,
+		Name:      name,
+		Signature: sig,
+		Args:      args,
+		Body:      body,
 	}
 
 	return in, &def, nil
 }
 
-func funcArgs(in []lex.Token) (_ []lex.Token, _ []FuncArgDef, err error) {
-	return combinator.Surround(
-		lbracket,
-		combinator.Many0(funcArg),
-		rbracket,
-	)(in)
-}
-
-func funcArg(in []lex.Token) (_ []lex.Token, _ FuncArgDef, err error) {
+func defSignature(in []lex.Token) (_ []lex.Token, _ []string, err error) {
 	defer func() { err = handleCheck(recover()) }()
 
-	rest, pair, err := combinator.Then(symbolName, symbolName)(in)
-	check(wrapIfErr(in, err))
+	in, _, err = lparen(in)
+	check(err)
 
-	return rest, FuncArgDef{pair.One, pair.Two}, nil
+	in, types, err := combinator.Many(symbolName)(in)
+	check(err)
+
+	in, _, err = rparen(in)
+	check(err)
+
+	return in, types, nil
 }
 
 func setForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {

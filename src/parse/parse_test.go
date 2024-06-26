@@ -3,6 +3,8 @@ package parse
 import (
 	"reflect"
 	"testing"
+
+	"github.com/horriblename/typee/src/opt"
 )
 
 func TestParse(t *testing.T) {
@@ -23,10 +25,27 @@ func TestParse(t *testing.T) {
 		},
 		{
 			desc:  "def",
-			input: "(def foo [x Str y Int] (foo x y))",
+			input: "(def foo (Str Int Str) [x y] (foo x y))",
 			output: []Expr{&FuncDef{
-				Name: "foo",
-				Args: []FuncArgDef{{"x", "Str"}, {"y", "Int"}},
+				Name:      "foo",
+				Signature: opt.Some([]string{"Str", "Int", "Str"}),
+				Args:      []string{"x", "y"},
+				Body: []Expr{&Form{
+					children: []Expr{
+						&Symbol{"foo"},
+						&Symbol{"x"},
+						&Symbol{"y"},
+					},
+				}},
+			}},
+		},
+		{
+			desc:  "def no function signature",
+			input: "(def foo [x y] (foo x y))",
+			output: []Expr{&FuncDef{
+				Name:      "foo",
+				Signature: opt.None[[]string](),
+				Args:      []string{"x", "y"},
 				Body: []Expr{&Form{
 					children: []Expr{
 						&Symbol{"foo"},
