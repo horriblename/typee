@@ -79,6 +79,17 @@ func TestParse(t *testing.T) {
 			input:  "123",
 			output: []Expr{&IntLiteral{Number: 123}},
 		},
+		{
+			desc:  "bool literal",
+			input: "(foo true false)",
+			output: []Expr{&Form{
+				children: []Expr{
+					&Symbol{Name: "foo"},
+					&BoolLiteral{true},
+					&BoolLiteral{false},
+				},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -89,7 +100,7 @@ func TestParse(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(got, tC.output) {
-				t.Fatalf("expected output:\n  %#v\n  %#v", tC.output, got)
+				t.Fatalf("expected output:\n  %+v\n  %+v", tC.output, got)
 			}
 		})
 	}

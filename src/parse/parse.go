@@ -34,6 +34,8 @@ func expr(in []lex.Token) ([]lex.Token, Expr, error) {
 		symbol,
 		strLiteral,
 		intLiteral,
+		kwTrue,
+		kwFalse,
 	)(in)
 }
 
@@ -205,6 +207,23 @@ func kwDef(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func kwSet(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Set])(in)
+}
+func kwTrue(in []lex.Token) ([]lex.Token, Expr, error) {
+	rest, _, err := wrappedResult(matchOne[*lex.TrueLiteral])(in)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return rest, &BoolLiteral{true}, nil
+}
+func kwFalse(in []lex.Token) ([]lex.Token, Expr, error) {
+	rest, _, err := wrappedResult(matchOne[*lex.FalseLiteral])(in)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return rest, &BoolLiteral{false}, nil
+
 }
 
 func matchOne[T lex.Token](in []lex.Token) ([]lex.Token, struct{}, error) {

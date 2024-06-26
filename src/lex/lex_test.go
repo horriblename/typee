@@ -27,8 +27,8 @@ func TestLex(t *testing.T) {
 		},
 		{
 			desc:   "keywords",
-			input:  "def set defoo bar",
-			output: []Token{&tokDef, &tokSet, &Symbol{Name: "defoo"}, &Symbol{Name: "bar"}},
+			input:  "def set defoo bar true false",
+			output: []Token{&tokDef, &tokSet, &Symbol{Name: "defoo"}, &Symbol{Name: "bar"}, &TrueLiteral{}, &FalseLiteral{}},
 		},
 		{
 			desc:   "simple form",

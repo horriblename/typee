@@ -98,6 +98,10 @@ func keywordOrSymbol(in []rune) ([]rune, Token, error) {
 		return rest, &Def{}, nil
 	case "set":
 		return rest, &Set{}, nil
+	case "true":
+		return rest, &TrueLiteral{}, nil
+	case "false":
+		return rest, &FalseLiteral{}, nil
 	}
 
 	return rest, &Symbol{Name: symName}, err
