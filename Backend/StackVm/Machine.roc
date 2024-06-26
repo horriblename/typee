@@ -1,14 +1,12 @@
-interface Backend.StackVm.Machine
-    exposes [Machine, new, run, Instr]
-    imports [
-        # NOTE: compiler bug made it so that I can't use functions by Module.func
-        pf.Stdout,
-        pf.Task.{ Task, await },
-        Backend.StackVm.OpCode.{ OpCode, fromNum, toNum },
-        Backend.StackVm.Frame.{ Frame, empty, getVariable, setVariable, returnAddr },
-        Backend.StackVm.NonEmptyStack.{ NonEmptyStack, single, updateLast, last, pushNES, popNES },
-        Debug,
-    ]
+module [Machine, new, run, Instr]
+
+# NOTE: compiler bug made it so that I can't use functions by Module.func
+import pf.Stdout
+import pf.Task exposing [Task, await]
+import Backend.StackVm.OpCode exposing [OpCode, fromNum, toNum]
+import Backend.StackVm.Frame exposing [Frame, empty, getVariable, setVariable, returnAddr]
+import Backend.StackVm.NonEmptyStack exposing [NonEmptyStack, single, updateLast, last, pushNES, popNES]
+import Debug
 
 Instr : U64
 

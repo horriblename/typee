@@ -1,12 +1,10 @@
-interface Backend.StackVm.CodeGen
-    exposes [genAssembly, genAssemblyFromStr, genAssemblyFromAscii, asmInstr, Assembly, AsmInstr, dump]
-    imports [
-        parc.Parser,
-        Parse.{ Expr, parseStr, parse },
-        Debug,
-        Backend.StackVm.Machine.{ Instr },
-        Backend.StackVm.OpCode.{ OpCode },
-    ]
+module [genAssembly, genAssemblyFromStr, genAssemblyFromAscii, asmInstr, Assembly, AsmInstr, dump]
+
+import parc.Parser
+import Parse exposing [Expr, parseStr, parse]
+import Debug
+import Backend.StackVm.Machine exposing [Instr]
+import Backend.StackVm.OpCode exposing [OpCode]
 
 AssemblyBuilder := {
     globalFunctions : Dict Str Assembly,

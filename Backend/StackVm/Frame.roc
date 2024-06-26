@@ -1,6 +1,4 @@
-interface Backend.StackVm.Frame
-    exposes [Frame, empty, getVariable, setVariable, returnAddr]
-    imports []
+module [Frame, empty, getVariable, setVariable, returnAddr]
 
 Frame := {
     variables : Dict U64 U64,

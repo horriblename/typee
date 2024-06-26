@@ -1,7 +1,6 @@
-interface Backend.StackVm.NonEmptyStack
+module
     # FIXME: compiler bug, can't qualify by Module.func, using unique names for now
-    exposes [NonEmptyStack, single, pushNES, popNES, last, updateLast]
-    imports []
+    [NonEmptyStack, single, pushNES, popNES, last, updateLast]
 
 NonEmptyStack t := {
     first : t,

@@ -1,10 +1,9 @@
-interface Parse exposes [Expr, Program, parseTokens, parseStr, parse]
-    imports [
-        parc.Parser.{ Parser },
-        parc.Combinator.{ matches, many, many0, prefixed, suffixed, surrounded, andThen },
-        Lex.{ Token },
-        Debug,
-    ]
+module [Expr, Program, parseTokens, parseStr, parse]
+
+import parc.Parser exposing [Parser]
+import parc.Combinator exposing [matches, many, many0, prefixed, suffixed, surrounded, andThen]
+import Lex exposing [Token]
+import Debug
 
 ## A node in the Abstract Syntax Tree
 Expr : [

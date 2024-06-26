@@ -1,12 +1,10 @@
-interface Lex exposes [lex, lexStr]
-    imports [
-        parc.Parser,
-        parc.Parser.{ Parser },
-        parc.Ascii.{ char, StrBuf, isDigit, int, charIs, isWhitespace, until, until0 },
-        parc.Combinator.{ prefixed, suffixed, many0, alt, andThen, surrounded, opt },
-        Bool.{ true, false },
-        Debug,
-    ]
+module [lex, lexStr, Token]
+
+import parc.Parser
+import parc.Parser exposing [Parser]
+import parc.Ascii exposing [char, StrBuf, isDigit, int, charIs, isWhitespace, until, until0]
+import parc.Combinator exposing [prefixed, suffixed, many0, alt, andThen, surrounded, opt]
+import Debug
 
 Token : [
     LParen,

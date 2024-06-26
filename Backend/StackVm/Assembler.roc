@@ -1,11 +1,9 @@
-interface Backend.StackVm.Assembler
-    exposes [assemble, compileFromSource, compileFromAsciiSource]
-    imports [
-        Debug,
-        Backend.StackVm.CodeGen.{ Assembly, asmInstr, AsmInstr, genAssemblyFromStr, genAssemblyFromAscii },
-        Backend.StackVm.Machine.{ Instr },
-        Backend.StackVm.OpCode.{ toNum },
-    ]
+module [assemble, compileFromSource, compileFromAsciiSource]
+
+import Debug
+import Backend.StackVm.CodeGen exposing [Assembly, asmInstr, AsmInstr, genAssemblyFromStr, genAssemblyFromAscii]
+import Backend.StackVm.Machine exposing [Instr]
+import Backend.StackVm.OpCode exposing [toNum]
 
 Assembler : {
     # TODO: Resolved/Missing is not used, remove?

@@ -1,5 +1,3 @@
-interface Type
-    exposes [Type]
-    imports []
+module [Type]
 
 Type := { ptr : Nat }

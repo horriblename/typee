@@ -1,13 +1,11 @@
-interface Cli
-    exposes [main]
-    imports [
-        pf.Arg,
-        pf.Task.{ Task, await, attempt },
-        pf.File,
-        pf.Path,
-        Backend.StackVm.Assembler.{ compileFromAsciiSource },
-        Backend.StackVm.Machine.{ new, run },
-    ]
+module [main]
+
+import pf.Arg
+import pf.Task exposing [Task, await, attempt]
+import pf.File
+import pf.Path
+import Backend.StackVm.Assembler exposing [compileFromAsciiSource]
+import Backend.StackVm.Machine exposing [new, run]
 
 # Arg Parser seems to be broken, I'll hold off complex args for now
 
@@ -30,24 +28,21 @@ tryOr = \result, onErr, onOk ->
 
 main : Task {} *
 main =
-    # config <- parseArgs
-    #     |> handleErr \err -> Task.ok {}
     configRes <- parseArgs |> Task.attempt
-    config <- tryOr configRes \err -> crash "Error parsing args: \(Inspect.toStr err)"
+    config <- tryOr configRes \err -> crash "Error parsing args: $(Inspect.toStr err)"
 
     sourceRes <- File.readBytes (Path.fromStr config.infile) |> attempt
     source <- sourceRes
-        |> tryOr \err -> crash "Error reading file \(config.infile): \(Inspect.toStr err)"
+        |> tryOr \err -> crash "Error reading file $(config.infile): $(Inspect.toStr err)"
 
-    program <-
+    program =
         compileFromAsciiSource source
-        |> Task.fromResult
-        |> Task.onErr \err -> crash "Compile error: \(Inspect.toStr err)"
-        |> await
+            |> Task.fromResult
+            |> Task.onErr! \err -> crash "Compile error: $(Inspect.toStr err)"
 
     _ <- new program
         |> run
-        |> Task.onErr \err -> crash "Runtime error: \(Inspect.toStr err)"
+        |> Task.onErr \err -> crash "Runtime error: $(Inspect.toStr err)"
         |> await
 
     Task.ok {}

@@ -1,6 +1,4 @@
-interface Backend.StackVm.OpCode
-    exposes [OpCode, fromNum, toNum]
-    imports []
+module [OpCode, fromNum, toNum]
 
 OpCode : [
     Halt,

@@ -1,5 +1,6 @@
-interface Debug exposes [expectEql, expectFail, what, okAnd]
-    imports [pf.Task.{ Task, await }]
+module [expectEql, expectFail, what, okAnd]
+
+import pf.Task exposing [Task, await]
 
 expectEql = \left, right ->
     res = left == right
