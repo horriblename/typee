@@ -13,6 +13,14 @@ var LexError = errors.New("error in lex")
 
 type internalError struct{ error }
 
+var gIdCounter = 1
+
+func newId() int {
+	id := gIdCounter
+	gIdCounter++
+	return id
+}
+
 func program(in []lex.Token) ([]lex.Token, []Expr, error) {
 	return combinator.Many(expr)(in)
 }
@@ -45,7 +53,7 @@ func strLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
 	}
 
 	if lit, ok := in[0].(*lex.StrLiteral); ok {
-		return in[1:], &StrLiteral{Content: lit.Content}, nil
+		return in[1:], &StrLiteral{ID: newId(), Content: lit.Content}, nil
 	}
 
 	return nil, nil, errAt(in)
@@ -57,7 +65,7 @@ func intLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
 	}
 
 	if lit, ok := in[0].(*lex.IntLiteral); ok {
-		return in[1:], &IntLiteral{Number: lit.Number}, nil
+		return in[1:], &IntLiteral{ID: newId(), Number: lit.Number}, nil
 	}
 
 	return nil, nil, errAt(in)
@@ -96,7 +104,7 @@ func form(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
 		rparen,
 	)(in)
 
-	return rest, &Form{children: out}, err
+	return rest, &Form{ID: newId(), children: out}, err
 }
 
 func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
@@ -134,6 +142,7 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	}
 
 	def := FuncDef{
+		ID:        newId(),
 		Name:      name,
 		Signature: sig,
 		Args:      args,
@@ -159,6 +168,7 @@ func setForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	check(err)
 
 	setExpr := &Set{
+		ID:     newId(),
 		Name:   lval,
 		rvalue: rval,
 	}
@@ -172,7 +182,7 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 	}
 
 	if sym, ok := in[0].(*lex.Symbol); ok {
-		return in[1:], &Symbol{Name: sym.Name}, nil
+		return in[1:], &Symbol{ID: newId(), Name: sym.Name}, nil
 	} else {
 		return nil, nil, errAt(in)
 	}
@@ -214,7 +224,7 @@ func kwTrue(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, err
 	}
 
-	return rest, &BoolLiteral{true}, nil
+	return rest, &BoolLiteral{ID: newId(), Value: true}, nil
 }
 func kwFalse(in []lex.Token) ([]lex.Token, Expr, error) {
 	rest, _, err := wrappedResult(matchOne[*lex.FalseLiteral])(in)
@@ -222,7 +232,7 @@ func kwFalse(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, err
 	}
 
-	return rest, &BoolLiteral{false}, nil
+	return rest, &BoolLiteral{ID: newId(), Value: false}, nil
 
 }
 

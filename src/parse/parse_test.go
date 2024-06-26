@@ -17,9 +17,10 @@ func TestParse(t *testing.T) {
 			desc:  "form",
 			input: "(foo bar)",
 			output: []Expr{&Form{
+				ID: 3,
 				children: []Expr{
-					&Symbol{Name: "foo"},
-					&Symbol{Name: "bar"},
+					&Symbol{ID: 1, Name: "foo"},
+					&Symbol{ID: 2, Name: "bar"},
 				},
 			}},
 		},
@@ -27,14 +28,16 @@ func TestParse(t *testing.T) {
 			desc:  "def",
 			input: "(def foo (Str Int Str) [x y] (foo x y))",
 			output: []Expr{&FuncDef{
+				ID:        5,
 				Name:      "foo",
 				Signature: opt.Some([]string{"Str", "Int", "Str"}),
 				Args:      []string{"x", "y"},
 				Body: []Expr{&Form{
+					ID: 4,
 					children: []Expr{
-						&Symbol{"foo"},
-						&Symbol{"x"},
-						&Symbol{"y"},
+						&Symbol{ID: 1, Name: "foo"},
+						&Symbol{ID: 2, Name: "x"},
+						&Symbol{ID: 3, Name: "y"},
 					},
 				}},
 			}},
@@ -43,14 +46,16 @@ func TestParse(t *testing.T) {
 			desc:  "def no function signature",
 			input: "(def foo [x y] (foo x y))",
 			output: []Expr{&FuncDef{
+				ID:        5,
 				Name:      "foo",
 				Signature: opt.None[[]string](),
 				Args:      []string{"x", "y"},
 				Body: []Expr{&Form{
+					ID: 4,
 					children: []Expr{
-						&Symbol{"foo"},
-						&Symbol{"x"},
-						&Symbol{"y"},
+						&Symbol{ID: 1, Name: "foo"},
+						&Symbol{ID: 2, Name: "x"},
+						&Symbol{ID: 3, Name: "y"},
 					},
 				}},
 			}},
@@ -59,12 +64,14 @@ func TestParse(t *testing.T) {
 			desc:  "set",
 			input: "(set foo (+ x y))",
 			output: []Expr{&Set{
+				ID:   5,
 				Name: "foo",
 				rvalue: &Form{
+					ID: 4,
 					children: []Expr{
-						&Symbol{"+"},
-						&Symbol{"x"},
-						&Symbol{"y"},
+						&Symbol{ID: 1, Name: "+"},
+						&Symbol{ID: 2, Name: "x"},
+						&Symbol{ID: 3, Name: "y"},
 					},
 				},
 			}},
@@ -72,27 +79,29 @@ func TestParse(t *testing.T) {
 		{
 			desc:   "str literal",
 			input:  `"strlit"`,
-			output: []Expr{&StrLiteral{Content: "strlit"}},
+			output: []Expr{&StrLiteral{ID: 1, Content: "strlit"}},
 		},
 		{
 			desc:   "int literal",
 			input:  "123",
-			output: []Expr{&IntLiteral{Number: 123}},
+			output: []Expr{&IntLiteral{ID: 1, Number: 123}},
 		},
 		{
 			desc:  "bool literal",
 			input: "(foo true false)",
 			output: []Expr{&Form{
+				ID: 4,
 				children: []Expr{
-					&Symbol{Name: "foo"},
-					&BoolLiteral{true},
-					&BoolLiteral{false},
+					&Symbol{ID: 1, Name: "foo"},
+					&BoolLiteral{ID: 2, Value: true},
+					&BoolLiteral{ID: 3, Value: false},
 				},
 			}},
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
+			gIdCounter = 1
 			got, err := parseString(tC.input)
 			if err != nil {
 				t.Logf("%#v", got)
