@@ -6,45 +6,48 @@ import (
 	"github.com/horriblename/typee/src/opt"
 )
 
-type Expr interface{ ast() }
+type Expr interface {
+	ast()
+	ID() int
+}
 
 // Nodes
 
 type Form struct {
 	children []Expr
-	ID       int
+	id       int
 }
 type Symbol struct {
 	Name string
-	ID   int
+	id   int
 }
 type Int struct {
 	Value int64
-	ID    int
+	id    int
 }
 type FuncDef struct {
-	ID        int
+	id        int
 	Name      string
 	Signature opt.Option[[]string]
 	Args      []string
 	Body      []Expr
 }
 type Set struct {
-	ID     int
+	id     int
 	Name   string
 	rvalue Expr
 }
 type StrLiteral struct {
 	Content string
-	ID      int
+	id      int
 }
 type IntLiteral struct {
 	Number int64
-	ID     int
+	id     int
 }
 
 type BoolLiteral struct {
-	ID    int
+	id    int
 	Value bool
 }
 
@@ -57,21 +60,30 @@ func (*StrLiteral) ast()  {}
 func (*IntLiteral) ast()  {}
 func (*BoolLiteral) ast() {}
 
-func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.ID, self.children) }
-func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.ID, self.Name) }
-func (self *Int) String() string    { return fmt.Sprintf("#%d Int {%d}", self.ID, self.Value) }
+func (self *Form) ID() int        { return self.id }
+func (self *Symbol) ID() int      { return self.id }
+func (self *Int) ID() int         { return self.id }
+func (self *FuncDef) ID() int     { return self.id }
+func (self *Set) ID() int         { return self.id }
+func (self *StrLiteral) ID() int  { return self.id }
+func (self *IntLiteral) ID() int  { return self.id }
+func (self *BoolLiteral) ID() int { return self.id }
+
+func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.children) }
+func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
+func (self *Int) String() string    { return fmt.Sprintf("#%d Int {%d}", self.id, self.Value) }
 func (self *FuncDef) String() string {
-	return fmt.Sprintf("#%d (def %s [%+v] %+v)", self.ID, self.Name, self.Args, self.Body)
+	return fmt.Sprintf("#%d (def %s [%+v] %+v)", self.id, self.Name, self.Args, self.Body)
 }
 func (self *Set) String() string {
-	return fmt.Sprintf("#%d (set %s %+v)", self.ID, self.Name, self.rvalue)
+	return fmt.Sprintf("#%d (set %s %+v)", self.id, self.Name, self.rvalue)
 }
 func (self *StrLiteral) String() string {
-	return fmt.Sprintf(`#%d StrLiteral "%s"`, self.ID, self.Content)
+	return fmt.Sprintf(`#%d StrLiteral "%s"`, self.id, self.Content)
 }
 func (self *IntLiteral) String() string {
-	return fmt.Sprintf("#%d IntLiteral %d", self.ID, self.Number)
+	return fmt.Sprintf("#%d IntLiteral %d", self.id, self.Number)
 }
 func (self *BoolLiteral) String() string {
-	return fmt.Sprintf("#%d BoolLiteral %t", self.ID, self.Value)
+	return fmt.Sprintf("#%d BoolLiteral %t", self.id, self.Value)
 }
