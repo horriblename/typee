@@ -43,8 +43,6 @@ type IntLiteral struct {
 	ID     int
 }
 
-type FormAttr struct{ ID int }
-
 type BoolLiteral struct {
 	ID    int
 	Value bool
