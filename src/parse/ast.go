@@ -14,7 +14,7 @@ type Expr interface {
 // Nodes
 
 type Form struct {
-	children []Expr
+	Children []Expr
 	id       int
 }
 type Symbol struct {
@@ -77,7 +77,7 @@ func (self *StrLiteral) ID() int  { return self.id }
 func (self *IntLiteral) ID() int  { return self.id }
 func (self *BoolLiteral) ID() int { return self.id }
 
-func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.children) }
+func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
 func (self *Int) String() string    { return fmt.Sprintf("#%d Int {%d}", self.id, self.Value) }
 func (self *FuncDef) String() string {

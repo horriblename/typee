@@ -18,7 +18,7 @@ func TestParse(t *testing.T) {
 			input: "(foo bar)",
 			output: []Expr{&Form{
 				id: 3,
-				children: []Expr{
+				Children: []Expr{
 					&Symbol{id: 1, Name: "foo"},
 					&Symbol{id: 2, Name: "bar"},
 				},
@@ -34,7 +34,7 @@ func TestParse(t *testing.T) {
 				Args:      []string{"x", "y"},
 				Body: []Expr{&Form{
 					id: 4,
-					children: []Expr{
+					Children: []Expr{
 						&Symbol{id: 1, Name: "foo"},
 						&Symbol{id: 2, Name: "x"},
 						&Symbol{id: 3, Name: "y"},
@@ -52,7 +52,7 @@ func TestParse(t *testing.T) {
 				Args:      []string{"x", "y"},
 				Body: []Expr{&Form{
 					id: 4,
-					children: []Expr{
+					Children: []Expr{
 						&Symbol{id: 1, Name: "foo"},
 						&Symbol{id: 2, Name: "x"},
 						&Symbol{id: 3, Name: "y"},
@@ -68,7 +68,7 @@ func TestParse(t *testing.T) {
 				Name: "foo",
 				rvalue: &Form{
 					id: 4,
-					children: []Expr{
+					Children: []Expr{
 						&Symbol{id: 1, Name: "+"},
 						&Symbol{id: 2, Name: "x"},
 						&Symbol{id: 3, Name: "y"},
@@ -97,7 +97,7 @@ func TestParse(t *testing.T) {
 				},
 				Consequence: &Form{
 					id: 4,
-					children: []Expr{
+					Children: []Expr{
 						&Symbol{Name: "foo", id: 2},
 						&IntLiteral{Number: 1, id: 3},
 					},
@@ -110,7 +110,7 @@ func TestParse(t *testing.T) {
 			input: "(foo true false)",
 			output: []Expr{&Form{
 				id: 4,
-				children: []Expr{
+				Children: []Expr{
 					&Symbol{id: 1, Name: "foo"},
 					&BoolLiteral{id: 2, Value: true},
 					&BoolLiteral{id: 3, Value: false},

@@ -107,7 +107,7 @@ func form(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
 		rparen,
 	)(in)
 
-	return rest, &Form{id: newId(), children: out}, err
+	return rest, &Form{id: newId(), Children: out}, err
 }
 
 func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
