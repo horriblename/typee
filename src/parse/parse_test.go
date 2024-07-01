@@ -87,6 +87,25 @@ func TestParse(t *testing.T) {
 			output: []Expr{&IntLiteral{id: 1, Number: 123}},
 		},
 		{
+			desc:  "if expr",
+			input: "(if [true] (foo 1) 2)",
+			output: []Expr{&IfExpr{
+				id: 6,
+				Condition: &BoolLiteral{
+					id:    1,
+					Value: true,
+				},
+				Consequence: &Form{
+					id: 4,
+					children: []Expr{
+						&Symbol{Name: "foo", id: 2},
+						&IntLiteral{Number: 1, id: 3},
+					},
+				},
+				Alternative: &IntLiteral{Number: 2, id: 5},
+			}},
+		},
+		{
 			desc:  "bool literal",
 			input: "(foo true false)",
 			output: []Expr{&Form{

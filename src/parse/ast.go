@@ -37,6 +37,12 @@ type Set struct {
 	Name   string
 	rvalue Expr
 }
+type IfExpr struct {
+	id          int
+	Condition   Expr
+	Consequence Expr
+	Alternative Expr
+}
 type StrLiteral struct {
 	Content string
 	id      int
@@ -56,6 +62,7 @@ func (*Symbol) ast()      {}
 func (*Int) ast()         {}
 func (*FuncDef) ast()     {}
 func (*Set) ast()         {}
+func (*IfExpr) ast()      {}
 func (*StrLiteral) ast()  {}
 func (*IntLiteral) ast()  {}
 func (*BoolLiteral) ast() {}
@@ -65,6 +72,7 @@ func (self *Symbol) ID() int      { return self.id }
 func (self *Int) ID() int         { return self.id }
 func (self *FuncDef) ID() int     { return self.id }
 func (self *Set) ID() int         { return self.id }
+func (self *IfExpr) ID() int      { return self.id }
 func (self *StrLiteral) ID() int  { return self.id }
 func (self *IntLiteral) ID() int  { return self.id }
 func (self *BoolLiteral) ID() int { return self.id }
@@ -77,6 +85,9 @@ func (self *FuncDef) String() string {
 }
 func (self *Set) String() string {
 	return fmt.Sprintf("#%d (set %s %+v)", self.id, self.Name, self.rvalue)
+}
+func (self *IfExpr) String() string {
+	return fmt.Sprintf("#%d (if %v %v %v)", self.id, self.Condition, self.Consequence, self.Alternative)
 }
 func (self *StrLiteral) String() string {
 	return fmt.Sprintf(`#%d StrLiteral "%s"`, self.id, self.Content)
