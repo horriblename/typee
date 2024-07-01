@@ -53,7 +53,7 @@ func strLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
 	}
 
 	if lit, ok := in[0].(*lex.StrLiteral); ok {
-		return in[1:], &StrLiteral{ID: newId(), Content: lit.Content}, nil
+		return in[1:], &StrLiteral{id: newId(), Content: lit.Content}, nil
 	}
 
 	return nil, nil, errAt(in)
@@ -65,7 +65,7 @@ func intLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
 	}
 
 	if lit, ok := in[0].(*lex.IntLiteral); ok {
-		return in[1:], &IntLiteral{ID: newId(), Number: lit.Number}, nil
+		return in[1:], &IntLiteral{id: newId(), Number: lit.Number}, nil
 	}
 
 	return nil, nil, errAt(in)
@@ -104,7 +104,7 @@ func form(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
 		rparen,
 	)(in)
 
-	return rest, &Form{ID: newId(), children: out}, err
+	return rest, &Form{id: newId(), children: out}, err
 }
 
 func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
@@ -142,7 +142,7 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	}
 
 	def := FuncDef{
-		ID:        newId(),
+		id:        newId(),
 		Name:      name,
 		Signature: sig,
 		Args:      args,
@@ -168,7 +168,7 @@ func setForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	check(err)
 
 	setExpr := &Set{
-		ID:     newId(),
+		id:     newId(),
 		Name:   lval,
 		rvalue: rval,
 	}
@@ -182,7 +182,7 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 	}
 
 	if sym, ok := in[0].(*lex.Symbol); ok {
-		return in[1:], &Symbol{ID: newId(), Name: sym.Name}, nil
+		return in[1:], &Symbol{id: newId(), Name: sym.Name}, nil
 	} else {
 		return nil, nil, errAt(in)
 	}
@@ -224,7 +224,7 @@ func kwTrue(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, err
 	}
 
-	return rest, &BoolLiteral{ID: newId(), Value: true}, nil
+	return rest, &BoolLiteral{id: newId(), Value: true}, nil
 }
 func kwFalse(in []lex.Token) ([]lex.Token, Expr, error) {
 	rest, _, err := wrappedResult(matchOne[*lex.FalseLiteral])(in)
@@ -232,7 +232,7 @@ func kwFalse(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, err
 	}
 
-	return rest, &BoolLiteral{ID: newId(), Value: false}, nil
+	return rest, &BoolLiteral{id: newId(), Value: false}, nil
 
 }
 
