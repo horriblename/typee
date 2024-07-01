@@ -8,8 +8,8 @@ type String struct{}
 type Int struct{}
 type Bool struct{}
 type Func struct {
-	args []Type
-	ret  Type
+	Args []Type
+	Ret  Type
 }
 
 func (*String) type_() {}
