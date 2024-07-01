@@ -3,6 +3,7 @@
 // # Algortihm overview
 //
 // The Algorithm is split into 2 parts:
+//
 // 1. generate constraints (for each expression / AST node)
 // 2. unify/solve constraint sets
 //
@@ -273,10 +274,21 @@ func initConstraints(node parse.Expr) ([]Constraint, error) {
 	return constraints, nil
 }
 
-func genConstraints(tt TypeTable, constraints *[]Constraint, node parse.Expr) error {
-	switch node.(type) {
-	case *parse.IntLiteral, *parse.BoolLiteral, *parse.StrLiteral:
-		// no constraints generated for "constant" types
+func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) error {
+	switch n := node.(type) {
+	// no constraints generated for "constant" types
+	case *parse.IntLiteral:
+		tV := NewTypeVar()
+		tV.type_ = opt.Some[types.Type](&types.Int{})
+		tt.SetTypeVarOfExpr(ExprID(node.ID()), tV)
+	case *parse.BoolLiteral:
+		tV := NewTypeVar()
+		tV.type_ = opt.Some[types.Type](&types.Bool{})
+		tt.SetTypeVarOfExpr(ExprID(node.ID()), tV)
+	case *parse.StrLiteral:
+		tV := NewTypeVar()
+		tV.type_ = opt.Some[types.Type](&types.String{})
+		tt.SetTypeVarOfExpr(ExprID(node.ID()), tV)
 	case *parse.IfExpr:
 	default:
 		panic("unhandled node type in genConstraints")
