@@ -1,10 +1,34 @@
 package solve
 
+import (
+	"github.com/horriblename/typee/src/opt"
+	"github.com/horriblename/typee/src/types"
+)
+
 type TypeID int
 
+// stores resolved types, this is the "context" in textbooks
 type TypeTable struct {
-	Names     map[string]TypeID
-	idCounter TypeID
+	Names         map[string]TypeID
+	ExprToTypeVar map[ExprID]GeneratedType
+	idCounter     TypeID
+}
+
+type GeneratedType struct {
+	typeVar  TypeVar
+	concrete types.Type
+}
+
+func (tt *TypeTable) GetTypeVarOfExpr(id ExprID) opt.Option[GeneratedType] {
+	if typeVar, ok := tt.ExprToTypeVar[id]; ok {
+		return opt.Some(typeVar)
+	}
+
+	return opt.None[GeneratedType]()
+}
+
+func (tt *TypeTable) SetTypeOfExpr(id ExprID, typeVar GeneratedType) {
+	tt.ExprToTypeVar[id] = typeVar
 }
 
 func NewTypeTable() TypeTable {

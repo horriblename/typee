@@ -243,30 +243,54 @@
 package solve
 
 import (
+	"errors"
+	"fmt"
+
+	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
+	"github.com/horriblename/typee/src/types"
 )
 
+var (
+	ErrWrongArgCount = errors.New("wrong arg count")
+	ErrCalledNonFunc = errors.New("tried to call non-function")
+)
+
+type TypeVarID int
+
 type TypeVar struct {
-	id         TypeID
+	id         TypeVarID
+	type_      opt.Option[types.Type]
 	identifier bool
 }
 
+var gTypeVarIDCounter TypeVarID = 0
+
+func NewTypeVarID() TypeVarID {
+	gTypeVarIDCounter++
+	return gTypeVarIDCounter
+}
+
+func NewTypeVar() TypeVar {
+	return TypeVar{id: NewTypeVarID()}
+}
+
 type Subst struct {
-	Target TypeVar
-	Repl   TypeVar
+	Target  TypeVar
+	Replace TypeVar
 }
 
 type Constraint struct {
-	lhs ExprID
-	rhs TypeVar
+	lhs types.Type
+	rhs types.Type
 }
 
-type ExprID = int
+type ExprID int
 
 func initConstraints(node parse.Expr) ([]Constraint, error) {
 	constraints := []Constraint{}
 	tt := NewTypeTable()
-	err := genConstraints(tt, &constraints, node)
+	_, err := genConstraints(&tt, &constraints, node)
 	if err != nil {
 		return nil, err
 	}
@@ -274,33 +298,87 @@ func initConstraints(node parse.Expr) ([]Constraint, error) {
 	return constraints, nil
 }
 
-func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) error {
+func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) (types.Type, error) {
 	switch n := node.(type) {
 	// no constraints generated for "constant" types
 	case *parse.IntLiteral:
-		tV := NewTypeVar()
-		tV.type_ = opt.Some[types.Type](&types.Int{})
-		tt.SetTypeVarOfExpr(ExprID(node.ID()), tV)
+		typ := GeneratedType{typeVar: NewTypeVar()}
+		typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
+		tt.SetTypeOfExpr(ExprID(node.ID()), typ)
+		return &types.Int{}, nil
 	case *parse.BoolLiteral:
-		tV := NewTypeVar()
-		tV.type_ = opt.Some[types.Type](&types.Bool{})
-		tt.SetTypeVarOfExpr(ExprID(node.ID()), tV)
+		typ := GeneratedType{typeVar: NewTypeVar()}
+		typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
+		tt.SetTypeOfExpr(ExprID(node.ID()), typ)
+		return &types.Bool{}, nil
 	case *parse.StrLiteral:
-		tV := NewTypeVar()
-		tV.type_ = opt.Some[types.Type](&types.String{})
-		tt.SetTypeVarOfExpr(ExprID(node.ID()), tV)
+		typ := GeneratedType{typeVar: NewTypeVar()}
+		typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
+		tt.SetTypeOfExpr(ExprID(node.ID()), typ)
 	case *parse.IfExpr:
-	default:
-		panic("unhandled node type in genConstraints")
+		genIfExpr(tt, constraints, n)
+	case *parse.Form:
+		panic("unimpl")
 	}
 
-	return nil
+	panic("unhandled node type in genConstraints")
 }
 
-var gId = 0
+func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (types.Type, error) {
+	ifExprType := types.NewGeneric("", "if expr")
 
-func newId() int {
-	id := gId
-	gId++
-	return id
+	typCond, err := genConstraints(tt, constraints, node.Condition)
+	if err != nil {
+		return nil, err
+	}
+
+	typCons, err := genConstraints(tt, constraints, node.Consequence)
+	if err != nil {
+		return nil, err
+	}
+
+	typAlt, err := genConstraints(tt, constraints, node.Alternative)
+	if err != nil {
+		return nil, err
+	}
+
+	*constraints = append(
+		*constraints,
+		Constraint{typCond, &types.Bool{}},
+		Constraint{typCons, ifExprType},
+		Constraint{typAlt, ifExprType},
+	)
+
+	return ifExprType, nil
+}
+
+func genForCall(tt *TypeTable, constraints *[]Constraint, node *parse.Form) error {
+	arg0, ok := node.Children[0].(*parse.Symbol)
+	if !ok {
+		panic("unimpl")
+	}
+
+	arg0Type, ok := builtinsType(arg0.Name).Unwrap()
+	if !ok {
+		panic("non-builtin functions not supported")
+	}
+
+	arg0TypeInfo, ok := arg0Type.(*types.Func)
+	if !ok {
+		return fmt.Errorf("%w: function %s is of type %s", ErrCalledNonFunc, arg0.Name, arg0Type)
+	}
+
+	if len(node.Children) != len(arg0TypeInfo.Args)+1 {
+		return fmt.Errorf(
+			"%w: '%s' expects %d arguments, got %d",
+			ErrWrongArgCount,
+			arg0.Name,
+			len(arg0TypeInfo.Args),
+			len(arg0TypeInfo.Args),
+		)
+	}
+
+	// for i,  := range arg0TypeInfo.Args {}
+
+	return nil
 }
