@@ -102,14 +102,9 @@ func initConstraints(node parse.Expr) ([]Constraint, error) {
 
 func genConstraints(tt TypeTable, constraints *[]Constraint, node parse.Expr) error {
 	switch node.(type) {
-	case *parse.IntLiteral:
-		*constraints = append(*constraints, Constraint{
-			lhs: node.ID(),
-			rhs: TypeVar{
-				id:         tt.Get("Bool"),
-				identifier: true,
-			},
-		})
+	case *parse.IntLiteral, *parse.BoolLiteral, *parse.StrLiteral:
+		// no constraints generated for "constant" types
+	case *parse.IfExpr:
 	default:
 		panic("unhandled node type in genConstraints")
 	}
