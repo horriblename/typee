@@ -1,5 +1,7 @@
 package parse
 
+//go-sumtype:decl Expr
+
 import (
 	"fmt"
 
@@ -33,9 +35,9 @@ type FuncDef struct {
 	Body      []Expr
 }
 type Set struct {
-	id     int
-	Name   string
-	rvalue Expr
+	id    int
+	Name  string
+	Value Expr
 }
 type IfExpr struct {
 	id          int
@@ -59,7 +61,6 @@ type BoolLiteral struct {
 
 func (*Form) ast()        {}
 func (*Symbol) ast()      {}
-func (*Int) ast()         {}
 func (*FuncDef) ast()     {}
 func (*Set) ast()         {}
 func (*IfExpr) ast()      {}
@@ -84,7 +85,7 @@ func (self *FuncDef) String() string {
 	return fmt.Sprintf("#%d (def %s [%+v] %+v)", self.id, self.Name, self.Args, self.Body)
 }
 func (self *Set) String() string {
-	return fmt.Sprintf("#%d (set %s %+v)", self.id, self.Name, self.rvalue)
+	return fmt.Sprintf("#%d (set %s %+v)", self.id, self.Name, self.Value)
 }
 func (self *IfExpr) String() string {
 	return fmt.Sprintf("#%d (if %v %v %v)", self.id, self.Condition, self.Consequence, self.Alternative)

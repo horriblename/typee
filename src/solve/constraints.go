@@ -275,11 +275,6 @@ func NewTypeVar() TypeVar {
 	return TypeVar{id: NewTypeVarID()}
 }
 
-type Subst struct {
-	Target  TypeVar
-	Replace TypeVar
-}
-
 type Constraint struct {
 	lhs types.Type
 	rhs types.Type
@@ -302,19 +297,20 @@ func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) (
 	switch n := node.(type) {
 	// no constraints generated for "constant" types
 	case *parse.IntLiteral:
-		typ := GeneratedType{typeVar: NewTypeVar()}
-		typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
-		tt.SetTypeOfExpr(ExprID(node.ID()), typ)
+		// typ := GeneratedType{typeVar: NewTypeVar()}
+		// typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
+		// tt.SetTypeOfExpr(ExprID(node.ID()), typ)
 		return &types.Int{}, nil
 	case *parse.BoolLiteral:
-		typ := GeneratedType{typeVar: NewTypeVar()}
-		typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
-		tt.SetTypeOfExpr(ExprID(node.ID()), typ)
+		// typ := GeneratedType{typeVar: NewTypeVar()}
+		// typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
+		// tt.SetTypeOfExpr(ExprID(node.ID()), typ)
 		return &types.Bool{}, nil
 	case *parse.StrLiteral:
-		typ := GeneratedType{typeVar: NewTypeVar()}
-		typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
-		tt.SetTypeOfExpr(ExprID(node.ID()), typ)
+		// typ := GeneratedType{typeVar: NewTypeVar()}
+		// typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
+		// tt.SetTypeOfExpr(ExprID(node.ID()), typ)
+		return &types.String{}, nil
 	case *parse.IfExpr:
 		genIfExpr(tt, constraints, n)
 	case *parse.Form:
@@ -352,7 +348,7 @@ func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (ty
 	return ifExprType, nil
 }
 
-func genForCall(tt *TypeTable, constraints *[]Constraint, node *parse.Form) error {
+func genForCall(_ *TypeTable, _ *[]Constraint, node *parse.Form) error {
 	arg0, ok := node.Children[0].(*parse.Symbol)
 	if !ok {
 		panic("unimpl")

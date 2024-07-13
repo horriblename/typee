@@ -21,18 +21,18 @@ func newId() int {
 	return id
 }
 
-func program(in []lex.Token) ([]lex.Token, []Expr, error) {
+func Program(in []lex.Token) ([]lex.Token, []Expr, error) {
 	return combinator.Many(expr)(in)
 }
 
-func parseString(source string) ([]Expr, error) {
+func ParseString(source string) ([]Expr, error) {
 	tokens, err := lex.LexString(source)
 	if err != nil {
 		fmt.Printf("tokens: %v", tokens)
 		return nil, errors.Join(LexError, err)
 	}
 
-	_, prog, err := program(tokens)
+	_, prog, err := Program(tokens)
 	return prog, err
 }
 
@@ -171,9 +171,9 @@ func setForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	check(err)
 
 	setExpr := &Set{
-		id:     newId(),
-		Name:   lval,
-		rvalue: rval,
+		id:    newId(),
+		Name:  lval,
+		Value: rval,
 	}
 
 	return in, setExpr, nil

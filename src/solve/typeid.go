@@ -9,6 +9,7 @@ type TypeID int
 
 // stores resolved types, this is the "context" in textbooks
 type TypeTable struct {
+	SymbolTable   map[string]types.Type
 	Names         map[string]TypeID
 	ExprToTypeVar map[ExprID]GeneratedType
 	idCounter     TypeID

@@ -10,6 +10,8 @@ import (
 type Type interface {
 	type_()
 	String() string
+	Simple() bool
+	Eq(other Type) bool
 }
 
 type TypeID int
@@ -32,6 +34,30 @@ func (*Int) type_()     {}
 func (*Bool) type_()    {}
 func (*Func) type_()    {}
 func (*Generic) type_() {}
+
+func (*String) Simple() bool  { return true }
+func (*Int) Simple() bool     { return true }
+func (*Bool) Simple() bool    { return true }
+func (*Func) Simple() bool    { return false }
+func (*Generic) Simple() bool { return false }
+
+func (*String) Eq(other Type) bool {
+	_, ok := other.(*String)
+	return ok
+}
+func (*Int) Eq(other Type) bool {
+	_, ok := other.(*Int)
+	return ok
+}
+func (*Bool) Eq(other Type) bool {
+	_, ok := other.(*Bool)
+	return ok
+}
+func (*Func) Eq(other Type) bool { panic("TODO") }
+func (g *Generic) Eq(other Type) bool {
+	o, ok := other.(*Generic)
+	return ok && o.ID == g.ID
+}
 
 func (*String) String() string { return "String" }
 func (*Int) String() string    { return "Int" }

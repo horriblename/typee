@@ -66,7 +66,7 @@ func TestParse(t *testing.T) {
 			output: []Expr{&Set{
 				id:   5,
 				Name: "foo",
-				rvalue: &Form{
+				Value: &Form{
 					id: 4,
 					Children: []Expr{
 						&Symbol{id: 1, Name: "+"},
