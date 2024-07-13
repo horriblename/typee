@@ -22,7 +22,11 @@ func TestTypeInference(t *testing.T) {
 			ast, err := parse.ParseString(tC.input)
 			assert.Ok(err)
 
-			initConstraints(ast[0])
+			cons, err := initConstraints(ast[0])
+			assert.Ok(err)
+
+			subs, err := unify(cons)
+			assert.Ok(err)
 		})
 	}
 }

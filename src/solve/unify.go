@@ -18,14 +18,19 @@ type Subst struct {
 	Replace types.Type
 }
 
-func unify(cs []Constraint) ([]Constraint, error) {
+func unify(cs []Constraint) ([]Subst, error) {
+	_, subs, err := unifyInner(cs, []Subst{})
+	return subs, err
+}
+
+func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 	if len(cs) == 0 {
-		return cs, nil
+		return cs, subs, nil
 	}
 
 	c := cs[0]
 	if c.lhs.Simple() && c.lhs.Eq(c.rhs) {
-		return cs[1:], nil
+		return cs[1:], subs, nil
 	}
 
 	if lhs, ok := c.lhs.(*types.Generic); ok {
@@ -40,9 +45,9 @@ func unify(cs []Constraint) ([]Constraint, error) {
 
 		walkTypeUntil(&c.rhs, visitor)
 		if !hasLhs {
-			substituteAll(cs[1:], Subst{Target: c.rhs, Replace: lhs})
+			subs = append(subs, Subst{Target: c.rhs, Replace: lhs})
 		}
-		return cs[1:], nil
+		return unifyInner(cs[1:], subs)
 	}
 
 	if rhs, ok := c.rhs.(*types.Generic); ok {
@@ -57,9 +62,9 @@ func unify(cs []Constraint) ([]Constraint, error) {
 
 		walkTypeUntil(&c.lhs, visitor)
 		if !hasRhs {
-			substituteAll(cs[1:], Subst{Target: c.rhs, Replace: rhs})
+			subs = append(subs, Subst{Target: c.lhs, Replace: rhs})
 		}
-		return cs[1:], nil
+		return unifyInner(cs[1:], subs)
 	}
 
 	// break one constraint down into two smaller constraints and add those constraints
@@ -70,17 +75,18 @@ func unify(cs []Constraint) ([]Constraint, error) {
 			assert.Eq(len(rhs.Args), 1, "only single arguments supported")
 
 			// FIXME: not sure if it should be queued in front or back
-			return unify(append(cs[1:], Constraint{lhs.Args[0], rhs.Args[0]}))
+			cs = append(cs[1:], Constraint{lhs.Args[0], rhs.Args[0]})
+			return unifyInner(cs, subs)
 		}
 	}
 
-	return nil, fmt.Errorf("constraint %s = %s, %w", c.lhs, c.rhs, ErrUnifyFailed)
+	return nil, nil, fmt.Errorf("constraint %s = %s, %w", c.lhs, c.rhs, ErrUnifyFailed)
 }
 
-func substituteAll(cs []Constraint, sub Subst) {
-	for _, c := range cs {
-		substituteType(c.lhs, sub)
-		substituteType(c.rhs, sub)
+func substituteAll(constraint Constraint, subs []Subst) {
+	for _, s := range subs {
+		substituteType(constraint.lhs, s)
+		substituteType(constraint.rhs, s)
 	}
 }
 
