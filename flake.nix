@@ -1,5 +1,10 @@
 {
   description = "A very basic flake";
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    go-sumtype.url = "github:BurntSushi/go-sumtype";
+    go-sumtype.flake = false;
+  };
   outputs = {
     self,
     nixpkgs,
@@ -16,14 +21,18 @@
     );
   in {
     overlays = {
-      default = final: prev: {
+      default = final: _prev: {
         hello = final.callPackage ./hello.nix {};
+        go-sumtype = final.callPackage ./nix/go-sumtype.nix {
+          source = inputs.go-sumtype;
+          version = "master";
+        };
       };
     };
 
     packages = eachSystem (system: {
       default = self.packages.${system}.hello;
-      inherit (pkgsFor.${system}) hello;
+      inherit (pkgsFor.${system}) hello go-sumtype;
     });
     devShells = eachSystem (system: let
       pkgs = pkgsFor.${system};
@@ -31,8 +40,8 @@
       default = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [
           go
+          go-sumtype
         ];
-        buildInputs = with pkgs; [];
       };
     });
   };

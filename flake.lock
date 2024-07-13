@@ -1,20 +1,40 @@
 {
   "nodes": {
-    "nixpkgs": {
+    "go-sumtype": {
+      "flake": false,
       "locked": {
-        "lastModified": 1712963716,
-        "narHash": "sha256-WKm9CvgCldeIVvRz87iOMi8CFVB1apJlkUT4GGvA0iM=",
-        "path": "/nix/store/yy5l09gfsagkv8rswblknmsjc2gyr20d-source",
-        "rev": "cfd6b5fc90b15709b780a5a1619695a88505a176",
-        "type": "path"
+        "lastModified": 1715516257,
+        "narHash": "sha256-8NE7xlDKfqa0RWXOW5XyWTtWXoXjSo0PcjMsG8mzPfU=",
+        "owner": "BurntSushi",
+        "repo": "go-sumtype",
+        "rev": "f9f88f1fa1ac32f356537ac08f8f69c0e45c6dde",
+        "type": "github"
       },
       "original": {
-        "id": "nixpkgs",
-        "type": "indirect"
+        "owner": "BurntSushi",
+        "repo": "go-sumtype",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1720781449,
+        "narHash": "sha256-po3TZO9kcZwzvkyMJKb0WCzzDtiHWD34XeRaX1lWXp0=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "8b5a3d5a1d951344d683b442c0739010b80039db",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
       }
     },
     "root": {
       "inputs": {
+        "go-sumtype": "go-sumtype",
         "nixpkgs": "nixpkgs"
       }
     }
