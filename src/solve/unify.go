@@ -44,8 +44,11 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 		}
 
 		walkTypeUntil(&c.rhs, visitor)
+		assert.True(!hasLhs, "recursive types not supported")
 		if !hasLhs {
-			subs = append(subs, Subst{Old: lhs, New: c.rhs})
+			sub := Subst{Old: lhs, New: c.rhs}
+			substituteConstraintSet(cs[1:], sub)
+			subs = append(subs, sub)
 		}
 		return unifyInner(cs[1:], subs)
 	}
@@ -61,8 +64,11 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 		}
 
 		walkTypeUntil(&c.lhs, visitor)
+		assert.True(!hasRhs, "recursive types not supported")
 		if !hasRhs {
-			subs = append(subs, Subst{Old: rhs, New: c.lhs})
+			sub := Subst{Old: rhs, New: c.lhs}
+			substituteConstraintSet(cs[1:], sub)
+			subs = append(subs, sub)
 		}
 		return unifyInner(cs[1:], subs)
 	}
@@ -83,21 +89,28 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 	return nil, nil, fmt.Errorf("constraint %s = %s, %w", c.lhs, c.rhs, ErrUnifyFailed)
 }
 
+func substituteConstraintSet(cons []Constraint, sub Subst) {
+	for i := range cons {
+		substituteType(&cons[i].lhs, sub)
+		substituteType(&cons[i].rhs, sub)
+	}
+}
+
 func substituteAllToType(typ *types.Type, subs []Subst) {
 	for _, s := range subs {
 		substituteType(typ, s)
 	}
 }
 
-func substituteType(c *types.Type, sub Subst) {
+func substituteType(typ *types.Type, sub Subst) {
 	visitor := func(node *types.Type) Stop {
-		if (*c).Eq(sub.Old) {
+		if (*node).Eq(sub.Old) {
 			*node = sub.New
 		}
 		return Continue
 	}
 
-	walkTypeUntil(c, visitor)
+	walkTypeUntil(typ, visitor)
 }
 
 type Stop bool
@@ -124,8 +137,8 @@ func walkTypeUntil(typ *types.Type, visitor func(node *types.Type) Stop) {
 			return
 		}
 
-		for _, arg := range t.Args {
-			walkTypeUntil(&arg, visitor)
+		for i := range t.Args {
+			walkTypeUntil(&t.Args[i], visitor)
 		}
 
 		walkTypeUntil(&t.Ret, visitor)
