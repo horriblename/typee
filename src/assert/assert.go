@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+const ansiGreen = "\x1b[32m"
+const ansiReset = "\x1b[0m"
+
 func Ok(e error, msg ...any) {
 	if e != nil {
 		panic(fmt.Errorf("assertion failed (got error): %s\n%s", e, joinHint(msg)))
@@ -30,9 +33,9 @@ func joinHint(msg ...any) string {
 	}
 
 	b := strings.Builder{}
-	b.WriteString("Hint: ")
+	b.WriteString(ansiGreen + "Hint: " + ansiReset)
 
-	for m := range msg {
+	for _, m := range msg {
 		b.WriteString(fmt.Sprintf("%v", m))
 		b.WriteString(" ")
 	}
