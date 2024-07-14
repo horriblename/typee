@@ -154,7 +154,7 @@ func TestUnify(t *testing.T) {
 			expect: []Subst{
 				{Old: &types.Generic{ID: 1}, New: &types.Bool{}},
 				{Old: &types.Generic{ID: 3}, New: &types.Int{}},
-				// third constraint discarded, as t#3 is substituted with Int, hence: Int = Int
+				// third constraint discarded, as t3 is substituted with Int, hence: Int = Int
 			},
 		},
 	}
@@ -180,22 +180,6 @@ func TestUnify(t *testing.T) {
 
 			tassert.True(types.ListStructuralEq(old, expectOld), "wrong substitution[...].Old\nexpected", tC.expect, "\ngot", subs)
 			tassert.True(types.ListStructuralEq(new_, expectNew), "wrong substitution[...].New\nexpected", tC.expect, "\ngot", subs)
-
-			t.Logf("got %v\n expected %v", subs, tC.expect)
-			if len(subs) != len(tC.expect) {
-				t.Errorf("substraint set has different length than expected")
-			}
-
-			iMax := min(len(subs), len(tC.expect))
-			for i := range iMax {
-				if !types.StructuralEq(subs[i].Old, tC.expect[i].Old) {
-					t.Errorf("lhs of item %d is different", i)
-				}
-				if !types.StructuralEq(subs[i].New, tC.expect[i].New) {
-					t.Errorf("rhs of item %d is different", i)
-				}
-			}
-
 		})
 	}
 }
