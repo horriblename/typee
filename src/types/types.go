@@ -53,7 +53,15 @@ func (*Bool) Eq(other Type) bool {
 	_, ok := other.(*Bool)
 	return ok
 }
-func (*Func) Eq(other Type) bool { panic("TODO") }
+func (f *Func) Eq(other Type) bool {
+	o, ok := other.(*Func)
+	if !ok {
+		return false
+	}
+
+	assert.Eq(len(f.Args), 0, "only single argument functions supported")
+	return f.Args[0].Eq(o.Args[0]) && f.Ret.Eq(o.Ret)
+}
 func (g *Generic) Eq(other Type) bool {
 	o, ok := other.(*Generic)
 	return ok && o.ID == g.ID

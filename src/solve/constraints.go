@@ -282,15 +282,16 @@ type Constraint struct {
 
 type ExprID int
 
-func initConstraints(node parse.Expr) ([]Constraint, error) {
+func initConstraints(node parse.Expr) (types.Type, []Constraint, error) {
 	constraints := []Constraint{}
 	tt := NewTypeTable()
-	_, err := genConstraints(&tt, &constraints, node)
+	typ, err := genConstraints(&tt, &constraints, node)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return constraints, nil
+	fmt.Printf("0: %v\n", constraints)
+	return typ, constraints, nil
 }
 
 func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) (types.Type, error) {
@@ -312,12 +313,12 @@ func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) (
 		// tt.SetTypeOfExpr(ExprID(node.ID()), typ)
 		return &types.String{}, nil
 	case *parse.IfExpr:
-		genIfExpr(tt, constraints, n)
+		return genIfExpr(tt, constraints, n)
 	case *parse.Form:
 		panic("unimpl")
 	}
 
-	panic("unhandled node type in genConstraints")
+	panic(fmt.Sprintf("unhandled node type in genConstraints: %v", node))
 }
 
 func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (types.Type, error) {
@@ -327,16 +328,19 @@ func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (ty
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("1: %v\n", constraints)
 
 	typCons, err := genConstraints(tt, constraints, node.Consequence)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("2: %v\n", constraints)
 
 	typAlt, err := genConstraints(tt, constraints, node.Alternative)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("3: %v\n", constraints)
 
 	*constraints = append(
 		*constraints,
@@ -344,6 +348,7 @@ func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (ty
 		Constraint{typCons, ifExprType},
 		Constraint{typAlt, ifExprType},
 	)
+	fmt.Printf("4: %v\n", constraints)
 
 	return ifExprType, nil
 }
@@ -377,4 +382,10 @@ func genForCall(_ *TypeTable, _ *[]Constraint, node *parse.Form) error {
 	// for i,  := range arg0TypeInfo.Args {}
 
 	return nil
+}
+
+// Utils
+
+func (c Constraint) String() string {
+	return fmt.Sprintf("%v = %v", c.lhs, c.rhs)
 }

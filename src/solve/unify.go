@@ -14,8 +14,8 @@ var (
 )
 
 type Subst struct {
-	Target  types.Type
-	Replace types.Type
+	Old types.Type
+	New types.Type
 }
 
 func unify(cs []Constraint) ([]Subst, error) {
@@ -30,7 +30,7 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 
 	c := cs[0]
 	if c.lhs.Simple() && c.lhs.Eq(c.rhs) {
-		return cs[1:], subs, nil
+		return unifyInner(cs[1:], subs)
 	}
 
 	if lhs, ok := c.lhs.(*types.Generic); ok {
@@ -45,7 +45,7 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 
 		walkTypeUntil(&c.rhs, visitor)
 		if !hasLhs {
-			subs = append(subs, Subst{Target: c.rhs, Replace: lhs})
+			subs = append(subs, Subst{Old: lhs, New: c.rhs})
 		}
 		return unifyInner(cs[1:], subs)
 	}
@@ -62,7 +62,7 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 
 		walkTypeUntil(&c.lhs, visitor)
 		if !hasRhs {
-			subs = append(subs, Subst{Target: c.lhs, Replace: rhs})
+			subs = append(subs, Subst{Old: rhs, New: c.lhs})
 		}
 		return unifyInner(cs[1:], subs)
 	}
@@ -83,22 +83,21 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 	return nil, nil, fmt.Errorf("constraint %s = %s, %w", c.lhs, c.rhs, ErrUnifyFailed)
 }
 
-func substituteAll(constraint Constraint, subs []Subst) {
+func substituteAllToType(typ *types.Type, subs []Subst) {
 	for _, s := range subs {
-		substituteType(constraint.lhs, s)
-		substituteType(constraint.rhs, s)
+		substituteType(typ, s)
 	}
 }
 
-func substituteType(c types.Type, sub Subst) {
+func substituteType(c *types.Type, sub Subst) {
 	visitor := func(node *types.Type) Stop {
-		if sub.Target.Eq(c) {
-			*node = sub.Target
+		if (*c).Eq(sub.Old) {
+			*node = sub.New
 		}
 		return Continue
 	}
 
-	walkTypeUntil(&c, visitor)
+	walkTypeUntil(c, visitor)
 }
 
 type Stop bool
@@ -107,6 +106,12 @@ const (
 	Break    Stop = true
 	Continue Stop = false
 )
+
+// Utils
+
+func (s Subst) String() string {
+	return fmt.Sprintf("{%v / %v}", s.New, s.Old)
+}
 
 func walkTypeUntil(typ *types.Type, visitor func(node *types.Type) Stop) {
 	switch t := (*typ).(type) {
