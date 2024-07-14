@@ -74,8 +74,8 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 			assert.Eq(len(lhs.Args), 1, "only single arguments supported")
 			assert.Eq(len(rhs.Args), 1, "only single arguments supported")
 
-			// FIXME: not sure if it should be queued in front or back
-			cs = append(cs[1:], Constraint{lhs.Args[0], rhs.Args[0]})
+			// FIXME: allocates per prepend
+			cs = append([]Constraint{{lhs.Args[0], rhs.Args[0]}}, cs[1:]...)
 			return unifyInner(cs, subs)
 		}
 	}

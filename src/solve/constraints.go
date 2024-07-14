@@ -341,8 +341,8 @@ func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (ty
 	*constraints = append(
 		*constraints,
 		Constraint{typCond, &types.Bool{}},
-		Constraint{typCons, ifExprType},
-		Constraint{typAlt, ifExprType},
+		Constraint{ifExprType, typCons},
+		Constraint{ifExprType, typAlt},
 	)
 
 	return ifExprType, nil
