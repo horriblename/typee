@@ -377,36 +377,30 @@ func genForFunc(tt *TypeTable, cons *[]Constraint, node *parse.FuncDef) (types.T
 	}, nil
 }
 
-func genForCall(_ *TypeTable, _ *[]Constraint, node *parse.Form) (types.Type, error) {
+func genForCall(tt *TypeTable, cons *[]Constraint, node *parse.Form) (types.Type, error) {
 	assert.Eq(len(node.Children), 2, "only single-arg calls supported")
-	arg0, ok := node.Children[0].(*parse.Symbol)
-	if !ok {
-		panic("unimpl")
+
+	callee, err := genConstraints(tt, cons, node.Children[0])
+	if err != nil {
+		return nil, err
 	}
 
-	arg0Type, ok := builtinsType(arg0.Name).Unwrap()
-	if !ok {
-		panic("non-builtin functions not supported")
+	arg, err := genConstraints(tt, cons, node.Children[1])
+	if err != nil {
+		return nil, err
 	}
 
-	arg0TypeInfo, ok := arg0Type.(*types.Func)
-	if !ok {
-		return nil, fmt.Errorf("%w: function %s is of type %s", ErrCalledNonFunc, arg0.Name, arg0Type)
-	}
+	form := types.NewGeneric("", "form expression")
 
-	if len(node.Children) != len(arg0TypeInfo.Args)+1 {
-		return nil, fmt.Errorf(
-			"%w: '%s' expects %d arguments, got %d",
-			ErrWrongArgCount,
-			arg0.Name,
-			len(arg0TypeInfo.Args),
-			len(arg0TypeInfo.Args),
-		)
-	}
+	*cons = append(
+		*cons,
+		Constraint{callee, &types.Func{
+			Args: []types.Type{arg},
+			Ret:  form,
+		}},
+	)
 
-	// for i,  := range arg0TypeInfo.Args {}
-
-	panic("TODO")
+	return form, nil
 }
 
 // Utils
