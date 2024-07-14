@@ -59,7 +59,6 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 		}
 
 		walkTypeUntil(&c.rhs, visitor)
-		assert.True(!hasLhs, "recursive types not supported")
 		if !hasLhs {
 			sub := Subst{Old: lhs, New: c.rhs}
 			substituteConstraintSet(cs[1:], sub)
@@ -79,7 +78,6 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 		}
 
 		walkTypeUntil(&c.lhs, visitor)
-		assert.True(!hasRhs, "recursive types not supported")
 		if !hasRhs {
 			sub := Subst{Old: rhs, New: c.lhs}
 			substituteConstraintSet(cs[1:], sub)
