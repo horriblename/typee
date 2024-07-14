@@ -121,7 +121,7 @@ func TestParse(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			gIdCounter = 1
-			got, err := parseString(tC.input)
+			got, err := ParseString(tC.input)
 			if err != nil {
 				t.Logf("%#v", got)
 				t.Fatal(err)

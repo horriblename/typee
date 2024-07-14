@@ -88,7 +88,7 @@ func (self *Set) String() string {
 	return fmt.Sprintf("#%d (set %s %+v)", self.id, self.Name, self.Value)
 }
 func (self *IfExpr) String() string {
-	return fmt.Sprintf("#%d (if %v %v %v)", self.id, self.Condition, self.Consequence, self.Alternative)
+	return fmt.Sprintf("#%d (if [%v] %v %v)", self.id, self.Condition, self.Consequence, self.Alternative)
 }
 func (self *StrLiteral) String() string {
 	return fmt.Sprintf(`#%d StrLiteral "%s"`, self.id, self.Content)
