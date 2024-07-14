@@ -1,7 +1,6 @@
 package solve
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/horriblename/typee/src/assert"
@@ -51,6 +50,14 @@ func TestTypeInference(t *testing.T) {
 				Ret:  &types.Int{},
 			},
 		},
+		{
+			desc:  "func call",
+			input: "(def foo [x] ((+ x) 2))",
+			expect: &types.Func{
+				Args: []types.Type{&types.Int{}},
+				Ret:  &types.Int{},
+			},
+		},
 	}
 
 	for _, tC := range testCases {
@@ -60,19 +67,7 @@ func TestTypeInference(t *testing.T) {
 			ast, err := parse.ParseString(tC.input)
 			tassert.Ok(err, "parse failed")
 
-			typ, cons, err := initConstraints(ast[0])
-			tassert.Ok(err)
-
-			t.Log("generated top-level type", typ)
-			t.Log("constraints", cons)
-
-			subs, err := unify(cons)
-			tassert.Ok(err)
-
-			t.Log("substitutions", subs)
-
-			substituteAllToType(&typ, subs)
-			fmt.Printf("resolved type: %v\n", typ)
+			typ, err := Infer(ast[0])
 
 			t.Log("typ: ", typ)
 			t.Log("expect: ", tC.expect)
@@ -97,6 +92,8 @@ func TestGenConstraints(t *testing.T) {
 		{
 			desc:  "func def + if",
 			input: "(def foo [x] (if [x] 0 1))",
+			// note: while the exact number doesn't matter, equivalent Generics must
+			// have the same ID
 			typ: &types.Func{
 				Args: []types.Type{&types.Generic{ID: 1}},
 				Ret:  &types.Generic{ID: 2},
@@ -107,6 +104,29 @@ func TestGenConstraints(t *testing.T) {
 				{&types.Generic{ID: 3}, &types.Int{}},
 			},
 		},
+		// {
+		// 	desc:  "func call",
+		// 	input: "(def foo [x] ((+ x) 2))",
+		// 	typ: &types.Func{
+		// 		Args: []types.Type{&types.Generic{ID: 1}},
+		// 		Ret:  &types.Generic{ID: 2},
+		// 	},
+		// 	expect: []Constraint{
+		// 		// {} -| (def foo [x] ((+ x) 2)) |- x: t1
+		// 		//   x: t1 -| (+ x) : t2 |- {int -> int -> int = t1 -> t2}
+		// 		{&intBinaryOpFuncType, &types.Func{
+		// 			Args: []types.Type{&types.Generic{ID: 1}},
+		// 			Ret:  &types.Generic{ID: 2},
+		// 		}},
+		// 		//   x: t1 -| ((+ x) 2): t3 |- {t2 = int -> t3}
+		// 		{&types.Generic{ID: 2}, &types.Func{
+		// 			Args: []types.Type{&types.Int{}},
+		// 			Ret:  &types.Generic{ID: 3},
+		// 		}},
+		// 		// x: t1 -| (def foo [x] ((+ x) 2)): t1 -> t3 |- {t4 = t3}
+		// 		{&types.Generic{ID: 4}, &types.Generic{ID: 3}},
+		// 	},
+		// },
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -124,8 +144,8 @@ func TestGenConstraints(t *testing.T) {
 			expectLhs := map_(tC.expect, func(c Constraint) types.Type { return c.lhs })
 			expectRhs := map_(tC.expect, func(c Constraint) types.Type { return c.rhs })
 
-			tassert.True(types.ListStructuralEq(lhs, expectLhs), "expected", tC.expect, "got", cons)
-			tassert.True(types.ListStructuralEq(rhs, expectRhs), "expected", tC.expect, "got", cons)
+			tassert.True(types.ListStructuralEq(lhs, expectLhs), "\nexpected", tC.expect, "\ngot", cons)
+			tassert.True(types.ListStructuralEq(rhs, expectRhs), "\nexpected", tC.expect, "\ngot", cons)
 		})
 	}
 }
@@ -156,6 +176,17 @@ func TestUnify(t *testing.T) {
 				// third constraint discarded, as t3 is substituted with Int, hence: Int = Int
 			},
 		},
+		// {
+		// 	desc:  "func call",
+		// 	input: "(def foo [x] ((+ x) 2))",
+		// 	typ: &types.Func{
+		// 		Args: []types.Type{&types.Generic{ID: 1}},
+		// 		Ret:  &types.Generic{ID: 2},
+		// 	},
+		// 	expect: []Subst{
+		// 		{Old: }
+		// 	},
+		// },
 	}
 
 	for _, tC := range testCases {
