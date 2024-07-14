@@ -18,6 +18,21 @@ type Subst struct {
 	New types.Type
 }
 
+func Infer(expr parse.Expr) (types.Type, error) {
+	typ, cons, err := initConstraints(expr)
+	if err != nil {
+		return nil, err
+	}
+
+	subs, err := unify(cons)
+	if err != nil {
+		return nil, err
+	}
+
+	substituteAllToType(&typ, subs)
+	return typ, nil
+}
+
 func unify(cs []Constraint) ([]Subst, error) {
 	_, subs, err := unifyInner(cs, []Subst{})
 	return subs, err

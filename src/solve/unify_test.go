@@ -77,7 +77,7 @@ func TestTypeInference(t *testing.T) {
 
 			t.Log("typ: ", typ)
 			t.Log("expect: ", tC.expect)
-			tassert.True(typ.Eq(tC.expect), "expected ", tC.expect, " got ", typ)
+			tassert.True(types.StructuralEq(typ, tC.expect), "expected ", tC.expect, " got ", typ)
 		})
 	}
 }
@@ -119,21 +119,15 @@ func TestGenConstraints(t *testing.T) {
 			typ, cons, err := initConstraints(ast[0])
 			tassert.Ok(err)
 
-			tassert.True(typ.Eq(tC.typ), "expected type", tC.typ, "got", typ)
-			t.Logf("got %v\n expected %v", cons, tC.expect)
-			if len(cons) != len(tC.expect) {
-				t.Errorf("constraint set has different length than expected")
-			}
+			tassert.True(types.StructuralEq(typ, tC.typ), "expected type", tC.typ, "got", typ)
 
-			iMax := min(len(cons), len(tC.expect))
-			for i := range iMax {
-				if !cons[i].lhs.Eq(tC.expect[i].lhs) {
-					t.Errorf("lhs of item %d is different", i)
-				}
-				if !cons[i].rhs.Eq(tC.expect[i].rhs) {
-					t.Errorf("rhs of item %d is different", i)
-				}
-			}
+			lhs := map_(cons, func(c Constraint) types.Type { return c.lhs })
+			rhs := map_(cons, func(c Constraint) types.Type { return c.rhs })
+			expectLhs := map_(tC.expect, func(c Constraint) types.Type { return c.lhs })
+			expectRhs := map_(tC.expect, func(c Constraint) types.Type { return c.rhs })
+
+			tassert.True(types.ListStructuralEq(lhs, expectLhs), "expected", tC.expect, "got", cons)
+			tassert.True(types.ListStructuralEq(rhs, expectRhs), "expected", tC.expect, "got", cons)
 		})
 	}
 }
@@ -176,7 +170,7 @@ func TestUnify(t *testing.T) {
 			typ, cons, err := initConstraints(ast[0])
 			tassert.Ok(err)
 
-			tassert.True(typ.Eq(tC.typ), "expected type", tC.typ, "got", typ)
+			tassert.True(types.StructuralEq(typ, tC.typ), "expected type", tC.typ, "got", typ)
 
 			subs, err := unify(cons)
 			tassert.Ok(err)
@@ -188,14 +182,23 @@ func TestUnify(t *testing.T) {
 
 			iMax := min(len(subs), len(tC.expect))
 			for i := range iMax {
-				if !subs[i].Old.Eq(tC.expect[i].Old) {
+				if !types.StructuralEq(subs[i].Old, tC.expect[i].Old) {
 					t.Errorf("lhs of item %d is different", i)
 				}
-				if !subs[i].New.Eq(tC.expect[i].New) {
+				if !types.StructuralEq(subs[i].New, tC.expect[i].New) {
 					t.Errorf("rhs of item %d is different", i)
 				}
 			}
 
 		})
 	}
+}
+
+func map_[T, U any](xs []T, f func(T) U) []U {
+	ys := make([]U, 0, len(xs))
+	for _, x := range xs {
+		ys = append(ys, f(x))
+	}
+
+	return ys
 }

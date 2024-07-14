@@ -86,7 +86,7 @@ func (f *Func) String() string {
 }
 func (g *Generic) String() string {
 	if g.Name == "" {
-		return fmt.Sprintf("t#%d", g.ID)
+		return fmt.Sprintf("t%d", g.ID)
 	}
 	return fmt.Sprintf("%s#%d", g.Name, g.ID)
 }
@@ -100,4 +100,79 @@ func NewGeneric(name string, comment string) *Generic {
 		Name:    name,
 		Comment: comment,
 	}
+}
+
+// like Eq, but the specific value of [Generic.ID] is not used for equality.
+// e.g. 'a -> 'a -> Int and 'b -> 'b -> Int are structurally equal
+func StructuralEq(a, b Type) bool {
+	return structuralEq(structuralEqCtx{make(map[TypeID]TypeID), make(map[TypeID]TypeID)},
+		a, b)
+}
+
+// like [StructuralEq], but check equality on each (a[i], b[i]) pair, using the
+// same context, meaning ListStructuralEq(['a, 'a], ['b, 'c]) is not equal,
+// because 'a == 'b is established in the first pair, therefore 'a == 'c != 'b
+// is not logical
+func ListStructuralEq(a, b []Type) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	ctx := structuralEqCtx{
+		make(map[TypeID]TypeID),
+		make(map[TypeID]TypeID),
+	}
+	for i := range a {
+		if !structuralEq(ctx, a[i], b[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+type structuralEqCtx struct {
+	aToB map[TypeID]TypeID
+	bToA map[TypeID]TypeID
+}
+
+func structuralEq(ctx structuralEqCtx, a, b Type) bool {
+	switch a := a.(type) {
+	case *Int, *String, *Bool:
+		return a.Eq(b)
+	case *Func:
+		b, ok := b.(*Func)
+		if !ok || len(b.Args) != len(a.Args) {
+			return false
+		}
+
+		for i := range a.Args {
+			if !structuralEq(ctx, a.Args[i], b.Args[i]) {
+				return false
+			}
+		}
+
+		return structuralEq(ctx, a.Ret, b.Ret)
+
+	case *Generic:
+		b, ok := b.(*Generic)
+		if !ok {
+			return false
+		}
+
+		expectB, aMapped := ctx.aToB[a.ID]
+		expectA, bMapped := ctx.bToA[b.ID]
+
+		if aMapped && bMapped {
+			return expectA == a.ID && expectB == b.ID
+		} else if !aMapped && !bMapped {
+			ctx.aToB[a.ID] = b.ID
+			ctx.bToA[b.ID] = a.ID
+			return true
+		} else {
+			return false
+		}
+	}
+
+	panic("unreachable")
 }
