@@ -1,15 +1,28 @@
 package solve
 
 import (
+	"errors"
+
+	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/types"
 )
 
+var (
+	ErrVariableDefined = errors.New("variable already defined")
+)
+
 type TypeID int
+
+type SymbolTable = map[string]types.Type
+
+type ScopeStack struct {
+	stack []SymbolTable
+}
 
 // stores resolved types, this is the "context" in textbooks
 type TypeTable struct {
-	SymbolTable   map[string]types.Type
+	ScopeStack    ScopeStack
 	Names         map[string]TypeID
 	ExprToTypeVar map[ExprID]GeneratedType
 	idCounter     TypeID
@@ -51,4 +64,47 @@ func (tt TypeTable) Get(name string) TypeID {
 	tt.Names[name] = tt.idCounter
 	tt.idCounter++
 	return tt.Names[name]
+}
+
+func NewScopeStack() *ScopeStack {
+	return &ScopeStack{
+		stack: []SymbolTable{{}},
+	}
+}
+
+func (ss *ScopeStack) Find(name string) opt.Option[types.Type] {
+	size := len(ss.stack)
+	for i := range ss.stack {
+		scope := ss.stack[size-i-1]
+		if typ, ok := scope[name]; ok {
+			return opt.Some(typ)
+		}
+	}
+
+	return opt.None[types.Type]()
+}
+
+func (ss *ScopeStack) AddScope() { ss.stack = append(ss.stack, SymbolTable{}) }
+func (ss *ScopeStack) Pop() {
+	assert.GreaterThan(len(ss.stack), 0)
+	ss.stack[len(ss.stack)-1] = nil
+	ss.stack = ss.stack[:len(ss.stack)-1]
+	assert.GreaterThan(len(ss.stack), 0)
+}
+
+func (ss *ScopeStack) DefSymbol(name string, typ types.Type) error {
+	assert.GreaterThan(len(ss.stack), 0)
+
+	// disallow variable shadowing
+	size := len(ss.stack)
+	for i := range ss.stack {
+		scope := ss.stack[size-i-1]
+		if _, ok := scope[name]; ok {
+			return ErrVariableDefined
+		}
+	}
+
+	ss.stack[len(ss.stack)-1][name] = typ
+
+	return nil
 }

@@ -36,7 +36,16 @@ func TestTypeInference(t *testing.T) {
 		// 			(if [false] 4 5))`,
 		// 	expect: &types.Int{},
 		// },
+		{
+			desc:  "Simple func def",
+			input: "(def foo [x] (if [x] 1 0))",
+			expect: &types.Func{
+				Args: []types.Type{&types.Bool{}},
+				Ret:  &types.Int{},
+			},
+		},
 	}
+
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			tassert := assert.NewTestAsserts(t)

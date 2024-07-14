@@ -246,6 +246,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/types"
@@ -254,6 +255,7 @@ import (
 var (
 	ErrWrongArgCount = errors.New("wrong arg count")
 	ErrCalledNonFunc = errors.New("tried to call non-function")
+	ErrUndefinedVar  = errors.New("undefined variable")
 )
 
 type TypeVarID int
@@ -314,7 +316,16 @@ func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) (
 	case *parse.IfExpr:
 		return genIfExpr(tt, constraints, n)
 	case *parse.Form:
-		panic("unimpl")
+		return genForCall(tt, constraints, n)
+	case *parse.FuncDef:
+		return genForFunc(tt, constraints, n)
+	case *parse.Symbol:
+		typ := tt.ScopeStack.Find(n.Name)
+		if t, ok := typ.Unwrap(); ok {
+			return t, nil
+		}
+		return nil, fmt.Errorf("%w: %s", ErrUndefinedVar, n.Name)
+	default:
 	}
 
 	panic(fmt.Sprintf("unhandled node type in genConstraints: %v", node))
@@ -348,7 +359,31 @@ func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (ty
 	return ifExprType, nil
 }
 
-func genForCall(_ *TypeTable, _ *[]Constraint, node *parse.Form) error {
+func genForFunc(tt *TypeTable, cons *[]Constraint, node *parse.FuncDef) (types.Type, error) {
+	assert.Eq(len(node.Args), 1, "only single-arg functions supported")
+	assert.Eq(len(node.Body), 1, "only single-expr function body supported")
+
+	tt.ScopeStack.AddScope()
+	argType := types.NewGeneric("", "type of function arg "+node.Name)
+	tt.ScopeStack.DefSymbol(node.Args[0], argType)
+
+	retType := types.NewGeneric("", "return type of a certain function")
+
+	bodyType, err := genConstraints(tt, cons, node.Body[0])
+	if err != nil {
+		return nil, err
+	}
+
+	*cons = append(*cons, Constraint{retType, bodyType})
+
+	return &types.Func{
+		Args: []types.Type{argType},
+		Ret:  retType,
+	}, nil
+}
+
+func genForCall(_ *TypeTable, _ *[]Constraint, node *parse.Form) (types.Type, error) {
+	assert.Eq(len(node.Children), 2, "only single-arg calls supported")
 	arg0, ok := node.Children[0].(*parse.Symbol)
 	if !ok {
 		panic("unimpl")
@@ -361,11 +396,11 @@ func genForCall(_ *TypeTable, _ *[]Constraint, node *parse.Form) error {
 
 	arg0TypeInfo, ok := arg0Type.(*types.Func)
 	if !ok {
-		return fmt.Errorf("%w: function %s is of type %s", ErrCalledNonFunc, arg0.Name, arg0Type)
+		return nil, fmt.Errorf("%w: function %s is of type %s", ErrCalledNonFunc, arg0.Name, arg0Type)
 	}
 
 	if len(node.Children) != len(arg0TypeInfo.Args)+1 {
-		return fmt.Errorf(
+		return nil, fmt.Errorf(
 			"%w: '%s' expects %d arguments, got %d",
 			ErrWrongArgCount,
 			arg0.Name,
@@ -376,7 +411,7 @@ func genForCall(_ *TypeTable, _ *[]Constraint, node *parse.Form) error {
 
 	// for i,  := range arg0TypeInfo.Args {}
 
-	return nil
+	panic("TODO")
 }
 
 // Utils
