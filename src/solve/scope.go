@@ -73,6 +73,10 @@ func NewScopeStack() *ScopeStack {
 }
 
 func (ss *ScopeStack) Find(name string) opt.Option[types.Type] {
+	if typ, ok := builtins[name]; ok {
+		return opt.Some(typ)
+	}
+
 	size := len(ss.stack)
 	for i := range ss.stack {
 		scope := ss.stack[size-i-1]
@@ -86,14 +90,17 @@ func (ss *ScopeStack) Find(name string) opt.Option[types.Type] {
 
 func (ss *ScopeStack) AddScope() { ss.stack = append(ss.stack, SymbolTable{}) }
 func (ss *ScopeStack) Pop() {
-	assert.GreaterThan(len(ss.stack), 0)
+	assert.GreaterThan(len(ss.stack), 1)
 	ss.stack[len(ss.stack)-1] = nil
 	ss.stack = ss.stack[:len(ss.stack)-1]
-	assert.GreaterThan(len(ss.stack), 0)
 }
 
 func (ss *ScopeStack) DefSymbol(name string, typ types.Type) error {
 	assert.GreaterThan(len(ss.stack), 0)
+
+	if _, ok := builtins[name]; ok {
+		return ErrVariableDefined
+	}
 
 	// disallow variable shadowing
 	size := len(ss.stack)
