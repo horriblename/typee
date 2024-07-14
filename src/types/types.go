@@ -59,7 +59,7 @@ func (f *Func) Eq(other Type) bool {
 		return false
 	}
 
-	assert.Eq(len(f.Args), 0, "only single argument functions supported")
+	assert.Eq(len(f.Args), 1, "only single argument functions supported, type:", f)
 	return f.Args[0].Eq(o.Args[0]) && f.Ret.Eq(o.Ret)
 }
 func (g *Generic) Eq(other Type) bool {
@@ -84,7 +84,12 @@ func (f *Func) String() string {
 
 	return b.String()
 }
-func (g *Generic) String() string { return fmt.Sprintf("t#%d", g.ID) }
+func (g *Generic) String() string {
+	if g.Name == "" {
+		return fmt.Sprintf("t#%d", g.ID)
+	}
+	return fmt.Sprintf("%s#%d", g.Name, g.ID)
+}
 
 var genericIDCounter TypeID = 0
 
