@@ -325,7 +325,6 @@ func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) (
 			return t, nil
 		}
 		return nil, fmt.Errorf("%w: %s", ErrUndefinedVar, n.Name)
-	default:
 	}
 
 	panic(fmt.Sprintf("unhandled node type in genConstraints: %v", node))
@@ -367,18 +366,14 @@ func genForFunc(tt *TypeTable, cons *[]Constraint, node *parse.FuncDef) (types.T
 	argType := types.NewGeneric("", "type of function arg "+node.Name)
 	tt.ScopeStack.DefSymbol(node.Args[0], argType)
 
-	retType := types.NewGeneric("", "return type of a certain function")
-
 	bodyType, err := genConstraints(tt, cons, node.Body[0])
 	if err != nil {
 		return nil, err
 	}
 
-	*cons = append(*cons, Constraint{retType, bodyType})
-
 	return &types.Func{
 		Args: []types.Type{argType},
-		Ret:  retType,
+		Ret:  bodyType,
 	}, nil
 }
 

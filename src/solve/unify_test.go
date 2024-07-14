@@ -106,7 +106,6 @@ func TestGenConstraints(t *testing.T) {
 				{&types.Generic{ID: 1}, &types.Bool{}},
 				{&types.Generic{ID: 3}, &types.Int{}},
 				{&types.Generic{ID: 3}, &types.Int{}},
-				{&types.Generic{ID: 2}, &types.Generic{ID: 3}},
 			},
 		},
 	}
@@ -156,7 +155,6 @@ func TestUnify(t *testing.T) {
 				{Old: &types.Generic{ID: 1}, New: &types.Bool{}},
 				{Old: &types.Generic{ID: 3}, New: &types.Int{}},
 				// third constraint discarded, as t#3 is substituted with Int, hence: Int = Int
-				{Old: &types.Generic{ID: 2}, New: &types.Int{}},
 			},
 		},
 	}
@@ -174,6 +172,14 @@ func TestUnify(t *testing.T) {
 
 			subs, err := unify(cons)
 			tassert.Ok(err)
+
+			old := map_(subs, func(s Subst) types.Type { return s.Old })
+			new_ := map_(subs, func(s Subst) types.Type { return s.New })
+			expectOld := map_(tC.expect, func(s Subst) types.Type { return s.Old })
+			expectNew := map_(tC.expect, func(s Subst) types.Type { return s.New })
+
+			tassert.True(types.ListStructuralEq(old, expectOld), "wrong substitution[...].Old\nexpected", tC.expect, "\ngot", subs)
+			tassert.True(types.ListStructuralEq(new_, expectNew), "wrong substitution[...].New\nexpected", tC.expect, "\ngot", subs)
 
 			t.Logf("got %v\n expected %v", subs, tC.expect)
 			if len(subs) != len(tC.expect) {
