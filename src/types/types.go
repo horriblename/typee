@@ -73,6 +73,7 @@ func (*Bool) String() string   { return "Bool" }
 func (f *Func) String() string {
 	assert.True(len(f.Args) > 0)
 	b := strings.Builder{}
+	b.WriteString("(")
 	b.WriteString(f.Args[0].String())
 	for _, arg := range f.Args[1:] {
 		b.WriteString(" , ")
@@ -81,6 +82,7 @@ func (f *Func) String() string {
 
 	b.WriteString(" -> ")
 	b.WriteString(f.Ret.String())
+	b.WriteString(")")
 
 	return b.String()
 }
