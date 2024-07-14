@@ -25,16 +25,28 @@ func TestTypeInference(t *testing.T) {
 			input:  "(if [true] 1 2)",
 			expect: &types.Int{},
 		},
+		// // Not entirely sure why this isn't possible
+		// {
+		// 	desc: "Nested if expr",
+		// 	input: `
+		// 		(if [(if [true] false true)]
+		// 			(if [false]
+		// 				1
+		// 				(if [true] 2 3))
+		// 			(if [false] 4 5))`,
+		// 	expect: &types.Int{},
+		// },
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			tassert := assert.NewTestAsserts(t)
 			ast, err := parse.ParseString(tC.input)
-			tassert.Ok(err)
+			tassert.Ok(err, "parse failed")
 
 			typ, cons, err := initConstraints(ast[0])
 			tassert.Ok(err)
 
+			t.Log("generated top-level type", typ)
 			t.Log("constraints", cons)
 
 			subs, err := unify(cons)
@@ -45,7 +57,9 @@ func TestTypeInference(t *testing.T) {
 			substituteAllToType(&typ, subs)
 			fmt.Printf("resolved type: %v\n", typ)
 
-			tassert.Eq(typ, tC.expect)
+			t.Log("typ: ", typ)
+			t.Log("expect: ", tC.expect)
+			tassert.True(typ.Eq(tC.expect), "expected ", tC.expect, " got ", typ)
 		})
 	}
 }
