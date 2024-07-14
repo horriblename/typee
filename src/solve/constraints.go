@@ -290,7 +290,6 @@ func initConstraints(node parse.Expr) (types.Type, []Constraint, error) {
 		return nil, nil, err
 	}
 
-	fmt.Printf("0: %v\n", constraints)
 	return typ, constraints, nil
 }
 
@@ -328,19 +327,16 @@ func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (ty
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("1: %v\n", constraints)
 
 	typCons, err := genConstraints(tt, constraints, node.Consequence)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("2: %v\n", constraints)
 
 	typAlt, err := genConstraints(tt, constraints, node.Alternative)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("3: %v\n", constraints)
 
 	*constraints = append(
 		*constraints,
@@ -348,7 +344,6 @@ func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (ty
 		Constraint{typCons, ifExprType},
 		Constraint{typAlt, ifExprType},
 	)
-	fmt.Printf("4: %v\n", constraints)
 
 	return ifExprType, nil
 }
