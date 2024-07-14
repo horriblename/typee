@@ -89,14 +89,11 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	case *lex.If:
 		return ifExpr(in)
 
-	case *lex.Symbol:
-		return form(in)
-
 	case nil:
 		return nil, nil, errAt(in)
 
 	default:
-		return nil, nil, errAt(in)
+		return form(in)
 	}
 }
 
