@@ -6,6 +6,10 @@ import (
 
 type TestAsserts struct{ t *testing.T }
 
+func NewTestAsserts(t *testing.T) TestAsserts {
+	return TestAsserts{t: t}
+}
+
 func (t *TestAsserts) Ok(e error, msg ...any) {
 	t.t.Helper()
 	if e != nil {
