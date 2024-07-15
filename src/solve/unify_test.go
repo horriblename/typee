@@ -25,17 +25,16 @@ func TestTypeInference(t *testing.T) {
 			input:  "(if [true] 1 2)",
 			expect: &types.Int{},
 		},
-		// // Not entirely sure why this isn't possible
-		// {
-		// 	desc: "Nested if expr",
-		// 	input: `
-		// 		(if [(if [true] false true)]
-		// 			(if [false]
-		// 				1
-		// 				(if [true] 2 3))
-		// 			(if [false] 4 5))`,
-		// 	expect: &types.Int{},
-		// },
+		{
+			desc: "Nested if expr",
+			input: `
+				(if [(if [true] false true)]
+					(if [false]
+						1
+						(if [true] 2 3))
+					(if [false] 4 5))`,
+			expect: &types.Int{},
+		},
 		{
 			desc:  "Simple func def",
 			input: "(def foo [x] 2)",
