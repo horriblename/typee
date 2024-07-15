@@ -118,6 +118,21 @@ func TestParse(t *testing.T) {
 			}},
 		},
 		{
+			desc:  "fn expression",
+			input: "(fn [x] (+ x 1))",
+			output: []Expr{&Fn{
+				Arg: "x",
+				Body: &Form{
+					id: 4,
+					Children: []Expr{
+						&Symbol{id: 1, Name: "+"},
+						&Symbol{id: 2, Name: "x"},
+						&IntLiteral{id: 3, Number: 1},
+					},
+				},
+			}},
+		},
+		{
 			desc:  "let expr",
 			input: "(let [x (+ 1 2) y (if [true] 3 4)] (* x y))",
 			output: []Expr{&LetExpr{

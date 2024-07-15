@@ -70,6 +70,12 @@ type LetExpr struct {
 	Body        Expr
 }
 
+type Fn struct {
+	id   int
+	Arg  string
+	Body Expr
+}
+
 func (*Form) ast()        {}
 func (*Symbol) ast()      {}
 func (*FuncDef) ast()     {}
@@ -79,6 +85,7 @@ func (*StrLiteral) ast()  {}
 func (*IntLiteral) ast()  {}
 func (*BoolLiteral) ast() {}
 func (*LetExpr) ast()     {}
+func (*Fn) ast()          {}
 
 func (self *Form) ID() int        { return self.id }
 func (self *Symbol) ID() int      { return self.id }
@@ -90,6 +97,7 @@ func (self *StrLiteral) ID() int  { return self.id }
 func (self *IntLiteral) ID() int  { return self.id }
 func (self *BoolLiteral) ID() int { return self.id }
 func (self *LetExpr) ID() int     { return self.id }
+func (self *Fn) ID() int          { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
@@ -114,4 +122,7 @@ func (self *BoolLiteral) String() string {
 }
 func (self *LetExpr) String() string {
 	return fmt.Sprintf("#%d (let %v %v)", self.id, self.Assignments, self.Body)
+}
+func (self *Fn) String() string {
+	return fmt.Sprintf("#%d (fn [%v] %v)", self.id, self.Arg, self.Body)
 }
