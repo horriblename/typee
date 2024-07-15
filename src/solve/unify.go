@@ -94,7 +94,7 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 			assert.Eq(len(rhs.Args), 1, "only single arguments supported, got: ", rhs)
 
 			// FIXME: allocates per prepend
-			cs = append([]Constraint{{lhs.Args[0], rhs.Args[0]}}, cs[1:]...)
+			cs = append([]Constraint{{lhs.Args[0], rhs.Args[0]}, {lhs.Ret, rhs.Ret}}, cs[1:]...)
 			return unifyInner(cs, subs)
 		}
 	}

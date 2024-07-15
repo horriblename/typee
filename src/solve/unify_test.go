@@ -104,29 +104,29 @@ func TestGenConstraints(t *testing.T) {
 				{&types.Generic{ID: 3}, &types.Int{}},
 			},
 		},
-		// {
-		// 	desc:  "func call",
-		// 	input: "(def foo [x] ((+ x) 2))",
-		// 	typ: &types.Func{
-		// 		Args: []types.Type{&types.Generic{ID: 1}},
-		// 		Ret:  &types.Generic{ID: 2},
-		// 	},
-		// 	expect: []Constraint{
-		// 		// {} -| (def foo [x] ((+ x) 2)) |- x: t1
-		// 		//   x: t1 -| (+ x) : t2 |- {int -> int -> int = t1 -> t2}
-		// 		{&intBinaryOpFuncType, &types.Func{
-		// 			Args: []types.Type{&types.Generic{ID: 1}},
-		// 			Ret:  &types.Generic{ID: 2},
-		// 		}},
-		// 		//   x: t1 -| ((+ x) 2): t3 |- {t2 = int -> t3}
-		// 		{&types.Generic{ID: 2}, &types.Func{
-		// 			Args: []types.Type{&types.Int{}},
-		// 			Ret:  &types.Generic{ID: 3},
-		// 		}},
-		// 		// x: t1 -| (def foo [x] ((+ x) 2)): t1 -> t3 |- {t4 = t3}
-		// 		{&types.Generic{ID: 4}, &types.Generic{ID: 3}},
-		// 	},
-		// },
+		{
+			desc:  "func call",
+			input: "(def foo [x] ((+ x) 2))",
+			typ: &types.Func{
+				Args: []types.Type{&types.Generic{ID: 1}},
+				Ret:  &types.Generic{ID: 2},
+			},
+			expect: []Constraint{
+				// mapping of generic variables: x: t1, (+ x): t2, ((+ x) 2): t3
+				// {} -| (def foo [x] ((+ x) 2)) |- x: t1
+				//   x: t1 -| ((+ x) 2) : t3
+				//     x: t1 -| (+ x) : t2 |- {int -> int -> int = t1 -> t2}
+				{&intBinaryOpFuncType, &types.Func{
+					Args: []types.Type{&types.Generic{ID: 1}},
+					Ret:  &types.Generic{ID: 2},
+				}},
+				//   x: t1 -| ((+ x) 2): t3 |- {t2 = int -> t3}
+				{&types.Generic{ID: 2}, &types.Func{
+					Args: []types.Type{&types.Int{}},
+					Ret:  &types.Generic{ID: 3},
+				}},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -176,17 +176,19 @@ func TestUnify(t *testing.T) {
 				// third constraint discarded, as t3 is substituted with Int, hence: Int = Int
 			},
 		},
-		// {
-		// 	desc:  "func call",
-		// 	input: "(def foo [x] ((+ x) 2))",
-		// 	typ: &types.Func{
-		// 		Args: []types.Type{&types.Generic{ID: 1}},
-		// 		Ret:  &types.Generic{ID: 2},
-		// 	},
-		// 	expect: []Subst{
-		// 		{Old: }
-		// 	},
-		// },
+		{
+			desc:  "func call",
+			input: "(def foo [x] ((+ x) 2))",
+			typ: &types.Func{
+				Args: []types.Type{&types.Generic{ID: 1}},
+				Ret:  &types.Generic{ID: 2},
+			},
+			expect: []Subst{
+				{Old: &types.Generic{ID: 1}, New: &types.Int{}},
+				{Old: &types.Generic{ID: 2}, New: &types.Func{Args: []types.Type{&types.Int{}}, Ret: &types.Int{}}},
+				{Old: &types.Generic{ID: 3}, New: &types.Int{}},
+			},
+		},
 	}
 
 	for _, tC := range testCases {
