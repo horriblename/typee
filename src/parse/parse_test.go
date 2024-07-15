@@ -117,6 +117,40 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			desc:  "let expr",
+			input: "(let [x (+ 1 2) y (if [true] 3 4)] (* x y))",
+			output: []Expr{&LetExpr{
+				id: 13,
+				Assignments: []Assignment{
+					{Var: "x", Value: &Form{
+						id: 4,
+						Children: []Expr{
+							&Symbol{id: 1, Name: "+"},
+							&IntLiteral{id: 2, Number: 1},
+							&IntLiteral{id: 3, Number: 2},
+						},
+					}},
+					{Var: "y", Value: &IfExpr{
+						id: 8,
+						Condition: &BoolLiteral{
+							id:    5,
+							Value: true,
+						},
+						Consequence: &IntLiteral{id: 6, Number: 3},
+						Alternative: &IntLiteral{id: 7, Number: 4},
+					}},
+				},
+				Body: &Form{
+					id: 12,
+					Children: []Expr{
+						&Symbol{id: 9, Name: "*"},
+						&Symbol{id: 10, Name: "x"},
+						&Symbol{id: 11, Name: "y"},
+					},
+				},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

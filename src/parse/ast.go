@@ -59,6 +59,17 @@ type BoolLiteral struct {
 	Value bool
 }
 
+type Assignment struct {
+	Var   string
+	Value Expr
+}
+
+type LetExpr struct {
+	id          int
+	Assignments []Assignment
+	Body        Expr
+}
+
 func (*Form) ast()        {}
 func (*Symbol) ast()      {}
 func (*FuncDef) ast()     {}
@@ -67,6 +78,7 @@ func (*IfExpr) ast()      {}
 func (*StrLiteral) ast()  {}
 func (*IntLiteral) ast()  {}
 func (*BoolLiteral) ast() {}
+func (*LetExpr) ast()     {}
 
 func (self *Form) ID() int        { return self.id }
 func (self *Symbol) ID() int      { return self.id }
@@ -77,6 +89,7 @@ func (self *IfExpr) ID() int      { return self.id }
 func (self *StrLiteral) ID() int  { return self.id }
 func (self *IntLiteral) ID() int  { return self.id }
 func (self *BoolLiteral) ID() int { return self.id }
+func (self *LetExpr) ID() int     { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
@@ -98,4 +111,7 @@ func (self *IntLiteral) String() string {
 }
 func (self *BoolLiteral) String() string {
 	return fmt.Sprintf("#%d BoolLiteral %t", self.id, self.Value)
+}
+func (self *LetExpr) String() string {
+	return fmt.Sprintf("#%d (let %v %v)", self.id, self.Assignments, self.Body)
 }

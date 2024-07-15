@@ -20,15 +20,19 @@ func TestLex(t *testing.T) {
 		err    error
 	}{
 		{
-			desc:   "All",
-			input:  `(foo)def[set "str"]123`,
-			output: []Token{&lParen, &Symbol{Name: "foo"}, &rParen, &tokDef, &lBracket, &tokSet, &StrLiteral{Content: "str"}, &rBracket, &IntLiteral{Number: 123}},
-			err:    nil,
+			desc:  "All",
+			input: `(foo)def[set "str"]123`,
+			output: []Token{&lParen, &Symbol{Name: "foo"}, &rParen, &tokDef,
+				&lBracket, &tokSet, &StrLiteral{Content: "str"}, &rBracket,
+				&IntLiteral{Number: 123}},
+			err: nil,
 		},
 		{
-			desc:   "keywords",
-			input:  "def set defoo bar true false if",
-			output: []Token{&tokDef, &tokSet, &Symbol{Name: "defoo"}, &Symbol{Name: "bar"}, &TrueLiteral{}, &FalseLiteral{}, &If{}},
+			desc:  "keywords",
+			input: "def set defoo bar true false if let",
+			output: []Token{&tokDef, &tokSet, &Symbol{Name: "defoo"},
+				&Symbol{Name: "bar"}, &TrueLiteral{}, &FalseLiteral{}, &If{},
+				&Let{}},
 		},
 		{
 			desc:   "simple form",

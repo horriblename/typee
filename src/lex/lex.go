@@ -104,6 +104,8 @@ func keywordOrSymbol(in []rune) ([]rune, Token, error) {
 		return rest, &FalseLiteral{}, nil
 	case "if":
 		return rest, &If{}, nil
+	case "let":
+		return rest, &Let{}, nil
 	}
 
 	return rest, &Symbol{Name: symName}, err

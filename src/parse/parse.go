@@ -89,6 +89,9 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	case *lex.If:
 		return ifExpr(in)
 
+	case *lex.Let:
+		return letExpr(in)
+
 	case nil:
 		return nil, nil, errAt(in)
 
@@ -209,6 +212,48 @@ func ifExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	}, nil
 }
 
+func letExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
+	defer func() { err = handleCheck(recover()) }()
+
+	in, _, err = lparen(in)
+	check(err)
+
+	in, _, err = kwLet(in)
+	check(err)
+
+	in, ass, err := combinator.Surround(
+		lbracket,
+		combinator.Many0(assignment),
+		rbracket,
+	)(in)
+	check(err)
+
+	in, body, err := expr(in)
+	check(err)
+
+	in, _, err = rparen(in)
+	check(err)
+
+	let := &LetExpr{
+		id:          newId(),
+		Assignments: ass,
+		Body:        body,
+	}
+	return in, let, nil
+}
+
+func assignment(in []lex.Token) (_ []lex.Token, _ Assignment, err error) {
+	defer func() { err = handleCheck(recover()) }()
+
+	in, name, err := symbolName(in)
+	check(err)
+
+	in, body, err := expr(in)
+	check(err)
+
+	return in, Assignment{Var: name, Value: body}, nil
+}
+
 func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 	if len(in) == 0 {
 		return nil, nil, errAt(in)
@@ -253,6 +298,9 @@ func kwSet(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func kwIf(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.If])(in)
+}
+func kwLet(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Let])(in)
 }
 func kwTrue(in []lex.Token) ([]lex.Token, Expr, error) {
 	rest, _, err := wrappedResult(matchOne[*lex.TrueLiteral])(in)
