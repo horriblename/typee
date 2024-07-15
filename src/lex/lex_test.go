@@ -29,10 +29,10 @@ func TestLex(t *testing.T) {
 		},
 		{
 			desc:  "keywords",
-			input: "def set defoo bar true false if let",
+			input: "def set defoo bar true false if let fn",
 			output: []Token{&tokDef, &tokSet, &Symbol{Name: "defoo"},
 				&Symbol{Name: "bar"}, &TrueLiteral{}, &FalseLiteral{}, &If{},
-				&Let{}},
+				&Let{}, &Fn{}},
 		},
 		{
 			desc:   "simple form",
