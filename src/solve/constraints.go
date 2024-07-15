@@ -319,6 +319,8 @@ func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) (
 		return genForCall(tt, constraints, n)
 	case *parse.FuncDef:
 		return genForFunc(tt, constraints, n)
+	case *parse.Fn:
+		return genForFn(tt, constraints, n)
 	case *parse.Symbol:
 		typ := tt.ScopeStack.Find(n.Name)
 		if t, ok := typ.Unwrap(); ok {
@@ -367,6 +369,22 @@ func genForFunc(tt *TypeTable, cons *[]Constraint, node *parse.FuncDef) (types.T
 	tt.ScopeStack.DefSymbol(node.Args[0], argType)
 
 	bodyType, err := genConstraints(tt, cons, node.Body[0])
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.Func{
+		Args: []types.Type{argType},
+		Ret:  bodyType,
+	}, nil
+}
+
+func genForFn(tt *TypeTable, cons *[]Constraint, node *parse.Fn) (types.Type, error) {
+	tt.ScopeStack.AddScope()
+	argType := types.NewGeneric("", "type of anonymous function arg")
+	tt.ScopeStack.DefSymbol(node.Arg, argType)
+
+	bodyType, err := genConstraints(tt, cons, node.Body)
 	if err != nil {
 		return nil, err
 	}

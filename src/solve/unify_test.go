@@ -58,6 +58,14 @@ func TestTypeInference(t *testing.T) {
 				Ret:  &types.Int{},
 			},
 		},
+		{
+			desc:  "fn call",
+			input: "(fn [x] (if [true] ((fn [y] (if [((> y) 3)] 4 ((* y) y))) 2) ((- 4) x)))",
+			expect: &types.Func{
+				Args: []types.Type{&types.Int{}},
+				Ret:  &types.Int{},
+			},
+		},
 	}
 
 	for _, tC := range testCases {
