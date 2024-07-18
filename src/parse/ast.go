@@ -4,6 +4,7 @@ package parse
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/horriblename/typee/src/opt"
 )
@@ -11,6 +12,7 @@ import (
 type Expr interface {
 	ast()
 	ID() int
+	Pretty() string
 }
 
 // Nodes
@@ -125,4 +127,52 @@ func (self *LetExpr) String() string {
 }
 func (self *Fn) String() string {
 	return fmt.Sprintf("#%d (fn [%v] %v)", self.id, self.Arg, self.Body)
+}
+
+func prettySlice(xs []Expr) []string {
+	ys := make([]string, 0, len(xs))
+	for _, x := range xs {
+		ys = append(ys, x.Pretty())
+	}
+
+	return ys
+}
+
+func (self *Form) Pretty() string   { return fmt.Sprintf("(%v)", prettySlice(self.Children)) }
+func (self *Symbol) Pretty() string { return fmt.Sprintf("%s", self.Name) }
+func (self *Int) Pretty() string    { return fmt.Sprintf("%d", self.Value) }
+func (self *FuncDef) Pretty() string {
+	return fmt.Sprintf("(def %s [%v] %v)", self.Name, self.Args, prettySlice(self.Body))
+}
+func (self *Set) Pretty() string {
+	return fmt.Sprintf("(set %s %v)", self.Name, self.Value.Pretty())
+}
+func (self *IfExpr) Pretty() string {
+	return fmt.Sprintf("(if [%v] %v %v)", self.Condition.Pretty(), self.Consequence.Pretty(), self.Alternative.Pretty())
+}
+func (self *StrLiteral) Pretty() string {
+	return fmt.Sprintf(`"%s"`, self.Content)
+}
+func (self *IntLiteral) Pretty() string {
+	return fmt.Sprintf("%d", self.Number)
+}
+func (self *BoolLiteral) Pretty() string {
+	return fmt.Sprintf("%t", self.Value)
+}
+func (self *LetExpr) Pretty() string {
+	var b strings.Builder
+	b.WriteString("(let [")
+	for _, ass := range self.Assignments {
+		b.WriteString(ass.Var)
+		b.WriteString(" ")
+		b.WriteString(ass.Value.Pretty())
+		b.WriteString(" ")
+	}
+	b.WriteString("]")
+	b.WriteString(self.Body.Pretty())
+	b.WriteString(")")
+	return b.String()
+}
+func (self *Fn) Pretty() string {
+	return fmt.Sprintf("(fn [%s] %s)", self.Arg, self.Body.Pretty())
 }
