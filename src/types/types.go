@@ -1,5 +1,7 @@
 package types
 
+//go-sumtype:decl Type
+
 import (
 	"fmt"
 	"strings"
@@ -28,18 +30,24 @@ type Generic struct {
 	Name    string // can be empty
 	Comment string // can be empty
 }
+type TypeScheme struct {
+	Over []Generic
+	Body Type
+}
 
-func (*String) type_()  {}
-func (*Int) type_()     {}
-func (*Bool) type_()    {}
-func (*Func) type_()    {}
-func (*Generic) type_() {}
+func (*String) type_()     {}
+func (*Int) type_()        {}
+func (*Bool) type_()       {}
+func (*Func) type_()       {}
+func (*Generic) type_()    {}
+func (*TypeScheme) type_() {}
 
-func (*String) Simple() bool  { return true }
-func (*Int) Simple() bool     { return true }
-func (*Bool) Simple() bool    { return true }
-func (*Func) Simple() bool    { return false }
-func (*Generic) Simple() bool { return false }
+func (*String) Simple() bool     { return true }
+func (*Int) Simple() bool        { return true }
+func (*Bool) Simple() bool       { return true }
+func (*Func) Simple() bool       { return false }
+func (*Generic) Simple() bool    { return false }
+func (*TypeScheme) Simple() bool { return false }
 
 func (*String) Eq(other Type) bool {
 	_, ok := other.(*String)
@@ -66,6 +74,9 @@ func (g *Generic) Eq(other Type) bool {
 	o, ok := other.(*Generic)
 	return ok && o.ID == g.ID
 }
+func (ts *TypeScheme) Eq(other Type) bool {
+	panic("todo")
+}
 
 func (*String) String() string { return "String" }
 func (*Int) String() string    { return "Int" }
@@ -91,6 +102,16 @@ func (g *Generic) String() string {
 		return fmt.Sprintf("t%d", g.ID)
 	}
 	return fmt.Sprintf("%s#%d", g.Name, g.ID)
+}
+func (ts *TypeScheme) String() string {
+	var b strings.Builder
+	b.WriteString("∀")
+	for _, g := range ts.Over {
+		b.WriteString(g.String())
+		b.WriteString(". ")
+	}
+	b.WriteString(ts.Body.String())
+	return b.String()
 }
 
 var genericIDCounter TypeID = 0
@@ -174,6 +195,90 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 		} else {
 			return false
 		}
+	case *TypeScheme:
+		b, ok := b.(*TypeScheme)
+		if !ok {
+			return false
+		}
+
+		// TODO: check for "bound" status e.g. 'a . 'a != 'b . 'c
+		structuralEq(ctx, a.Body, b.Body)
+	}
+
+	panic("unreachable")
+}
+
+func Clone(typ Type) Type {
+	switch t := typ.(type) {
+	case *String:
+		t2 := *t
+		return &t2
+	case *Int:
+		t2 := *t
+		return &t2
+	case *Bool:
+		t2 := *t
+		return &t2
+	case *Func:
+		assert.Eq(len(t.Args), 1, "only single arg functions supported")
+		arg := Clone(t.Args[0])
+		ret := Clone(t.Ret)
+
+		return &Func{Args: []Type{arg}, Ret: ret}
+	case *Generic:
+		return &Generic{ID: t.ID, Name: t.Name, Comment: t.Comment}
+	case *TypeScheme:
+		generics := make([]Generic, len(t.Over))
+		copy(generics, t.Over)
+		return &TypeScheme{Over: generics, Body: Clone(t.Body)}
+	}
+
+	panic("unreachable")
+}
+
+type PrettyCtx struct {
+	mapping map[TypeID]string
+	counter int
+}
+
+func (ctx *PrettyCtx) get(id TypeID) string {
+	if prettyName, ok := ctx.mapping[id]; ok {
+		return prettyName
+	}
+
+	ctx.counter = ctx.counter + 1
+	ctx.mapping[id] = fmt.Sprintf("t%d", ctx.counter)
+	return ctx.mapping[id]
+}
+
+func (ctx *PrettyCtx) String(typ Type) string {
+	if ctx.mapping == nil {
+		ctx.mapping = map[TypeID]string{}
+	}
+	switch t := typ.(type) {
+	case *String, *Int, *Bool:
+		return t.String()
+	case *Func:
+		assert.Eq(len(t.Args), 1, "only single arg functions supported")
+		return fmt.Sprintf("(%s -> %s)", ctx.String(t.Args[0]), ctx.String(t.Ret))
+	case *Generic:
+		if prettyName, ok := ctx.mapping[t.ID]; ok {
+			return prettyName
+		}
+
+		ctx.counter = ctx.counter + 1
+		ctx.mapping[t.ID] = fmt.Sprintf("t%d", ctx.counter)
+		return ctx.mapping[t.ID]
+
+	case *TypeScheme:
+		var b strings.Builder
+		b.WriteString("∀")
+		for _, g := range t.Over {
+			b.WriteString(ctx.String(&g))
+			b.WriteString(". ")
+		}
+		b.WriteString(ctx.String(t.Body))
+		return b.String()
 	}
 
 	panic("unreachable")
