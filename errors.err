@@ -1,0 +1,49 @@
+?   	github.com/horriblename/typee/src/assert	[no test files]
+?   	github.com/horriblename/typee/src/cli	[no test files]
+?   	github.com/horriblename/typee/src/combinator	[no test files]
+?   	github.com/horriblename/typee/src/opt	[no test files]
+testing: warning: no tests to run
+PASS
+ok  	github.com/horriblename/typee/src/lex	(cached) [no tests to run]
+testing: warning: no tests to run
+PASS
+ok  	github.com/horriblename/typee/src/parse	(cached) [no tests to run]
+=== RUN   TestGenConstraints
+=== RUN   TestGenConstraints/Simple_literal
+{} |- false : Bool -| &[]
+=== RUN   TestGenConstraints/func_def_+_if
+  {x: t1, } |- x : t1 -| &[]
+  {x: t1, } |- 0 : Int -| &[]
+  {x: t1, } |- 1 : Int -| &[]
+  {x: t1, } |- (if [x] 0 1) : t2 -| &[t1 = Bool t2 = Int t2 = Int]
+  {x: t1, } |- (def foo [[x]] [(if [x] 0 1)]) : (t1 -> t2) -| &[t1 = Bool t2 = Int t2 = Int]
+=== RUN   TestGenConstraints/func_call
+  {x: t3, } |- + : (Int -> (Int -> Int)) -| &[]
+  {x: t3, } |- x : t3 -| &[]
+  {x: t3, } |- ([+ x]) : t4 -| &[(Int -> (Int -> Int)) = (t3 -> t4)]
+  {x: t3, } |- 2 : Int -| &[(Int -> (Int -> Int)) = (t3 -> t4)]
+  {x: t3, } |- ([([+ x]) 2]) : t5 -| &[(Int -> (Int -> Int)) = (t3 -> t4) t4 = (Int -> t5)]
+  {x: t3, } |- (def foo [[x]] [([([+ x]) 2])]) : (t3 -> t5) -| &[(Int -> (Int -> Int)) = (t3 -> t4) t4 = (Int -> t5)]
+=== RUN   TestGenConstraints/simple_let_in
+generalize let assignment: #0 (fn [x] #13 Symbol {x})
+  {x: t6, } |- x : t6 -| &[]
+{} |- (fn [x] x) : (t6 -> t6) -| &[]
+generalize let assignment: #16 Form [#14 Symbol {id} #15 IntLiteral 0]
+  {id: ∀t6. (t6 -> t6), } |- id : (t7 -> t7) -| &[]
+  {id: ∀t6. (t6 -> t6), } |- 0 : Int -| &[]
+  {id: ∀t6. (t6 -> t6), } |- ([id 0]) : t8 -| &[(t7 -> t7) = (Int -> t8)]
+    {id: ∀t6. (t6 -> t6), a: ∀t8. Int, } |- id : (t9 -> t9) -| &[(t7 -> t7) = (Int -> t8)]
+    {id: ∀t6. (t6 -> t6), a: ∀t8. Int, } |- true : Bool -| &[(t7 -> t7) = (Int -> t8)]
+    {id: ∀t6. (t6 -> t6), a: ∀t8. Int, } |- ([id true]) : t10 -| &[(t7 -> t7) = (Int -> t8) (t9 -> t9) = (Bool -> t10)]
+  {id: ∀t6. (t6 -> t6), } |- (let [a ([id 0]) ]([id true])) : t10 -| &[(t7 -> t7) = (Int -> t8) (t9 -> t9) = (Bool -> t10)]
+{} |- (let [id (fn [x] x) ](let [a ([id 0]) ]([id true]))) : t10 -| &[(t7 -> t7) = (Int -> t8) (t9 -> t9) = (Bool -> t10)]
+--- PASS: TestGenConstraints (0.00s)
+    --- PASS: TestGenConstraints/Simple_literal (0.00s)
+    --- PASS: TestGenConstraints/func_def_+_if (0.00s)
+    --- PASS: TestGenConstraints/func_call (0.00s)
+    --- PASS: TestGenConstraints/simple_let_in (0.00s)
+PASS
+ok  	github.com/horriblename/typee/src/solve	0.003s
+testing: warning: no tests to run
+PASS
+ok  	github.com/horriblename/typee/src/types	(cached) [no tests to run]

@@ -145,6 +145,12 @@ func walkTypeUntil(typ *types.Type, visitor func(node *types.Type) Stop) {
 		if visitor(typ) {
 			return
 		}
+	case *types.TypeScheme:
+		if visitor(typ) {
+			return
+		}
+
+		walkTypeUntil(&t.Body, visitor)
 	case *types.Func:
 		if visitor(typ) {
 			return
@@ -172,6 +178,9 @@ func walkAST(node parse.Expr, walker func(node parse.Expr)) {
 		for _, child := range n.Body {
 			walkAST(child, walker)
 		}
+	case *parse.Fn:
+		walker(node)
+		walkAST(n.Body, walker)
 	case *parse.Set:
 		walker(node)
 		walkAST(n.Value, walker)
@@ -180,6 +189,13 @@ func walkAST(node parse.Expr, walker func(node parse.Expr)) {
 		walkAST(n.Condition, walker)
 		walkAST(n.Consequence, walker)
 		walkAST(n.Alternative, walker)
+		// case *parse.
+	case *parse.LetExpr:
+		walker(node)
+		for _, ass := range n.Assignments {
+			walkAST(ass.Value, walker)
+		}
+		walkAST(n.Body, walker)
 	}
 
 	panic("unknown ast node")

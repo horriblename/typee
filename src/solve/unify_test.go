@@ -1,12 +1,23 @@
 package solve
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/types"
 )
+
+// for readability
+var t1 = &types.Generic{ID: 1}
+var t2 = &types.Generic{ID: 2}
+var t3 = &types.Generic{ID: 3}
+var t4 = &types.Generic{ID: 4}
+var t5 = &types.Generic{ID: 5}
+
+var tyInt = &types.Int{}
+var tyBool = &types.Bool{}
 
 func TestTypeInference(t *testing.T) {
 	testCases := []struct {
@@ -65,6 +76,11 @@ func TestTypeInference(t *testing.T) {
 				Args: []types.Type{&types.Int{}},
 				Ret:  &types.Int{},
 			},
+		},
+		{
+			desc:   "simple let expr",
+			input:  "(let [id (fn [x] x)] (let [a (id 0)] (id true)))",
+			expect: tyBool,
 		},
 	}
 
@@ -135,6 +151,15 @@ func TestGenConstraints(t *testing.T) {
 				}},
 			},
 		},
+		{
+			desc:  "simple let in",
+			input: "(let [id (fn [x] x)] (let [a (id 0)] (id true)))",
+			typ:   t5,
+			expect: []Constraint{
+				{tyFn(t2, t2), tyFn(tyInt, t3)},
+				{tyFn(t4, t4), tyFn(tyBool, t5)},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -152,10 +177,22 @@ func TestGenConstraints(t *testing.T) {
 			expectLhs := map_(tC.expect, func(c Constraint) types.Type { return c.lhs })
 			expectRhs := map_(tC.expect, func(c Constraint) types.Type { return c.rhs })
 
-			tassert.True(types.ListStructuralEq(lhs, expectLhs), "\nexpected", tC.expect, "\ngot", cons)
-			tassert.True(types.ListStructuralEq(rhs, expectRhs), "\nexpected", tC.expect, "\ngot", cons)
+			tassert.True(types.ListStructuralEq(lhs, expectLhs), "\nexpected", (tC.expect), "\ngot", (cons))
+			tassert.True(types.ListStructuralEq(rhs, expectRhs), "\nexpected", (tC.expect), "\ngot", (cons))
 		})
 	}
+}
+
+func prettifyConstraint(con Constraint, ctx *types.PrettyCtx) string {
+	if ctx == nil {
+		ctx = &types.PrettyCtx{}
+	}
+	return fmt.Sprintf("%v = %v", ctx.String(con.lhs), ctx.String(con.rhs))
+}
+
+func prettifyConstraints(cons []Constraint) []string {
+	ctx := types.PrettyCtx{}
+	return map_(cons, func(con Constraint) string { return prettifyConstraint(con, &ctx) })
 }
 
 func TestUnify(t *testing.T) {
@@ -197,6 +234,17 @@ func TestUnify(t *testing.T) {
 				{Old: &types.Generic{ID: 3}, New: &types.Int{}},
 			},
 		},
+		{
+			desc:  "simple let in",
+			input: "(let [id (fn [x] x)] (let [a (id 0)] (id true)))",
+			typ:   t4,
+			expect: []Subst{
+				{Old: t2, New: tyInt},
+				{Old: t3, New: tyInt},
+				{Old: t4, New: tyBool},
+				{Old: t5, New: tyBool},
+			},
+		},
 	}
 
 	for _, tC := range testCases {
@@ -231,4 +279,10 @@ func map_[T, U any](xs []T, f func(T) U) []U {
 	}
 
 	return ys
+}
+func tyFn(arg types.Type, ret types.Type) types.Type {
+	return &types.Func{
+		Args: []types.Type{arg},
+		Ret:  ret,
+	}
 }

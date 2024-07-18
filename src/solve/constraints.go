@@ -245,6 +245,8 @@ package solve
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/opt"
@@ -287,7 +289,7 @@ type ExprID int
 func initConstraints(node parse.Expr) (types.Type, []Constraint, error) {
 	constraints := []Constraint{}
 	tt := NewTypeTable()
-	typ, err := genConstraints(&tt, &constraints, node)
+	typ, _, err := genConstraints(&tt, &constraints, node)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -295,24 +297,34 @@ func initConstraints(node parse.Expr) (types.Type, []Constraint, error) {
 	return typ, constraints, nil
 }
 
-func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) (types.Type, error) {
+func indent(size int) string {
+	return strings.Repeat("  ", size)
+}
+
+func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) (t types.Type, g []types.Generic, e error) {
+	defer func() {
+		dbg("%s%s |- %v : %v -| %v",
+			indent(len(tt.ScopeStack.stack)),
+			tt.ScopeStack.String(),
+			node.Pretty(), t, constraints)
+	}()
 	switch n := node.(type) {
 	// no constraints generated for "constant" types
 	case *parse.IntLiteral:
 		// typ := GeneratedType{typeVar: NewTypeVar()}
 		// typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
 		// tt.SetTypeOfExpr(ExprID(node.ID()), typ)
-		return &types.Int{}, nil
+		return &types.Int{}, []types.Generic{}, nil
 	case *parse.BoolLiteral:
 		// typ := GeneratedType{typeVar: NewTypeVar()}
 		// typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
 		// tt.SetTypeOfExpr(ExprID(node.ID()), typ)
-		return &types.Bool{}, nil
+		return &types.Bool{}, []types.Generic{}, nil
 	case *parse.StrLiteral:
 		// typ := GeneratedType{typeVar: NewTypeVar()}
 		// typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
 		// tt.SetTypeOfExpr(ExprID(node.ID()), typ)
-		return &types.String{}, nil
+		return &types.String{}, []types.Generic{}, nil
 	case *parse.IfExpr:
 		return genIfExpr(tt, constraints, n)
 	case *parse.Form:
@@ -322,33 +334,35 @@ func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) (
 	case *parse.Fn:
 		return genForFn(tt, constraints, n)
 	case *parse.Symbol:
-		typ := tt.ScopeStack.Find(n.Name)
-		if t, ok := typ.Unwrap(); ok {
-			return t, nil
-		}
-		return nil, fmt.Errorf("%w: %s", ErrUndefinedVar, n.Name)
+		typ, err := instantiate(tt, n.Name)
+		return typ, []types.Generic{}, err
+	case *parse.LetExpr:
+		return genForLet(tt, constraints, n)
+	default:
 	}
 
 	panic(fmt.Sprintf("unhandled node type in genConstraints: %v", node))
 }
 
-func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (types.Type, error) {
+func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (types.Type, []types.Generic, error) {
 	ifExprType := types.NewGeneric("", "if expr")
 
-	typCond, err := genConstraints(tt, constraints, node.Condition)
+	typCond, generics, err := genConstraints(tt, constraints, node.Condition)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	typCons, err := genConstraints(tt, constraints, node.Consequence)
+	typCons, gen1, err := genConstraints(tt, constraints, node.Consequence)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	generics = append(generics, gen1...)
 
-	typAlt, err := genConstraints(tt, constraints, node.Alternative)
+	typAlt, gen1, err := genConstraints(tt, constraints, node.Alternative)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	generics = append(generics, gen1...)
 
 	*constraints = append(
 		*constraints,
@@ -357,10 +371,10 @@ func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (ty
 		Constraint{ifExprType, typAlt},
 	)
 
-	return ifExprType, nil
+	return ifExprType, generics, nil
 }
 
-func genForFunc(tt *TypeTable, cons *[]Constraint, node *parse.FuncDef) (types.Type, error) {
+func genForFunc(tt *TypeTable, cons *[]Constraint, node *parse.FuncDef) (types.Type, []types.Generic, error) {
 	assert.Eq(len(node.Args), 1, "only single-arg functions supported")
 	assert.Eq(len(node.Body), 1, "only single-expr function body supported")
 
@@ -368,47 +382,52 @@ func genForFunc(tt *TypeTable, cons *[]Constraint, node *parse.FuncDef) (types.T
 	argType := types.NewGeneric("", "type of function arg "+node.Name)
 	tt.ScopeStack.DefSymbol(node.Args[0], argType)
 
-	bodyType, err := genConstraints(tt, cons, node.Body[0])
+	bodyType, generics, err := genConstraints(tt, cons, node.Body[0])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	generics = append(generics, *argType)
 
 	return &types.Func{
 		Args: []types.Type{argType},
 		Ret:  bodyType,
-	}, nil
+	}, generics, nil
 }
 
-func genForFn(tt *TypeTable, cons *[]Constraint, node *parse.Fn) (types.Type, error) {
+func genForFn(tt *TypeTable, cons *[]Constraint, node *parse.Fn) (types.Type, []types.Generic, error) {
 	tt.ScopeStack.AddScope()
+	defer tt.ScopeStack.Pop()
 	argType := types.NewGeneric("", "type of anonymous function arg")
 	tt.ScopeStack.DefSymbol(node.Arg, argType)
 
-	bodyType, err := genConstraints(tt, cons, node.Body)
+	bodyType, generics, err := genConstraints(tt, cons, node.Body)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	generics = append(generics, *argType)
 
 	return &types.Func{
 		Args: []types.Type{argType},
 		Ret:  bodyType,
-	}, nil
+	}, generics, nil
 }
 
-func genForCall(tt *TypeTable, cons *[]Constraint, node *parse.Form) (types.Type, error) {
+func genForCall(tt *TypeTable, cons *[]Constraint, node *parse.Form) (types.Type, []types.Generic, error) {
 	assert.Eq(len(node.Children), 2, "only single-arg calls supported")
 
-	callee, err := genConstraints(tt, cons, node.Children[0])
+	callee, generics, err := genConstraints(tt, cons, node.Children[0])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	arg, err := genConstraints(tt, cons, node.Children[1])
+	arg, gen1, err := genConstraints(tt, cons, node.Children[1])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	generics = append(generics, gen1...)
 
 	form := types.NewGeneric("", "form expression")
+	generics = append(generics, *form)
 
 	*cons = append(
 		*cons,
@@ -418,11 +437,43 @@ func genForCall(tt *TypeTable, cons *[]Constraint, node *parse.Form) (types.Type
 		}},
 	)
 
-	return form, nil
+	return form, generics, nil
+}
+
+func genForLet(tt *TypeTable, cons *[]Constraint, node *parse.LetExpr) (types.Type, []types.Generic, error) {
+	assert.Eq(len(node.Assignments), 1, "only single assignment supported")
+	assignmentCons := []Constraint{}
+
+	typ, c, err := generalize(tt, &assignmentCons, node.Assignments[0].Value)
+	if err != nil {
+		return nil, nil, err
+	}
+	*cons = append(*cons, c...)
+
+	tt.ScopeStack.AddScope()
+	defer tt.ScopeStack.Pop()
+	tt.ScopeStack.DefSymbol(node.Assignments[0].Var, typ) // prolly better to def/undef key values instead of push/popping scopes
+
+	return genConstraints(tt, cons, node.Body)
+}
+
+var envDebug = os.Getenv("Debug")
+
+func dbg(format string, args ...any) {
+	if envDebug != "" {
+		fmt.Fprintf(os.Stderr, format, args...)
+		fmt.Fprintln(os.Stderr, "")
+	}
 }
 
 // Utils
 
 func (c Constraint) String() string {
 	return fmt.Sprintf("%v = %v", c.lhs, c.rhs)
+}
+
+func (c *Constraint) Clone() Constraint {
+	lhs := types.Clone(c.lhs)
+	rhs := types.Clone(c.rhs)
+	return Constraint{lhs, rhs}
 }

@@ -28,7 +28,6 @@ func Program(in []lex.Token) ([]lex.Token, []Expr, error) {
 func ParseString(source string) ([]Expr, error) {
 	tokens, err := lex.LexString(source)
 	if err != nil {
-		fmt.Printf("tokens: %v", tokens)
 		return nil, errors.Join(LexError, err)
 	}
 

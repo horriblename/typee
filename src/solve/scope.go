@@ -2,6 +2,7 @@ package solve
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/opt"
@@ -72,25 +73,25 @@ func NewScopeStack() *ScopeStack {
 	}
 }
 
-func (ss *ScopeStack) Find(name string) opt.Option[types.Type] {
+func (ss *ScopeStack) Find(name string) (_ types.Type, found bool) {
 	if typ, ok := builtins[name]; ok {
-		return opt.Some(typ)
+		return typ, true
 	}
 
 	size := len(ss.stack)
 	for i := range ss.stack {
 		scope := ss.stack[size-i-1]
 		if typ, ok := scope[name]; ok {
-			return opt.Some(typ)
+			return typ, true
 		}
 	}
 
-	return opt.None[types.Type]()
+	return nil, false
 }
 
 func (ss *ScopeStack) AddScope() { ss.stack = append(ss.stack, SymbolTable{}) }
 func (ss *ScopeStack) Pop() {
-	assert.GreaterThan(len(ss.stack), 1)
+	assert.GreaterThan(len(ss.stack), 0)
 	ss.stack[len(ss.stack)-1] = nil
 	ss.stack = ss.stack[:len(ss.stack)-1]
 }
@@ -114,4 +115,21 @@ func (ss *ScopeStack) DefSymbol(name string, typ types.Type) error {
 	ss.stack[len(ss.stack)-1][name] = typ
 
 	return nil
+}
+
+func (ss *ScopeStack) String() string {
+	var b strings.Builder
+	b.WriteString("{")
+
+	for _, s := range ss.stack {
+		for k, v := range s {
+			b.WriteString(k)
+			b.WriteString(": ")
+			b.WriteString(v.String())
+			b.WriteString(", ")
+		}
+	}
+
+	b.WriteString("}")
+	return b.String()
 }
