@@ -1,4 +1,4 @@
-module [lex, lexStr, Token]
+module [Token, lex, lexStr]
 
 import parc.Parser
 import parc.Parser exposing [Parser]
