@@ -112,6 +112,46 @@ func Then[I, O1, O2 any](first Parser[I, O1], second Parser[I, O2]) Parser[I, Pa
 	}
 }
 
+func SeperatedBy[I, O1, O2, O3 any](left Parser[I, O1], sep Parser[I, O2], right Parser[I, O3]) Parser[I, Pair[O1, O3]] {
+	return func(i I) (I, Pair[O1, O3], error) {
+		i, o1, err := left(i)
+		if err != nil {
+			return i, Pair[O1, O3]{}, ErrNoMatch
+		}
+
+		i, _, err = sep(i)
+		if err != nil {
+			return i, Pair[O1, O3]{}, ErrNoMatch
+		}
+
+		i, o3, err := right(i)
+		return i, Pair[O1, O3]{o1, o3}, err
+	}
+}
+
+// Parse list of item delimited by sep with optional sep at the end
+func Delimited[I, O1, O2 any](item Parser[I, O1], sep Parser[I, O2]) Parser[I, []O1] {
+	return func(i I) (i0 I, _ []O1, _ error) {
+		results := []O1{}
+		for {
+			i1, o, err := item(i)
+			if err != nil {
+				return i, results, nil
+			}
+
+			i = i1
+			results = append(results, o)
+
+			i1, _, err = sep(i)
+			if err != nil {
+				return i, results, nil
+			}
+
+			i = i1
+		}
+	}
+}
+
 func Maybe[I, O any](parser Parser[I, O]) Parser[I, opt.Option[O]] {
 	return func(i I) (I, opt.Option[O], error) {
 		rest, o, err := parser(i)
