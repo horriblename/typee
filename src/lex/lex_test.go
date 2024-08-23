@@ -11,6 +11,8 @@ var lBracket = LBracket{}
 var rBracket = RBracket{}
 var lBrace = LBrace{}
 var rBrace = RBrace{}
+var tokComma = Comma{}
+var tokColon = Colon{}
 var tokSet = Set{}
 var tokDef = Def{}
 
@@ -23,10 +25,10 @@ func TestLex(t *testing.T) {
 	}{
 		{
 			desc:  "All",
-			input: `(foo)def[set "str"]{123}`,
+			input: `(foo)def[set, "str"]{123:}`,
 			output: []Token{&lParen, &Symbol{Name: "foo"}, &rParen, &tokDef,
-				&lBracket, &tokSet, &StrLiteral{Content: "str"}, &rBracket,
-				&lBrace, &IntLiteral{Number: 123}, &rBrace},
+				&lBracket, &tokSet, &tokComma, &StrLiteral{Content: "str"}, &rBracket,
+				&lBrace, &IntLiteral{Number: 123}, &tokColon, &rBrace},
 			err: nil,
 		},
 		{
