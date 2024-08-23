@@ -161,6 +161,14 @@ func walkTypeUntil(typ *types.Type, visitor func(node *types.Type) Stop) {
 		}
 
 		walkTypeUntil(&t.Ret, visitor)
+	case *types.Record:
+		if visitor(typ) {
+			return
+		}
+
+		for _, field := range t.Fields {
+			walkTypeUntil(&field, visitor)
+		}
 	}
 }
 
@@ -196,6 +204,11 @@ func walkAST(node parse.Expr, walker func(node parse.Expr)) {
 			walkAST(ass.Value, walker)
 		}
 		walkAST(n.Body, walker)
+	case *parse.Record:
+		walker(node)
+		for _, field := range n.Fields {
+			walker(field.Value)
+		}
 	}
 
 	panic("unknown ast node")

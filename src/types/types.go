@@ -21,6 +21,9 @@ type TypeID int
 type String struct{}
 type Int struct{}
 type Bool struct{}
+type Record struct {
+	Fields map[string]Type
+}
 type Func struct {
 	Args []Type
 	Ret  Type
@@ -38,6 +41,7 @@ type TypeScheme struct {
 func (*String) type_()     {}
 func (*Int) type_()        {}
 func (*Bool) type_()       {}
+func (*Record) type_()     {}
 func (*Func) type_()       {}
 func (*Generic) type_()    {}
 func (*TypeScheme) type_() {}
@@ -45,6 +49,7 @@ func (*TypeScheme) type_() {}
 func (*String) Simple() bool     { return true }
 func (*Int) Simple() bool        { return true }
 func (*Bool) Simple() bool       { return true }
+func (*Record) Simple() bool     { return false }
 func (*Func) Simple() bool       { return false }
 func (*Generic) Simple() bool    { return false }
 func (*TypeScheme) Simple() bool { return false }
@@ -60,6 +65,29 @@ func (*Int) Eq(other Type) bool {
 func (*Bool) Eq(other Type) bool {
 	_, ok := other.(*Bool)
 	return ok
+}
+func (f *Record) Eq(other Type) bool {
+	o, ok := other.(*Record)
+	if !ok {
+		return false
+	}
+
+	if len(f.Fields) != len(o.Fields) {
+		return false
+	}
+
+	for name, val := range f.Fields {
+		oval, has := o.Fields[name]
+		if !has {
+			return false
+		}
+
+		if !val.Eq(oval) {
+			return false
+		}
+	}
+
+	return true
 }
 func (f *Func) Eq(other Type) bool {
 	o, ok := other.(*Func)
@@ -81,6 +109,22 @@ func (ts *TypeScheme) Eq(other Type) bool {
 func (*String) String() string { return "String" }
 func (*Int) String() string    { return "Int" }
 func (*Bool) String() string   { return "Bool" }
+func (r *Record) String() string {
+	if len(r.Fields) == 0 {
+		return "{}"
+	}
+	b := strings.Builder{}
+	b.WriteString("{")
+	for name, val := range r.Fields {
+		b.WriteString(name)
+		b.WriteString(": ")
+		b.WriteString(val.String())
+		b.WriteString(", ")
+	}
+	b.WriteString("}")
+
+	return b.String()
+}
 func (f *Func) String() string {
 	assert.True(len(f.Args) > 0)
 	b := strings.Builder{}
@@ -203,6 +247,28 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 
 		// TODO: check for "bound" status e.g. 'a . 'a != 'b . 'c
 		structuralEq(ctx, a.Body, b.Body)
+	case *Record:
+		b, ok := b.(*Record)
+		if !ok {
+			return false
+		}
+
+		if len(a.Fields) != len(b.Fields) {
+			return false
+		}
+
+		for name, aval := range a.Fields {
+			bval, ok := b.Fields[name]
+			if !ok {
+				return false
+			}
+
+			if !structuralEq(ctx, aval, bval) {
+				return false
+			}
+		}
+
+		return true
 	}
 
 	panic("unreachable")
@@ -231,9 +297,22 @@ func Clone(typ Type) Type {
 		generics := make([]Generic, len(t.Over))
 		copy(generics, t.Over)
 		return &TypeScheme{Over: generics, Body: Clone(t.Body)}
+	case *Record:
+		return &Record{
+			Fields: mapMap(t.Fields, Clone),
+		}
 	}
 
 	panic("unreachable")
+}
+
+func mapMap[K comparable, V1, V2 any](m map[K]V1, f func(V1) V2) map[K]V2 {
+	newMap := map[K]V2{}
+	for k, v := range m {
+		newMap[k] = f(v)
+	}
+
+	return newMap
 }
 
 type PrettyCtx struct {
@@ -278,6 +357,17 @@ func (ctx *PrettyCtx) String(typ Type) string {
 			b.WriteString(". ")
 		}
 		b.WriteString(ctx.String(t.Body))
+		return b.String()
+	case *Record:
+		var b strings.Builder
+		b.WriteString("{")
+		for k, field := range t.Fields {
+			b.WriteString(k)
+			b.WriteString(": ")
+			b.WriteString(ctx.String(field))
+			b.WriteString(", ")
+		}
+		b.WriteString("}")
 		return b.String()
 	}
 
