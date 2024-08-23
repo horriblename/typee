@@ -166,6 +166,21 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			desc:  "record",
+			input: "{x: 12, y: (* 2 3)}",
+			output: []Expr{&Record{
+				id: 6,
+				Fields: []RecordField{
+					{Name: "x", Value: &IntLiteral{id: 1, Number: 12}},
+					{Name: "y", Value: &Form{id: 5, Children: []Expr{
+						&Symbol{id: 2, Name: "*"},
+						&IntLiteral{id: 3, Number: 2},
+						&IntLiteral{id: 4, Number: 3},
+					}}},
+				},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

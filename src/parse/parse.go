@@ -38,6 +38,7 @@ func ParseString(source string) ([]Expr, error) {
 func expr(in []lex.Token) ([]lex.Token, Expr, error) {
 	return combinator.Any(
 		formLike,
+		recordExpr,
 		symbol,
 		strLiteral,
 		intLiteral,
@@ -281,6 +282,33 @@ func fnExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	return in, &Fn{Arg: arg, Body: body}, nil
 }
 
+func recordExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
+	defer func() { err = handleCheck(recover()) }()
+
+	in, _, err = lbrace(in)
+	check(err)
+
+	in, pairs, err := combinator.Delimited(recordField, comma)(in)
+	check(err)
+
+	fields := make([]RecordField, 0, len(pairs))
+	for _, pair := range pairs {
+		fields = append(fields, RecordField{
+			Name:  pair.One,
+			Value: pair.Two,
+		})
+	}
+
+	in, _, err = rbrace(in)
+	check(err)
+
+	return in, &Record{id: newId(), Fields: fields}, nil
+}
+
+func recordField(in []lex.Token) (_ []lex.Token, _ combinator.Pair[string, Expr], err error) {
+	return combinator.SeperatedBy(symbolName, colon, expr)(in)
+}
+
 func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 	if len(in) == 0 {
 		return nil, nil, errAt(in)
@@ -316,6 +344,18 @@ func lbracket(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func rbracket(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.RBracket])(in)
+}
+func lbrace(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.LBrace])(in)
+}
+func rbrace(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.RBrace])(in)
+}
+func colon(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Colon])(in)
+}
+func comma(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Comma])(in)
 }
 func kwDef(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Def])(in)

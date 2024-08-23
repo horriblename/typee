@@ -78,6 +78,16 @@ type Fn struct {
 	Body Expr
 }
 
+type Record struct {
+	id     int
+	Fields []RecordField
+}
+
+type RecordField struct {
+	Name  string
+	Value Expr
+}
+
 func (*Form) ast()        {}
 func (*Symbol) ast()      {}
 func (*FuncDef) ast()     {}
@@ -88,6 +98,7 @@ func (*IntLiteral) ast()  {}
 func (*BoolLiteral) ast() {}
 func (*LetExpr) ast()     {}
 func (*Fn) ast()          {}
+func (*Record) ast()      {}
 
 func (self *Form) ID() int        { return self.id }
 func (self *Symbol) ID() int      { return self.id }
@@ -100,6 +111,7 @@ func (self *IntLiteral) ID() int  { return self.id }
 func (self *BoolLiteral) ID() int { return self.id }
 func (self *LetExpr) ID() int     { return self.id }
 func (self *Fn) ID() int          { return self.id }
+func (self *Record) ID() int      { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
@@ -127,6 +139,12 @@ func (self *LetExpr) String() string {
 }
 func (self *Fn) String() string {
 	return fmt.Sprintf("#%d (fn [%v] %v)", self.id, self.Arg, self.Body)
+}
+func (self *Record) String() string {
+	return fmt.Sprintf("#%d %v", self.id, self.Fields)
+}
+func (self *RecordField) String() string {
+	return fmt.Sprintf("%s: %s", self.Name, self.Value)
 }
 
 func prettySlice(xs []Expr) []string {
@@ -175,4 +193,24 @@ func (self *LetExpr) Pretty() string {
 }
 func (self *Fn) Pretty() string {
 	return fmt.Sprintf("(fn [%s] %s)", self.Arg, self.Body.Pretty())
+}
+func (self *Record) Pretty() string {
+	if len(self.Fields) == 0 {
+		return "{}"
+	}
+
+	var b strings.Builder
+	b.WriteString("{")
+	b.WriteString(self.Fields[0].Name)
+	b.WriteRune(':')
+	b.WriteString(self.Fields[0].Value.Pretty())
+
+	for _, field := range self.Fields[1:] {
+		b.WriteString(", ")
+		b.WriteString(field.Name)
+		b.WriteRune(':')
+		b.WriteString(field.Value.Pretty())
+	}
+	b.WriteString("}")
+	return b.String()
 }
