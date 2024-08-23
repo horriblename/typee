@@ -9,6 +9,8 @@ var lParen = LParen{}
 var rParen = RParen{}
 var lBracket = LBracket{}
 var rBracket = RBracket{}
+var lBrace = LBrace{}
+var rBrace = RBrace{}
 var tokSet = Set{}
 var tokDef = Def{}
 
@@ -21,10 +23,10 @@ func TestLex(t *testing.T) {
 	}{
 		{
 			desc:  "All",
-			input: `(foo)def[set "str"]123`,
+			input: `(foo)def[set "str"]{123}`,
 			output: []Token{&lParen, &Symbol{Name: "foo"}, &rParen, &tokDef,
 				&lBracket, &tokSet, &StrLiteral{Content: "str"}, &rBracket,
-				&IntLiteral{Number: 123}},
+				&lBrace, &IntLiteral{Number: 123}, &rBrace},
 			err: nil,
 		},
 		{

@@ -16,7 +16,7 @@ func LexString(source string) ([]Token, error) {
 	input, _, _ = skipWhitespace(input)
 
 	token := combinator.WithSuffix(
-		combinator.Any(lparen, rparen, lbracket, rbracket, strLiteral, keywordOrSymbol, intLiteral),
+		combinator.Any(lparen, rparen, lbracket, rbracket, lbrace, rbrace, strLiteral, keywordOrSymbol, intLiteral),
 		skipWhitespace,
 	)
 	parser := combinator.Many(token)
@@ -37,6 +37,8 @@ func lparen(in []rune) ([]rune, Token, error)   { return combinator.MatchOne(in,
 func rparen(in []rune) ([]rune, Token, error)   { return combinator.MatchOne(in, ')', &RParen{}) }
 func lbracket(in []rune) ([]rune, Token, error) { return combinator.MatchOne(in, '[', &LBracket{}) }
 func rbracket(in []rune) ([]rune, Token, error) { return combinator.MatchOne(in, ']', &RBracket{}) }
+func lbrace(in []rune) ([]rune, Token, error)   { return combinator.MatchOne(in, '{', &LBrace{}) }
+func rbrace(in []rune) ([]rune, Token, error)   { return combinator.MatchOne(in, '}', &RBrace{}) }
 func doubleQuote(in []rune) ([]rune, struct{}, error) {
 	return combinator.MatchOne(in, '"', struct{}{})
 }
