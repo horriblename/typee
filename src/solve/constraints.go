@@ -98,6 +98,12 @@
 // The inferred type of the function is `'t1 -> 't`, with constraints `'t1 =
 // bool` and `'t = int`. Simplfying that, the function's type is `bool -> int`
 //
+// # Attempt at records
+//
+//	env |- foo.x + 3 -| {}
+//		env |-
+//		and env,
+//
 // # Function Application
 //
 // The type of the entire application must be inferred, because we don't yet
@@ -338,10 +344,13 @@ func genConstraints(tt *TypeTable, constraints *[]Constraint, node parse.Expr) (
 		return typ, []types.Generic{}, err
 	case *parse.LetExpr:
 		return genForLet(tt, constraints, n)
-	default:
+	case *parse.Record:
+		return genForRecord(tt, constraints, n)
+	case *parse.Set:
+		panic(fmt.Sprintf("unhandled node type in genConstraints: %v", node))
 	}
 
-	panic(fmt.Sprintf("unhandled node type in genConstraints: %v", node))
+	panic("unreachable")
 }
 
 func genIfExpr(tt *TypeTable, constraints *[]Constraint, node *parse.IfExpr) (types.Type, []types.Generic, error) {
@@ -392,6 +401,10 @@ func genForFunc(tt *TypeTable, cons *[]Constraint, node *parse.FuncDef) (types.T
 		Args: []types.Type{argType},
 		Ret:  bodyType,
 	}, generics, nil
+}
+
+func genForRecord(tt *TypeTable, cons *[]Constraint, node *parse.Record) (types.Type, []types.Generic, error) {
+	panic("TODO")
 }
 
 func genForFn(tt *TypeTable, cons *[]Constraint, node *parse.Fn) (types.Type, []types.Generic, error) {
