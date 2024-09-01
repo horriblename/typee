@@ -20,9 +20,9 @@ import (
 //
 // I squashed all of the above into this function (except env part) for
 // convenience
-func generalize(tt *TypeTable, cons *[]Constraint, node parse.Expr) (types.Type, []Constraint, error) {
+func generalize(ss *ScopeStack, cons *[]Constraint, node parse.Expr) (types.Type, []Constraint, error) {
 	dbg("generalize let assignment: %v", node)
-	typ, generics, err := genConstraints(tt, cons, node)
+	typ, generics, err := genConstraints(ss, cons, node)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -51,8 +51,8 @@ func generalize(tt *TypeTable, cons *[]Constraint, node parse.Expr) (types.Type,
 
 // instantiate takes a type scheme like `'a. 'a -> 'a` and instantiate it into
 // a new type
-func instantiate(tt *TypeTable, name string) (types.Type, error) {
-	typ, ok := tt.ScopeStack.Find(name)
+func instantiate(ss *ScopeStack, name string) (types.Type, error) {
+	typ, ok := ss.Find(name)
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", ErrUndefinedVar, name)
 	}
