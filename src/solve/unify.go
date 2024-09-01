@@ -18,8 +18,37 @@ type Subst struct {
 	New types.Type
 }
 
+func Check(topLevels []parse.Expr) (SymbolTable, error) {
+	ss := ScopeStack{}
+	ss.AddScope()
+	for _, expr := range topLevels {
+		typ, err := infer(&ss, expr)
+		if err != nil {
+			return nil, fmt.Errorf("infering %s: %w", expr.Pretty(), err)
+		}
+
+		switch e := expr.(type) {
+		case *parse.FuncDef:
+			err := ss.DefSymbol(e.Name, typ)
+			if err != nil {
+				return nil, fmt.Errorf("assigning inferred type to function definition: %w", err)
+			}
+		default:
+			panic("non-function definitions not supported")
+		}
+	}
+
+	assert.Eq(len(ss.stack), 1, "scope stack size > 1 after type checking top levels")
+
+	return ss.Pop(), nil
+}
+
 func Infer(expr parse.Expr) (types.Type, error) {
-	typ, cons, err := initConstraints(expr)
+	return infer(&ScopeStack{}, expr)
+}
+
+func infer(ss *ScopeStack, expr parse.Expr) (types.Type, error) {
+	typ, cons, err := initConstraints(ss, expr)
 	if err != nil {
 		return nil, err
 	}

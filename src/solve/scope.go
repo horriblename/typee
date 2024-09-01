@@ -51,10 +51,14 @@ func (ss *ScopeStack) Find(name string) (_ types.Type, found bool) {
 }
 
 func (ss *ScopeStack) AddScope() { ss.stack = append(ss.stack, SymbolTable{}) }
-func (ss *ScopeStack) Pop() {
+
+func (ss *ScopeStack) Pop() SymbolTable {
 	assert.GreaterThan(len(ss.stack), 0)
+	last := ss.stack[len(ss.stack)-1]
 	ss.stack[len(ss.stack)-1] = nil
 	ss.stack = ss.stack[:len(ss.stack)-1]
+
+	return last
 }
 
 func (ss *ScopeStack) DefSymbol(name string, typ types.Type) error {

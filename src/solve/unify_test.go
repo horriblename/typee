@@ -167,7 +167,7 @@ func TestGenConstraints(t *testing.T) {
 			ast, err := parse.ParseString(tC.input)
 			tassert.Ok(err, "parse failed")
 
-			typ, cons, err := initConstraints(ast[0])
+			typ, cons, err := initConstraints(&ScopeStack{}, ast[0])
 			tassert.Ok(err)
 
 			tassert.True(types.StructuralEq(typ, tC.typ), "expected type", tC.typ, "got", typ)
@@ -253,7 +253,7 @@ func TestUnify(t *testing.T) {
 			ast, err := parse.ParseString(tC.input)
 			tassert.Ok(err, "parse failed")
 
-			typ, cons, err := initConstraints(ast[0])
+			typ, cons, err := initConstraints(&ScopeStack{}, ast[0])
 			tassert.Ok(err)
 
 			tassert.True(types.StructuralEq(typ, tC.typ), "expected type", tC.typ, "got", typ)

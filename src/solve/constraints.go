@@ -292,10 +292,9 @@ type Constraint struct {
 
 type ExprID int
 
-func initConstraints(node parse.Expr) (types.Type, []Constraint, error) {
+func initConstraints(ss *ScopeStack, node parse.Expr) (types.Type, []Constraint, error) {
 	constraints := []Constraint{}
-	ss := ScopeStack{}
-	typ, _, err := genConstraints(&ss, &constraints, node)
+	typ, _, err := genConstraints(ss, &constraints, node)
 	if err != nil {
 		return nil, nil, err
 	}
