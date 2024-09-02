@@ -10,11 +10,8 @@ var intBinaryOpFuncType = types.Func{
 }
 
 var intComparatorOpFuncType = types.Func{
-	Args: []types.Type{&types.Int{}},
-	Ret: &types.Func{
-		Args: []types.Type{&types.Int{}},
-		Ret:  &types.Bool{},
-	},
+	Args: []types.Type{&types.Int{}, &types.Int{}},
+	Ret:  &types.Bool{},
 }
 
 var builtins = map[string]types.Type{
