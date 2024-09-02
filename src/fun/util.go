@@ -10,3 +10,15 @@ func Map[T, U any](xs []T, f func(T) U) []U {
 
 	return ys
 }
+
+func ZipMap[T, U, V any](xs []T, ys []U, f func(T, U) V) []V {
+	sz := min(len(xs), len(ys))
+	zs := make([]V, 0, sz)
+
+	for i, x := range xs[:sz] {
+		y := ys[i]
+		zs = append(zs, f(x, y))
+	}
+
+	return zs
+}
