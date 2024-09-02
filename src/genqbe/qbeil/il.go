@@ -17,14 +17,14 @@ type Builder struct {
 
 type TypedVar struct {
 	typ  Type
-	name string
+	name Var
 }
 
-func (v TypedVar) String() string {
-	return fmt.Sprintf("%s %s", v.typ, v.name)
+func (v TypedVar) IL() string {
+	return fmt.Sprintf("%s %s", v.typ.IL(), v.name.IL())
 }
 
-func NewTypedVar(typ Type, name string) TypedVar {
+func NewTypedVar(typ Type, name Var) TypedVar {
 	return TypedVar{typ: typ, name: name}
 }
 
@@ -59,7 +59,7 @@ func (b *Builder) Func(linkage Linkage, ret *Type, name string, args []TypedVar)
 	}
 
 	if len(args) > 0 {
-		_, err = b.Writer.Write([]byte(args[0].String()))
+		_, err = b.Writer.Write([]byte(args[0].IL()))
 		if err != nil {
 			return err
 		}
@@ -70,14 +70,14 @@ func (b *Builder) Func(linkage Linkage, ret *Type, name string, args []TypedVar)
 				return err
 			}
 
-			_, err = b.Writer.Write([]byte(arg.String()))
+			_, err = b.Writer.Write([]byte(arg.IL()))
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	b.Writer.Write([]byte(") {"))
+	b.Writer.Write([]byte(") {\n"))
 	b.indentLvl++
 
 	return nil
@@ -85,10 +85,22 @@ func (b *Builder) Func(linkage Linkage, ret *Type, name string, args []TypedVar)
 
 func (b *Builder) EndFunc() {
 	b.indentLvl--
-	b.Writer.Write([]byte("}"))
+	b.indented([]byte("}\n"))
 }
 
-func (b *Builder) TempID() int {
+func (b *Builder) Ret(val Value) {
+	b.indented([]byte(fmt.Sprintf("ret %s\n", val.IL())))
+}
+
+func (b *Builder) Arithmetic(target string, ret Type, op string, left Value, right Value) {
+	retStr := ""
+	if ret != nil {
+		retStr = "=" + ret.IL()
+	}
+	b.indented([]byte(fmt.Sprintf("%s %s %s %s %s\n", target, retStr, op, left.IL(), right.IL())))
+}
+
+func (b *Builder) TempVar() Var {
 	b.tempID++
-	return b.tempID
+	return Var{Global: false, Name: fmt.Sprintf("_tmp_%d", b.tempID)}
 }

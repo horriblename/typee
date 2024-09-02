@@ -1,6 +1,6 @@
 package qbeil
 
-import "strconv"
+import "fmt"
 
 type Value interface {
 	val()
@@ -13,7 +13,7 @@ type Var struct {
 }
 
 type IntLiteral struct {
-	Value int
+	Value int64
 }
 
 func (Var) val()        {}
@@ -28,5 +28,5 @@ func (v Var) IL() string {
 }
 
 func (i IntLiteral) IL() string {
-	return strconv.Itoa(i.Value)
+	return fmt.Sprintf("%d", i.Value)
 }

@@ -1,6 +1,9 @@
 package qbeil
 
-type Type interface{ typ() }
+type Type interface {
+	typ()
+	IL() string
+}
 
 type BaseType int
 
@@ -13,7 +16,7 @@ const (
 
 func (BaseType) typ() {}
 
-func (t BaseType) String() string {
+func (t BaseType) IL() string {
 	switch t {
 	case Word:
 		return "w"
