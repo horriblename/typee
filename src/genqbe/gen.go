@@ -23,20 +23,24 @@ func Gen(w io.Writer, types solve.SymbolTable, ast []parse.Expr) {
 	}
 }
 
-func gen(ctx ctx, expr parse.Expr) {
+func gen(ctx ctx, expr parse.Expr) (val qbeil.Value) {
 	switch e := expr.(type) {
 	case *parse.IntLiteral:
 		panic("idk")
 	case *parse.FuncDef:
-		genFunc(ctx, e)
+		return genFunc(ctx, e)
 	}
+
+	panic("unimpl gen " + expr.Pretty())
 }
 
-func genFunc(ctx ctx, expr *parse.FuncDef) {
+func genFunc(ctx ctx, expr *parse.FuncDef) (val qbeil.Value) {
 	funcTyp, ok := ctx.topLevels[expr.Name].(*types.Func)
 	assert.True(ok, "generate function code: type of ", expr.Name, " is not function")
 	assert.Eq(len(expr.Args), len(funcTyp.Args))
+	assert.GreaterThan(len(expr.Body), 0, "function", expr.Name, "has empty body")
 
+	variable := qbeil.Var{Global: true, Name: expr.Name}
 	args := make([]qbeil.TypedVar, 0, len(expr.Args))
 
 	for i, arg := range funcTyp.Args {
@@ -46,20 +50,30 @@ func genFunc(ctx ctx, expr *parse.FuncDef) {
 		))
 	}
 
-	assert.Ok(ctx.il.Func(toILType(funcTyp.Ret), expr.Name, args))
-	for _, stmt := range expr.Body {
-		gen(ctx, stmt)
+	linkage := qbeil.Linkage{}
+	if expr.Name == "main" {
+		linkage.Type = qbeil.Export
 	}
+
+	var ret qbeil.Value
+	retTyp := toILType(funcTyp.Ret)
+	assert.Ok(ctx.il.Func(linkage, &retTyp, variable.IL(), args))
+	for _, stmt := range expr.Body[:len(expr.Body)-1] {
+		ret = gen(ctx, stmt)
+	}
+
+	ctx.il.Ret(ret)
 	ctx.il.EndFunc()
+	return variable
 }
 
-func toILType(typ types.Type) qbeil.BaseType {
+func toILType(typ types.Type) qbeil.Type {
 	switch typ.(type) {
 	case *types.Int:
 		return qbeil.Long
 	case *types.Bool:
 		return qbeil.Word
+	default:
+		panic("unimpl: conversion to IL of type " + typ.String())
 	}
-
-	panic("unimpl: conversion to IL of type " + typ.String())
 }
