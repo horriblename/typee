@@ -1,36 +1,134 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 
+	"github.com/horriblename/typee/src/genqbe"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/solve"
+
+	"modernc.org/libqbe"
 )
+
+const helpMain string = `
+usage
+	
+	program <cmd> <args...>
+
+cmd is one of:
+
+	build    Build a program
+`
+
+func main() {
+	if len(os.Args) < 2 {
+		errorf(helpMain)
+		os.Exit(2)
+	}
+
+	cmd := os.Args[1]
+	shiftArgs()
+
+	var err error
+	switch cmd {
+	case "build":
+		err = cmdBuild()
+	default:
+		errorf("Unknown command: %s", cmd)
+		errorf(helpMain)
+		os.Exit(2)
+	}
+
+	if err != nil {
+		errorf("%s", err)
+		os.Exit(1)
+	}
+}
+
+func shiftArgs() {
+	if len(os.Args) > 1 {
+		program := os.Args[0]
+		os.Args = os.Args[1:]
+		os.Args[0] = program
+	}
+}
 
 func errorf(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, format, args...)
+	fmt.Fprintln(os.Stderr)
 }
 
-func main() {
-	data, err := io.ReadAll(os.Stdin)
+const flagOut = "o"
+const flagOutLong = "out"
+const defaultOut = "a.out"
+
+func cmdBuild() error {
+	outPath := flag.String(flagOut, defaultOut, "")
+	outPathLong := flag.String(flagOutLong, defaultOut, "")
+
+	flag.Parse()
+	fname := flag.Arg(0)
+
+	var file io.Reader
+	var err error
+	if fname == "" {
+		file = os.Stdin
+	} else {
+		file, err = os.Open(fname)
+		if err != nil {
+			return fmt.Errorf("build: %w", err)
+		}
+	}
+
+	data, err := io.ReadAll(file)
 	if err != nil {
 		errorf("could not read stdin: %s", err)
 		os.Exit(1)
 	}
 
-	program, err := parse.ParseString(string(data))
+	ast, err := parse.ParseString(string(data))
 	if err != nil {
 		errorf("could not parse source: %s", err)
 		os.Exit(1)
 	}
 
-	typ, err := solve.Infer(program[0])
+	typ, err := solve.Check(ast)
 	if err != nil {
 		errorf("during type inference: %s", err)
 		os.Exit(1)
 	}
 
-	println(typ.String())
+	if *outPathLong != defaultOut {
+		*outPath = *outPathLong
+	}
+
+	qbeFile, err := os.OpenFile(fname+".qbe", os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0o755)
+	if err != nil {
+		return fmt.Errorf("build: %w", err)
+	}
+	defer qbeFile.Close()
+
+	genqbe.Gen(qbeFile, typ, ast)
+	qbeFile.Seek(0, 0)
+
+	asmFName := fname + ".as"
+	asmFile, err := os.OpenFile(asmFName, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o755)
+	if err != nil {
+		return fmt.Errorf("build: %w", err)
+	}
+	defer asmFile.Close()
+
+	err = libqbe.Main("amd64_sysv", fname+".qbe", qbeFile, asmFile, nil)
+	if err != nil {
+		return fmt.Errorf("build: %w", err)
+	}
+
+	assembler := exec.Command("as", asmFName, "-o", *outPath)
+	assembler.Stdout = os.Stdout
+	assembler.Stderr = os.Stderr
+	return assembler.Run()
 }
