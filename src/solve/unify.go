@@ -68,6 +68,7 @@ func unify(cs []Constraint) ([]Subst, error) {
 }
 
 func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
+	dbg("unifying:\n   C: %s\n   S: %s", cs, subs)
 	if len(cs) == 0 {
 		return cs, subs, nil
 	}
@@ -124,10 +125,11 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 			}
 
 			// FIXME: allocates per prepend
-			csNew := []Constraint{{lhs.Ret, rhs.Ret}}
+			csNew := []Constraint{}
 			for i, larg := range lhs.Args {
 				csNew = append(csNew, Constraint{larg, rhs.Args[i]})
 			}
+			csNew = append(csNew, Constraint{lhs.Ret, rhs.Ret})
 			cs = append(csNew, cs[1:]...)
 			return unifyInner(cs, subs)
 		}
