@@ -387,6 +387,7 @@ func genForFunc(ss *ScopeStack, cons *[]Constraint, node *parse.FuncDef) (types.
 	assert.Eq(len(node.Body), 1, "only single-expr function body supported")
 
 	ss.AddScope()
+	defer ss.Pop()
 	argType := types.NewGeneric("", "type of function arg "+node.Name)
 	ss.DefSymbol(node.Args[0], argType)
 
