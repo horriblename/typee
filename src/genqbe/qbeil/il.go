@@ -12,6 +12,7 @@ const indentSym string = "\t"
 type Builder struct {
 	Writer    io.Writer
 	indentLvl int
+	tempID    int
 }
 
 type TypedVar struct {
@@ -75,4 +76,9 @@ func (b *Builder) Func(ret Type, name string, args []TypedVar) error {
 func (b *Builder) EndFunc() {
 	b.indentLvl--
 	b.Writer.Write([]byte("}"))
+}
+
+func (b *Builder) TempID() int {
+	b.tempID++
+	return b.tempID
 }
