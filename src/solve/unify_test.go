@@ -93,8 +93,7 @@ func TestTypeInference(t *testing.T) {
 
 			typ, err := Infer(ast[0])
 
-			t.Log("typ: ", typ)
-			t.Log("expect: ", tC.expect)
+			tassert.Ok(err)
 			tassert.True(types.StructuralEq(typ, tC.expect), "expected ", tC.expect, " got ", typ)
 		})
 	}
@@ -130,24 +129,19 @@ func TestGenConstraints(t *testing.T) {
 		},
 		{
 			desc:  "func call",
-			input: "(def foo [x] ((+ x) 2))",
+			input: "(def foo [x] (+ x 2))",
 			typ: &types.Func{
 				Args: []types.Type{&types.Generic{ID: 1}},
 				Ret:  &types.Generic{ID: 2},
 			},
 			expect: []Constraint{
-				// mapping of generic variables: x: t1, (+ x): t2, ((+ x) 2): t3
-				// {} -| (def foo [x] ((+ x) 2)) |- x: t1
-				//   x: t1 -| ((+ x) 2) : t3
-				//     x: t1 -| (+ x) : t2 |- {int -> int -> int = t1 -> t2}
+				// mapping of generic variables: x: t1, (+ x 2): t2
+				// {} -| (def foo [x] (+ x 2)) |- x: t1, (int, int -> int = t1, int -> t2)
+				//   x: t1 -| (+ x 2) : t2 |- (int, int -> int = t1, int -> t2)
+				//     x: t1 -| 2 : int
 				{&intBinaryOpFuncType, &types.Func{
-					Args: []types.Type{&types.Generic{ID: 1}},
+					Args: []types.Type{&types.Generic{ID: 1}, &types.Int{}},
 					Ret:  &types.Generic{ID: 2},
-				}},
-				//   x: t1 -| ((+ x) 2): t3 |- {t2 = int -> t3}
-				{&types.Generic{ID: 2}, &types.Func{
-					Args: []types.Type{&types.Int{}},
-					Ret:  &types.Generic{ID: 3},
 				}},
 			},
 		},
