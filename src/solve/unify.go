@@ -120,7 +120,6 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 	if lhs, ok := c.lhs.(*types.Func); ok {
 		if rhs, ok := c.rhs.(*types.Func); ok {
 			if len(lhs.Args) != len(rhs.Args) {
-				fmt.Printf("1: \nlhs: %s\n rhs: %s\n", lhs.String(), rhs.String())
 				return nil, nil, ErrWrongArgCount
 			}
 
