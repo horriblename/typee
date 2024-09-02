@@ -20,8 +20,9 @@ func TestGen(t *testing.T) {
 			input: "(def foo [x y] (+ x (+ y 1)))",
 			output: //
 			`function l $foo(l %x, l %y) {
-	%_tmp_1 =l add %y 1
-	%_tmp_2 =l add %x %_tmp_1
+@start
+	%_tmp_1 =l add %y, 1
+	%_tmp_2 =l add %x, %_tmp_1
 	ret %_tmp_2
 }
 `,

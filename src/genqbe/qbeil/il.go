@@ -104,7 +104,7 @@ func (b *Builder) Arithmetic(target string, ret Type, op string, left Value, rig
 	if ret != nil {
 		retStr = "=" + ret.IL()
 	}
-	b.indented([]byte(fmt.Sprintf("%s %s %s %s %s\n", target, retStr, op, left.IL(), right.IL())))
+	b.indented([]byte(fmt.Sprintf("%s %s %s %s, %s\n", target, retStr, op, left.IL(), right.IL())))
 }
 
 func (b *Builder) TempVar() Var {
