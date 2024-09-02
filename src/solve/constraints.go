@@ -384,8 +384,6 @@ func genIfExpr(ss *ScopeStack, constraints *[]Constraint, node *parse.IfExpr) (t
 }
 
 func genForFunc(ss *ScopeStack, cons *[]Constraint, node *parse.FuncDef) (types.Type, []types.Generic, error) {
-	assert.Eq(len(node.Body), 1, "only single-expr function body supported")
-
 	ss.AddScope()
 	defer ss.Pop()
 	argTypes := fun.Map(node.Args, func(name string) types.Type {

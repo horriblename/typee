@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/fun"
 )
 
 type Type interface {
@@ -295,11 +296,10 @@ func Clone(typ Type) Type {
 		t2 := *t
 		return &t2
 	case *Func:
-		assert.Eq(len(t.Args), 1, "only single arg functions supported")
-		arg := Clone(t.Args[0])
+		args := fun.Map(t.Args, Clone)
 		ret := Clone(t.Ret)
 
-		return &Func{Args: []Type{arg}, Ret: ret}
+		return &Func{Args: args, Ret: ret}
 	case *Generic:
 		return &Generic{ID: t.ID, Name: t.Name, Comment: t.Comment}
 	case *TypeScheme:
@@ -347,8 +347,8 @@ func (ctx *PrettyCtx) String(typ Type) string {
 	case *String, *Int, *Bool:
 		return t.String()
 	case *Func:
-		assert.Eq(len(t.Args), 1, "only single arg functions supported")
-		return fmt.Sprintf("(%s -> %s)", ctx.String(t.Args[0]), ctx.String(t.Ret))
+		args := fun.Map(t.Args, ctx.String)
+		return fmt.Sprintf("(%s -> %s)", strings.Join(args, ", "), ctx.String(t.Ret))
 	case *Generic:
 		if prettyName, ok := ctx.mapping[t.ID]; ok {
 			return prettyName
