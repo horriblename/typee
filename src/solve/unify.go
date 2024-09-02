@@ -121,7 +121,7 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 	if lhs, ok := c.lhs.(*types.Func); ok {
 		if rhs, ok := c.rhs.(*types.Func); ok {
 			if len(lhs.Args) != len(rhs.Args) {
-				return nil, nil, ErrWrongArgCount
+				return nil, nil, fmt.Errorf("unify %v and %v: %w", lhs, rhs, ErrWrongArgCount)
 			}
 
 			// FIXME: allocates per prepend

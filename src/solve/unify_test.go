@@ -63,7 +63,7 @@ func TestTypeInference(t *testing.T) {
 		},
 		{
 			desc:  "func call",
-			input: "(def foo [x] ((+ x) 2))",
+			input: "(def foo [x] (+ x 2))",
 			expect: &types.Func{
 				Args: []types.Type{&types.Int{}},
 				Ret:  &types.Int{},
@@ -71,7 +71,7 @@ func TestTypeInference(t *testing.T) {
 		},
 		{
 			desc:  "fn call",
-			input: "(fn [x] (if [true] ((fn [y] (if [((> y) 3)] 4 ((* y) y))) 2) ((- 4) x)))",
+			input: "(fn [x] (if [true] ((fn [y] (if [(> y 3)] 4 (* y y))) 2) (- 4 x)))",
 			expect: &types.Func{
 				Args: []types.Type{&types.Int{}},
 				Ret:  &types.Int{},
@@ -154,7 +154,7 @@ func TestGenConstraints(t *testing.T) {
 			},
 			expect: []Constraint{
 				// mapping of generic variables: x: t1, (+ x 2): t2
-				// {} -| (def foo [x] (+ x 2)) |- x: t1, (int, int -> int = t1, int -> t2)
+				// {} -| (def foo [x] (+ x 2)) : t1 -> t2 |- (int, int -> int = t1, int -> t2)
 				//   x: t1 -| (+ x 2) : t2 |- (int, int -> int = t1, int -> t2)
 				//     x: t1 -| 2 : int
 				{&intBinaryOpFuncType, &types.Func{
@@ -235,21 +235,44 @@ func TestUnify(t *testing.T) {
 		},
 		{
 			desc:  "func call",
-			input: "(def foo [x] ((+ x) 2))",
+			input: "(def foo [x] (+ x 2))",
 			typ: &types.Func{
 				Args: []types.Type{&types.Generic{ID: 1}},
 				Ret:  &types.Generic{ID: 2},
 			},
+			// constraint gen result:
+			//	{} -| (def foo [x] (+ x 2)) : t1 -> t2 |- (int, int -> int = t1, int -> t2)
+			// unify:
+			//	1.	C: int, int -> int = t1, int -> t2
+			//		S: {}
+			//	2.	C: int = t1, int = int, int = t2
+			//		S: {}
+			//	3.	C: int = int, int = t2
+			//		S: int / t1
+			//	4. (skip int = int)
+			//	5.	C: {}
+			//		S: int / t1, int / t2
 			expect: []Subst{
 				{Old: &types.Generic{ID: 1}, New: &types.Int{}},
-				{Old: &types.Generic{ID: 2}, New: &types.Func{Args: []types.Type{&types.Int{}}, Ret: &types.Int{}}},
-				{Old: &types.Generic{ID: 3}, New: &types.Int{}},
+				{Old: &types.Generic{ID: 2}, New: &types.Int{}},
 			},
 		},
 		{
 			desc:  "simple let in",
 			input: "(let [id (fn [x] x)] (let [a (id 0)] (id true)))",
 			typ:   t4,
+			// {} |- (let [id (fn [x] x)] (let [a (id 0)] (id true))) : t5 -| (t2 -> t2 = int -> t3), (t4 -> t4 = bool -> t5)
+			// unify:
+			//	1.	C: t2 -> t2 = int -> t3, t4 -> t4 = bool -> t5
+			//		S: {}
+			//	2.	(expand all function constraints for convenience)
+			//		C: t2 = int, t2 = t3, t4 = bool, t4 = t5
+			//	3.	C: int = t3, t4 = bool, t4 = t5
+			//		S: int / t2
+			//	4.	C: t4 = bool, t4 = t5
+			//		S: int / t2, int / t3
+			//	5.	(skipped some steps cuz lazy)
+			//		S: int / t2, int / t3, bool / t4, bool/ t5
 			expect: []Subst{
 				{Old: t2, New: tyInt},
 				{Old: t3, New: tyInt},
@@ -269,6 +292,8 @@ func TestUnify(t *testing.T) {
 			tassert.Ok(err)
 
 			tassert.True(types.StructuralEq(typ, tC.typ), "expected type", tC.typ, "got", typ)
+
+			t.Logf("1: cons %v", cons)
 
 			subs, err := unify(cons)
 			tassert.Ok(err)
