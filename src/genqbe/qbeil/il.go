@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/horriblename/typee/src/fun"
 )
 
 const indentSym string = "\t"
@@ -78,6 +80,7 @@ func (b *Builder) Func(linkage Linkage, ret *Type, name string, args []TypedVar)
 	}
 
 	b.Writer.Write([]byte(") {\n"))
+	b.Label("start")
 	b.indentLvl++
 
 	return nil
@@ -86,6 +89,10 @@ func (b *Builder) Func(linkage Linkage, ret *Type, name string, args []TypedVar)
 func (b *Builder) EndFunc() {
 	b.indentLvl--
 	b.indented([]byte("}\n"))
+}
+
+func (b *Builder) Label(name string) {
+	b.indented([]byte(fmt.Sprint("@", name, "\n")))
 }
 
 func (b *Builder) Ret(val Value) {
