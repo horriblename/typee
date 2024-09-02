@@ -128,6 +128,24 @@ func TestGenConstraints(t *testing.T) {
 			},
 		},
 		{
+			desc:  "multi-arg func def",
+			input: "(def foo [x y] (if [x] y 4))",
+			typ: &types.Func{
+				Args: []types.Type{&types.Generic{ID: 1}, &types.Generic{ID: 2}},
+				Ret:  &types.Generic{ID: 3},
+			},
+			// {} |- (def foo [x y] (if [x] y 4)) : t1, t2 -> t3 -| t1 = bool, t2 = t3, int = t3
+			//	x: t1, y: t2 |- (if [x] y 4) : t3 -| t1 = bool, t2 = t3, int = t3
+			//		x: t1, y: t2 |- x : t1 -| {}
+			//		x: t1, y: t2 |- y : t2 -| {}
+			//		x: t1, y: t2 |- 4 : int -| {}
+			expect: []Constraint{
+				{&types.Generic{ID: 1}, &types.Bool{}},
+				{&types.Generic{ID: 3}, &types.Generic{ID: 2}},
+				{&types.Generic{ID: 3}, &types.Int{}},
+			},
+		},
+		{
 			desc:  "func call",
 			input: "(def foo [x] (+ x 2))",
 			typ: &types.Func{
