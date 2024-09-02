@@ -2,6 +2,11 @@ package qbeil
 
 import "fmt"
 
+type TypedValue struct {
+	Type  Type
+	Value Value
+}
+
 type Value interface {
 	val()
 	IL() string

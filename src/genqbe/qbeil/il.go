@@ -107,6 +107,21 @@ func (b *Builder) Arithmetic(target string, ret Type, op string, left Value, rig
 	b.indented([]byte(fmt.Sprintf("%s %s %s %s, %s\n", target, retStr, op, left.IL(), right.IL())))
 }
 
+func (b *Builder) Call(target *Var, typ Type, name Var, args []TypedValue) {
+	argsStr := strings.Join(fun.Map(args, func(v TypedValue) string {
+		return fmt.Sprint(v.Type.IL(), " ", v.Value.IL())
+	}), ", ")
+	if target != nil {
+		b.indented(
+			[]byte(fmt.Sprintf(
+				"%s =%s call %s (%s)\n",
+				target.IL(), typ.IL(), name.IL(), argsStr)),
+		)
+	} else {
+		b.indented([]byte(fmt.Sprintf("call %s (%s)\n", target.IL(), argsStr)))
+	}
+}
+
 func (b *Builder) TempVar() Var {
 	b.tempID++
 	return Var{Global: false, Name: fmt.Sprintf("_tmp_%d", b.tempID)}
