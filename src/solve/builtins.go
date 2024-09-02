@@ -5,11 +5,8 @@ import (
 )
 
 var intBinaryOpFuncType = types.Func{
-	Args: []types.Type{&types.Int{}},
-	Ret: &types.Func{
-		Args: []types.Type{&types.Int{}},
-		Ret:  &types.Int{},
-	},
+	Args: []types.Type{&types.Int{}, &types.Int{}},
+	Ret:  &types.Int{},
 }
 
 var intComparatorOpFuncType = types.Func{
