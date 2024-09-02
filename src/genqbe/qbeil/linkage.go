@@ -11,7 +11,7 @@ type Linkage struct {
 type LinkageFlags int
 
 const (
-	Export = 1<<iota + 1
+	Export = 1 << iota
 	Thread
 	Section
 )
