@@ -22,6 +22,7 @@ usage
 cmd is one of:
 
 	build    Build a program
+	run      Run a program
 `
 
 func main() {
@@ -37,6 +38,8 @@ func main() {
 	switch cmd {
 	case "build":
 		err = cmdBuild()
+	case "run":
+		err = cmdRun()
 	default:
 		errorf("Unknown command: %s", cmd)
 		errorf(helpMain)
@@ -130,5 +133,25 @@ func cmdBuild() error {
 	assembler := exec.Command("as", asmFName, "-o", *outPath)
 	assembler.Stdout = os.Stdout
 	assembler.Stderr = os.Stderr
-	return assembler.Run()
+	err = assembler.Run()
+	if err != nil {
+		return fmt.Errorf("assemble: %w", err)
+	}
+
+	return os.Chmod(*outPath, 0o755)
+}
+
+func cmdRun() error {
+	err := cmdBuild()
+	if err != nil {
+		return err
+	}
+
+	outPath := flag.Lookup(flagOut).Value.String()
+
+	if len(outPath) > 0 && outPath[0] != '/' && outPath[:2] != "./" {
+		outPath = "./" + outPath
+	}
+
+	return exec.Command(outPath).Run()
 }
