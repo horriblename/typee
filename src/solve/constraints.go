@@ -388,8 +388,7 @@ func genForFunc(ss *ScopeStack, cons *[]Constraint, node *parse.FuncDef) (types.
 
 	ss.AddScope()
 	defer ss.Pop()
-	argType := types.NewGeneric("", "type of function arg "+node.Name)
-	argTypes := fun.Map(node.Args, func(name string) *types.Generic {
+	argTypes := fun.Map(node.Args, func(name string) types.Type {
 		return types.NewGeneric("", "type of function arg "+name)
 	})
 
@@ -403,11 +402,12 @@ func genForFunc(ss *ScopeStack, cons *[]Constraint, node *parse.FuncDef) (types.
 	}
 
 	for _, typ := range argTypes {
-		generics = append(generics, *typ)
+		t := typ.(*types.Generic)
+		generics = append(generics, *t)
 	}
 
 	return &types.Func{
-		Args: []types.Type{argType},
+		Args: argTypes,
 		Ret:  bodyType,
 	}, generics, nil
 }
