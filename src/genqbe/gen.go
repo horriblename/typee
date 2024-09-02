@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/genqbe/qbeil"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/solve"
@@ -32,8 +33,13 @@ func gen(ctx *ctx, expr parse.Expr) (val qbeil.Value) {
 	case *parse.Form:
 		return genCall(ctx, e)
 	case *parse.Symbol:
-		// FIXME: no globals
+		// FIXME: bad global lookup
+		if _, ok := ctx.topLevels[e.Name]; ok {
+			return qbeil.Var{Global: true, Name: e.Name}
+		}
 		return qbeil.Var{Global: false, Name: e.Name}
+	case *parse.LetExpr:
+		return genLet(ctx, e)
 	}
 
 	panic("unimpl gen " + expr.Pretty())
@@ -56,11 +62,11 @@ func genFunc(ctx *ctx, expr *parse.FuncDef) (val qbeil.Value) {
 	}
 
 	linkage := qbeil.Linkage{}
+	retTyp := toILType(funcTyp.Ret)
 	if expr.Name == "main" {
 		linkage.Type = qbeil.Export
+		retTyp = qbeil.Word
 	}
-
-	retTyp := toILType(funcTyp.Ret)
 
 	assert.Ok(ctx.il.Func(linkage, &retTyp, thisFunc.IL(), args))
 
@@ -91,11 +97,28 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 
 			return target
 		default:
-			panic("unimpl: genCall for callee named " + callee.Name)
+			// TODO: local functions
+			funcSig, ok := ctx.topLevels[callee.Name].(*types.Func)
+			assert.True(ok, "tried to call non-function top-level:", callee.Name)
+			assert.Eq(len(expr.Children), len(funcSig.Args)+1, callee.Name, ": function argument count does not match signature")
+			target := ctx.il.TempVar()
+
+			args := fun.ZipMap(expr.Children[1:], funcSig.Args, func(arg parse.Expr, typ types.Type) qbeil.TypedValue {
+				return qbeil.TypedValue{Type: toILType(typ), Value: gen(ctx, arg)}
+			})
+			funcVar := qbeil.Var{Global: true, Name: callee.Name}
+
+			ctx.il.Call(&target, toILType(funcSig.Ret), funcVar, args)
+
+			return target
 		}
 	default:
 		panic("unimpl: genCall for callee of the form " + expr.Pretty())
 	}
+}
+
+func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
+	panic("unimpl: gen let")
 }
 
 func toILType(typ types.Type) qbeil.Type {
