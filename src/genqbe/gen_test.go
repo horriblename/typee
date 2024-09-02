@@ -17,7 +17,7 @@ func TestGen(t *testing.T) {
 	}{
 		{
 			desc:  "idk",
-			input: "(def foo [x] (+ x 1))",
+			input: "(def foo [x] ((+ x) 1))",
 			output: //
 			`function l $foo(l %x, l %y) {
 	%c =l add %x, %y
