@@ -34,7 +34,7 @@ func gen(ctx ctx, expr parse.Expr) {
 
 func genFunc(ctx ctx, expr *parse.FuncDef) {
 	funcTyp, ok := ctx.topLevels[expr.Name].(*types.Func)
-	assert.Eq(ok, true, "generate function code: type of %s is not function", expr.Name)
+	assert.True(ok, "generate function code: type of ", expr.Name, " is not function")
 	assert.Eq(len(expr.Args), len(funcTyp.Args))
 
 	args := make([]qbeil.TypedVar, 0, len(expr.Args))
@@ -61,5 +61,5 @@ func toILType(typ types.Type) qbeil.BaseType {
 		return qbeil.Word
 	}
 
-	panic("unimpl: " + typ.String())
+	panic("unimpl: conversion to IL of type " + typ.String())
 }
