@@ -42,8 +42,18 @@ func (b *Builder) indented(l []byte) error {
 	return nil
 }
 
-func (b *Builder) Func(ret Type, name string, args []TypedVar) error {
-	err := b.indented([]byte(fmt.Sprintf("function %s %s(", ret, name)))
+func (b *Builder) Func(linkage Linkage, ret *Type, name string, args []TypedVar) error {
+	linkageStr := linkage.String()
+	if linkageStr != "" {
+		linkageStr += " "
+	}
+
+	returnType := ""
+	if ret != nil {
+		returnType = (*ret).IL() + " "
+	}
+
+	err := b.indented([]byte(fmt.Sprintf("%sfunction %s%s(", linkageStr, returnType, name)))
 	if err != nil {
 		return err
 	}
