@@ -50,12 +50,12 @@ func Infer(expr parse.Expr) (types.Type, error) {
 func infer(ss *ScopeStack, expr parse.Expr) (types.Type, error) {
 	typ, cons, err := initConstraints(ss, expr)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("generate constraints: %w", err)
 	}
 
 	subs, err := unify(cons)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unify: %w", err)
 	}
 
 	substituteAllToType(&typ, subs)
@@ -119,11 +119,17 @@ func unifyInner(cs []Constraint, subs []Subst) ([]Constraint, []Subst, error) {
 	// back in to be further unified
 	if lhs, ok := c.lhs.(*types.Func); ok {
 		if rhs, ok := c.rhs.(*types.Func); ok {
-			assert.Eq(len(lhs.Args), 1, "only single arguments supported, got: ", lhs)
-			assert.Eq(len(rhs.Args), 1, "only single arguments supported, got: ", rhs)
+			if len(lhs.Args) != len(rhs.Args) {
+				fmt.Printf("1: \nlhs: %s\n rhs: %s\n", lhs.String(), rhs.String())
+				return nil, nil, ErrWrongArgCount
+			}
 
 			// FIXME: allocates per prepend
-			cs = append([]Constraint{{lhs.Args[0], rhs.Args[0]}, {lhs.Ret, rhs.Ret}}, cs[1:]...)
+			csNew := []Constraint{{lhs.Ret, rhs.Ret}}
+			for i, larg := range lhs.Args {
+				csNew = append(csNew, Constraint{larg, rhs.Args[i]})
+			}
+			cs = append(csNew, cs[1:]...)
 			return unifyInner(cs, subs)
 		}
 	}

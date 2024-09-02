@@ -255,6 +255,7 @@ import (
 	"strings"
 
 	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/types"
@@ -383,19 +384,27 @@ func genIfExpr(ss *ScopeStack, constraints *[]Constraint, node *parse.IfExpr) (t
 }
 
 func genForFunc(ss *ScopeStack, cons *[]Constraint, node *parse.FuncDef) (types.Type, []types.Generic, error) {
-	assert.Eq(len(node.Args), 1, "only single-arg functions supported")
 	assert.Eq(len(node.Body), 1, "only single-expr function body supported")
 
 	ss.AddScope()
 	defer ss.Pop()
 	argType := types.NewGeneric("", "type of function arg "+node.Name)
-	ss.DefSymbol(node.Args[0], argType)
+	argTypes := fun.Map(node.Args, func(name string) *types.Generic {
+		return types.NewGeneric("", "type of function arg "+name)
+	})
+
+	for i, typ := range argTypes {
+		ss.DefSymbol(node.Args[i], typ)
+	}
 
 	bodyType, generics, err := genConstraints(ss, cons, node.Body[0])
 	if err != nil {
 		return nil, nil, err
 	}
-	generics = append(generics, *argType)
+
+	for _, typ := range argTypes {
+		generics = append(generics, *typ)
+	}
 
 	return &types.Func{
 		Args: []types.Type{argType},
@@ -426,18 +435,22 @@ func genForFn(ss *ScopeStack, cons *[]Constraint, node *parse.Fn) (types.Type, [
 }
 
 func genForCall(ss *ScopeStack, cons *[]Constraint, node *parse.Form) (types.Type, []types.Generic, error) {
-	assert.Eq(len(node.Children), 2, "only single-arg calls supported")
-
 	callee, generics, err := genConstraints(ss, cons, node.Children[0])
 	if err != nil {
 		return nil, nil, err
 	}
 
-	arg, gen1, err := genConstraints(ss, cons, node.Children[1])
-	if err != nil {
-		return nil, nil, err
+	argTypes := make([]types.Type, 0, len(node.Children)-1)
+
+	for _, arg := range node.Children[1:] {
+		typ, gen1, err := genConstraints(ss, cons, arg)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		generics = append(generics, gen1...)
+		argTypes = append(argTypes, typ)
 	}
-	generics = append(generics, gen1...)
 
 	form := types.NewGeneric("", "form expression")
 	generics = append(generics, *form)
@@ -445,7 +458,7 @@ func genForCall(ss *ScopeStack, cons *[]Constraint, node *parse.Form) (types.Typ
 	*cons = append(
 		*cons,
 		Constraint{callee, &types.Func{
-			Args: []types.Type{arg},
+			Args: argTypes,
 			Ret:  form,
 		}},
 	)

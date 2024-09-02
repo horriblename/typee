@@ -95,8 +95,17 @@ func (f *Func) Eq(other Type) bool {
 		return false
 	}
 
-	assert.Eq(len(f.Args), 1, "only single argument functions supported, type:", f)
-	return f.Args[0].Eq(o.Args[0]) && f.Ret.Eq(o.Ret)
+	if len(f.Args) != len(o.Args) {
+		return false
+	}
+
+	for i, farg := range f.Args {
+		if !farg.Eq(o.Args[i]) {
+			return false
+		}
+	}
+
+	return f.Ret.Eq(o.Ret)
 }
 func (g *Generic) Eq(other Type) bool {
 	o, ok := other.(*Generic)
