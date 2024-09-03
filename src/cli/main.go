@@ -118,19 +118,21 @@ func cmdBuild() error {
 	genqbe.Gen(qbeFile, typ, ast)
 	qbeFile.Seek(0, 0)
 
-	asmFName := fname + ".as"
+	asmFName := fname + ".s"
 	asmFile, err := os.OpenFile(asmFName, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o755)
 	if err != nil {
 		return fmt.Errorf("build: %w", err)
 	}
 	defer asmFile.Close()
 
-	err = libqbe.Main("amd64_sysv", fname+".qbe", qbeFile, asmFile, nil)
+	qbePath := fname + ".qbe"
+	err = libqbe.Main("amd64_sysv", qbePath, qbeFile, asmFile, nil)
 	if err != nil {
 		return fmt.Errorf("build: %w", err)
 	}
 
-	assembler := exec.Command("as", asmFName, "-o", *outPath)
+	// maybe I should use `as` and `ld` instead? idk
+	assembler := exec.Command("gcc", asmFName, "-o", *outPath)
 	assembler.Stdout = os.Stdout
 	assembler.Stderr = os.Stderr
 	err = assembler.Run()
