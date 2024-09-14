@@ -25,6 +25,7 @@ type buildParams struct {
 	targetStage stage
 	inFile      string
 	outFile     string
+	printTypes  bool
 }
 
 func buildProgram(params buildParams) error {
@@ -55,6 +56,12 @@ func buildProgram(params buildParams) error {
 	if err != nil {
 		errorf("during type inference: %s", err)
 		os.Exit(1)
+	}
+
+	if params.printTypes {
+		for name, typ := range typ {
+			errorf("%s: %s", name, typ.String())
+		}
 	}
 
 	if params.targetStage <= check {

@@ -34,6 +34,7 @@ func main() {
 	case "run":
 		err = cmdRun()
 	case "check":
+		err = cmdCheck()
 	default:
 		errorf("Unknown command: %s", cmd)
 		errorf(helpMain)
@@ -62,6 +63,23 @@ func errorf(format string, args ...any) {
 const flagOut = "o"
 const flagOutLong = "out"
 const defaultOut = "a.out"
+
+const flagPrintTypes = "print-types"
+const defaultPrintTypes = false
+
+func cmdCheck() error {
+	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, "Print top-level type info to stdout")
+	flag.Parse()
+
+	params := buildParams{
+		targetStage: check,
+		inFile:      flag.Arg(0),
+		outFile:     "",
+		printTypes:  *printTypes,
+	}
+
+	return buildProgram(params)
+}
 
 func cmdBuild() error {
 	outPath := flag.String(flagOut, defaultOut, "")
