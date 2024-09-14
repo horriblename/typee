@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
 )
 
@@ -136,13 +135,17 @@ func (r *Record) String() string {
 	return b.String()
 }
 func (f *Func) String() string {
-	assert.True(len(f.Args) > 0)
 	b := strings.Builder{}
 	b.WriteString("(")
-	b.WriteString(f.Args[0].String())
-	for _, arg := range f.Args[1:] {
-		b.WriteString(" , ")
-		b.WriteString(arg.String())
+
+	if len(f.Args) > 0 {
+		b.WriteString(f.Args[0].String())
+		for _, arg := range f.Args[1:] {
+			b.WriteString(" , ")
+			b.WriteString(arg.String())
+		}
+	} else {
+		b.WriteString("_empty")
 	}
 
 	b.WriteString(" -> ")
@@ -151,6 +154,7 @@ func (f *Func) String() string {
 
 	return b.String()
 }
+
 func (g *Generic) String() string {
 	if g.Name == "" {
 		return fmt.Sprintf("t%d", g.ID)
