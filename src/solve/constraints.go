@@ -317,19 +317,10 @@ func genConstraints(ss *ScopeStack, constraints *[]Constraint, node parse.Expr) 
 	switch n := node.(type) {
 	// no constraints generated for "constant" types
 	case *parse.IntLiteral:
-		// typ := GeneratedType{typeVar: NewTypeVar()}
-		// typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
-		// tt.SetTypeOfExpr(ExprID(node.ID()), typ)
 		return &types.Int{}, []types.Generic{}, nil
 	case *parse.BoolLiteral:
-		// typ := GeneratedType{typeVar: NewTypeVar()}
-		// typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
-		// tt.SetTypeOfExpr(ExprID(node.ID()), typ)
 		return &types.Bool{}, []types.Generic{}, nil
 	case *parse.StrLiteral:
-		// typ := GeneratedType{typeVar: NewTypeVar()}
-		// typ.typeVar.type_ = opt.Some[types.Type](&types.Int{})
-		// tt.SetTypeOfExpr(ExprID(node.ID()), typ)
 		return &types.String{}, []types.Generic{}, nil
 	case *parse.IfExpr:
 		return genIfExpr(ss, constraints, n)
