@@ -14,14 +14,17 @@ import (
 type ctx struct {
 	il        qbeil.Builder
 	topLevels solve.SymbolTable
+	statics   map[qbeil.Var]string
 }
 
 func Gen(w io.Writer, types solve.SymbolTable, ast []parse.Expr) {
 	// top-levels
-	ctx := ctx{qbeil.Builder{Writer: w}, types}
+	ctx := ctx{qbeil.Builder{Writer: w}, types, map[qbeil.Var]string{}}
 	for _, expr := range ast {
 		gen(&ctx, expr)
 	}
+
+	ctx.finish()
 }
 
 func gen(ctx *ctx, expr parse.Expr) (val qbeil.Value) {
@@ -119,6 +122,22 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 
 func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 	panic("unimpl: gen let")
+}
+
+func (ctx *ctx) finish() {
+	for name, data := range ctx.statics {
+		_, err := ctx.il.Writer.Write([]byte("data "))
+		assert.Ok(err)
+
+		_, err = ctx.il.Writer.Write([]byte(name.IL()))
+		assert.Ok(err)
+
+		_, err = ctx.il.Writer.Write([]byte(" = "))
+		assert.Ok(err)
+
+		_, err = ctx.il.Writer.Write([]byte(data))
+		assert.Ok(err)
+	}
 }
 
 func toILType(typ types.Type) qbeil.Type {
