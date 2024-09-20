@@ -15,11 +15,13 @@ type ctx struct {
 	il        qbeil.Builder
 	topLevels solve.SymbolTable
 	statics   map[qbeil.Var]string
+	userTypes map[string]qbeil.StructType
 }
 
 func Gen(w io.Writer, types solve.SymbolTable, ast []parse.Expr) {
 	// top-levels
-	ctx := ctx{qbeil.Builder{Writer: w}, types, map[qbeil.Var]string{}}
+	ctx := ctx{qbeil.Builder{Writer: w}, types, map[qbeil.Var]string{},
+		map[string]qbeil.StructType{}}
 	for _, expr := range ast {
 		gen(&ctx, expr)
 	}
@@ -125,6 +127,14 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 }
 
 func (ctx *ctx) finish() {
+	for _, typ := range ctx.userTypes {
+		_, err := ctx.il.Writer.Write([]byte(typ.Define()))
+		assert.Ok(err)
+
+		_, err = ctx.il.Writer.Write([]byte{'\n'})
+		assert.Ok(err)
+	}
+
 	for name, data := range ctx.statics {
 		_, err := ctx.il.Writer.Write([]byte("data "))
 		assert.Ok(err)
@@ -136,6 +146,9 @@ func (ctx *ctx) finish() {
 		assert.Ok(err)
 
 		_, err = ctx.il.Writer.Write([]byte(data))
+		assert.Ok(err)
+
+		_, err = ctx.il.Writer.Write([]byte{'\n'})
 		assert.Ok(err)
 	}
 }
