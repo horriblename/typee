@@ -108,5 +108,8 @@ func buildProgram(params buildParams) error {
 		executable = "./" + params.outFile
 	}
 
-	return exec.Command(executable).Run()
+	cmd := exec.Command(executable)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
