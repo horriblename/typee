@@ -69,6 +69,9 @@ func (t StructType) Define() string {
 	for _, typ := range t.Fields {
 		_, err = b.WriteString(typ.IL())
 		assert.Ok(err)
+
+		_, err = b.WriteString(", ")
+		assert.Ok(err)
 	}
 
 	_, err = b.WriteString("}")
