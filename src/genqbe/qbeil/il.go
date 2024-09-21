@@ -111,6 +111,13 @@ func (b *Builder) Arithmetic(target string, ret Type, op string, args ...Value) 
 	b.indented([]byte(fmt.Sprintf("%s %s %s %s\n", target, retStr, op, argStr)))
 }
 
+func (b *Builder) Command(op string, args ...Value) {
+	argStrs := fun.Map(args, func(arg Value) string { return arg.IL() })
+	argStr := strings.Join(argStrs, ", ")
+
+	b.indented([]byte(fmt.Sprintf("%s %s\n", op, argStr)))
+}
+
 func (b *Builder) Call(target *Var, typ Type, name Var, args []TypedValue) {
 	argsStr := strings.Join(fun.Map(args, func(v TypedValue) string {
 		return fmt.Sprint(v.Type.IL(), " ", v.Value.IL())
