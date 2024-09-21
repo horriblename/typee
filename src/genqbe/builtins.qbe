@@ -1,0 +1,14 @@
+# struct {char* data, ssize_t len}
+type :Str = {l, w}
+
+function w $print(:Str %s) {
+@start
+	%str_data =l loadl %s
+	# 64-bit architecture only lul
+	%len_loc =l add %s, 8
+	%str_len =w loadw %len_loc
+	%stdout =l loadl $stdout
+	%res =w call $fwrite(l %str_data, w 1, w %str_len, l %stdout)
+	ret 0
+}
+
