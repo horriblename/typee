@@ -22,4 +22,9 @@ var builtins = map[string]types.Type{
 	">": &intComparatorOpFuncType,
 	"<": &intComparatorOpFuncType,
 	"=": &intComparatorOpFuncType,
+	"print": &types.Func{
+		Args: []types.Type{&types.String{}},
+		// TODO: switch to unit type when they're are impl'd
+		Ret: &types.String{},
+	},
 }
