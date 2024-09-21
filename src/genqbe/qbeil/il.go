@@ -99,12 +99,16 @@ func (b *Builder) Ret(val Value) {
 	b.indented([]byte(fmt.Sprintf("ret %s\n", val.IL())))
 }
 
-func (b *Builder) Arithmetic(target string, ret Type, op string, left Value, right Value) {
+func (b *Builder) Arithmetic(target string, ret Type, op string, args ...Value) {
 	retStr := ""
 	if ret != nil {
 		retStr = "=" + ret.IL()
 	}
-	b.indented([]byte(fmt.Sprintf("%s %s %s %s, %s\n", target, retStr, op, left.IL(), right.IL())))
+
+	argsStr := fun.Map(args, func(arg Value) string { return arg.IL() })
+	argStr := strings.Join(argsStr, ", ")
+
+	b.indented([]byte(fmt.Sprintf("%s %s %s %s\n", target, retStr, op, argStr)))
 }
 
 func (b *Builder) Call(target *Var, typ Type, name Var, args []TypedValue) {
