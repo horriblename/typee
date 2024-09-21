@@ -1,6 +1,8 @@
 package genqbe
 
 import (
+	_ "embed"
+	"fmt"
 	"io"
 
 	"github.com/horriblename/typee/src/assert"
@@ -11,6 +13,9 @@ import (
 	"github.com/horriblename/typee/src/types"
 )
 
+//go:embed builtins.qbe
+var builtinsQbe string
+
 type ctx struct {
 	il        qbeil.Builder
 	topLevels solve.SymbolTable
@@ -19,9 +24,20 @@ type ctx struct {
 }
 
 func Gen(w io.Writer, types solve.SymbolTable, ast []parse.Expr) {
+	fmt.Fprint(w, builtinsQbe)
+
 	// top-levels
 	ctx := ctx{qbeil.Builder{Writer: w}, types, map[qbeil.Var]string{},
 		map[string]qbeil.StructType{}}
+
+	ctx.userTypes["Str"] = qbeil.StructType{
+		Name: "Str",
+		Fields: []qbeil.Type{
+			qbeil.Long, // pointer to string
+			qbeil.Word, // size
+		},
+	}
+
 	for _, expr := range ast {
 		gen(&ctx, expr)
 	}
@@ -43,6 +59,23 @@ func gen(ctx *ctx, expr parse.Expr) (val qbeil.Value) {
 			return qbeil.Var{Global: true, Name: e.Name}
 		}
 		return qbeil.Var{Global: false, Name: e.Name}
+	case *parse.StrLiteral:
+		dataGlobal := ctx.il.TempVar(true)
+		ctx.statics[dataGlobal] = fmt.Sprintf(`{b "%s"}`, e.Content)
+
+		// the Str struct on stack
+		strPtr := ctx.il.TempVar(false)
+		// TODO: construct Str obj on stack Str{data: &dataGlobal, len: len(dataGlobal)}
+
+		ctx.il.Arithmetic(strPtr.IL(), qbeil.Long, "alloc4", qbeil.IntLiteral{Value: 16 + 8})
+		ctx.il.Command("storel", dataGlobal, strPtr)
+
+		lenPtr := ctx.il.TempVar(false)
+		// 64-bit system
+		ctx.il.Arithmetic(lenPtr.IL(), qbeil.Long, "add", strPtr, qbeil.IntLiteral{Value: 8})
+		ctx.il.Command("storel", qbeil.IntLiteral{Value: int64(len(e.Content))}, lenPtr)
+
+		return strPtr
 	case *parse.LetExpr:
 		return genLet(ctx, e)
 	}
@@ -61,13 +94,13 @@ func genFunc(ctx *ctx, expr *parse.FuncDef) (val qbeil.Value) {
 
 	for i, arg := range funcTyp.Args {
 		args = append(args, qbeil.NewTypedVar(
-			toILType(arg),
+			ctx.toILType(arg),
 			qbeil.Var{Global: false, Name: expr.Args[i]},
 		))
 	}
 
 	linkage := qbeil.Linkage{}
-	retTyp := toILType(funcTyp.Ret)
+	retTyp := ctx.toILType(funcTyp.Ret)
 	if expr.Name == "main" {
 		linkage.Type = qbeil.Export
 		retTyp = qbeil.Word
@@ -97,23 +130,38 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 
 			left := gen(ctx, expr.Children[1])
 			right := gen(ctx, expr.Children[2])
-			target := ctx.il.TempVar()
+			target := ctx.il.TempVar(false)
 			ctx.il.Arithmetic(target.IL(), qbeil.Long, "add", left, right)
+
+			return target
+		case "print":
+			assert.Eq(len(expr.Children), 2, `wrong arg count for "print"`)
+			arg := gen(ctx, expr.Children[1])
+			target := ctx.il.TempVar(false)
+			ctx.il.Call(&target, qbeil.Word,
+				qbeil.Var{Global: true, Name: "print"},
+				[]qbeil.TypedValue{{
+					Type:  ctx.toILType(&types.String{}),
+					Value: arg,
+				}})
 
 			return target
 		default:
 			// TODO: local functions
-			funcSig, ok := ctx.topLevels[callee.Name].(*types.Func)
+			fn, found := ctx.topLevels[callee.Name]
+			assert.True(found, "function does not exist:", callee.Name)
+
+			funcSig, ok := fn.(*types.Func)
 			assert.True(ok, "tried to call non-function top-level:", callee.Name)
 			assert.Eq(len(expr.Children), len(funcSig.Args)+1, callee.Name, ": function argument count does not match signature")
-			target := ctx.il.TempVar()
+			target := ctx.il.TempVar(false)
 
 			args := fun.ZipMap(expr.Children[1:], funcSig.Args, func(arg parse.Expr, typ types.Type) qbeil.TypedValue {
-				return qbeil.TypedValue{Type: toILType(typ), Value: gen(ctx, arg)}
+				return qbeil.TypedValue{Type: ctx.toILType(typ), Value: gen(ctx, arg)}
 			})
 			funcVar := qbeil.Var{Global: true, Name: callee.Name}
 
-			ctx.il.Call(&target, toILType(funcSig.Ret), funcVar, args)
+			ctx.il.Call(&target, ctx.toILType(funcSig.Ret), funcVar, args)
 
 			return target
 		}
@@ -153,12 +201,14 @@ func (ctx *ctx) finish() {
 	}
 }
 
-func toILType(typ types.Type) qbeil.Type {
+func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	switch typ.(type) {
 	case *types.Int:
 		return qbeil.Long
 	case *types.Bool:
 		return qbeil.Word
+	case *types.String:
+		return ctx.userTypes["Str"]
 	default:
 		panic("unimpl: conversion to IL of type " + typ.String())
 	}

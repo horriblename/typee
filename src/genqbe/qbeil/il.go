@@ -98,7 +98,6 @@ func (b *Builder) Label(name string) {
 func (b *Builder) Ret(val Value) {
 	b.indented([]byte(fmt.Sprintf("ret %s\n", val.IL())))
 }
-
 func (b *Builder) Arithmetic(target string, ret Type, op string, args ...Value) {
 	retStr := ""
 	if ret != nil {
@@ -133,7 +132,7 @@ func (b *Builder) Call(target *Var, typ Type, name Var, args []TypedValue) {
 	}
 }
 
-func (b *Builder) TempVar() Var {
+func (b *Builder) TempVar(global bool) Var {
 	b.tempID++
-	return Var{Global: false, Name: fmt.Sprintf("_tmp_%d", b.tempID)}
+	return Var{Global: global, Name: fmt.Sprintf("_tmp_%d", b.tempID)}
 }
