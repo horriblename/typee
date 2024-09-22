@@ -65,7 +65,6 @@ func gen(ctx *ctx, expr parse.Expr) (val qbeil.Value) {
 
 		// the Str struct on stack
 		strPtr := ctx.il.TempVar(false)
-		// TODO: construct Str obj on stack Str{data: &dataGlobal, len: len(dataGlobal)}
 
 		ctx.il.Arithmetic(strPtr.IL(), qbeil.Long, "alloc4", qbeil.IntLiteral{Value: 16 + 8})
 		ctx.il.Command("storel", dataGlobal, strPtr)
