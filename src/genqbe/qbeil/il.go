@@ -2,6 +2,7 @@
 package qbeil
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -12,7 +13,8 @@ import (
 const indentSym string = "\t"
 
 type Builder struct {
-	Writer    io.Writer
+	Writer    bytes.Buffer
+	OutFile   io.Writer
 	indentLvl int
 	tempID    int
 }

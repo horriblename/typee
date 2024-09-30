@@ -1,6 +1,3 @@
-# struct {char* data, ssize_t len}
-type :Str = {l, w}
-
 function w $print(:Str %s) {
 @start
 	%str_data =l loadl %s

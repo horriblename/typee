@@ -24,10 +24,8 @@ type ctx struct {
 }
 
 func Gen(w io.Writer, types solve.SymbolTable, ast []parse.Expr) {
-	fmt.Fprint(w, builtinsQbe)
-
 	// top-levels
-	ctx := ctx{qbeil.Builder{Writer: w}, types, map[qbeil.Var]string{},
+	ctx := ctx{qbeil.Builder{OutFile: w}, types, map[qbeil.Var]string{},
 		map[string]qbeil.StructType{}}
 
 	ctx.userTypes["Str"] = qbeil.StructType{
@@ -175,29 +173,32 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 
 func (ctx *ctx) finish() {
 	for _, typ := range ctx.userTypes {
-		_, err := ctx.il.Writer.Write([]byte(typ.Define()))
+		_, err := ctx.il.OutFile.Write([]byte(typ.Define()))
 		assert.Ok(err)
 
-		_, err = ctx.il.Writer.Write([]byte{'\n'})
+		_, err = ctx.il.OutFile.Write([]byte{'\n'})
 		assert.Ok(err)
 	}
 
 	for name, data := range ctx.statics {
-		_, err := ctx.il.Writer.Write([]byte("data "))
+		_, err := ctx.il.OutFile.Write([]byte("data "))
 		assert.Ok(err)
 
-		_, err = ctx.il.Writer.Write([]byte(name.IL()))
+		_, err = ctx.il.OutFile.Write([]byte(name.IL()))
 		assert.Ok(err)
 
-		_, err = ctx.il.Writer.Write([]byte(" = "))
+		_, err = ctx.il.OutFile.Write([]byte(" = "))
 		assert.Ok(err)
 
-		_, err = ctx.il.Writer.Write([]byte(data))
+		_, err = ctx.il.OutFile.Write([]byte(data))
 		assert.Ok(err)
 
-		_, err = ctx.il.Writer.Write([]byte{'\n'})
+		_, err = ctx.il.OutFile.Write([]byte{'\n'})
 		assert.Ok(err)
 	}
+
+	fmt.Fprint(ctx.il.OutFile, builtinsQbe)
+	io.Copy(ctx.il.OutFile, &ctx.il.Writer)
 }
 
 func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
