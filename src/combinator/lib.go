@@ -61,11 +61,27 @@ func Any[I any, O any](parsers ...Parser[I, O]) Parser[I, O] {
 	}
 }
 
+func WithPrefix[I any, O1 any, O any](prefix Parser[I, O1], main Parser[I, O]) Parser[I, O] {
+	return func(i I) (_ I, out O, _ error) {
+		rest, _, err := prefix(i)
+		if err != nil {
+			return i, out, err
+		}
+
+		rest, out, err = main(rest)
+		if err != nil {
+			return i, out, err
+		}
+
+		return rest, out, err
+	}
+}
+
 func WithSuffix[I any, O any, O2 any](main Parser[I, O], suffix Parser[I, O2]) Parser[I, O] {
 	return func(i I) (I, O, error) {
 		rest, out, err := main(i)
 		if err != nil {
-			return rest, out, err
+			return i, out, err
 		}
 
 		rest, _, err = suffix(rest)
