@@ -83,35 +83,43 @@ type Record struct {
 	Fields []RecordField
 }
 
+type RecordAccess struct {
+	id     int
+	Record string
+	Field  string
+}
+
 type RecordField struct {
 	Name  string
 	Value Expr
 }
 
-func (*Form) ast()        {}
-func (*Symbol) ast()      {}
-func (*FuncDef) ast()     {}
-func (*Set) ast()         {}
-func (*IfExpr) ast()      {}
-func (*StrLiteral) ast()  {}
-func (*IntLiteral) ast()  {}
-func (*BoolLiteral) ast() {}
-func (*LetExpr) ast()     {}
-func (*Fn) ast()          {}
-func (*Record) ast()      {}
+func (*Form) ast()         {}
+func (*Symbol) ast()       {}
+func (*FuncDef) ast()      {}
+func (*Set) ast()          {}
+func (*IfExpr) ast()       {}
+func (*StrLiteral) ast()   {}
+func (*IntLiteral) ast()   {}
+func (*BoolLiteral) ast()  {}
+func (*LetExpr) ast()      {}
+func (*Fn) ast()           {}
+func (*Record) ast()       {}
+func (*RecordAccess) ast() {}
 
-func (self *Form) ID() int        { return self.id }
-func (self *Symbol) ID() int      { return self.id }
-func (self *Int) ID() int         { return self.id }
-func (self *FuncDef) ID() int     { return self.id }
-func (self *Set) ID() int         { return self.id }
-func (self *IfExpr) ID() int      { return self.id }
-func (self *StrLiteral) ID() int  { return self.id }
-func (self *IntLiteral) ID() int  { return self.id }
-func (self *BoolLiteral) ID() int { return self.id }
-func (self *LetExpr) ID() int     { return self.id }
-func (self *Fn) ID() int          { return self.id }
-func (self *Record) ID() int      { return self.id }
+func (self *Form) ID() int         { return self.id }
+func (self *Symbol) ID() int       { return self.id }
+func (self *Int) ID() int          { return self.id }
+func (self *FuncDef) ID() int      { return self.id }
+func (self *Set) ID() int          { return self.id }
+func (self *IfExpr) ID() int       { return self.id }
+func (self *StrLiteral) ID() int   { return self.id }
+func (self *IntLiteral) ID() int   { return self.id }
+func (self *BoolLiteral) ID() int  { return self.id }
+func (self *LetExpr) ID() int      { return self.id }
+func (self *Fn) ID() int           { return self.id }
+func (self *Record) ID() int       { return self.id }
+func (self *RecordAccess) ID() int { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
@@ -142,6 +150,9 @@ func (self *Fn) String() string {
 }
 func (self *Record) String() string {
 	return fmt.Sprintf("#%d %v", self.id, self.Fields)
+}
+func (self *RecordAccess) String() string {
+	return fmt.Sprintf("#%d %s.%s", self.id, self.Record, self.Field)
 }
 func (self *RecordField) String() string {
 	return fmt.Sprintf("%s: %s", self.Name, self.Value)
@@ -193,6 +204,9 @@ func (self *LetExpr) Pretty() string {
 }
 func (self *Fn) Pretty() string {
 	return fmt.Sprintf("(fn [%s] %s)", self.Arg, self.Body.Pretty())
+}
+func (self *RecordAccess) Pretty() string {
+	return fmt.Sprintf("%s.%s", self.Record, self.Field)
 }
 func (self *Record) Pretty() string {
 	if len(self.Fields) == 0 {

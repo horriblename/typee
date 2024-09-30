@@ -314,11 +314,28 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, errAt(in)
 	}
 
-	if sym, ok := in[0].(*lex.Symbol); ok {
-		return in[1:], &Symbol{id: newId(), Name: sym.Name}, nil
-	} else {
+	sym, ok := in[0].(*lex.Symbol)
+	if !ok {
 		return nil, nil, errAt(in)
 	}
+
+	rest := in[1:]
+	rest, accessor, err := combinator.Maybe(combinator.WithPrefix(dot, symbolName))(rest)
+
+	if err != nil {
+		return nil, nil, errAt(in)
+	}
+
+	if member, ok := accessor.Unwrap(); ok {
+		return rest, &RecordAccess{
+			id:     newId(),
+			Record: sym.Name,
+			Field:  member,
+		}, nil
+	}
+
+	return rest, &Symbol{id: newId(), Name: sym.Name}, nil
+
 }
 
 func symbolName(in []lex.Token) ([]lex.Token, string, error) {
@@ -356,6 +373,9 @@ func colon(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func comma(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Comma])(in)
+}
+func dot(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Dot])(in)
 }
 func kwDef(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Def])(in)

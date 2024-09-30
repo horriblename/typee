@@ -44,7 +44,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			desc:  "def no function signature",
-			input: "(def foo [x y] (foo x y))",
+			input: "(def foo [x y] (foo x.bar y))",
 			output: []Expr{&FuncDef{
 				id:        5,
 				Name:      "foo",
@@ -54,7 +54,7 @@ func TestParse(t *testing.T) {
 					id: 4,
 					Children: []Expr{
 						&Symbol{id: 1, Name: "foo"},
-						&Symbol{id: 2, Name: "x"},
+						&RecordAccess{id: 2, Record: "x", Field: "bar"},
 						&Symbol{id: 3, Name: "y"},
 					},
 				}},
