@@ -25,6 +25,7 @@ func LexString(source string) ([]Token, error) {
 			rbrace,
 			colon,
 			comma,
+			dot,
 			strLiteral,
 			keywordOrSymbol,
 			intLiteral,
@@ -53,6 +54,7 @@ func lbrace(in []rune) ([]rune, Token, error)   { return combinator.MatchOne(in,
 func rbrace(in []rune) ([]rune, Token, error)   { return combinator.MatchOne(in, '}', &RBrace{}) }
 func colon(in []rune) ([]rune, Token, error)    { return combinator.MatchOne(in, ':', &Colon{}) }
 func comma(in []rune) ([]rune, Token, error)    { return combinator.MatchOne(in, ',', &Comma{}) }
+func dot(in []rune) ([]rune, Token, error)      { return combinator.MatchOne(in, '.', &Dot{}) }
 func doubleQuote(in []rune) ([]rune, struct{}, error) {
 	return combinator.MatchOne(in, '"', struct{}{})
 }
@@ -138,7 +140,7 @@ func symbolStr(in []rune) ([]rune, string, error) {
 	var char rune
 	for i, char = range in {
 		switch char {
-		case '(', ')', '[', ']', '{', '}', ':', ',':
+		case '(', ')', '[', ']', '{', '}', ':', ',', '.':
 			if i == 0 {
 				return nil, "", ErrLex
 			}

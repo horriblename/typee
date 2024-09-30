@@ -14,6 +14,7 @@ type LBrace struct{}
 type RBrace struct{}
 type Colon struct{}
 type Comma struct{}
+type Dot struct{}
 type Symbol struct {
 	Name string
 }
@@ -41,6 +42,7 @@ func (*LBrace) token()       {}
 func (*RBrace) token()       {}
 func (*Colon) token()        {}
 func (*Comma) token()        {}
+func (*Dot) token()          {}
 func (*Symbol) token()       {}
 func (*IntLiteral) token()   {}
 func (*StrLiteral) token()   {}
@@ -59,7 +61,7 @@ func (*RBracket) String() string        { return "RBracket" }
 func (*LBrace) String() string          { return "LBrace" }
 func (*RBrace) String() string          { return "RBrace" }
 func (*Colon) String() string           { return "Colon" }
-func (*Comma) String() string           { return "Comma" }
+func (*Dot) String() string             { return "Dot" }
 func (self *Symbol) String() string     { return fmt.Sprintf("Symbol{\"%s\"}", self.Name) }
 func (self *IntLiteral) String() string { return fmt.Sprintf("IntLiteral{%d}", self.Number) }
 func (self *StrLiteral) String() string { return fmt.Sprintf("StrLiteral{\"%s\"}", self.Content) }

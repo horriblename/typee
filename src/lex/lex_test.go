@@ -25,10 +25,10 @@ func TestLex(t *testing.T) {
 	}{
 		{
 			desc:  "All",
-			input: `(foo)def[set, "str"]{123:}`,
+			input: `(foo)def[set, "str"]{123:.}`,
 			output: []Token{&lParen, &Symbol{Name: "foo"}, &rParen, &tokDef,
 				&lBracket, &tokSet, &tokComma, &StrLiteral{Content: "str"}, &rBracket,
-				&lBrace, &IntLiteral{Number: 123}, &tokColon, &rBrace},
+				&lBrace, &IntLiteral{Number: 123}, &tokColon, &Dot{}, &rBrace},
 			err: nil,
 		},
 		{
