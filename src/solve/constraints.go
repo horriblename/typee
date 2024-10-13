@@ -339,6 +339,8 @@ func genConstraints(ss *ScopeStack, constraints *[]Constraint, node parse.Expr) 
 		return genForRecord(ss, constraints, n)
 	case *parse.Set:
 		panic(fmt.Sprintf("unhandled node type in genConstraints: %v", node))
+	case *parse.RecordAccess:
+		panic("unimpl: gen constraints for record access")
 	}
 
 	panic("unreachable")
