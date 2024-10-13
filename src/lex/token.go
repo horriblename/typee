@@ -1,5 +1,7 @@
 package lex
 
+//go-sumtype:decl Token
+
 import "fmt"
 
 type Token interface {
