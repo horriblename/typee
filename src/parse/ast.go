@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/opt"
 )
 
@@ -84,6 +85,22 @@ type Fn struct {
 	Body Expr
 }
 
+type CaseExpr struct {
+	id       int
+	Match    Expr
+	Branches []CaseBranch
+}
+
+type CaseBranch struct {
+	Pattern CasePattern
+	Body    Expr
+}
+
+type CasePattern struct {
+	Tag     string
+	Pattern string
+}
+
 type Record struct {
 	id     int
 	Fields []RecordField
@@ -111,6 +128,7 @@ func (*BoolLiteral) ast()  {}
 func (*LetExpr) ast()      {}
 func (*TaggedExpr) ast()   {}
 func (*Fn) ast()           {}
+func (*CaseExpr) ast()     {}
 func (*Record) ast()       {}
 func (*RecordAccess) ast() {}
 
@@ -126,6 +144,7 @@ func (self *BoolLiteral) ID() int  { return self.id }
 func (self *LetExpr) ID() int      { return self.id }
 func (self *TaggedExpr) ID() int   { return self.id }
 func (self *Fn) ID() int           { return self.id }
+func (self *CaseExpr) ID() int     { return self.id }
 func (self *Record) ID() int       { return self.id }
 func (self *RecordAccess) ID() int { return self.id }
 
@@ -158,6 +177,14 @@ func (self *TaggedExpr) String() string {
 }
 func (self *Fn) String() string {
 	return fmt.Sprintf("#%d (fn [%v] %v)", self.id, self.Arg, self.Body)
+}
+func (self *CaseExpr) String() string {
+	return fmt.Sprintf("#%d (case %v [%s])", self.id, self.Match, strings.Join(fun.Map(self.Branches, func(branch CaseBranch) string {
+		return branch.String()
+	}), " "))
+}
+func (self *CaseBranch) String() string {
+	return fmt.Sprintf("('%s %s) %v", self.Pattern.Tag, self.Pattern.Pattern, self.Body)
 }
 func (self *Record) String() string {
 	return fmt.Sprintf("#%d %v", self.id, self.Fields)
@@ -218,6 +245,20 @@ func (self *TaggedExpr) Pretty() string {
 }
 func (self *Fn) Pretty() string {
 	return fmt.Sprintf("(fn [%s] %s)", self.Arg, self.Body.Pretty())
+}
+func (self *CaseExpr) Pretty() string {
+	var b strings.Builder
+	b.WriteString("(case ")
+	b.WriteString(self.Match.Pretty())
+	b.WriteString(" [")
+	for _, branch := range self.Branches {
+		b.WriteString(branch.Pretty())
+	}
+	b.WriteString(" ]")
+	return b.String()
+}
+func (self *CaseBranch) Pretty() string {
+	return fmt.Sprintf("('%s %s) %s", self.Pattern.Tag, self.Pattern.Pattern, self.Body.Pretty())
 }
 func (self *RecordAccess) Pretty() string {
 	return fmt.Sprintf("%s.%s", self.Record, self.Field)

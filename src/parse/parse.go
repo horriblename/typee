@@ -98,6 +98,9 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	case *lex.Tag:
 		return taggedExpr(in)
 
+	case *lex.Case:
+		return caseExpr(in)
+
 	case nil:
 		return nil, nil, errAt(in)
 
@@ -300,6 +303,68 @@ func taggedExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	check(err)
 
 	return in, &TaggedExpr{id: newId(), Tag: tag, Body: body}, nil
+}
+
+func caseExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
+	defer func() { err = handleCheck(recover()) }()
+
+	in, _, err = lparen(in)
+	check(err)
+	in, _, err = kwCase(in)
+	check(err)
+
+	in, match, err := expr(in)
+	check(err)
+
+	in, _, err = lbracket(in)
+	check(err)
+
+	in, cases, err := combinator.Many0(caseBranch)(in)
+
+	in, _, err = rbracket(in)
+	check(err)
+
+	in, _, err = rparen(in)
+	check(err)
+
+	return in, &CaseExpr{
+		id:       newId(),
+		Match:    match,
+		Branches: cases,
+	}, nil
+}
+
+func casePattern(in []lex.Token) (_ []lex.Token, _ CasePattern, err error) {
+	in, out, err := combinator.Surround(
+		lparen,
+		combinator.Then(
+			tagName,
+			symbolName,
+		),
+		rparen,
+	)(in)
+
+	if err != nil {
+		return nil, CasePattern{}, err
+	}
+
+	return in, CasePattern{Tag: out.One, Pattern: out.Two}, nil
+}
+
+func caseBranch(in []lex.Token) (_ []lex.Token, _ CaseBranch, err error) {
+	in, branch, err := combinator.Then(
+		casePattern,
+		expr,
+	)(in)
+
+	if err != nil {
+		return nil, CaseBranch{}, err
+	}
+
+	return in, CaseBranch{
+		Pattern: branch.One,
+		Body:    branch.Two,
+	}, nil
 }
 
 func recordExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {

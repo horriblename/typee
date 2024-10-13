@@ -190,6 +190,37 @@ func TestParse(t *testing.T) {
 				Body: &IntLiteral{id: 1, Number: 42},
 			}},
 		},
+		{
+			desc: "case expr",
+			input: `(case x [
+				('foo y) y
+				('bar y) (+ y 1)
+			])`,
+			output: []Expr{&CaseExpr{
+				id:    7,
+				Match: &Symbol{id: 1, Name: "x"},
+				Branches: []CaseBranch{
+					{
+						Pattern: CasePattern{Tag: "foo", Pattern: "y"},
+						Body: &Symbol{
+							id:   2,
+							Name: "y",
+						},
+					},
+					{
+						Pattern: CasePattern{Tag: "bar", Pattern: "y"},
+						Body: &Form{
+							id: 6,
+							Children: []Expr{
+								&Symbol{id: 3, Name: "+"},
+								&Symbol{id: 4, Name: "y"},
+								&IntLiteral{Number: 1, id: 5},
+							},
+						},
+					},
+				},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
