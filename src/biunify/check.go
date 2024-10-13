@@ -4,12 +4,15 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/parse"
 )
 
 var ErrUndefinedVariable = errors.New("undefined variable")
 var ErrDuplicateField = errors.New("duplicated field")
 var ErrDuplicateCaseBranch = errors.New("duplicate case branch")
+var ErrEmptyFunctionDef = errors.New("missing function body")
+var ErrEmptyForm = errors.New("empty form")
 
 type FieldType struct {
 	Name string
@@ -129,8 +132,49 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 		}
 
 		return resultTy, nil
+	case *parse.FuncDef:
+		bindings.NewScope()
+		argBounds := fun.Map(expr.Args, func(arg string) Use {
+			argTy, argBound := engine.Var()
+			bindings.insert(arg, argTy)
+			return argBound
+		})
+
+		if len(expr.Body) == 0 {
+			return nil, ErrEmptyFunctionDef
+		}
+
+		retTy, err := CheckExpr(engine, bindings, expr.Body[len(expr.Body)-1])
+		if err != nil {
+			return nil, err
+		}
+
+		return engine.Func(argBounds, retTy), nil
+	case *parse.Form:
+		if len(expr.Children) == 0 {
+			return nil, ErrEmptyForm
+		}
+
+		funcTy, err := CheckExpr(engine, bindings, expr.Children[0])
+		if err != nil {
+			return nil, err
+		}
+
+		argTys := make([]Value, len(expr.Children)-1)
+		for i, arg := range expr.Children[1:] {
+			argTys[i], err = CheckExpr(engine, bindings, arg)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		retTy, retBound := engine.Var()
+		bound := engine.FuncUse(argTys, retBound)
+		engine.Flow(funcTy, bound)
+
+		return retTy, nil
 	}
-	panic("unimpl")
+	panic("unreachable")
 }
 
 func mapInsert[K comparable, V any](m map[K]V, k K, v V) (overwritten bool) {

@@ -32,8 +32,8 @@ type TypeChecker interface {
 	Bool() Value
 	BoolUse() Use
 
-	Func(arg Use, ret Value) Value
-	FuncUse(arg Value, ret Use) Use
+	Func(args []Use, ret Value) Value
+	FuncUse(args []Value, ret Use) Use
 
 	Obj(fields []NamedValue) Value
 	ObjUse(field NamedUse) Use
