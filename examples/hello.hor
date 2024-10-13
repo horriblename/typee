@@ -1,0 +1,5 @@
+(def addOne [x]
+	 (+ x 1))
+
+(def main []
+	(print "hello world"))
