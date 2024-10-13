@@ -24,6 +24,9 @@ type IntLiteral struct {
 type StrLiteral struct {
 	Content string
 }
+type Tag struct {
+	Label string
+}
 type TrueLiteral struct{}
 type FalseLiteral struct{}
 
@@ -47,6 +50,7 @@ func (*Dot) token()          {}
 func (*Symbol) token()       {}
 func (*IntLiteral) token()   {}
 func (*StrLiteral) token()   {}
+func (*Tag) token()          {}
 func (*Def) token()          {}
 func (*Set) token()          {}
 func (*If) token()           {}
@@ -67,6 +71,7 @@ func (*Dot) String() string             { return "Dot" }
 func (self *Symbol) String() string     { return fmt.Sprintf("Symbol{\"%s\"}", self.Name) }
 func (self *IntLiteral) String() string { return fmt.Sprintf("IntLiteral{%d}", self.Number) }
 func (self *StrLiteral) String() string { return fmt.Sprintf("StrLiteral{\"%s\"}", self.Content) }
+func (self *Tag) String() string        { return fmt.Sprintf("'%s", self.Label) }
 func (*Def) String() string             { return "Def" }
 func (*Set) String() string             { return "Set" }
 func (*If) String() string              { return "If" }

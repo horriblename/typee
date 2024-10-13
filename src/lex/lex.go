@@ -27,6 +27,7 @@ func LexString(source string) ([]Token, error) {
 			comma,
 			dot,
 			strLiteral,
+			tag,
 			keywordOrSymbol,
 			intLiteral,
 		),
@@ -142,7 +143,7 @@ func symbolStr(in []rune) ([]rune, string, error) {
 	var char rune
 	for i, char = range in {
 		switch char {
-		case '(', ')', '[', ']', '{', '}', ':', ',', '.':
+		case '(', ')', '[', ']', '{', '}', ':', ',', '.', '\'':
 			if i == 0 {
 				return nil, "", ErrLex
 			}
@@ -159,6 +160,21 @@ func symbolStr(in []rune) ([]rune, string, error) {
 
 	// reached end of input
 	return make([]rune, 0), string(in), nil
+}
+
+func tag(in []rune) ([]rune, Token, error) {
+	if len(in) == 0 || in[0] != '\'' {
+		return nil, nil, ErrLex
+	}
+
+	in, label, err := symbolStr(in[1:])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return in, &Tag{
+		Label: label,
+	}, nil
 }
 
 func skipWhitespace(in []rune) ([]rune, struct{}, error) {
