@@ -72,6 +72,12 @@ type LetExpr struct {
 	Body        Expr
 }
 
+type TaggedExpr struct {
+	id   int
+	Tag  string
+	Body Expr
+}
+
 type Fn struct {
 	id   int
 	Arg  string
@@ -103,6 +109,7 @@ func (*StrLiteral) ast()   {}
 func (*IntLiteral) ast()   {}
 func (*BoolLiteral) ast()  {}
 func (*LetExpr) ast()      {}
+func (*TaggedExpr) ast()   {}
 func (*Fn) ast()           {}
 func (*Record) ast()       {}
 func (*RecordAccess) ast() {}
@@ -117,6 +124,7 @@ func (self *StrLiteral) ID() int   { return self.id }
 func (self *IntLiteral) ID() int   { return self.id }
 func (self *BoolLiteral) ID() int  { return self.id }
 func (self *LetExpr) ID() int      { return self.id }
+func (self *TaggedExpr) ID() int   { return self.id }
 func (self *Fn) ID() int           { return self.id }
 func (self *Record) ID() int       { return self.id }
 func (self *RecordAccess) ID() int { return self.id }
@@ -144,6 +152,9 @@ func (self *BoolLiteral) String() string {
 }
 func (self *LetExpr) String() string {
 	return fmt.Sprintf("#%d (let %v %v)", self.id, self.Assignments, self.Body)
+}
+func (self *TaggedExpr) String() string {
+	return fmt.Sprintf("#%d ('%s %v)", self.id, self.Tag, self.Body)
 }
 func (self *Fn) String() string {
 	return fmt.Sprintf("#%d (fn [%v] %v)", self.id, self.Arg, self.Body)
@@ -201,6 +212,9 @@ func (self *LetExpr) Pretty() string {
 	b.WriteString(self.Body.Pretty())
 	b.WriteString(")")
 	return b.String()
+}
+func (self *TaggedExpr) Pretty() string {
+	return fmt.Sprintf("('%s %s)", self.Tag, self.Body.Pretty())
 }
 func (self *Fn) Pretty() string {
 	return fmt.Sprintf("(fn [%s] %s)", self.Arg, self.Body.Pretty())

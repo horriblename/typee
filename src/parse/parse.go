@@ -95,6 +95,9 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	case *lex.Fn:
 		return fnExpr(in)
 
+	case *lex.Tag:
+		return taggedExpr(in)
+
 	case nil:
 		return nil, nil, errAt(in)
 
@@ -282,6 +285,23 @@ func fnExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	return in, &Fn{Arg: arg, Body: body}, nil
 }
 
+func taggedExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
+	defer func() { err = handleCheck(recover()) }()
+
+	in, _, err = lparen(in)
+	check(err)
+
+	in, tag, err := tagName(in)
+
+	in, body, err := expr(in)
+	check(err)
+
+	in, _, err = rparen(in)
+	check(err)
+
+	return in, &TaggedExpr{id: newId(), Tag: tag, Body: body}, nil
+}
+
 func recordExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	defer func() { err = handleCheck(recover()) }()
 
@@ -350,6 +370,17 @@ func symbolName(in []lex.Token) ([]lex.Token, string, error) {
 	}
 }
 
+func tagName(in []lex.Token) ([]lex.Token, string, error) {
+	if len(in) == 0 {
+		return nil, "", errAt(in)
+	}
+
+	if sym, ok := in[0].(*lex.Tag); ok {
+		return in[1:], sym.Label, nil
+	}
+	return nil, "", errAt(in)
+}
+
 func lparen(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.LParen])(in)
 }
@@ -391,6 +422,9 @@ func kwLet(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func kwFn(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Fn])(in)
+}
+func kwCase(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Case])(in)
 }
 func kwTrue(in []lex.Token) ([]lex.Token, Expr, error) {
 	rest, _, err := wrappedResult(matchOne[*lex.TrueLiteral])(in)

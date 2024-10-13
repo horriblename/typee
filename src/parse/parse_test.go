@@ -181,6 +181,15 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			desc:  "tagged expr",
+			input: "('foo 42)",
+			output: []Expr{&TaggedExpr{
+				id:   2,
+				Tag:  "foo",
+				Body: &IntLiteral{id: 1, Number: 42},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
