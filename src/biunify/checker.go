@@ -1,11 +1,12 @@
 package biunify
 
-type Value interface {
-	value()
+type Value struct {
+	ID ID
 }
 
-type Use interface {
-	use()
+type Use struct {
+	ID ID
+	_  struct{} // prevents accidental conversion between Value & Use
 }
 
 type NamedValue struct {

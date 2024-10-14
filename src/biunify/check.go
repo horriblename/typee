@@ -28,7 +28,7 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 	case *parse.Symbol:
 		val, found := bindings.get(expr.Name).Unwrap()
 		if !found {
-			return nil, fmt.Errorf("looking for %s: %w", val, ErrUndefinedVariable)
+			return Value{}, fmt.Errorf("looking for %s: %w", val, ErrUndefinedVariable)
 		}
 		return val, nil
 
@@ -37,12 +37,12 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 		fieldTypePairs := []NamedValue{}
 		for _, field := range expr.Fields {
 			if _, found := fieldNames[field.Name]; found {
-				return nil, fmt.Errorf("checking record field %s: %w", field.Name, ErrDuplicateField)
+				return Value{}, fmt.Errorf("checking record field %s: %w", field.Name, ErrDuplicateField)
 			}
 
 			t, err := CheckExpr(engine, bindings, field.Value)
 			if err != nil {
-				return nil, err
+				return Value{}, err
 			}
 
 			fieldTypePairs = append(fieldTypePairs, NamedValue{Name: field.Name, Value: t})
@@ -52,7 +52,7 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 	case *parse.TaggedExpr:
 		valType, err := CheckExpr(engine, bindings, expr.Body)
 		if err != nil {
-			return nil, err
+			return Value{}, err
 		}
 
 		return engine.Tagged(expr.Tag, valType), nil
@@ -60,17 +60,17 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 		condTy, err := CheckExpr(engine, bindings, expr.Condition)
 		bound := engine.BoolUse()
 		if err != nil {
-			return nil, err
+			return Value{}, err
 		}
 		engine.Flow(condTy, bound)
 
 		thenTy, err := CheckExpr(engine, bindings, expr.Consequence)
 		if err != nil {
-			return nil, err
+			return Value{}, err
 		}
 		elseTy, err := CheckExpr(engine, bindings, expr.Alternative)
 		if err != nil {
-			return nil, err
+			return Value{}, err
 		}
 
 		merged, mergedBound := engine.Var()
@@ -83,14 +83,14 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 		lhsExpr := parse.Symbol{Name: expr.Record}
 		lhsTy, err := CheckExpr(engine, bindings, &lhsExpr)
 		if err != nil {
-			return nil, err
+			return Value{}, err
 		}
 
 		fieldTy, fieldBound := engine.Var()
 		bound := engine.ObjUse(NamedUse{Name: expr.Field, Use: fieldBound})
 		err = engine.Flow(lhsTy, bound)
 		if err != nil {
-			return nil, err
+			return Value{}, err
 		}
 
 		return fieldTy, nil
@@ -98,7 +98,7 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 	case *parse.CaseExpr:
 		matchTy, err := CheckExpr(engine, bindings, expr.Match)
 		if err != nil {
-			return nil, err
+			return Value{}, err
 		}
 		resultTy, resultBound := engine.Var()
 
@@ -106,7 +106,7 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 		caseTypePairs := []NamedUse{}
 		for _, branch := range expr.Branches {
 			if exists := mapInsert(caseNames, branch.Pattern.Tag, struct{}{}); exists {
-				return nil, fmt.Errorf("%w: %s", ErrDuplicateCaseBranch, branch.Pattern.Tag)
+				return Value{}, fmt.Errorf("%w: %s", ErrDuplicateCaseBranch, branch.Pattern.Tag)
 			}
 
 			wrappedTy, wrappedBound := engine.Var()
@@ -117,19 +117,19 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 			rhsTy, err := CheckExpr(engine, bindings, branch.Body)
 			bindings.PopScope()
 			if err != nil {
-				return nil, err
+				return Value{}, err
 			}
 
 			err = engine.Flow(rhsTy, resultBound)
 			if err != nil {
-				return nil, err
+				return Value{}, err
 			}
 		}
 
 		bound := engine.TaggedUse(caseTypePairs)
 		err = engine.Flow(matchTy, bound)
 		if err != nil {
-			return nil, err
+			return Value{}, err
 		}
 
 		return resultTy, nil
@@ -143,30 +143,30 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 		})
 
 		if len(expr.Body) == 0 {
-			return nil, ErrEmptyFunctionDef
+			return Value{}, ErrEmptyFunctionDef
 		}
 
 		retTy, err := CheckExpr(engine, bindings, expr.Body[len(expr.Body)-1])
 		if err != nil {
-			return nil, err
+			return Value{}, err
 		}
 
 		return engine.Func(argBounds, retTy), nil
 	case *parse.Form:
 		if len(expr.Children) == 0 {
-			return nil, ErrEmptyForm
+			return Value{}, ErrEmptyForm
 		}
 
 		funcTy, err := CheckExpr(engine, bindings, expr.Children[0])
 		if err != nil {
-			return nil, err
+			return Value{}, err
 		}
 
 		argTys := make([]Value, len(expr.Children)-1)
 		for i, arg := range expr.Children[1:] {
 			argTys[i], err = CheckExpr(engine, bindings, arg)
 			if err != nil {
-				return nil, err
+				return Value{}, err
 			}
 		}
 
@@ -184,7 +184,7 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 		for i, ass := range expr.Assignments {
 			varTy, err := CheckExpr(engine, bindings, ass.Value)
 			if err != nil {
-				return nil, err
+				return Value{}, err
 			}
 			varTys[i] = varTy
 		}
@@ -216,13 +216,13 @@ func checkLetRecExpr(engine TypeChecker, bindings Bindings, expr *parse.LetExpr)
 	for i, bound := range tempBounds {
 		varTy, err := CheckExpr(engine, bindings, expr.Assignments[i].Value)
 		if err != nil {
-			return nil, err
+			return Value{}, err
 		}
 
 		// flow the "real" type to the temp bound
 		err = engine.Flow(varTy, bound)
 		if err != nil {
-			return nil, err
+			return Value{}, err
 		}
 	}
 
