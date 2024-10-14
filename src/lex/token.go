@@ -37,6 +37,7 @@ type Def struct{}
 type Set struct{}
 type If struct{}
 type Let struct{}
+type LetRec struct{}
 type Fn struct{}
 type Case struct{}
 
@@ -57,6 +58,7 @@ func (*Def) token()          {}
 func (*Set) token()          {}
 func (*If) token()           {}
 func (*Let) token()          {}
+func (*LetRec) token()       {}
 func (*Fn) token()           {}
 func (*Case) token()         {}
 func (*TrueLiteral) token()  {}
@@ -78,6 +80,7 @@ func (*Def) String() string             { return "Def" }
 func (*Set) String() string             { return "Set" }
 func (*If) String() string              { return "If" }
 func (*Let) String() string             { return "let" }
+func (*LetRec) String() string          { return "letrec" }
 func (*Fn) String() string              { return "fn" }
 func (*Case) String() string            { return "case" }
 func (*TrueLiteral) String() string     { return "true" }

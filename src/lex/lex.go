@@ -125,6 +125,8 @@ func keywordOrSymbol(in []rune) ([]rune, Token, error) {
 		return rest, &If{}, nil
 	case "let":
 		return rest, &Let{}, nil
+	case "letrec":
+		return rest, &LetRec{}, nil
 	case "fn":
 		return rest, &Fn{}, nil
 	case "case":
