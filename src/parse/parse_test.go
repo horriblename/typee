@@ -167,6 +167,18 @@ func TestParse(t *testing.T) {
 			}},
 		},
 		{
+			desc:  "letrec expr",
+			input: "(letrec [x 3] x)",
+			output: []Expr{&LetExpr{
+				id:        3,
+				Recursive: true,
+				Assignments: []Assignment{
+					{Var: "x", Value: &IntLiteral{id: 1, Number: 3}},
+				},
+				Body: &Symbol{id: 2, Name: "x"},
+			}},
+		},
+		{
 			desc:  "record",
 			input: "{x: 12, y: (* 2 3)}",
 			output: []Expr{&Record{

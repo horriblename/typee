@@ -89,7 +89,7 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	case *lex.If:
 		return ifExpr(in)
 
-	case *lex.Let:
+	case *lex.Let, *lex.LetRec:
 		return letExpr(in)
 
 	case *lex.Fn:
@@ -227,7 +227,7 @@ func letExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	in, _, err = lparen(in)
 	check(err)
 
-	in, _, err = kwLet(in)
+	in, recursive, err := maybeRecursiveLet(in)
 	check(err)
 
 	in, ass, err := combinator.Surround(
@@ -245,6 +245,7 @@ func letExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 
 	let := &LetExpr{
 		id:          newId(),
+		Recursive:   recursive,
 		Assignments: ass,
 		Body:        body,
 	}
@@ -446,6 +447,21 @@ func tagName(in []lex.Token) ([]lex.Token, string, error) {
 	return nil, "", errAt(in)
 }
 
+func maybeRecursiveLet(in []lex.Token) (_ []lex.Token, recursive bool, err error) {
+	if len(in) == 0 {
+		return nil, false, errAt(in)
+	}
+
+	if _, ok := in[0].(*lex.Let); ok {
+		return in[1:], false, nil
+	}
+	if _, ok := in[0].(*lex.LetRec); ok {
+		return in[1:], true, nil
+	}
+
+	return nil, false, errAt(in)
+}
+
 func lparen(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.LParen])(in)
 }
@@ -484,6 +500,9 @@ func kwIf(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func kwLet(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Let])(in)
+}
+func kwLetRec(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.LetRec])(in)
 }
 func kwFn(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Fn])(in)

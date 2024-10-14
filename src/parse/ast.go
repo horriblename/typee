@@ -69,6 +69,7 @@ type Assignment struct {
 
 type LetExpr struct {
 	id          int
+	Recursive   bool
 	Assignments []Assignment
 	Body        Expr
 }
@@ -170,7 +171,11 @@ func (self *BoolLiteral) String() string {
 	return fmt.Sprintf("#%d BoolLiteral %t", self.id, self.Value)
 }
 func (self *LetExpr) String() string {
-	return fmt.Sprintf("#%d (let %v %v)", self.id, self.Assignments, self.Body)
+	keyword := "let"
+	if self.Recursive {
+		keyword = "letrec"
+	}
+	return fmt.Sprintf("#%d (%s %v %v)", self.id, keyword, self.Assignments, self.Body)
 }
 func (self *TaggedExpr) String() string {
 	return fmt.Sprintf("#%d ('%s %v)", self.id, self.Tag, self.Body)
@@ -228,7 +233,11 @@ func (self *BoolLiteral) Pretty() string {
 }
 func (self *LetExpr) Pretty() string {
 	var b strings.Builder
-	b.WriteString("(let [")
+	if self.Recursive {
+		b.WriteString("(letrec [")
+	} else {
+		b.WriteString("(let [")
+	}
 	for _, ass := range self.Assignments {
 		b.WriteString(ass.Var)
 		b.WriteString(" ")
