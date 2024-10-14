@@ -69,7 +69,7 @@ type Assignment struct {
 
 type LetExpr struct {
 	id          int
-	Recursive   bool
+	Recursive   bool // TODO: split into separate node type
 	Assignments []Assignment
 	Body        Expr
 }

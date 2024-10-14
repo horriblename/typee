@@ -31,3 +31,8 @@ func (self *Bindings) insert(k string, v Value) {
 func (self *Bindings) NewScope() {
 	self.m = append(self.m, map[string]Value{})
 }
+
+func (self *Bindings) PopScope() {
+	self.m[len(self.m)-1] = nil
+	self.m = self.m[:len(self.m)-1]
+}

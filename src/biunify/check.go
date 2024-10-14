@@ -115,6 +115,7 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 			bindings.NewScope()
 			bindings.insert(branch.Pattern.Pattern, wrappedTy)
 			rhsTy, err := CheckExpr(engine, bindings, branch.Body)
+			bindings.PopScope()
 			if err != nil {
 				return nil, err
 			}
@@ -134,6 +135,7 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 		return resultTy, nil
 	case *parse.FuncDef:
 		bindings.NewScope()
+		defer bindings.PopScope()
 		argBounds := fun.Map(expr.Args, func(arg string) Use {
 			argTy, argBound := engine.Var()
 			bindings.insert(arg, argTy)
@@ -173,8 +175,58 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 		engine.Flow(funcTy, bound)
 
 		return retTy, nil
+
+	case *parse.LetExpr:
+		if expr.Recursive {
+			return checkLetRecExpr(engine, bindings, expr)
+		}
+		varTys := make([]Value, len(expr.Assignments))
+		for i, ass := range expr.Assignments {
+			varTy, err := CheckExpr(engine, bindings, ass.Value)
+			if err != nil {
+				return nil, err
+			}
+			varTys[i] = varTy
+		}
+
+		bindings.NewScope()
+		defer bindings.PopScope()
+		for i, varTy := range varTys {
+			bindings.insert(expr.Assignments[i].Var, varTy)
+		}
+
+		return CheckExpr(engine, bindings, expr.Body)
 	}
 	panic("unreachable")
+}
+
+func checkLetRecExpr(engine TypeChecker, bindings Bindings, expr *parse.LetExpr) (Value, error) {
+	if !expr.Recursive {
+		panic("tried to call checkLetRecExpr on non-recursive let expr")
+	}
+
+	tempBounds := make([]Use, len(expr.Assignments))
+	for i, ass := range expr.Assignments {
+		// first create temp type variables
+		tempTy, tempBound := engine.Var()
+		bindings.insert(ass.Var, tempTy)
+		tempBounds[i] = tempBound
+	}
+
+	for i, bound := range tempBounds {
+		varTy, err := CheckExpr(engine, bindings, expr.Assignments[i].Value)
+		if err != nil {
+			return nil, err
+		}
+
+		// flow the "real" type to the temp bound
+		err = engine.Flow(varTy, bound)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return CheckExpr(engine, bindings, expr.Body)
 }
 
 func mapInsert[K comparable, V any](m map[K]V, k K, v V) (overwritten bool) {
