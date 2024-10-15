@@ -3,6 +3,7 @@ package biunify
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/parse"
@@ -19,7 +20,16 @@ type FieldType struct {
 	Type Value
 }
 
-func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, error) {
+var tempIndent = "  "
+var tempIndentLvl = 0
+
+func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (val Value, err error) {
+	fmt.Printf("%s\x1b[33m%s\x1b[0m\n", strings.Repeat(tempIndent, tempIndentLvl), expr.Pretty())
+	tempIndentLvl++
+	defer func() {
+		tempIndentLvl--
+		fmt.Printf("%svalue: #%d%#v\n", strings.Repeat(tempIndent, tempIndentLvl), val.ID, engine.Head(val.ID))
+	}()
 	switch expr := expr.(type) {
 	case *parse.IntLiteral:
 		panic("unimpl")

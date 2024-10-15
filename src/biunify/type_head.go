@@ -15,6 +15,7 @@ var ErrNoSuchField = errors.New("no such field")
 var ErrNoSuchVariant = errors.New("no such variant")
 
 func CheckHeads(lhs VTypeHead, rhs UTypeHead, out []TypePair) (_ []TypePair, err error) {
+	fmt.Printf("[check head] %T <= %T?\n", lhs, rhs)
 	switch lhs := lhs.(type) {
 	case VBool:
 		if _, ok := rhs.(UBool); ok {

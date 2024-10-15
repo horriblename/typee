@@ -46,4 +46,7 @@ type TypeChecker interface {
 	// returns a type error if types passed are not compatible, and returns nothing
 	// on success
 	Flow(lhs Value, rhs Use) error
+
+	// for debugging
+	Head(ID) TypeNode
 }

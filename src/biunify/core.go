@@ -1,6 +1,8 @@
 package biunify
 
 import (
+	"fmt"
+
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/opt"
 )
@@ -82,6 +84,7 @@ func (self *TypeCheckerCore) TaggedUse(variants []NamedUse) Use {
 }
 
 func (self *TypeCheckerCore) Flow(lhs Value, rhs Use) error {
+	fmt.Printf("#%d%#v <= #%d%#v\n", lhs.ID, self.types[lhs.ID], rhs.ID, self.types[rhs.ID])
 	var err error
 	pendingEdges := []TypePair{{lhs, rhs}}
 	typePairsToCheck := []Edge{}
@@ -113,6 +116,10 @@ func (self *TypeCheckerCore) Flow(lhs Value, rhs Use) error {
 	}
 
 	return nil
+}
+
+func (self *TypeCheckerCore) Head(id ID) TypeNode {
+	return self.types[id]
 }
 
 func popSlice[T any](s *[]T) opt.Option[T] {
