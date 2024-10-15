@@ -1,7 +1,7 @@
 package biunify
 
 import (
-	"slices"
+	"github.com/horriblename/typee/src/assert"
 )
 
 //go-sumtype: TypeNode
@@ -33,40 +33,30 @@ type Edge struct {
 
 func (self *Reachability) addNode() ID {
 	id := len(self.upSets)
-	var set1, set2 OrderedSet[ID]
-	set1.insert(id)
-	set2.insert(id)
-
-	self.upSets = append(self.upSets, set1)
-	self.downSets = append(self.downSets, set2)
+	self.upSets = append(self.upSets, NewOrderedSet[ID]())
+	self.downSets = append(self.downSets, NewOrderedSet[ID]())
 	return id
 }
 
 func (self *Reachability) addEdge(lhs ID, rhs ID, out *[]Edge) {
-	if self.downSets[lhs].has(rhs) {
-		return
-	}
+	work := []Edge{{lhs, rhs}}
 
-	// Get all ancestores of lhs, including lhs itself
-	lhsSet := make([]ID, 0, self.upSets[lhs].len())
-	for _, id := range self.upSets[lhs].slice() {
-		lhsSet = append(lhsSet, id)
-	}
-	slices.Sort(lhsSet)
+	for len(work) > 0 {
+		edge, ok := popSlice(&work).Unwrap()
+		assert.True(ok, "pop returned empty despite len check")
 
-	// Get all descendants of rhs, including rhs itself
-	rhsSet := make([]ID, 0, self.downSets[rhs].len())
-	for _, id := range self.downSets[rhs].slice() {
-		rhsSet = append(rhsSet, id)
-	}
-	slices.Sort(rhsSet)
+		if self.downSets[edge.From].insert(edge.To) {
+			continue
+		}
+		self.upSets[edge.To].insert(edge.From)
+		// inform caller that a new edge was added
+		*out = append(*out, edge)
 
-	for _, lhs2 := range lhsSet {
-		for _, rhs2 := range rhsSet {
-			if !self.downSets[lhs2].insert(rhs2) {
-				self.upSets[rhs2].insert(lhs2)
-				*out = append(*out, Edge{lhs2, rhs2})
-			}
+		for _, lhs2 := range self.upSets[edge.From].slice() {
+			work = append(work, Edge{lhs2, edge.To})
+		}
+		for _, rhs2 := range self.downSets[edge.To].slice() {
+			work = append(work, Edge{edge.From, rhs2})
 		}
 	}
 }
@@ -74,6 +64,13 @@ func (self *Reachability) addEdge(lhs ID, rhs ID, out *[]Edge) {
 type OrderedSet[T comparable] struct {
 	list    []T
 	mapping map[T]struct{}
+}
+
+func NewOrderedSet[T comparable]() OrderedSet[T] {
+	return OrderedSet[T]{
+		list:    []T{},
+		mapping: map[T]struct{}{},
+	}
 }
 
 func (set OrderedSet[T]) insert(x T) (existed bool) {
