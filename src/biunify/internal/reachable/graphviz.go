@@ -1,11 +1,11 @@
-package biunify
+package reachable
 
 import (
 	"fmt"
 	"io"
 )
 
-func ExportReachability(r *Reachability, types []TypeNode, w io.Writer) (err error) {
+func ExportReachability(r *Reachability, labels []any, w io.Writer) (err error) {
 	defer func() {
 		er := recover()
 		if e, ok := er.(internalError); ok {
@@ -18,7 +18,7 @@ func ExportReachability(r *Reachability, types []TypeNode, w io.Writer) (err err
 	checkWrite(w.Write([]byte("digraph Types {\n")))
 	checkWrite(io.WriteString(w, "// Node Labels\n"))
 
-	for id, ty := range types {
+	for id, ty := range labels {
 		checkWrite(fmt.Fprintf(w, "%d [label=<<i>%#v</i>>]\n", id, ty))
 	}
 

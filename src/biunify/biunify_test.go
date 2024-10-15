@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/biunify/internal/reachable"
+	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/parse"
 )
 
@@ -47,7 +49,8 @@ func TestCheck(t *testing.T) {
 			file, err := os.OpenFile("/tmp/graph.dot", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o655)
 			assert.Ok(err)
 			defer file.Close()
-			ExportReachability(&checker.reachability, checker.types, file)
+			labels := fun.Map(checker.types, func(t TypeNode) any { return fmt.Sprintf("%T", t) })
+			reachable.ExportReachability(&checker.reachability, labels, file)
 
 			fmt.Printf("val: %v\n", val)
 		})

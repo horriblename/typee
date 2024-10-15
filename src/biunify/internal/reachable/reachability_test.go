@@ -1,4 +1,4 @@
-package biunify
+package reachable
 
 import (
 	"testing"
@@ -30,13 +30,13 @@ func TestReachability(t *testing.T) {
 			dummy := []Edge{}
 			for _, edge := range tC.input {
 				for edge.From >= len(r.upSets) {
-					r.addNode()
+					r.AddNode()
 				}
 				for edge.To >= len(r.upSets) {
-					r.addNode()
+					r.AddNode()
 				}
 
-				r.addEdge(edge.From, edge.To, &dummy)
+				r.AddEdge(edge.From, edge.To, &dummy)
 				t.Logf("adding edge %v: got transitive edges: %v", edge, dummy)
 				dummy = []Edge{}
 			}

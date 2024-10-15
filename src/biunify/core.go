@@ -4,30 +4,31 @@ import (
 	"fmt"
 
 	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/biunify/internal/reachable"
 	"github.com/horriblename/typee/src/opt"
 )
 
 type TypeCheckerCore struct {
-	reachability Reachability
+	reachability reachable.Reachability
 	types        []TypeNode
 }
 
 func (self *TypeCheckerCore) NewVal(valType VTypeHead) Value {
-	id := self.reachability.addNode()
+	id := self.reachability.AddNode()
 	assert.Eq(id, len(self.types))
 	self.types = append(self.types, VNode{valType})
 	return Value{id}
 }
 
 func (self *TypeCheckerCore) NewUse(constraint UTypeHead) Use {
-	id := self.reachability.addNode()
+	id := self.reachability.AddNode()
 	assert.Eq(id, len(self.types))
 	self.types = append(self.types, UNode{constraint})
 	return Use{ID: id}
 }
 
 func (self *TypeCheckerCore) Var() (Value, Use) {
-	id := self.reachability.addNode()
+	id := self.reachability.AddNode()
 	assert.Eq(id, len(self.types))
 	self.types = append(self.types, Var{})
 	return Value{id}, Use{ID: id}
@@ -87,12 +88,12 @@ func (self *TypeCheckerCore) Flow(lhs Value, rhs Use) error {
 	fmt.Printf("#%d%#v <= #%d%#v\n", lhs.ID, self.types[lhs.ID], rhs.ID, self.types[rhs.ID])
 	var err error
 	pendingEdges := []TypePair{{lhs, rhs}}
-	typePairsToCheck := []Edge{}
+	typePairsToCheck := []reachable.Edge{}
 	for len(pendingEdges) > 0 {
 		edge, ok := popSlice(&pendingEdges).Unwrap()
 		assert.True(ok, "pop non-empty slice got empty result")
 
-		self.reachability.addEdge(edge.Value.ID, edge.Use.ID, &typePairsToCheck)
+		self.reachability.AddEdge(edge.Value.ID, edge.Use.ID, &typePairsToCheck)
 
 		for len(typePairsToCheck) > 0 {
 			pair, ok := popSlice(&typePairsToCheck).Unwrap()
