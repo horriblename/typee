@@ -19,5 +19,5 @@ type Edge struct {
 	To   ID
 }
 
-func (self *Reachability) addNode() ID                           { panic("unimpl") }
-func (self *Reachability) addEdge(lhs ID, rhs ID, out []Edge) ID { panic("unimpl") }
+func (self *Reachability) addNode() ID                            { panic("unimpl") }
+func (self *Reachability) addEdge(lhs ID, rhs ID, out *[]Edge) ID { panic("unimpl") }

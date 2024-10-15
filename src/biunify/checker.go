@@ -27,8 +27,8 @@ type TypeChecker interface {
 	// creates a type variable
 	Var() (Value, Use)
 
-	Int() Value
-	IntUse() Use
+	// Int() Value
+	// IntUse() Use
 
 	Bool() Value
 	BoolUse() Use

@@ -14,7 +14,7 @@ var ErrTypeMismatch = errors.New("wrong type")
 var ErrNoSuchField = errors.New("no such field")
 var ErrNoSuchVariant = errors.New("no such variant")
 
-func CheckHeads(lhs VTypeHead, rhs UTypeHead) (out []TypePair, err error) {
+func CheckHeads(lhs VTypeHead, rhs UTypeHead, out []TypePair) (_ []TypePair, err error) {
 	switch lhs := lhs.(type) {
 	case VBool:
 		if _, ok := rhs.(UBool); ok {

@@ -19,3 +19,7 @@ func Some[T any](v T) Option[T] {
 func None[T any]() Option[T] {
 	return Option[T]{}
 }
+
+func (self Option[T]) IsSome() bool {
+	return self.valid
+}
