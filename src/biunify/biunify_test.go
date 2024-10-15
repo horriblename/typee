@@ -2,20 +2,34 @@ package biunify
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/parse"
 )
 
-func Test(t *testing.T) {
+func TestCheck(t *testing.T) {
 	testCases := []struct {
 		desc  string
 		input string
+		err   error
 	}{
 		{
 			desc:  "Simple bool",
 			input: "true",
+		},
+		{
+			desc:  "If expr",
+			input: "(let [x true] (if [x] false x))",
+		},
+		{
+			desc:  "If expr different branch, literals",
+			input: "(if [false] false ('foo true))",
+		},
+		{
+			desc:  "If expr different branch",
+			input: "(let [x true] (if [x] false ('foo x)))",
 		},
 	}
 	for _, tC := range testCases {
@@ -30,7 +44,12 @@ func Test(t *testing.T) {
 			val, err := CheckExpr(&checker, bindings, program[0])
 			assert.Ok(err)
 
-			fmt.Printf("val: %v", val)
+			file, err := os.OpenFile("/tmp/graph.dot", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o655)
+			assert.Ok(err)
+			defer file.Close()
+			ExportReachability(&checker.reachability, checker.types, file)
+
+			fmt.Printf("val: %v\n", val)
 		})
 	}
 }
