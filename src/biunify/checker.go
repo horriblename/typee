@@ -39,7 +39,7 @@ type TypeChecker interface {
 	Obj(fields []NamedValue) Value
 	ObjUse(field NamedUse) Use
 
-	Tagged(tag string, expr Value) Value
+	Tagged(expr NamedValue) Value
 	TaggedUse(branches []NamedUse) Use
 
 	// creates subtype constraints between the type nodes

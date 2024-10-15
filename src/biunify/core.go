@@ -24,11 +24,11 @@ func (self *TypeCheckerCore) NewUse(constraint UTypeHead) Use {
 	return Use{ID: id}
 }
 
-func (self *TypeCheckerCore) Var() TypePair {
+func (self *TypeCheckerCore) Var() (Value, Use) {
 	id := self.reachability.addNode()
 	assert.Eq(id, len(self.types))
 	self.types = append(self.types, Var{})
-	return TypePair{Value{id}, Use{ID: id}}
+	return Value{id}, Use{ID: id}
 }
 
 func (self *TypeCheckerCore) Bool() Value {
@@ -62,6 +62,23 @@ func (self *TypeCheckerCore) Obj(fields []NamedValue) Value {
 	return self.NewVal(VObj{
 		Fields: fieldsMap,
 	})
+}
+
+func (self *TypeCheckerCore) ObjUse(field NamedUse) Use {
+	return self.NewUse(UObj{Field: field})
+}
+
+func (self *TypeCheckerCore) Tagged(val NamedValue) Value {
+	return self.NewVal(VTagged(val))
+}
+
+func (self *TypeCheckerCore) TaggedUse(variants []NamedUse) Use {
+	variantsMap := map[string]Use{}
+	for _, variant := range variants {
+		variantsMap[variant.Name] = variant.Use
+	}
+
+	return self.NewUse(UTagged{variantsMap})
 }
 
 func (self *TypeCheckerCore) Flow(lhs Value, rhs Use) error {

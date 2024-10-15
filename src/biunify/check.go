@@ -22,13 +22,14 @@ type FieldType struct {
 func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, error) {
 	switch expr := expr.(type) {
 	case *parse.IntLiteral:
-		engine.Int()
+		panic("unimpl")
+		// engine.Int()
 	case *parse.BoolLiteral:
-		engine.Bool()
+		return engine.Bool(), nil
 	case *parse.Symbol:
 		val, found := bindings.get(expr.Name).Unwrap()
 		if !found {
-			return Value{}, fmt.Errorf("looking for %s: %w", val, ErrUndefinedVariable)
+			return Value{}, fmt.Errorf("looking for %v: %w", val, ErrUndefinedVariable)
 		}
 		return val, nil
 
@@ -55,7 +56,7 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (Value, e
 			return Value{}, err
 		}
 
-		return engine.Tagged(expr.Tag, valType), nil
+		return engine.Tagged(NamedValue{expr.Tag, valType}), nil
 	case *parse.IfExpr:
 		condTy, err := CheckExpr(engine, bindings, expr.Condition)
 		bound := engine.BoolUse()
