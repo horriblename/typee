@@ -73,7 +73,7 @@ func NewOrderedSet[T comparable]() OrderedSet[T] {
 	}
 }
 
-func (set OrderedSet[T]) insert(x T) (existed bool) {
+func (set *OrderedSet[T]) insert(x T) (existed bool) {
 	_, existed = set.mapping[x]
 	if !existed {
 		set.mapping[x] = struct{}{}
@@ -83,15 +83,15 @@ func (set OrderedSet[T]) insert(x T) (existed bool) {
 	return existed
 }
 
-func (set OrderedSet[T]) has(x T) bool {
+func (set *OrderedSet[T]) has(x T) bool {
 	_, found := set.mapping[x]
 	return found
 }
 
-func (set OrderedSet[T]) slice() []T {
+func (set *OrderedSet[T]) slice() []T {
 	return set.list
 }
 
-func (set OrderedSet[T]) len() int {
+func (set *OrderedSet[T]) len() int {
 	return len(set.list)
 }
