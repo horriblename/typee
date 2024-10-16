@@ -411,7 +411,8 @@ func genForFn(ss *ScopeStack, cons *[]Constraint, node *parse.Fn) (types.Type, [
 	ss.AddScope()
 	defer ss.Pop()
 	argType := types.NewGeneric("", "type of anonymous function arg")
-	ss.DefSymbol(node.Arg, argType)
+	// FIXME: support multi arg fn
+	ss.DefSymbol(node.Args[0], argType)
 
 	bodyType, generics, err := genConstraints(ss, cons, node.Body)
 	if err != nil {
