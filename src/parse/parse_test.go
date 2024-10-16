@@ -119,15 +119,15 @@ func TestParse(t *testing.T) {
 		},
 		{
 			desc:  "fn expression",
-			input: "(fn [x] (+ x 1))",
+			input: "(fn [x y] (+ x y))",
 			output: []Expr{&Fn{
-				Arg: "x",
+				Args: []string{"x", "y"},
 				Body: &Form{
 					id: 4,
 					Children: []Expr{
 						&Symbol{id: 1, Name: "+"},
 						&Symbol{id: 2, Name: "x"},
-						&IntLiteral{id: 3, Number: 1},
+						&Symbol{id: 3, Name: "y"},
 					},
 				},
 			}},

@@ -82,7 +82,7 @@ type TaggedExpr struct {
 
 type Fn struct {
 	id   int
-	Arg  string
+	Args []string
 	Body Expr
 }
 
@@ -181,7 +181,7 @@ func (self *TaggedExpr) String() string {
 	return fmt.Sprintf("#%d ('%s %v)", self.id, self.Tag, self.Body)
 }
 func (self *Fn) String() string {
-	return fmt.Sprintf("#%d (fn [%v] %v)", self.id, self.Arg, self.Body)
+	return fmt.Sprintf("#%d (fn [%v] %v)", self.id, self.Args, self.Body)
 }
 func (self *CaseExpr) String() string {
 	return fmt.Sprintf("#%d (case %v [%s])", self.id, self.Match, strings.Join(fun.Map(self.Branches, func(branch CaseBranch) string {
@@ -253,7 +253,7 @@ func (self *TaggedExpr) Pretty() string {
 	return fmt.Sprintf("('%s %s)", self.Tag, self.Body.Pretty())
 }
 func (self *Fn) Pretty() string {
-	return fmt.Sprintf("(fn [%s] %s)", self.Arg, self.Body.Pretty())
+	return fmt.Sprintf("(fn [%s] %s)", self.Args, self.Body.Pretty())
 }
 func (self *CaseExpr) Pretty() string {
 	var b strings.Builder

@@ -273,9 +273,9 @@ func fnExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	in, _, err = kwFn(in)
 	check(err)
 
-	in, arg, err := combinator.Surround(
+	in, args, err := combinator.Surround(
 		lbracket,
-		symbolName,
+		combinator.Many0(symbolName),
 		rbracket,
 	)(in)
 	check(err)
@@ -286,7 +286,7 @@ func fnExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	in, _, err = rparen(in)
 	check(err)
 
-	return in, &Fn{Arg: arg, Body: body}, nil
+	return in, &Fn{Args: args, Body: body}, nil
 }
 
 func taggedExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
