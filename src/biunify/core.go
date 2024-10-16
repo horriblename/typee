@@ -119,6 +119,8 @@ func (self *TypeCheckerCore) Flow(lhs Value, rhs Use) error {
 		}
 	}
 
+	assert.Eq(len(pendingEdges), 0)
+	assert.Eq(len(typePairsToCheck), 0)
 	return nil
 }
 
