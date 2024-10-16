@@ -90,12 +90,15 @@ func (self *TypeCheckerCore) Flow(lhs Value, rhs Use) error {
 	pendingEdges := []TypePair{{lhs, rhs}}
 	typePairsToCheck := []reachable.Edge{}
 	for len(pendingEdges) > 0 {
+		fmt.Printf("[flow] left to add: %v \n", pendingEdges)
+
 		edge, ok := popSlice(&pendingEdges).Unwrap()
 		assert.True(ok, "pop non-empty slice got empty result")
 
 		self.reachability.AddEdge(edge.Value.ID, edge.Use.ID, &typePairsToCheck)
 
 		for len(typePairsToCheck) > 0 {
+			fmt.Printf("[flow] left to check: %v \n", typePairsToCheck)
 			pair, ok := popSlice(&typePairsToCheck).Unwrap()
 			assert.True(ok, "pop non-empty slice got empty result")
 

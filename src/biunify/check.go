@@ -73,7 +73,10 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (val Valu
 		if err != nil {
 			return Value{}, err
 		}
-		engine.Flow(condTy, bound)
+		err = engine.Flow(condTy, bound)
+		if err != nil {
+			return Value{}, err
+		}
 
 		thenTy, err := CheckExpr(engine, bindings, expr.Consequence)
 		if err != nil {
@@ -85,8 +88,16 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (val Valu
 		}
 
 		merged, mergedBound := engine.Var()
-		engine.Flow(thenTy, mergedBound)
-		engine.Flow(elseTy, mergedBound)
+		err = engine.Flow(thenTy, mergedBound)
+		if err != nil {
+			return Value{}, err
+		}
+
+		err = engine.Flow(elseTy, mergedBound)
+		if err != nil {
+			return Value{}, err
+		}
+
 		return merged, nil
 
 	case *parse.RecordAccess:
@@ -183,7 +194,10 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (val Valu
 
 		retTy, retBound := engine.Var()
 		bound := engine.FuncUse(argTys, retBound)
-		engine.Flow(funcTy, bound)
+		err = engine.Flow(funcTy, bound)
+		if err != nil {
+			return Value{}, err
+		}
 
 		return retTy, nil
 

@@ -42,6 +42,7 @@ func CheckHeads(lhs VTypeHead, rhs UTypeHead, out []TypePair) (_ []TypePair, err
 
 		if field1, ok := lhs.Fields[rhsBound.Field.Name]; ok {
 			out = append(out, TypePair{field1, rhsBound.Field.Use})
+			return out, nil
 		} else {
 			return nil, fmt.Errorf("%w: %s", ErrNoSuchField, rhsBound.Field.Name)
 		}
@@ -54,6 +55,7 @@ func CheckHeads(lhs VTypeHead, rhs UTypeHead, out []TypePair) (_ []TypePair, err
 
 		if body2, ok := rhsBound.Variants[lhs.Name]; ok {
 			out = append(out, TypePair{lhs.Value, body2})
+			return out, nil
 		} else {
 			return nil, fmt.Errorf("no variant %s in %v", lhs.Name, rhsBound)
 		}

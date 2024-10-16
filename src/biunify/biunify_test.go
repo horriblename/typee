@@ -27,7 +27,7 @@ func TestCheck(t *testing.T) {
 		},
 		{
 			desc:  "If expr different branch, literals",
-			input: "(if [false] false ('foo true))",
+			input: "(if [false] false {x: true})",
 		},
 		{
 			desc:  "If expr different branch",
@@ -50,7 +50,9 @@ func TestCheck(t *testing.T) {
 			assert.Ok(err)
 			defer file.Close()
 			labels := fun.Map(checker.types, func(t TypeNode) any { return fmt.Sprintf("%T", t) })
-			reachable.ExportReachability(&checker.reachability, labels, file)
+
+			err = reachable.ExportReachability(&checker.reachability, labels, file)
+			assert.Ok(err)
 
 			fmt.Printf("val: %v\n", val)
 		})
