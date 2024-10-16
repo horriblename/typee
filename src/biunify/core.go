@@ -13,14 +13,14 @@ type TypeCheckerCore struct {
 	types        []TypeNode
 }
 
-func (self *TypeCheckerCore) NewVal(valType VTypeHead) Value {
+func (self *TypeCheckerCore) newVal(valType VTypeHead) Value {
 	id := self.reachability.AddNode()
 	assert.Eq(id, len(self.types))
 	self.types = append(self.types, VNode{valType})
 	return Value{id}
 }
 
-func (self *TypeCheckerCore) NewUse(constraint UTypeHead) Use {
+func (self *TypeCheckerCore) newUse(constraint UTypeHead) Use {
 	id := self.reachability.AddNode()
 	assert.Eq(id, len(self.types))
 	self.types = append(self.types, UNode{constraint})
@@ -35,22 +35,22 @@ func (self *TypeCheckerCore) Var() (Value, Use) {
 }
 
 func (self *TypeCheckerCore) Bool() Value {
-	return self.NewVal(VBool{})
+	return self.newVal(VBool{})
 }
 
 func (self *TypeCheckerCore) BoolUse() Use {
-	return self.NewUse(UBool{})
+	return self.newUse(UBool{})
 }
 
 func (self *TypeCheckerCore) Func(args []Use, ret Value) Value {
-	return self.NewVal(VFunc{
+	return self.newVal(VFunc{
 		Arg: args,
 		Ret: ret,
 	})
 }
 
 func (self *TypeCheckerCore) FuncUse(arg []Value, ret Use) Use {
-	return self.NewUse(UFunc{
+	return self.newUse(UFunc{
 		Arg: arg,
 		Ret: ret,
 	})
@@ -62,17 +62,17 @@ func (self *TypeCheckerCore) Obj(fields []NamedValue) Value {
 		fieldsMap[field.Name] = field.Value
 	}
 
-	return self.NewVal(VObj{
+	return self.newVal(VObj{
 		Fields: fieldsMap,
 	})
 }
 
 func (self *TypeCheckerCore) ObjUse(field NamedUse) Use {
-	return self.NewUse(UObj{Field: field})
+	return self.newUse(UObj{Field: field})
 }
 
 func (self *TypeCheckerCore) Tagged(val NamedValue) Value {
-	return self.NewVal(VTagged(val))
+	return self.newVal(VTagged(val))
 }
 
 func (self *TypeCheckerCore) TaggedUse(variants []NamedUse) Use {
@@ -81,11 +81,11 @@ func (self *TypeCheckerCore) TaggedUse(variants []NamedUse) Use {
 		variantsMap[variant.Name] = variant.Use
 	}
 
-	return self.NewUse(UTagged{variantsMap})
+	return self.newUse(UTagged{variantsMap})
 }
 
 func (self *TypeCheckerCore) Flow(lhs Value, rhs Use) error {
-	fmt.Printf("#%d%#v <= #%d%#v\n", lhs.ID, self.types[lhs.ID], rhs.ID, self.types[rhs.ID])
+	fmt.Printf("[flow] #%d%#v <= #%d%#v\n", lhs.ID, self.types[lhs.ID], rhs.ID, self.types[rhs.ID])
 	var err error
 	pendingEdges := []TypePair{{lhs, rhs}}
 	typePairsToCheck := []reachable.Edge{}
