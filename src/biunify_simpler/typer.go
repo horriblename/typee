@@ -241,7 +241,7 @@ func constrain(ty SimpleType, bound SimpleType) error {
 	return fmt.Errorf("cannot constrain: %#v <: %#v", ty, bound)
 }
 
-func unify(lhs Variable, rhs Variable) SimpleType /*FIXME: idk what type*/ {
+func unify(lhs Variable, rhs Variable) (SimpleType, error) /*FIXME: idk what type*/ {
 	panic("unimpl")
 }
 
