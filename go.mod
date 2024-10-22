@@ -1,6 +1,6 @@
 module github.com/horriblename/typee
 
-go 1.22.1
+go 1.23.2
 
 require modernc.org/libqbe v0.1.26
 
