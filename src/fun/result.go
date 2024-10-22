@@ -20,8 +20,20 @@ func Err[T any](err error) Result[T] {
 	return Result[T]{err: err}
 }
 
+func ResultFrom[T any](x T, e error) Result[T] {
+	return Result[T]{e, x}
+}
+
 func (r Result[T]) Unwrap() (T, error) {
 	return r.payload, r.err
+}
+
+func (r Result[T]) AssertWith(f func(error) interface{}) T {
+	if r.err != nil {
+		panic(f(r.err))
+	}
+
+	return r.payload
 }
 
 func BubbleResultSlice[T any](xs []Result[T]) ([]T, error) {

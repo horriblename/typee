@@ -1,6 +1,8 @@
 // functional utils
 package fun
 
+import "iter"
+
 func Map[T, U any](xs []T, f func(T) U) []U {
 	ys := make([]U, 0, len(xs))
 
@@ -21,4 +23,27 @@ func ZipMap[T, U, V any](xs []T, ys []U, f func(T, U) V) []V {
 	}
 
 	return zs
+}
+
+type Pair[T, U any] struct {
+	One T
+	Two U
+}
+
+func ZipIter[T, U any](i1 iter.Seq[T], i2 iter.Seq[U]) iter.Seq[Pair[T, U]] {
+	return func(yield func(Pair[T, U]) bool) {
+		pull2, stop2 := iter.Pull(i2)
+		defer stop2()
+
+		for item1 := range i1 {
+			item2, ok2 := pull2()
+			if !ok2 {
+				return
+			}
+
+			if !yield(Pair[T, U]{item1, item2}) {
+				return
+			}
+		}
+	}
 }
