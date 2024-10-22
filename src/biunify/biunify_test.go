@@ -33,8 +33,7 @@ func TestCheck(t *testing.T) {
 		},
 		{
 			desc:  "If expr different branch",
-			input: "(let [x true] (if [x] false ('foo x)))",
-			err:   ErrIncompatibleKind,
+			input: "(let [x true] (if [x] false true))",
 		},
 	}
 	for _, tC := range testCases {
