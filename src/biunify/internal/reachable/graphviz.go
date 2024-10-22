@@ -19,7 +19,7 @@ func ExportReachability(r *Reachability, labels []any, w io.Writer) (err error) 
 	checkWrite(io.WriteString(w, "// Node Labels\n"))
 
 	for id, ty := range labels {
-		checkWrite(fmt.Fprintf(w, "%d [label=<<i>%#v</i>>]\n", id, ty))
+		checkWrite(fmt.Fprintf(w, "%d [label=<<i>#%d %#v</i>>]\n", id, id, ty))
 	}
 
 	checkWrite(io.WriteString(w, "// Graph\n"))
