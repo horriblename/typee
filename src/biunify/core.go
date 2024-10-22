@@ -1,12 +1,15 @@
 package biunify
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/biunify/internal/reachable"
 	"github.com/horriblename/typee/src/opt"
 )
+
+var ErrIncompatibleKind = errors.New("incompatible kinds")
 
 type TypeCheckerCore struct {
 	reachability reachable.Reachability
@@ -102,19 +105,36 @@ func (self *TypeCheckerCore) Flow(lhs Value, rhs Use) error {
 			pair, ok := popSlice(&typePairsToCheck).Unwrap()
 			assert.True(ok, "pop non-empty slice got empty result")
 
-			lhsHead, ok := self.types[pair.From].(VNode)
-			if !ok {
-				continue
-			}
+			switch lhsHead := self.types[pair.From].(type) {
+			case VNode:
+				switch rhsHead := self.types[pair.To].(type) {
+				case UNode:
+					pendingEdges, err = CheckHeads(lhsHead.Head, rhsHead.Head, pendingEdges)
+					if err != nil {
+						return err
+					}
 
-			rhsHead, ok := self.types[pair.To].(UNode)
-			if !ok {
-				continue
-			}
+				case Var:
+					if rhsHead.Kind != nil {
+						if !MatchTypeHead(lhsHead.Head, rhsHead.Kind) {
+							return fmt.Errorf("%w: %T, %T", ErrIncompatibleKind, lhsHead.Head, rhsHead.Kind)
+						}
+						continue
+					}
+					switch lhsHead.Head.(type) {
+					case VBool:
+						self.types[pair.To] = Var{Kind: UBool{}}
+					case VFunc:
+						self.types[pair.To] = Var{Kind: UFunc{}}
+					case VObj:
+						self.types[pair.To] = Var{Kind: UObj{}}
+					case VTagged:
+						self.types[pair.To] = Var{Kind: UTagged{}}
+					}
+				}
 
-			pendingEdges, err = CheckHeads(lhsHead.Head, rhsHead.Head, pendingEdges)
-			if err != nil {
-				return err
+			case Var:
+				panic("unimpl")
 			}
 		}
 	}

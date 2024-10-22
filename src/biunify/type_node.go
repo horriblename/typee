@@ -4,7 +4,9 @@ package biunify
 
 type TypeNode interface{ typeNode() }
 
-type Var struct{}
+type Var struct {
+	Kind UTypeHead // nilable, only use it's type!!
+}
 type VNode struct{ Head VTypeHead }
 type UNode struct{ Head UTypeHead }
 

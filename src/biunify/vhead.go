@@ -37,3 +37,15 @@ func (UBool) uTypeHead()   {}
 func (UFunc) uTypeHead()   {}
 func (UObj) uTypeHead()    {}
 func (UTagged) uTypeHead() {}
+
+func MatchTypeHead(v VTypeHead, u UTypeHead) bool {
+	return is[VBool](v) && is[UBool](u) ||
+		is[VFunc](v) && is[UFunc](u) ||
+		is[VObj](v) && is[UObj](u) ||
+		is[VTagged](v) && is[UTagged](u)
+}
+
+func is[T any](x interface{}) bool {
+	_, ok := x.(T)
+	return ok
+}
