@@ -122,6 +122,11 @@ func (self *TypeCheckerCore) Flow(lhs Value, rhs Use) error {
 			assert.True(ok, "pop non-empty slice got empty result")
 
 			switch lhsHead := self.types[pair.From].(type) {
+			case Var:
+				if err := self.budgetUnify(pair.From, pair.To); err != nil {
+					return err
+				}
+
 			case VNode:
 				switch rhsHead := self.types[pair.To].(type) {
 				case UNode:
@@ -131,26 +136,10 @@ func (self *TypeCheckerCore) Flow(lhs Value, rhs Use) error {
 					}
 
 				case Var:
-					if rhsHead.Kind != nil {
-						if !MatchTypeHead(lhsHead.Head, rhsHead.Kind) {
-							return fmt.Errorf("%w: %T, %T", ErrIncompatibleKind, lhsHead.Head, rhsHead.Kind)
-						}
-						continue
-					}
-					switch lhsHead.Head.(type) {
-					case VBool:
-						self.types[pair.To] = Var{Kind: UBool{}}
-					case VFunc:
-						self.types[pair.To] = Var{Kind: UFunc{}}
-					case VObj:
-						self.types[pair.To] = Var{Kind: UObj{}}
-					case VTagged:
-						self.types[pair.To] = Var{Kind: UTagged{}}
+					if err := self.budgetUnify(pair.From, pair.To); err != nil {
+						return err
 					}
 				}
-
-			case Var:
-				panic("unimpl")
 			}
 		}
 	}
@@ -162,6 +151,83 @@ func (self *TypeCheckerCore) Flow(lhs Value, rhs Use) error {
 
 func (self *TypeCheckerCore) Head(id ID) TypeNode {
 	return self.types[id]
+}
+
+func (self *TypeCheckerCore) budgetUnify(left ID, right ID) error {
+	lhs := self.types[left]
+	rhs := self.types[right]
+	fmt.Printf("[budgetUnify] unifying %#v and %#v\n", lhs, rhs)
+	// TODO: check that children of composite types are compatible,
+	// e.g. {foo: Str} cannot unify with {foo: Int}
+	lhsVar, ok := lhs.(Var)
+	if !ok {
+		if _, ok := rhs.(Var); !ok {
+			return nil
+		}
+		return self.budgetUnify(right, left)
+	}
+	switch rhsVariant := rhs.(type) {
+	case UNode:
+		rhsHead := rhsVariant.Head
+		if lhsVar.Kind == nil {
+			self.types[left] = Var{Kind: rhsHead}
+			return nil
+		} else if matchUHeads(lhsVar.Kind, rhsHead) {
+			return nil
+		} else {
+			return fmt.Errorf("%w: could not unify %T and %T", ErrIncompatibleKind, lhsVar.Kind, rhsHead)
+		}
+	case VNode:
+		rhsHead := vHeadToUHeadTypeOnly(rhsVariant.Head)
+		if lhsVar.Kind == nil {
+			self.types[left] = Var{Kind: rhsHead}
+			return nil
+		} else if matchUHeads(lhsVar.Kind, rhsHead) {
+			return nil
+		} else {
+			return fmt.Errorf("%w: could not unify %T and %T", ErrIncompatibleKind, lhsVar.Kind, rhsHead)
+		}
+
+	case Var:
+		if lhsVar.Kind == nil {
+			self.types[left] = Var{Kind: rhsVariant.Kind}
+			return nil
+		} else if rhsVariant.Kind == nil {
+			self.types[right] = &Var{Kind: lhsVar.Kind}
+			return nil
+		}
+
+		if matchUHeads(lhsVar.Kind, rhsVariant.Kind) {
+			return nil
+		} else {
+			return fmt.Errorf("%w: could not unify %T and %T", ErrIncompatibleKind, lhsVar.Kind, rhsVariant.Kind)
+		}
+	default:
+		panic("unexpected biunify.TypeNode")
+	}
+}
+
+// does not copy inner fields of VTypeHead
+func vHeadToUHeadTypeOnly(v VTypeHead) UTypeHead {
+	switch v.(type) {
+	case VBool:
+		return UBool{}
+	case VFunc:
+		return UFunc{}
+	case VObj:
+		return UObj{}
+	case VTagged:
+		return UTagged{}
+	}
+	panic("unreachable")
+}
+
+func matchUHeads(lhs UTypeHead, rhs UTypeHead) bool {
+	return is[UBool](lhs) && is[UBool](rhs) ||
+		is[UInt](lhs) && is[UInt](rhs) ||
+		is[UStr](lhs) && is[UStr](rhs) ||
+		is[UTagged](lhs) && is[UTagged](rhs) ||
+		is[UObj](lhs) && is[UObj](rhs)
 }
 
 func popSlice[T any](s *[]T) opt.Option[T] {
