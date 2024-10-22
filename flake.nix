@@ -4,6 +4,10 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     go-sumtype.url = "github:BurntSushi/go-sumtype";
     go-sumtype.flake = false;
+    go123 = {
+      url = "github:golang/go/go1.23.2";
+      flake = false;
+    };
   };
   outputs = {
     self,
@@ -19,6 +23,7 @@
           overlays = [self.overlays.default];
         }
     );
+    goFixedVersion = "1.23.2";
   in {
     overlays = {
       default = final: _prev: {
@@ -27,19 +32,27 @@
           source = inputs.go-sumtype;
           version = "master";
         };
+        go123 = final.go_1_22.overrideAttrs (old: {
+          version = goFixedVersion;
+          src = final.runCommand "gowasi-version-hack" {} ''
+            mkdir -p $out
+            echo "go-${goFixedVersion}" > $out/VERSION
+            cp -vrf ${inputs.go123}/* $out
+          '';
+        });
       };
     };
 
     packages = eachSystem (system: {
       default = self.packages.${system}.hello;
-      inherit (pkgsFor.${system}) hello go-sumtype;
+      inherit (pkgsFor.${system}) hello go-sumtype go123;
     });
     devShells = eachSystem (system: let
       pkgs = pkgsFor.${system};
     in {
       default = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [
-          go
+          go123
           go-sumtype
         ];
       };

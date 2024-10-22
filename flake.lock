@@ -16,6 +16,23 @@
         "type": "github"
       }
     },
+    "go123": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1727803469,
+        "narHash": "sha256-xx+YPj6EpQa+pRvjl4aVciVGD9Z92URMieXCif0gEm0=",
+        "owner": "golang",
+        "repo": "go",
+        "rev": "ed07b321aef7632f956ce991dd10fdd7e1abd827",
+        "type": "github"
+      },
+      "original": {
+        "owner": "golang",
+        "ref": "go1.23.2",
+        "repo": "go",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1720781449,
@@ -35,6 +52,7 @@
     "root": {
       "inputs": {
         "go-sumtype": "go-sumtype",
+        "go123": "go123",
         "nixpkgs": "nixpkgs"
       }
     }
