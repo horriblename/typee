@@ -9,6 +9,8 @@ type VTypeHead interface {
 }
 
 type VBool struct{}
+type VInt struct{}
+type VStr struct{}
 type VFunc struct {
 	Arg []Use
 	Ret Value
@@ -17,6 +19,8 @@ type VObj struct{ Fields map[string]Value }
 type VTagged NamedValue
 
 func (VBool) vTypeHead()   {}
+func (VInt) vTypeHead()    {}
+func (VStr) vTypeHead()    {}
 func (VFunc) vTypeHead()   {}
 func (VObj) vTypeHead()    {}
 func (VTagged) vTypeHead() {}
@@ -26,6 +30,8 @@ type UTypeHead interface {
 }
 
 type UBool struct{}
+type UInt struct{}
+type UStr struct{}
 type UFunc struct {
 	Arg []Value
 	Ret Use
@@ -34,12 +40,16 @@ type UObj struct{ Field NamedUse }
 type UTagged struct{ Variants map[string]Use }
 
 func (UBool) uTypeHead()   {}
+func (UInt) uTypeHead()    {}
+func (UStr) uTypeHead()    {}
 func (UFunc) uTypeHead()   {}
 func (UObj) uTypeHead()    {}
 func (UTagged) uTypeHead() {}
 
 func MatchTypeHead(v VTypeHead, u UTypeHead) bool {
 	return is[VBool](v) && is[UBool](u) ||
+		is[VInt](v) && is[UInt](u) ||
+		is[VStr](v) && is[UStr](u) ||
 		is[VFunc](v) && is[UFunc](u) ||
 		is[VObj](v) && is[UObj](u) ||
 		is[VTagged](v) && is[UTagged](u)

@@ -23,6 +23,14 @@ func TestCheck(t *testing.T) {
 			input: "true",
 		},
 		{
+			desc:  "Simple int",
+			input: "42",
+		},
+		{
+			desc:  "Simple string",
+			input: `"hi"`,
+		},
+		{
 			desc:  "If expr",
 			input: "(let [x true] (if [x] false x))",
 		},

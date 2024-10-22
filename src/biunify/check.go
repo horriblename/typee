@@ -23,6 +23,7 @@ type FieldType struct {
 var tempIndent = "  "
 var tempIndentLvl = 0
 
+// CheckExpr is the main API entrypoint for the type checker
 func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (val Value, err error) {
 	fmt.Printf("%s\x1b[33m%s\x1b[0m\n", strings.Repeat(tempIndent, tempIndentLvl), expr.Pretty())
 	tempIndentLvl++
@@ -31,11 +32,12 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (val Valu
 		fmt.Printf("%svalue: #%d%#v\n", strings.Repeat(tempIndent, tempIndentLvl), val.ID, engine.Head(val.ID))
 	}()
 	switch expr := expr.(type) {
-	case *parse.IntLiteral:
-		panic("unimpl")
-		// engine.Int()
 	case *parse.BoolLiteral:
 		return engine.Bool(), nil
+	case *parse.IntLiteral:
+		return engine.Int(), nil
+	case *parse.StrLiteral:
+		return engine.Str(), nil
 	case *parse.Symbol:
 		val, found := bindings.get(expr.Name).Unwrap()
 		if !found {

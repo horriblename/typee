@@ -45,6 +45,22 @@ func (self *TypeCheckerCore) BoolUse() Use {
 	return self.newUse(UBool{})
 }
 
+func (self *TypeCheckerCore) Int() Value {
+	return self.newVal(VInt{})
+}
+
+func (self *TypeCheckerCore) IntUse() Use {
+	return self.newUse(UInt{})
+}
+
+func (self *TypeCheckerCore) Str() Value {
+	return self.newVal(VStr{})
+}
+
+func (self *TypeCheckerCore) StrUse() Use {
+	return self.newUse(UStr{})
+}
+
 func (self *TypeCheckerCore) Func(args []Use, ret Value) Value {
 	return self.newVal(VFunc{
 		Arg: args,

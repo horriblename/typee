@@ -27,11 +27,14 @@ type TypeChecker interface {
 	// creates a type variable
 	Var() (Value, Use)
 
-	// Int() Value
-	// IntUse() Use
-
 	Bool() Value
 	BoolUse() Use
+
+	Int() Value
+	IntUse() Use
+
+	Str() Value
+	StrUse() Use
 
 	Func(args []Use, ret Value) Value
 	FuncUse(args []Value, ret Use) Use

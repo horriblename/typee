@@ -21,7 +21,17 @@ func CheckHeads(lhs VTypeHead, rhs UTypeHead, out []TypePair) (_ []TypePair, err
 		if _, ok := rhs.(UBool); ok {
 			return []TypePair{}, nil
 		}
-		return nil, fmt.Errorf("%w: tried to use %v, expected %v", ErrTypeMismatch, lhs, rhs)
+		return nil, fmt.Errorf("%w: tried to use %T, expected %T", ErrTypeMismatch, lhs, rhs)
+	case VInt:
+		if _, ok := rhs.(UInt); ok {
+			return []TypePair{}, nil
+		}
+		return nil, fmt.Errorf("%w: tried to use %T, expected %T", ErrTypeMismatch, lhs, rhs)
+	case VStr:
+		if _, ok := rhs.(UStr); ok {
+			return []TypePair{}, nil
+		}
+		return nil, fmt.Errorf("%w: tried to use %T, expected %T", ErrTypeMismatch, lhs, rhs)
 	case VFunc:
 		rhsBound, ok := rhs.(UFunc)
 		if !ok {
