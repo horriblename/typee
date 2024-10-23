@@ -1,6 +1,7 @@
 package biunify
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -12,6 +13,7 @@ func TestBiunify(t *testing.T) {
 	testCases := []struct {
 		desc  string
 		input string
+		err   error
 	}{
 		{
 			desc:  "bool literal",
@@ -20,6 +22,7 @@ func TestBiunify(t *testing.T) {
 		{
 			desc:  "if expr",
 			input: "(if [true] {} false)",
+			err:   ErrCannotConstrain,
 		},
 	}
 	for _, tC := range testCases {
@@ -31,7 +34,7 @@ func TestBiunify(t *testing.T) {
 			assert.Ok(err)
 
 			ty, err := checker.TypeTerm(program[0])
-			assert.Ok(err)
+			assert.True(errors.Is(err, tC.err), "expected error", tC.err, ", got:", err)
 
 			fmt.Printf("type: %#v\n", ty)
 		})

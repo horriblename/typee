@@ -3,7 +3,6 @@ package biunify
 import (
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
@@ -21,6 +20,7 @@ var ErrWrongArgCount = errors.New("wrong argument count")
 var ErrTypeMismatch = errors.New("mismatched type")
 var ErrMissingField = errors.New("missing field")
 var ErrConstraintViolated = errors.New("constraint violated")
+var ErrCannotConstrain = errors.New("cannot constrain")
 
 const scopeLevelTop int = 1
 
@@ -177,72 +177,42 @@ func constrain(ty SimpleType, bound SimpleType) error {
 		return nil
 	}
 
-	switch ty := ty.(type) {
-	case Bot:
-	case Bool:
-		if _, ok := bound.(Bool); ok {
-			return nil
-		} else {
-			return ErrI
-		}
-	case Func:
-		boundTy, ok := bound.(Func)
-		if !ok {
-			break
-		}
-
-		if len(ty.Args) != len(boundTy.Args) {
-			return ErrWrongArgCount
+	if _, _, ok := matchPair[Bot, SimpleType](ty, bound); ok {
+		return nil
+	} else if _, _, ok := matchPair[Top, SimpleType](ty, bound); ok {
+		return nil
+	} else if ty, bound, ok := matchPair[Func, Func](ty, bound); ok {
+		if len(ty.Args) != len(bound.Args) {
+			return fmt.Errorf("%w: %#v is not a subtype of %#v", ErrConstraintViolated, ty, bound)
 		}
 
 		for i, tyArg := range ty.Args {
-			if err := constrain(tyArg, boundTy.Args[i]); err != nil {
-				return err
-			}
-		}
-		if err := constrain(ty.Ret, boundTy.Ret); err != nil {
-			return err
-		}
-	case Record:
-		boundTy, ok := bound.(Record)
-		if !ok {
-			break
-		}
-
-		for _, tyField := range ty.Fields {
-			// TODO: having separate types for polar types will eliminate this search...
-			i := slices.IndexFunc(boundTy.Fields,
-				func(field NamedType) bool { return field.Name == tyField.Name })
-			if i == -1 {
-				return fmt.Errorf("%w: %s", ErrMissingField, tyField.Name)
-			}
-
-			if err := constrain(tyField.Type, boundTy.Fields[i].Type); err != nil {
-				return err
-			}
-		}
-
-	case Variable:
-		switch bound := bound.(type) {
-		case Variable:
-			if err := unify(ty, bound); err != nil {
+			if err := constrain(tyArg, bound.Args[i]); err != nil {
 				return err
 			}
 
-		case ConcreteType:
-			ty.newUpperBound(bound)
 		}
-	default:
-	}
+		return constrain(ty.Ret, bound.Ret)
+	} else if ty, bound, ok := matchPair[Record, Record](ty, bound); ok {
+		tyFields := namedTypesToMap(ty.Fields)
+		for _, boundField := range bound.Fields {
+			if tyField, ok := tyFields[boundField.Name]; ok {
+				if err := constrain(boundField.Type, tyField); err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("%w: missing field %s: %#v", ErrMissingField, boundField.Name, boundField.Type)
+			}
+		}
 
-	ty0, ok0 := ty.(ConcreteType)
-	ty1, ok1 := bound.(Variable)
-	if ok0 && ok1 {
-		ty1.newLowerBound(ty0)
 		return nil
+	} else if ty, bound, ok := matchPair[Variable, Variable](ty, bound); ok {
+		return unify(ty, bound)
+	} else if ty, bound, ok := matchPair[Variable, ConcreteType](ty, bound); ok {
+		return ty.newUpperBound(bound)
+	} else {
+		return fmt.Errorf("%w %#v <: %#v", ErrCannotConstrain, ty, bound)
 	}
-
-	return fmt.Errorf("cannot constrain: %#v <: %#v", ty, bound)
 }
 
 func unify(lhs Variable, rhs Variable) error /*FIXME: idk what type*/ {
