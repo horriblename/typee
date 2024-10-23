@@ -20,6 +20,7 @@ var ErrUndefinedVariable = errors.New("undefined variable")
 var ErrWrongArgCount = errors.New("wrong argument count")
 var ErrTypeMismatch = errors.New("mismatched type")
 var ErrMissingField = errors.New("missing field")
+var ErrConstraintViolated = errors.New("constraint violated")
 
 const scopeLevelTop int = 1
 
@@ -182,7 +183,7 @@ func constrain(ty SimpleType, bound SimpleType) error {
 		if _, ok := bound.(Bool); ok {
 			return nil
 		} else {
-			panic(fmt.Sprintf("unhandled: %#v :< %#v", ty, bound))
+			return ErrI
 		}
 	case Func:
 		boundTy, ok := bound.(Func)
@@ -224,7 +225,10 @@ func constrain(ty SimpleType, bound SimpleType) error {
 	case Variable:
 		switch bound := bound.(type) {
 		case Variable:
-			unify(ty, bound)
+			if err := unify(ty, bound); err != nil {
+				return err
+			}
+
 		case ConcreteType:
 			ty.newUpperBound(bound)
 		}
@@ -241,8 +245,27 @@ func constrain(ty SimpleType, bound SimpleType) error {
 	return fmt.Errorf("cannot constrain: %#v <: %#v", ty, bound)
 }
 
-func unify(lhs Variable, rhs Variable) (SimpleType, error) /*FIXME: idk what type*/ {
-	panic("unimpl")
+func unify(lhs Variable, rhs Variable) error /*FIXME: idk what type*/ {
+	rep0 := lhs.Representative()
+	rep1 := rhs.Representative()
+
+	// FIXME: deep equality or pointer eq?
+	if rep0 != rep1 {
+		// NOTE: these occursCheck calls (and the following ones from addXBound) are pretty
+		// inefficient as they will incur repeated computation of type variables through getVars
+		lhs.occursCheck(rep1.LowerBound(), false)
+		lhs.occursCheck(rep1.UpperBound(), true)
+		if err := rep1.newLowerBound(rep0.LowerBound()); err != nil {
+			return err
+		}
+
+		if err := rep1.newUpperBound(rep0.UpperBound()); err != nil {
+			return err
+		}
+
+		rep0.representative = rep1
+	}
+	return nil
 }
 
 func freshVar() Variable {

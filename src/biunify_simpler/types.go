@@ -36,7 +36,7 @@ type SimpleType interface {
 type Variable struct {
 	lowerBound     ConcreteType
 	upperBound     ConcreteType
-	representative *Variable
+	representative *Variable // nilable
 }
 
 func (self Variable) instantiate() SimpleType { return self }
@@ -46,13 +46,19 @@ func (self Variable) children() []SimpleType {
 
 func (self Variable) LowerBound() ConcreteType { return self.lowerBound }
 func (self Variable) UpperBound() ConcreteType { return self.upperBound }
-func (self *Variable) newUpperBound(ub ConcreteType) (SimpleType, error) {
+func (self *Variable) newUpperBound(ub ConcreteType) error {
 	if err := self.occursCheck(ub, true); err != nil {
-		return nil, err
+		return err
 	}
 
-	// rep := self.representative
-	panic("unimpl")
+	rep := self.representative
+	newUb, err := glbConcrete(rep.upperBound, ub)
+	if err != nil {
+		return err
+	}
+	rep.upperBound = newUb
+
+	return constrain(rep.lowerBound, ub)
 }
 func (self *Variable) newLowerBound(lb ConcreteType) error {
 	var err error
@@ -194,9 +200,17 @@ func glb(lhs SimpleType, rhs SimpleType) (SimpleType, error) {
 	if lhs, rhs, ok := matchPair[ConcreteType, ConcreteType](lhs, rhs); ok {
 		return glbConcrete(lhs, rhs)
 	} else if lhs, rhs, ok := matchPair[Variable, Variable](lhs, rhs); ok {
-		return unify(lhs, rhs)
+		if err := unify(lhs, rhs); err != nil {
+			return nil, err
+		}
+
+		return rhs, nil
 	} else if lhs, rhs, ok := matchPair[ConcreteType, Variable](lhs, rhs); ok {
-		return rhs.newUpperBound(lhs)
+		if err := rhs.newUpperBound(lhs); err != nil {
+			return nil, err
+		}
+
+		return rhs, nil
 	}
 	panic("TODO")
 }
@@ -262,9 +276,10 @@ func getVars(ty SimpleType) *orderedset.OrderedSet[Variable] {
 			}
 			result.Insert(v)
 			work = append(work, v.children()...)
-		} else {
-			work = append(work, v.children()...)
+			continue
 		}
+		work = append(work, ty.children()...)
+
 	}
 
 	return result
