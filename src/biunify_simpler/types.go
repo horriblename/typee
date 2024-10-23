@@ -51,7 +51,7 @@ func (self *Variable) newUpperBound(ub ConcreteType) error {
 		return err
 	}
 
-	rep := self.representative
+	rep := self.Representative()
 	newUb, err := glbConcrete(rep.upperBound, ub)
 	if err != nil {
 		return err
@@ -62,7 +62,10 @@ func (self *Variable) newUpperBound(ub ConcreteType) error {
 }
 func (self *Variable) newLowerBound(lb ConcreteType) error {
 	var err error
-	self.occursCheck(lb, false)
+	if err := self.occursCheck(lb, false); err != nil {
+		return err
+	}
+
 	rep := self.Representative()
 
 	rep.lowerBound, err = lubConcrete(rep.lowerBound, lb)
