@@ -22,7 +22,7 @@ func TestBiunify(t *testing.T) {
 		{
 			desc:  "if expr",
 			input: "(if [true] {} false)",
-			err:   ErrCannotConstrain,
+			err:   ErrIncompatibleTypes,
 		},
 	}
 	for _, tC := range testCases {
