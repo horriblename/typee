@@ -203,18 +203,18 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 func glb(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
 	if lhs, rhs, ok := matchPair[ConcreteType, ConcreteType](lhs0, rhs0); ok {
 		return glbConcrete(lhs, rhs)
-	} else if lhs, rhs, ok := matchPair[Variable, Variable](lhs0, rhs0); ok {
+	} else if lhs, rhs, ok := matchPair[*Variable, *Variable](lhs0, rhs0); ok {
 		if err := unify(lhs, rhs); err != nil {
 			return nil, err
 		}
 
-		return &rhs, nil
-	} else if lhs, rhs, ok := matchPair[ConcreteType, Variable](lhs0, rhs0); ok {
+		return rhs, nil
+	} else if lhs, rhs, ok := matchPair[ConcreteType, *Variable](lhs0, rhs0); ok {
 		if err := rhs.newUpperBound(lhs); err != nil {
 			return nil, err
 		}
 
-		return &rhs, nil
+		return rhs, nil
 	}
 	panic("TODO")
 }

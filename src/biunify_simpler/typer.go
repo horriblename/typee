@@ -209,18 +209,18 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		}
 
 		return nil
-	} else if ty, bound, ok := matchPair[Variable, Variable](ty0, bound0); ok {
+	} else if ty, bound, ok := matchPair[*Variable, *Variable](ty0, bound0); ok {
 		return unify(ty, bound)
-	} else if ty, bound, ok := matchPair[Variable, ConcreteType](ty0, bound0); ok {
+	} else if ty, bound, ok := matchPair[*Variable, ConcreteType](ty0, bound0); ok {
 		return ty.newUpperBound(bound)
-	} else if ty, bound, ok := matchPair[ConcreteType, Variable](ty0, bound0); ok {
+	} else if ty, bound, ok := matchPair[ConcreteType, *Variable](ty0, bound0); ok {
 		return bound.newLowerBound(ty)
 	} else {
 		return fmt.Errorf("%w %#v <: %#v", ErrCannotConstrain, ty0, bound0)
 	}
 }
 
-func unify(lhs Variable, rhs Variable) error /*FIXME: idk what type*/ {
+func unify(lhs *Variable, rhs *Variable) error /*FIXME: idk what type*/ {
 	rep0 := lhs.Representative()
 	rep1 := rhs.Representative()
 
