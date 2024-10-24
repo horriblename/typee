@@ -223,11 +223,38 @@ func glb(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
 		}
 
 		return rhs, nil
+	} else if lhs, rhs, ok := matchPair[*Variable, ConcreteType](lhs0, rhs0); ok {
+		if err := lhs.newUpperBound(rhs); err != nil {
+			return nil, err
+		}
+
+		return rhs, nil
 	}
-	panic("TODO")
+	panic("unreachable")
 }
-func lub(SimpleType, SimpleType) (SimpleType, error) {
-	panic("unimpl")
+func lub(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
+	if lhs, rhs, ok := matchPair[ConcreteType, ConcreteType](lhs0, rhs0); ok {
+		lubConcrete(lhs, rhs)
+	} else if lhs, rhs, ok := matchPair[*Variable, *Variable](lhs0, rhs0); ok {
+		if err := unify(lhs, rhs); err != nil {
+			return nil, err
+		}
+
+		return lhs, nil
+	} else if lhs, rhs, ok := matchPair[ConcreteType, *Variable](lhs0, rhs0); ok {
+		if err := rhs.newLowerBound(lhs); err != nil {
+			return nil, err
+		}
+
+		return rhs, nil
+	} else if lhs, rhs, ok := matchPair[*Variable, ConcreteType](lhs0, rhs0); ok {
+		if err := lhs.newLowerBound(rhs); err != nil {
+			return nil, err
+		}
+
+		return lhs, nil
+	}
+	panic("unreachable")
 }
 
 func matchPair[L, R any](lhs interface{}, rhs interface{}) (_ L, _ R, ok bool) {
