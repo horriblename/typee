@@ -104,7 +104,10 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 		}
 
 		ret := freshVar()
-		constrain(recordTy, Record{[]NamedType{{expr.Field, ret}}})
+		if err := constrain(recordTy, Record{[]NamedType{{expr.Field, ret}}}); err != nil {
+			return nil, err
+		}
+
 		return ret, nil
 
 	case *parse.IfExpr:
@@ -171,17 +174,17 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 	panic(fmt.Sprintf("unhandled: TypeTerm(%s)", term.Pretty()))
 }
 
-func constrain(ty SimpleType, bound SimpleType) error {
-	// TODO: simpler-sub used pointer equality (I think) to skip constrain here
-	if _, ok := bound.(Top); ok {
+func constrain(ty0 SimpleType, bound0 SimpleType) error {
+	// TODO: simpler-sub used type equality I think?
+	if ty0 == bound0 {
 		return nil
 	}
 
-	if _, _, ok := matchPair[Bot, SimpleType](ty, bound); ok {
+	if _, _, ok := matchPair[Bot, SimpleType](ty0, bound0); ok {
 		return nil
-	} else if _, _, ok := matchPair[Top, SimpleType](ty, bound); ok {
+	} else if _, _, ok := matchPair[SimpleType, Top](ty0, bound0); ok {
 		return nil
-	} else if ty, bound, ok := matchPair[Func, Func](ty, bound); ok {
+	} else if ty, bound, ok := matchPair[Func, Func](ty0, bound0); ok {
 		if len(ty.Args) != len(bound.Args) {
 			return fmt.Errorf("%w: %#v is not a subtype of %#v", ErrConstraintViolated, ty, bound)
 		}
@@ -193,7 +196,7 @@ func constrain(ty SimpleType, bound SimpleType) error {
 
 		}
 		return constrain(ty.Ret, bound.Ret)
-	} else if ty, bound, ok := matchPair[Record, Record](ty, bound); ok {
+	} else if ty, bound, ok := matchPair[Record, Record](ty0, bound0); ok {
 		tyFields := namedTypesToMap(ty.Fields)
 		for _, boundField := range bound.Fields {
 			if tyField, ok := tyFields[boundField.Name]; ok {
@@ -206,12 +209,14 @@ func constrain(ty SimpleType, bound SimpleType) error {
 		}
 
 		return nil
-	} else if ty, bound, ok := matchPair[Variable, Variable](ty, bound); ok {
+	} else if ty, bound, ok := matchPair[Variable, Variable](ty0, bound0); ok {
 		return unify(ty, bound)
-	} else if ty, bound, ok := matchPair[Variable, ConcreteType](ty, bound); ok {
+	} else if ty, bound, ok := matchPair[Variable, ConcreteType](ty0, bound0); ok {
 		return ty.newUpperBound(bound)
+	} else if ty, bound, ok := matchPair[ConcreteType, Variable](ty0, bound0); ok {
+		return bound.newLowerBound(ty)
 	} else {
-		return fmt.Errorf("%w %#v <: %#v", ErrCannotConstrain, ty, bound)
+		return fmt.Errorf("%w %#v <: %#v", ErrCannotConstrain, ty0, bound0)
 	}
 }
 
@@ -223,8 +228,14 @@ func unify(lhs Variable, rhs Variable) error /*FIXME: idk what type*/ {
 	if rep0 != rep1 {
 		// NOTE: these occursCheck calls (and the following ones from addXBound) are pretty
 		// inefficient as they will incur repeated computation of type variables through getVars
-		lhs.occursCheck(rep1.LowerBound(), false)
-		lhs.occursCheck(rep1.UpperBound(), true)
+		if err := lhs.occursCheck(rep1.LowerBound(), false); err != nil {
+			return err
+		}
+
+		if err := lhs.occursCheck(rep1.UpperBound(), true); err != nil {
+			return err
+		}
+
 		if err := rep1.newLowerBound(rep0.LowerBound()); err != nil {
 			return err
 		}
