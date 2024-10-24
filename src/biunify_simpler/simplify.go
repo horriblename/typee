@@ -8,17 +8,17 @@ import (
 
 func simplifyType(ty SimpleType) SimpleType {
 	// TODO: idk if ordered set is needed, instead of unordered one
-	pos := orderedset.NewOrderedSet[Variable]()
-	neg := orderedset.NewOrderedSet[Variable]()
+	pos := orderedset.NewOrderedSet[*Variable]()
+	neg := orderedset.NewOrderedSet[*Variable]()
 
 	analyze(ty, true, pos, neg)
 
-	mapping := map[Variable]SimpleType{}
+	mapping := map[*Variable]SimpleType{}
 
 	return transform(ty, true, mapping, pos, neg)
 }
 
-func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[Variable]) {
+func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[*Variable]) {
 	switch ty := st.(type) {
 	case Record:
 		for _, field := range ty.Fields {
@@ -29,7 +29,7 @@ func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[Variable])
 			analyze(arg, pol, pos, neg)
 		}
 		analyze(ty.Ret, pol, pos, neg)
-	case Variable:
+	case *Variable:
 		if pol {
 			pos.Insert(ty)
 			analyze(ty.lowerBound, pol, pos, neg)
@@ -41,7 +41,7 @@ func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[Variable])
 	}
 }
 
-func transformConcrete(st ConcreteType, pol bool, mapping map[Variable]SimpleType, pos, neg *orderedset.OrderedSet[Variable]) ConcreteType {
+func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleType, pos, neg *orderedset.OrderedSet[*Variable]) ConcreteType {
 	switch ty := st.(type) {
 	case Record:
 		fields := fun.Map(ty.Fields, func(field NamedType) NamedType {
@@ -61,9 +61,9 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[Variable]SimpleTyp
 	panic("unreachable")
 }
 
-func transform(st SimpleType, pol bool, mapping map[Variable]SimpleType, pos, neg *orderedset.OrderedSet[Variable]) SimpleType {
+func transform(st SimpleType, pol bool, mapping map[*Variable]SimpleType, pos, neg *orderedset.OrderedSet[*Variable]) SimpleType {
 	switch ty := st.(type) {
-	case Variable:
+	case *Variable:
 		if v, found := mapping[ty]; found {
 			return v
 		}
@@ -76,7 +76,7 @@ func transform(st SimpleType, pol bool, mapping map[Variable]SimpleType, pos, ne
 		} else if !pol && !pos.Has(ty) {
 			return transformConcrete(ty.lowerBound, pol, mapping, pos, neg)
 		} else {
-			return Variable{
+			return &Variable{
 				lowerBound: transformConcrete(ty.lowerBound, true, mapping, pos, neg),
 				upperBound: transformConcrete(ty.upperBound, false, mapping, pos, neg),
 			}

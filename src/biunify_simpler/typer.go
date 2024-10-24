@@ -46,8 +46,8 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 		params := make([]SimpleType, len(expr.Args))
 		for i, arg := range expr.Args {
 			param := freshVar()
-			params[i] = param
-			self.vars.Insert(arg, param)
+			params[i] = &param
+			self.vars.Insert(arg, &param)
 		}
 		bodyTy, err := self.TypeTerm(expr.Body[len(expr.Body)-1])
 		if err != nil {
@@ -73,11 +73,11 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 		}
 
 		ret := freshVar()
-		if err := constrain(funcTy, Func{argTys, ret}); err != nil {
+		if err := constrain(funcTy, Func{argTys, &ret}); err != nil {
 			return nil, err
 		}
 
-		return ret, nil
+		return &ret, nil
 	case *parse.BoolLiteral:
 		return Bool{}, nil
 
@@ -104,11 +104,11 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 		}
 
 		ret := freshVar()
-		if err := constrain(recordTy, Record{[]NamedType{{expr.Field, ret}}}); err != nil {
+		if err := constrain(recordTy, Record{[]NamedType{{expr.Field, &ret}}}); err != nil {
 			return nil, err
 		}
 
-		return ret, nil
+		return &ret, nil
 
 	case *parse.IfExpr:
 		condTy, err := self.TypeTerm(expr.Condition)
@@ -131,14 +131,14 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 			return nil, err
 		}
 
-		if err := constrain(thenTy, retTy); err != nil {
+		if err := constrain(thenTy, &retTy); err != nil {
 			return nil, err
 		}
 
-		if err := constrain(elseTy, retTy); err != nil {
+		if err := constrain(elseTy, &retTy); err != nil {
 			return nil, err
 		}
-		return retTy, nil
+		return &retTy, nil
 
 	case *parse.LetExpr:
 		if expr.Recursive {

@@ -13,6 +13,7 @@ import (
 )
 
 var ErrInvalidCyclicConstraint = errors.New("invalid cyclic constraint")
+var ErrIncompatibleTypes = errors.New("incompatible types")
 
 // TypeScheme is a type that potentially contains universally quantified type variables.
 // can be instantiated to a given level
@@ -39,13 +40,13 @@ type Variable struct {
 	representative *Variable // nilable
 }
 
-func (self Variable) instantiate() SimpleType { return self }
-func (self Variable) children() []SimpleType {
+func (self *Variable) instantiate() SimpleType { return self }
+func (self *Variable) children() []SimpleType {
 	return []SimpleType{self.lowerBound, self.upperBound}
 }
 
-func (self Variable) LowerBound() ConcreteType { return self.lowerBound }
-func (self Variable) UpperBound() ConcreteType { return self.upperBound }
+func (self *Variable) LowerBound() ConcreteType { return self.lowerBound }
+func (self *Variable) UpperBound() ConcreteType { return self.upperBound }
 func (self *Variable) newUpperBound(ub ConcreteType) error {
 	if err := self.occursCheck(ub, true); err != nil {
 		return err
@@ -83,8 +84,8 @@ func (self *Variable) Representative() *Variable {
 	}
 }
 
-func (self Variable) occursCheck(ty ConcreteType, dir bool) error {
-	if getVars(ty).Has(*self.Representative()) {
+func (self *Variable) occursCheck(ty ConcreteType, dir bool) error {
+	if getVars(ty).Has(self.Representative()) {
 		relation := ":>"
 		if dir {
 			relation = "<:"
@@ -94,17 +95,17 @@ func (self Variable) occursCheck(ty ConcreteType, dir bool) error {
 	return nil
 }
 
-func glbConcrete(lhs ConcreteType, rhs ConcreteType) (ConcreteType, error) {
+func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	type C = ConcreteType
-	if _, rhs, ok := matchPair[Top, C](lhs, rhs); ok {
+	if _, rhs, ok := matchPair[Top, C](lhs0, rhs0); ok {
 		return rhs, nil
-	} else if lhs, _, ok := matchPair[C, Top](lhs, rhs); ok {
+	} else if lhs, _, ok := matchPair[C, Top](lhs0, rhs0); ok {
 		return lhs, nil
-	} else if _, rhs, ok := matchPair[Bot, C](lhs, rhs); ok {
+	} else if _, rhs, ok := matchPair[Bot, C](lhs0, rhs0); ok {
 		return rhs, nil
-	} else if lhs, _, ok := matchPair[C, Bot](lhs, rhs); ok {
+	} else if lhs, _, ok := matchPair[C, Bot](lhs0, rhs0); ok {
 		return lhs, nil
-	} else if lhs, rhs, ok := matchPair[Func, Func](lhs, rhs); ok {
+	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
 		args := make([]SimpleType, 0, len(lhs.Args))
 		argPairs := fun.ZipIter(slices.Values(lhs.Args), slices.Values(rhs.Args))
 		for pair := range argPairs {
@@ -121,7 +122,7 @@ func glbConcrete(lhs ConcreteType, rhs ConcreteType) (ConcreteType, error) {
 		}
 
 		return Func{args, ret}, nil
-	} else if lhs, rhs, ok := matchPair[Record, Record](lhs, rhs); ok {
+	} else if lhs, rhs, ok := matchPair[Record, Record](lhs0, rhs0); ok {
 		var err error
 		lhsMap := namedTypesToMap(lhs.Fields)
 		rhsMap := namedTypesToMap(rhs.Fields)
@@ -137,24 +138,24 @@ func glbConcrete(lhs ConcreteType, rhs ConcreteType) (ConcreteType, error) {
 			}
 		}
 		return Record{mapToNamedTypes(mergedMap)}, nil
-	} else if _, _, ok := matchPair[Bool, Bool](lhs, rhs); ok {
+	} else if _, _, ok := matchPair[Bool, Bool](lhs0, rhs0); ok {
 		return Bool{}, nil
 	} else {
 		return Bot{}, nil
 	}
 }
 
-func lubConcrete(lhs ConcreteType, rhs ConcreteType) (ConcreteType, error) {
+func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	type C = ConcreteType
-	if lhs, rhs, ok := matchPair[Bot, C](lhs, rhs); ok {
+	if _, rhs, ok := matchPair[Bot, C](lhs0, rhs0); ok {
 		return rhs, nil
-	} else if lhs, rhs, ok := matchPair[C, Bot](lhs, rhs); ok {
+	} else if lhs, _, ok := matchPair[C, Bot](lhs0, rhs0); ok {
 		return lhs, nil
-	} else if _, _, ok := matchPair[Top, C](lhs, rhs); ok {
+	} else if _, _, ok := matchPair[Top, C](lhs0, rhs0); ok {
 		return Top{}, nil
-	} else if _, _, ok := matchPair[C, Top](lhs, rhs); ok {
+	} else if _, _, ok := matchPair[C, Top](lhs0, rhs0); ok {
 		return Top{}, nil
-	} else if lhs, rhs, ok := matchPair[Func, Func](lhs, rhs); ok {
+	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
 		assert.Eq(len(lhs.Args), len(rhs.Args), "different arg count")
 
 		args := make([]SimpleType, len(lhs.Args))
@@ -172,7 +173,7 @@ func lubConcrete(lhs ConcreteType, rhs ConcreteType) (ConcreteType, error) {
 		}
 
 		return Func{args, ret}, nil
-	} else if lhs, rhs, ok := matchPair[Record, Record](lhs, rhs); ok {
+	} else if lhs, rhs, ok := matchPair[Record, Record](lhs0, rhs0); ok {
 		// the "intersection" of both records
 		rhsMap := namedTypesToMap(rhs.Fields)
 
@@ -192,28 +193,28 @@ func lubConcrete(lhs ConcreteType, rhs ConcreteType) (ConcreteType, error) {
 			}
 		}
 		return Record{Fields: merged}, nil
-	} else if _, _, ok := matchPair[Bool, Bool](lhs, rhs); ok {
+	} else if _, _, ok := matchPair[Bool, Bool](lhs0, rhs0); ok {
 		return Bool{}, nil
 	} else {
-		return Top{}, nil
+		return nil, fmt.Errorf("%w: %#v and %#v", ErrIncompatibleTypes, lhs0, rhs0)
 	}
 }
 
-func glb(lhs SimpleType, rhs SimpleType) (SimpleType, error) {
-	if lhs, rhs, ok := matchPair[ConcreteType, ConcreteType](lhs, rhs); ok {
+func glb(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
+	if lhs, rhs, ok := matchPair[ConcreteType, ConcreteType](lhs0, rhs0); ok {
 		return glbConcrete(lhs, rhs)
-	} else if lhs, rhs, ok := matchPair[Variable, Variable](lhs, rhs); ok {
+	} else if lhs, rhs, ok := matchPair[Variable, Variable](lhs0, rhs0); ok {
 		if err := unify(lhs, rhs); err != nil {
 			return nil, err
 		}
 
-		return rhs, nil
-	} else if lhs, rhs, ok := matchPair[ConcreteType, Variable](lhs, rhs); ok {
+		return &rhs, nil
+	} else if lhs, rhs, ok := matchPair[ConcreteType, Variable](lhs0, rhs0); ok {
 		if err := rhs.newUpperBound(lhs); err != nil {
 			return nil, err
 		}
 
-		return rhs, nil
+		return &rhs, nil
 	}
 	panic("TODO")
 }
@@ -265,15 +266,15 @@ func (self Func) concrete()   {}
 func (self Record) concrete() {}
 func (self Bool) concrete()   {}
 
-func getVars(ty SimpleType) *orderedset.OrderedSet[Variable] {
-	result := orderedset.NewOrderedSet[Variable]()
+func getVars(ty SimpleType) *orderedset.OrderedSet[*Variable] {
+	result := orderedset.NewOrderedSet[*Variable]()
 	work := []SimpleType{ty}
 
 	for len(work) > 0 {
 		ty, ok := popSlice(&work).Unwrap()
 		assert.True(ok, "pop returned empty despite len check")
 
-		if v, ok := ty.(Variable); ok {
+		if v, ok := ty.(*Variable); ok {
 			if result.Has(v) {
 				continue
 			}
