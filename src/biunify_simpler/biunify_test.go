@@ -14,13 +14,30 @@ func TestBiunify(t *testing.T) {
 		desc  string
 		input string
 		err   error
+		typ   TypeScheme
 	}{
 		{
 			desc:  "bool literal",
 			input: "true",
+			typ:   Bool{},
+		},
+		{
+			desc:  "int literal",
+			input: "34",
+			typ:   Int{},
+		},
+		{
+			desc:  "str literal",
+			input: `"hi"`,
+			typ:   Str{},
 		},
 		{
 			desc:  "if expr",
+			input: "(if [true] 32 5)",
+			typ:   Int{},
+		},
+		{
+			desc:  "if expr: different kind in branches",
 			input: "(if [true] {} false)",
 			err:   ErrIncompatibleTypes,
 		},
