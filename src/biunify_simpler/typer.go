@@ -80,7 +80,10 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 		return &ret, nil
 	case *parse.BoolLiteral:
 		return Bool{}, nil
-
+	case *parse.IntLiteral:
+		return Int{}, nil
+	case *parse.StrLiteral:
+		return Str{}, nil
 	case *parse.Record:
 		fields := make([]NamedType, len(expr.Fields))
 		for i, field := range expr.Fields {
@@ -164,9 +167,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 		}
 	case *parse.CaseExpr:
 	case *parse.Fn:
-	case *parse.IntLiteral:
 	case *parse.Set:
-	case *parse.StrLiteral:
 	case *parse.TaggedExpr:
 	default:
 		panic(fmt.Sprintf("unexpected parse.Expr: %#v", expr))

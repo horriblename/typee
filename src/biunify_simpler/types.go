@@ -243,12 +243,16 @@ type Func struct {
 }
 type Record struct{ Fields []NamedType }
 type Bool struct{}
+type Int struct{}
+type Str struct{}
 
 func (self Top) instantiate() SimpleType    { return self }
 func (self Bot) instantiate() SimpleType    { return self }
 func (self Func) instantiate() SimpleType   { return self }
 func (self Record) instantiate() SimpleType { return self }
 func (self Bool) instantiate() SimpleType   { return self }
+func (self Int) instantiate() SimpleType    { return self }
+func (self Str) instantiate() SimpleType    { return self }
 
 func (self Top) children() []SimpleType { return []SimpleType{} }
 func (self Bot) children() []SimpleType { return []SimpleType{} }
@@ -259,6 +263,8 @@ func (self Record) children() []SimpleType {
 	return fun.Map(self.Fields, func(field NamedType) SimpleType { return field.Type })
 }
 func (self Bool) children() []SimpleType { return []SimpleType{} }
+func (self Int) children() []SimpleType  { return []SimpleType{} }
+func (self Str) children() []SimpleType  { return []SimpleType{} }
 
 func (self Top) concrete()    {}
 func (self Bot) concrete()    {}
