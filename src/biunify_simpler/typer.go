@@ -269,9 +269,6 @@ func unify(lhs *Variable, rhs *Variable) error /*FIXME: idk what type*/ {
 	return nil
 }
 
-func freshVar() Variable {
-	return Variable{
-		lowerBound: Bot{},
-		upperBound: Top{},
-	}
+func freshVar() *Variable {
+	return &Variable{uid: newId()}
 }

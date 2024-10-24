@@ -35,6 +35,7 @@ type SimpleType interface {
 }
 
 type Variable struct {
+	uid            uint
 	lowerBound     ConcreteType
 	upperBound     ConcreteType
 	representative *Variable // nilable
@@ -43,6 +44,9 @@ type Variable struct {
 func (self *Variable) instantiate() SimpleType { return self }
 func (self *Variable) children() []SimpleType {
 	return []SimpleType{self.lowerBound, self.upperBound}
+}
+func (self *Variable) Uid() uint {
+	return self.Representative().uid
 }
 
 func (self *Variable) LowerBound() ConcreteType { return self.lowerBound }
@@ -385,4 +389,11 @@ func err2Func2ToResultFunc[I1, I2, O any](f func(I1, I2) (O, error)) func(I1, I2
 	return func(i1 I1, i2 I2) fun.Result[O] {
 		return fun.ResultFrom(f(i1, i2))
 	}
+}
+
+var gIdCounter uint = 0
+
+func newId() uint {
+	gIdCounter++
+	return gIdCounter
 }

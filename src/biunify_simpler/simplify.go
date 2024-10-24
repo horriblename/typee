@@ -76,10 +76,10 @@ func transform(st SimpleType, pol bool, mapping map[*Variable]SimpleType, pos, n
 		} else if !pol && !pos.Has(ty) {
 			return transformConcrete(ty.lowerBound, pol, mapping, pos, neg)
 		} else {
-			return &Variable{
-				lowerBound: transformConcrete(ty.lowerBound, true, mapping, pos, neg),
-				upperBound: transformConcrete(ty.upperBound, false, mapping, pos, neg),
-			}
+			newVar := freshVar()
+			newVar.lowerBound = transformConcrete(ty.lowerBound, true, mapping, pos, neg)
+			newVar.upperBound = transformConcrete(ty.upperBound, false, mapping, pos, neg)
+			return newVar
 		}
 	case ConcreteType:
 		return transformConcrete(ty, pol, mapping, pos, neg)
