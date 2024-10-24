@@ -37,7 +37,7 @@ func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[*Variable]
 			neg.Insert(ty)
 			analyze(ty.upperBound, pol, pos, neg)
 		}
-	case Bool, Top, Bot:
+	case Bool, Int, Str, Top, Bot:
 	}
 }
 
@@ -55,7 +55,7 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleTy
 		})
 
 		return Func{args, transform(ty.Ret, pol, mapping, pos, neg)}
-	case Bool, Top, Bot:
+	case Bool, Int, Str, Top, Bot:
 		return st
 	}
 	panic("unreachable")

@@ -140,6 +140,10 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		return Record{mapToNamedTypes(mergedMap)}, nil
 	} else if _, _, ok := matchPair[Bool, Bool](lhs0, rhs0); ok {
 		return Bool{}, nil
+	} else if _, _, ok := matchPair[Int, Int](lhs0, rhs0); ok {
+		return Int{}, nil
+	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
+		return Str{}, nil
 	} else {
 		return Bot{}, nil
 	}
@@ -195,6 +199,10 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		return Record{Fields: merged}, nil
 	} else if _, _, ok := matchPair[Bool, Bool](lhs0, rhs0); ok {
 		return Bool{}, nil
+	} else if _, _, ok := matchPair[Int, Int](lhs0, rhs0); ok {
+		return Int{}, nil
+	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
+		return Str{}, nil
 	} else {
 		return nil, fmt.Errorf("%w: %#v and %#v", ErrIncompatibleTypes, lhs0, rhs0)
 	}
@@ -271,6 +279,8 @@ func (self Bot) concrete()    {}
 func (self Func) concrete()   {}
 func (self Record) concrete() {}
 func (self Bool) concrete()   {}
+func (self Int) concrete()    {}
+func (self Str) concrete()    {}
 
 func getVars(ty SimpleType) *orderedset.OrderedSet[*Variable] {
 	result := orderedset.NewOrderedSet[*Variable]()
