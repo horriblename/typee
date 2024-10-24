@@ -55,6 +55,22 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 		}
 		return Func{Args: params, Ret: bodyTy}, err
 
+	case *parse.Fn:
+		self.vars.NewScope()
+		defer self.vars.PopScope()
+
+		params := make([]SimpleType, len(expr.Args))
+		for i, arg := range expr.Args {
+			param := freshVar()
+			params[i] = &param
+			self.vars.Insert(arg, &param)
+		}
+		bodyTy, err := self.TypeTerm(expr.Body)
+		if err != nil {
+			return nil, err
+		}
+		return Func{Args: params, Ret: bodyTy}, err
+
 	case *parse.Form:
 		assert.GreaterThan(len(expr.Children), 0, "unhandled: empty form")
 
@@ -166,7 +182,6 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 			})
 		}
 	case *parse.CaseExpr:
-	case *parse.Fn:
 	case *parse.Set:
 	case *parse.TaggedExpr:
 	default:
@@ -177,7 +192,11 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 
 func constrain(ty0 SimpleType, bound0 SimpleType) error {
 	// TODO: simpler-sub used type equality I think?
-	if ty0 == bound0 {
+	if _, _, ok := matchPair[Bool, Bool](ty0, bound0); ok {
+		return nil
+	} else if _, _, ok := matchPair[Int, Int](ty0, bound0); ok {
+		return nil
+	} else if _, _, ok := matchPair[Str, Str](ty0, bound0); ok {
 		return nil
 	}
 
