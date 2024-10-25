@@ -46,8 +46,8 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 		params := make([]SimpleType, len(expr.Args))
 		for i, arg := range expr.Args {
 			param := freshVar()
-			params[i] = &param
-			self.vars.Insert(arg, &param)
+			params[i] = param
+			self.vars.Insert(arg, param)
 		}
 		bodyTy, err := self.TypeTerm(expr.Body[len(expr.Body)-1])
 		if err != nil {
@@ -62,8 +62,8 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 		params := make([]SimpleType, len(expr.Args))
 		for i, arg := range expr.Args {
 			param := freshVar()
-			params[i] = &param
-			self.vars.Insert(arg, &param)
+			params[i] = param
+			self.vars.Insert(arg, param)
 		}
 		bodyTy, err := self.TypeTerm(expr.Body)
 		if err != nil {
@@ -89,11 +89,11 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 		}
 
 		ret := freshVar()
-		if err := constrain(funcTy, Func{argTys, &ret}); err != nil {
+		if err := constrain(funcTy, Func{argTys, ret}); err != nil {
 			return nil, err
 		}
 
-		return &ret, nil
+		return ret, nil
 	case *parse.BoolLiteral:
 		return Bool{}, nil
 	case *parse.IntLiteral:
