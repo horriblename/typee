@@ -123,11 +123,11 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 		}
 
 		ret := freshVar()
-		if err := constrain(recordTy, Record{[]NamedType{{expr.Field, &ret}}}); err != nil {
+		if err := constrain(recordTy, Record{[]NamedType{{expr.Field, ret}}}); err != nil {
 			return nil, err
 		}
 
-		return &ret, nil
+		return ret, nil
 
 	case *parse.IfExpr:
 		condTy, err := self.TypeTerm(expr.Condition)
@@ -150,14 +150,14 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 			return nil, err
 		}
 
-		if err := constrain(thenTy, &retTy); err != nil {
+		if err := constrain(thenTy, retTy); err != nil {
 			return nil, err
 		}
 
-		if err := constrain(elseTy, &retTy); err != nil {
+		if err := constrain(elseTy, retTy); err != nil {
 			return nil, err
 		}
-		return &retTy, nil
+		return retTy, nil
 
 	case *parse.LetExpr:
 		if expr.Recursive {
@@ -270,5 +270,5 @@ func unify(lhs *Variable, rhs *Variable) error /*FIXME: idk what type*/ {
 }
 
 func freshVar() *Variable {
-	return &Variable{uid: newId()}
+	return &Variable{uid: newId(), lowerBound: Bot{}, upperBound: Top{}}
 }

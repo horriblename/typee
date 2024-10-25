@@ -10,7 +10,10 @@ import (
 	"github.com/horriblename/typee/src/biunify_simpler/internal/ordered_set"
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/opt"
+	"github.com/horriblename/typee/src/types"
 )
+
+//go-sumtype:decl TypeScheme SimpleType ConcreteType
 
 var ErrInvalidCyclicConstraint = errors.New("invalid cyclic constraint")
 var ErrIncompatibleTypes = errors.New("incompatible types")
@@ -47,6 +50,9 @@ func (self *Variable) children() []SimpleType {
 }
 func (self *Variable) Uid() uint {
 	return self.Representative().uid
+}
+func (self *Variable) asTypeVar() types.Type {
+	return &types.Generic{ID: types.TypeID(self.uid)}
 }
 
 func (self *Variable) LowerBound() ConcreteType { return self.lowerBound }
@@ -238,7 +244,10 @@ func glb(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
 }
 func lub(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
 	if lhs, rhs, ok := matchPair[ConcreteType, ConcreteType](lhs0, rhs0); ok {
-		lubConcrete(lhs, rhs)
+		if _, err := lubConcrete(lhs, rhs); err != nil {
+			return nil, err
+		}
+
 	} else if lhs, rhs, ok := matchPair[*Variable, *Variable](lhs0, rhs0); ok {
 		if err := unify(lhs, rhs); err != nil {
 			return nil, err

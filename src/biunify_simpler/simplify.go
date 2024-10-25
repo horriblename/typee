@@ -1,6 +1,8 @@
 package biunify
 
 import (
+	"fmt"
+
 	orderedset "github.com/horriblename/typee/src/biunify_simpler/internal/ordered_set"
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/types"
@@ -84,14 +86,68 @@ func transform(st SimpleType, pol bool, mapping map[*Variable]SimpleType, pos, n
 	case ConcreteType:
 		return transformConcrete(ty, pol, mapping, pos, neg)
 	}
-	panic("unreachable")
+	panic(fmt.Sprintf("unhandled SimpleType %#v", st))
 }
 
 // Convert an inferred SimpleType into an immutable Type representation.
-func coalesceType(st SimpleType) {
-	coalesceTypeInner(st, true)
+func coalesceType(st SimpleType) types.Type {
+	return coalesceTypeInner(st, true)
 }
 
 func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
-	panic("unimpl")
+	switch ty := st.(type) {
+	case *Variable:
+		bound := If(polarity, ty.LowerBound()).Else(ty.UpperBound())
+		boundTy := coalesceTypeInner(bound, polarity)
+		if polarity && (bound == Bot{}) || (bound == Top{}) {
+			return ty.asTypeVar()
+		} else {
+			if polarity {
+				return &types.Union{Lhs: ty.asTypeVar(), Rhs: boundTy}
+			} else {
+				return &types.Inter{Lhs: ty.asTypeVar(), Rhs: boundTy}
+			}
+		}
+	case Bool:
+		return &types.Bool{}
+	case Int:
+		return &types.Int{}
+	case Str:
+		return &types.String{}
+	case Func:
+		return &types.Func{
+			Args: fun.Map(ty.Args, func(arg SimpleType) types.Type { return coalesceTypeInner(arg, !polarity) }),
+			Ret:  coalesceTypeInner(ty.Ret, polarity),
+		}
+	case Record:
+		fields := map[string]types.Type{}
+		for _, field := range ty.Fields {
+			fields[field.Name] = coalesceTypeInner(ty, polarity)
+		}
+		return &types.Record{Fields: fields}
+	case Bot:
+		return &types.Record{Fields: map[string]types.Type{}}
+	case Top:
+		return &types.Top{}
+	default:
+		panic(fmt.Sprintf("unexpected biunify.SimpleType: %#v", ty))
+	}
+}
+
+type CursedIf[T any] struct {
+	cond bool
+	then T
+	els  T
+}
+
+func If[T any](cond bool, then T) CursedIf[T] {
+	return CursedIf[T]{cond: cond, then: then}
+}
+
+func (self CursedIf[T]) Else(alt T) T {
+	if self.cond {
+		return self.then
+	} else {
+		return self.els
+	}
 }
