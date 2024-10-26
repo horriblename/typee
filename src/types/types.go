@@ -37,6 +37,15 @@ type TypeScheme struct {
 	Over []Generic
 	Body Type
 }
+type Top struct{}
+type Union struct {
+	Lhs Type
+	Rhs Type
+}
+type Inter struct {
+	Lhs Type
+	Rhs Type
+}
 
 func (*String) type_()     {}
 func (*Int) type_()        {}
@@ -45,6 +54,9 @@ func (*Record) type_()     {}
 func (*Func) type_()       {}
 func (*Generic) type_()    {}
 func (*TypeScheme) type_() {}
+func (*Top) type_()        {}
+func (*Union) type_()      {}
+func (*Inter) type_()      {}
 
 func (*String) Simple() bool     { return true }
 func (*Int) Simple() bool        { return true }
@@ -53,6 +65,9 @@ func (*Record) Simple() bool     { return false }
 func (*Func) Simple() bool       { return false }
 func (*Generic) Simple() bool    { return false }
 func (*TypeScheme) Simple() bool { return false }
+func (*Top) Simple() bool        { return true }  // not used by biunification
+func (*Union) Simple() bool      { return false } // not used by biunification
+func (*Inter) Simple() bool      { return false } // not used by biunification
 
 func (*String) Eq(other Type) bool {
 	_, ok := other.(*String)
@@ -114,6 +129,26 @@ func (g *Generic) Eq(other Type) bool {
 func (ts *TypeScheme) Eq(other Type) bool {
 	panic("todo")
 }
+func (self *Top) Eq(other Type) bool {
+	_, ok := other.(*Top)
+	return ok
+}
+
+// note: Eq not used in biunification (I think)
+func (self *Union) Eq(other Type) bool {
+	o, ok := other.(*Union)
+	if !ok {
+		return false
+	}
+	return self.Lhs.Eq(o.Lhs) && self.Rhs.Eq(o.Rhs)
+}
+func (self *Inter) Eq(other Type) bool {
+	o, ok := other.(*Union)
+	if !ok {
+		return false
+	}
+	return self.Lhs.Eq(o.Lhs) && self.Rhs.Eq(o.Rhs)
+}
 
 func (*String) String() string { return "String" }
 func (*Int) String() string    { return "Int" }
@@ -171,6 +206,9 @@ func (ts *TypeScheme) String() string {
 	b.WriteString(ts.Body.String())
 	return b.String()
 }
+func (self *Top) String() string   { return "⊤" }
+func (self *Union) String() string { return fmt.Sprintf("(%s ∪ %s)", self.Lhs, self.Rhs) }
+func (self *Inter) String() string { return fmt.Sprintf("(%s ∩ %s)", self.Lhs, self.Rhs) }
 
 var genericIDCounter TypeID = 0
 
