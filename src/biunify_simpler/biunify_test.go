@@ -42,6 +42,14 @@ func TestBiunify(t *testing.T) {
 			err:   ErrIncompatibleTypes,
 		},
 		{
+			desc:  "simple function",
+			input: "(fn [x] 12)",
+			typ: &types.Func{
+				Args: []types.Type{&types.Generic{ID: 1}},
+				Ret:  &types.Int{},
+			},
+		},
+		{
 			desc:  "application",
 			input: "((fn [x] x) 34)",
 			typ:   &types.Int{},
