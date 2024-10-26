@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/biunify_simpler/internal/ordered_set"
@@ -35,6 +36,7 @@ func (self PolymorphicType) instantiate() SimpleType { panic("unimpl") }
 type SimpleType interface {
 	TypeScheme
 	children() []SimpleType
+	String() string
 }
 
 type Variable struct {
@@ -55,6 +57,9 @@ func (self *Variable) asTypeVar() types.Type {
 	return &types.Generic{ID: types.TypeID(self.uid)}
 }
 
+func (self *Variable) String() string {
+	return fmt.Sprintf("t%d(repr:%v)[%#v, %#v]", self.uid, self.representative, self.lowerBound, self.upperBound)
+}
 func (self *Variable) LowerBound() ConcreteType { return self.lowerBound }
 func (self *Variable) UpperBound() ConcreteType { return self.upperBound }
 func (self *Variable) newUpperBound(ub ConcreteType) error {
@@ -321,6 +326,23 @@ func (self Record) concrete() {}
 func (self Bool) concrete()   {}
 func (self Int) concrete()    {}
 func (self Str) concrete()    {}
+
+func (self Top) String() string { return "⊤" }
+func (self Bot) String() string { return "Bot" }
+func (self Func) String() string {
+	return fmt.Sprintf("%s -> %s",
+		strings.Join(fun.Map(self.Args, func(t SimpleType) string { return t.String() }), ", "),
+		self.Ret.String(),
+	)
+}
+func (self Record) String() string {
+	return fmt.Sprintf("{ %s }", strings.Join(fun.Map(self.Fields, func(field NamedType) string {
+		return fmt.Sprintf("%s: %s", field.Name, field.Type.String())
+	}), ", "))
+}
+func (self Bool) String() string { return "Bool" }
+func (self Int) String() string  { return "Int" }
+func (self Str) String() string  { return "Str" }
 
 func getVars(ty SimpleType) *orderedset.OrderedSet[*Variable] {
 	result := orderedset.NewOrderedSet[*Variable]()
