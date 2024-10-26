@@ -31,6 +31,19 @@ func NewTyper(debug bool) *Typer {
 	}
 }
 
+func (self *Typer) TypeProgram(program []parse.Expr) ([]SimpleType, error) {
+	var err error
+	types := make([]SimpleType, len(program))
+	for i, expr := range program {
+		types[i], err = self.TypeTerm(expr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return types, nil
+}
+
 func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 	switch expr := term.(type) {
 	case *parse.Symbol:
