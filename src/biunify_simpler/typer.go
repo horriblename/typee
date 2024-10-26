@@ -210,7 +210,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		}
 
 		for i, tyArg := range ty.Args {
-			if err := constrain(tyArg, bound.Args[i]); err != nil {
+			if err := constrain(bound.Args[i], tyArg); err != nil {
 				return err
 			}
 
