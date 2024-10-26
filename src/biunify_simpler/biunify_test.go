@@ -32,6 +32,16 @@ func TestBiunify(t *testing.T) {
 			typ:   &types.String{},
 		},
 		{
+			desc:  "record literal",
+			input: `{x: 1, y: true}`,
+			typ: &types.Record{
+				Fields: map[string]types.Type{
+					"x": &types.Int{},
+					"y": &types.Bool{},
+				},
+			},
+		},
+		{
 			desc:  "if expr",
 			input: "(if [true] 32 5)",
 			typ:   &types.Int{},
