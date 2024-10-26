@@ -20,6 +20,11 @@ func simplifyType(ty SimpleType) SimpleType {
 	return transform(ty, true, mapping, pos, neg)
 }
 
+// Co-occurrence Analysis. Co-occurrence analysis looks at every variable that
+// appears in a type in both positive and negative positions, and records along
+// which other variables and types it always occurs. A variable 𝑣 occurs along
+// a type 𝜏 if it is part of the same type union ... ⊔ 𝑣 ⊔ ... ⊔ 𝜏 ⊔ ... or
+// part of the same type intersection ... ⊓ 𝑣 ⊓ ... ⊓ 𝜏 ⊓ ...
 func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[*Variable]) {
 	switch ty := st.(type) {
 	case Record:
@@ -74,6 +79,8 @@ func transform(st SimpleType, pol bool, mapping map[*Variable]SimpleType, pos, n
 			mapping[ty] = (transformConcrete(ty.lowerBound, pol, mapping, pos, neg))
 			return mapping[ty]
 		} else if pol && !neg.Has(ty) {
+			// type variable only occurs on positive positions, we can eliminate it.
+			// (see co-occurrence analysis)
 			mapping[ty] = transformConcrete(ty.lowerBound, pol, mapping, pos, neg)
 			return mapping[ty]
 		} else if !pol && !pos.Has(ty) {
