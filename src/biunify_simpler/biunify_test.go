@@ -59,6 +59,10 @@ func TestBiunify(t *testing.T) {
 			ty, err := checker.TypeTerm(program[0])
 			assert.True(errors.Is(err, tC.err), "expected error", tC.err, ", got:", err)
 
+			if tC.err != nil {
+				return
+			}
+
 			tySimp := simplifyType(ty)
 			t.Logf("simplified: %#v", tySimp)
 
