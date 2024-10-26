@@ -147,7 +147,6 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 type CursedIf[T any] struct {
 	cond bool
 	then T
-	els  T
 }
 
 func If[T any](cond bool, then T) CursedIf[T] {
@@ -158,6 +157,6 @@ func (self CursedIf[T]) Else(alt T) T {
 	if self.cond {
 		return self.then
 	} else {
-		return self.els
+		return alt
 	}
 }
