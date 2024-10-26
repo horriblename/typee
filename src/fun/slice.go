@@ -30,8 +30,8 @@ type Pair[T, U any] struct {
 	Two U
 }
 
-func ZipIter[T, U any](i1 iter.Seq[T], i2 iter.Seq[U]) iter.Seq[Pair[T, U]] {
-	return func(yield func(Pair[T, U]) bool) {
+func ZipIter[T, U any](i1 iter.Seq[T], i2 iter.Seq[U]) iter.Seq2[T, U] {
+	return func(yield func(T, U) bool) {
 		pull2, stop2 := iter.Pull(i2)
 		defer stop2()
 
@@ -41,7 +41,7 @@ func ZipIter[T, U any](i1 iter.Seq[T], i2 iter.Seq[U]) iter.Seq[Pair[T, U]] {
 				return
 			}
 
-			if !yield(Pair[T, U]{item1, item2}) {
+			if !yield(item1, item2) {
 				return
 			}
 		}

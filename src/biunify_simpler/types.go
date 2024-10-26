@@ -123,8 +123,8 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
 		args := make([]SimpleType, 0, len(lhs.Args))
 		argPairs := fun.ZipIter(slices.Values(lhs.Args), slices.Values(rhs.Args))
-		for pair := range argPairs {
-			arg, err := lub(pair.One, pair.Two)
+		for larg, rarg := range argPairs {
+			arg, err := lub(larg, rarg)
 			if err != nil {
 				return nil, err
 			}
