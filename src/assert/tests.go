@@ -25,6 +25,14 @@ func (t *TestAsserts) Eq(a any, b any, msg ...any) {
 	}
 }
 
+func (t *TestAsserts) NEq(a any, b any, msg ...any) {
+	t.t.Helper()
+	if a == b {
+		t.t.Fatalf("failed assertion a != b: \n  left: %v\n  right: %v\n%s", a, b,
+			joinHint(msg))
+	}
+}
+
 func (t *TestAsserts) True(b bool, msg ...any) {
 	t.t.Helper()
 	if !b {
