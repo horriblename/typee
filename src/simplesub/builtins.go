@@ -1,4 +1,4 @@
-package biunify
+package simplesub
 
 import "github.com/horriblename/typee/src/internal/scope"
 

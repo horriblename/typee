@@ -1,9 +1,9 @@
-package biunify
+package simplesub
 
 import (
 	"fmt"
 
-	orderedset "github.com/horriblename/typee/src/biunify_simpler/internal/ordered_set"
+	orderedset "github.com/horriblename/typee/src/simplesub/internal/ordered_set"
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/types"
 )

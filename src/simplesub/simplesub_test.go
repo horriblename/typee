@@ -1,4 +1,4 @@
-package biunify
+package simplesub
 
 import (
 	"errors"
@@ -68,6 +68,10 @@ func TestBiunify(t *testing.T) {
 			desc:  "simple let expr",
 			input: "(let [x 34 y {z: 20}] (if [true] x y.z))",
 			typ:   &types.Int{},
+		},
+		{
+			desc:  "local let expr does not generalize",
+			input: "(let [f (fn [x] x)] (let [y (f 3)] {f: f, y: y}))",
 		},
 	}
 	for _, tC := range testCases {

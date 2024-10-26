@@ -1,4 +1,4 @@
-package biunify
+package simplesub
 
 import (
 	"errors"

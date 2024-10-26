@@ -1,4 +1,4 @@
-package biunify
+package simplesub
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/horriblename/typee/src/assert"
-	"github.com/horriblename/typee/src/biunify_simpler/internal/ordered_set"
+	"github.com/horriblename/typee/src/simplesub/internal/ordered_set"
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/types"
