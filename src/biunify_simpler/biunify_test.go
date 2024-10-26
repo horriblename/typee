@@ -43,6 +43,11 @@ func TestBiunify(t *testing.T) {
 			err:   ErrIncompatibleTypes,
 		},
 		{
+			desc:  "application",
+			input: "((fn [x] x) 34)",
+			typ:   &types.Int{},
+		},
+		{
 			desc:  "simple let expr",
 			input: "(let [x 34 y {z: 20}] (if [true] x y.z))",
 			typ:   &types.Int{},
