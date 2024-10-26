@@ -132,7 +132,7 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 	case Record:
 		fields := map[string]types.Type{}
 		for _, field := range ty.Fields {
-			fields[field.Name] = coalesceTypeInner(ty, polarity)
+			fields[field.Name] = coalesceTypeInner(field.Type, polarity)
 		}
 		return &types.Record{Fields: fields}
 	case Bot:
