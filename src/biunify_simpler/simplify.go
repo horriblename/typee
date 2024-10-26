@@ -75,7 +75,7 @@ func transform(st SimpleType, pol bool, mapping map[*Variable]SimpleType, pos, n
 			return v
 		}
 
-		if ty.lowerBound == ty.upperBound {
+		if concreteEq(ty.LowerBound(), ty.UpperBound()) {
 			mapping[ty] = (transformConcrete(ty.lowerBound, pol, mapping, pos, neg))
 			return mapping[ty]
 		} else if pol && !neg.Has(ty) {

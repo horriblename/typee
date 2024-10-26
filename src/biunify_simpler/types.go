@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/horriblename/typee/src/assert"
@@ -58,7 +60,11 @@ func (self *Variable) asTypeVar() types.Type {
 }
 
 func (self *Variable) String() string {
-	return fmt.Sprintf("t%d(repr:%v)[%v, %v]", self.uid, self.representative, self.lowerBound, self.upperBound)
+	repr := "nil"
+	if self.representative != nil {
+		repr = strconv.Itoa(int(self.representative.uid))
+	}
+	return fmt.Sprintf("t%d(repr:%s)[%v, %v]", self.uid, repr, self.lowerBound, self.upperBound)
 }
 func (self *Variable) LowerBound() ConcreteType { return self.lowerBound }
 func (self *Variable) UpperBound() ConcreteType { return self.upperBound }
@@ -330,7 +336,7 @@ func (self Str) concrete()    {}
 func (self Top) String() string { return "⊤" }
 func (self Bot) String() string { return "Bot" }
 func (self Func) String() string {
-	return fmt.Sprintf("%s -> %s",
+	return fmt.Sprintf("(%s -> %s)",
 		strings.Join(fun.Map(self.Args, func(t SimpleType) string { return t.String() }), ", "),
 		self.Ret.String(),
 	)
@@ -377,6 +383,66 @@ type NamedType struct {
 }
 
 type unit struct{}
+
+// same as concreteEq but takes SimpleType as input and rejects non-ConcreteType
+func concreteEq_(lhs, rhs SimpleType) bool {
+	if lhs, rhs, ok := matchPair[ConcreteType, ConcreteType](lhs, rhs); ok {
+		return concreteEq(lhs, rhs)
+	}
+	return false
+}
+
+func concreteEq(lhs, rhs ConcreteType) bool {
+	if reflect.TypeOf(lhs) != reflect.TypeOf(rhs) {
+		return false
+	}
+
+	if _, _, ok := matchPair[Top, Top](lhs, rhs); ok {
+		return true
+	} else if _, _, ok := matchPair[Bot, Bot](lhs, rhs); ok {
+		return true
+	} else if _, _, ok := matchPair[Bool, Bool](lhs, rhs); ok {
+		return true
+	} else if _, _, ok := matchPair[Int, Int](lhs, rhs); ok {
+		return true
+	} else if _, _, ok := matchPair[Str, Str](lhs, rhs); ok {
+		return true
+	} else if left, right, ok := matchPair[Record, Record](lhs, rhs); ok {
+		if len(left.Fields) != len(right.Fields) {
+			return false
+		}
+
+		rightFields := namedTypesToMap(right.Fields)
+		for _, field := range left.Fields {
+			var rightField SimpleType
+			var ok bool
+			if rightField, ok = rightFields[field.Name]; !ok {
+				return false
+			}
+
+			if !concreteEq_(field.Type, rightField) {
+				return false
+			}
+		}
+		return true
+	} else if left, right, ok := matchPair[Func, Func](lhs, rhs); ok {
+		if len(left.Args) != len(right.Args) {
+			return false
+		}
+
+		for larg, rarg := range fun.ZipIter(slices.Values(left.Args), slices.Values(right.Args)) {
+			if !concreteEq_(larg, rarg) {
+				return false
+			}
+		}
+
+		if !concreteEq_(left.Ret, right.Ret) {
+			return false
+		}
+	}
+
+	panic(fmt.Sprintf("compiler bug: concreteEq not implemented for type %T == %T", lhs, rhs))
+}
 
 func popSlice[T any](s *[]T) opt.Option[T] {
 	var zero T
