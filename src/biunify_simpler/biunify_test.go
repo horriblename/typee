@@ -86,10 +86,10 @@ func TestBiunify(t *testing.T) {
 			}
 			t.Logf("pre-simplify: %v", ty)
 
-			tySimp := simplifyType(ty)
+			tySimp := SimplifyType(ty)
 			t.Logf("simplified: %v", tySimp)
 
-			typ := coalesceType(tySimp)
+			typ := CoalesceType(tySimp)
 
 			t.Logf("coalesced type: %v\n", typ)
 			assert.NEq(tC.typ, nil, "bad test case")

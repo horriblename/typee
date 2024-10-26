@@ -8,7 +8,7 @@ import (
 	"github.com/horriblename/typee/src/types"
 )
 
-func simplifyType(ty SimpleType) SimpleType {
+func SimplifyType(ty SimpleType) SimpleType {
 	// TODO: idk if ordered set is needed, instead of unordered one
 	pos := orderedset.NewOrderedSet[*Variable]()
 	neg := orderedset.NewOrderedSet[*Variable]()
@@ -100,7 +100,7 @@ func transform(st SimpleType, pol bool, mapping map[*Variable]SimpleType, pos, n
 }
 
 // Convert an inferred SimpleType into an immutable Type representation.
-func coalesceType(st SimpleType) types.Type {
+func CoalesceType(st SimpleType) types.Type {
 	return coalesceTypeInner(st, true)
 }
 
