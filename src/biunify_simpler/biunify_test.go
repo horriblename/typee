@@ -73,8 +73,9 @@ func TestBiunify(t *testing.T) {
 
 			typ := coalesceType(tySimp)
 
-			t.Logf("coalesced type: %#v\n", typ)
-			assert.True(tC.typ.Eq(typ), fmt.Sprintf("expected type %#v, got: %#v", tC.typ, typ))
+			t.Logf("coalesced type: %v\n", typ)
+			assert.NEq(tC.typ, nil, "bad test case")
+			assert.True(types.StructuralEq(tC.typ, typ), "expected type", tC.typ, ", got:", typ)
 		})
 	}
 }
