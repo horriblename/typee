@@ -2,7 +2,6 @@ package biunify
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/horriblename/typee/src/assert"
@@ -67,9 +66,10 @@ func TestBiunify(t *testing.T) {
 			if tC.err != nil {
 				return
 			}
+			t.Logf("pre-simplify: %v", ty)
 
 			tySimp := simplifyType(ty)
-			t.Logf("simplified: %#v", tySimp)
+			t.Logf("simplified: %v", tySimp)
 
 			typ := coalesceType(tySimp)
 

@@ -58,7 +58,7 @@ func (self *Variable) asTypeVar() types.Type {
 }
 
 func (self *Variable) String() string {
-	return fmt.Sprintf("t%d(repr:%v)[%#v, %#v]", self.uid, self.representative, self.lowerBound, self.upperBound)
+	return fmt.Sprintf("t%d(repr:%v)[%v, %v]", self.uid, self.representative, self.lowerBound, self.upperBound)
 }
 func (self *Variable) LowerBound() ConcreteType { return self.lowerBound }
 func (self *Variable) UpperBound() ConcreteType { return self.upperBound }
