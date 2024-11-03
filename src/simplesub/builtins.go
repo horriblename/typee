@@ -12,7 +12,7 @@ var intComparatorType = Func{
 	Ret:  Bool{},
 }
 
-func addBuiltins(scope scope.ScopedMap[TypeScheme]) {
+func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 	scope.Insert("+", intBinaryOptType)
 	scope.Insert("-", intBinaryOptType)
 	scope.Insert("*", intBinaryOptType)

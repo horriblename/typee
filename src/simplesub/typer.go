@@ -25,9 +25,12 @@ var ErrCannotConstrain = errors.New("cannot constrain")
 const scopeLevelTop int = 1
 
 func NewTyper(debug bool) *Typer {
+	vars := scope.NewScopedMap[TypeScheme]()
+	addBuiltins(&vars)
+	vars.NewScope()
 	return &Typer{
 		debug: debug,
-		vars:  scope.NewScopedMap[TypeScheme](),
+		vars:  vars,
 	}
 }
 
@@ -62,6 +65,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 			params[i] = param
 			self.vars.Insert(arg, param)
 		}
+		// FIXME: type check other statements in body as well
 		bodyTy, err := self.TypeTerm(expr.Body[len(expr.Body)-1])
 		if err != nil {
 			return nil, err
