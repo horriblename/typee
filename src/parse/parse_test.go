@@ -77,6 +77,18 @@ func TestParse(t *testing.T) {
 			}},
 		},
 		{
+			desc:  "var definition",
+			input: "(var foo 43)",
+			output: []Expr{&VarDef{
+				id:   2,
+				Name: "foo",
+				Value: &IntLiteral{
+					id:     1,
+					Number: 43,
+				},
+			}},
+		},
+		{
 			desc:   "str literal",
 			input:  `"strlit"`,
 			output: []Expr{&StrLiteral{id: 1, Content: "strlit"}},

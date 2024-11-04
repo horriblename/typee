@@ -42,6 +42,11 @@ type Set struct {
 	Name  string
 	Value Expr
 }
+type VarDef struct {
+	id    int
+	Name  string
+	Value Expr
+}
 type IfExpr struct {
 	id          int
 	Condition   Expr
@@ -122,6 +127,7 @@ func (*Form) ast()         {}
 func (*Symbol) ast()       {}
 func (*FuncDef) ast()      {}
 func (*Set) ast()          {}
+func (*VarDef) ast()       {}
 func (*IfExpr) ast()       {}
 func (*StrLiteral) ast()   {}
 func (*IntLiteral) ast()   {}
@@ -138,6 +144,7 @@ func (self *Symbol) ID() int       { return self.id }
 func (self *Int) ID() int          { return self.id }
 func (self *FuncDef) ID() int      { return self.id }
 func (self *Set) ID() int          { return self.id }
+func (self *VarDef) ID() int       { return self.id }
 func (self *IfExpr) ID() int       { return self.id }
 func (self *StrLiteral) ID() int   { return self.id }
 func (self *IntLiteral) ID() int   { return self.id }
@@ -218,6 +225,9 @@ func (self *FuncDef) Pretty() string {
 }
 func (self *Set) Pretty() string {
 	return fmt.Sprintf("(set %s %v)", self.Name, self.Value.Pretty())
+}
+func (self *VarDef) Pretty() string {
+	return fmt.Sprintf("(var %s %v)", self.Name, self.Value.Pretty())
 }
 func (self *IfExpr) Pretty() string {
 	return fmt.Sprintf("(if [%v] %v %v)", self.Condition.Pretty(), self.Consequence.Pretty(), self.Alternative.Pretty())
