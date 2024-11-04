@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"unicode"
 
+	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/combinator"
 )
 
@@ -40,7 +41,7 @@ func LexString(source string) ([]Token, error) {
 	rest, tokens, err := parser(input)
 
 	if len(rest) != 0 {
-		return nil, fmt.Errorf("%w: found %s...", ErrExpectEOF, string(rest[:min(len(rest), 10)]))
+		return nil, fmt.Errorf("%w: found '%s'...", ErrExpectEOF, string(rest[:min(len(rest), 10)]))
 	}
 
 	return tokens, err
@@ -215,7 +216,7 @@ func whitespace(in []rune) ([]rune, struct{}, error) {
 		}
 	}
 
-	return nil, struct{}{}, ErrLex
+	return []rune{}, struct{}{}, nil
 }
 
 func comment(in []rune) ([]rune, struct{}, error) {
@@ -231,4 +232,31 @@ func comment(in []rune) ([]rune, struct{}, error) {
 	}
 
 	return []rune{}, struct{}{}, nil
+}
+
+func init() {
+	println("--- inline test simple comment")
+	rest, _, err := comment([]rune("# hi"))
+	assert.Eq(len(rest), 0)
+	assert.Ok(err)
+
+	println("--- inline test comment endline")
+	in := []rune("#hi\nbye")
+	rest, _, err = comment(in)
+	assert.Eq(string(rest), "bye")
+	assert.Ok(err)
+
+	println("--- inline test skips: basic")
+	in = []rune("  #hi\nbye")
+	rest, _, err = skipped(in)
+	assert.Eq(string(rest), "bye")
+	assert.Ok(err)
+
+	println("--- inline test skips: back to back")
+	in = []rune("  #hi\n  #comment2 \n\t 2")
+	rest, _, err = skipped(in)
+	assert.Eq(string(rest), "2")
+	assert.Ok(err)
+
+	println("+++ completed inline tests")
 }

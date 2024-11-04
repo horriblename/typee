@@ -43,18 +43,39 @@ func TestLex(t *testing.T) {
 			input:  "(foo bar)",
 			output: []Token{&lParen, &Symbol{Name: "foo"}, &Symbol{Name: "bar"}, &rParen},
 		},
+		{
+			desc: "whitespace and comments",
+			input: `
+
+				(foo bar)#hello
+
+
+				(def id [x]
+
+					x)
+
+				# another comment
+				# yet another comment
+
+			`,
+			output: []Token{&lParen, &Symbol{Name: "foo"}, &Symbol{Name: "bar"}, &rParen,
+				&lParen, &Def{}, &Symbol{Name: "id"}, &lBracket, &Symbol{Name: "x"}, &rBracket,
+				&Symbol{Name: "x"}, &rParen,
+			},
+			err: nil,
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			// Act
 			got, gotErr := LexString(tC.input)
 
-			if !reflect.DeepEqual(got, tC.output) {
-				t.Errorf("expected output:\n  %v\ngot:\n  %v", tC.output, got)
-			}
-
 			if gotErr != tC.err {
 				t.Errorf("expected error: %v, got: %v", tC.err, gotErr)
+			}
+
+			if !reflect.DeepEqual(got, tC.output) {
+				t.Errorf("expected output:\n  %v\ngot:\n  %v", tC.output, got)
 			}
 		})
 	}
