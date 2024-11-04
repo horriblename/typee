@@ -1,11 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 
+	"github.com/chzyer/readline"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
 )
@@ -128,18 +130,33 @@ const flagRawType = "raw-type"
 const helpRawType = "print pre-simplified types"
 
 func cmdRepl() error {
-	scanner := bufio.NewScanner(os.Stdin)
-	typer := simplesub.NewTyper(true)
 	rawType := flag.Bool(flagRawType, false, helpRawType)
 	flag.Parse()
 
+	typer := simplesub.NewTyper(true)
+
+	rl, err := readline.New("> ")
+	if err != nil {
+		return err
+	}
+
 	for {
-		os.Stderr.WriteString("\n> ")
-		if ok := scanner.Scan(); !ok {
+		line, err := rl.Readline()
+		if err == readline.ErrInterrupt {
+			if len(line) == 0 {
+				break
+			} else {
+				continue
+			}
+		} else if err == io.EOF {
 			break
+		} else if err != nil {
+			return err
 		}
 
-		expr, err := parse.ParseString(scanner.Text())
+		line = strings.TrimSpace(line)
+
+		expr, err := parse.ParseString(line)
 		if err != nil {
 			errorf("%s", err.Error())
 			continue
@@ -170,5 +187,5 @@ func cmdRepl() error {
 		errorf(": %s", simpleTy)
 	}
 
-	return scanner.Err()
+	return nil
 }
