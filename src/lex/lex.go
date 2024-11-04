@@ -3,7 +3,9 @@ package lex
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/horriblename/typee/src/assert"
@@ -235,6 +237,11 @@ func comment(in []rune) ([]rune, struct{}, error) {
 }
 
 func init() {
+	if !strings.HasSuffix(os.Args[0], ".test") {
+		// not a test
+		return
+	}
+
 	println("--- inline test simple comment")
 	rest, _, err := comment([]rune("# hi"))
 	assert.Eq(len(rest), 0)
