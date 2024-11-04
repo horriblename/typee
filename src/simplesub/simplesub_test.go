@@ -115,9 +115,25 @@ func TestTypeProgram(t *testing.T) {
 			input: "(def foo [x] x)",
 			typ: []types.Type{
 				&types.Func{
-					[]types.Type{&types.Generic{1, "", ""}},
-					&types.Generic{1, "", ""},
+					Args: []types.Type{&types.Generic{ID: 1}},
+					Ret:  &types.Generic{ID: 1},
 				},
+			},
+		},
+		{
+			desc: "make sure instantiation works",
+			input: `
+					(def id [x] x)
+					(set n (id 1))
+					(set s (id "hi"))
+				`,
+			typ: []types.Type{
+				&types.Func{
+					Args: []types.Type{&types.Generic{ID: 1}},
+					Ret:  &types.Generic{ID: 1},
+				},
+				&types.Int{},
+				&types.String{},
 			},
 		},
 	}

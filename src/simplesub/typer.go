@@ -22,6 +22,8 @@ var ErrMissingField = errors.New("missing field")
 var ErrConstraintViolated = errors.New("constraint violated")
 var ErrCannotConstrain = errors.New("cannot constrain")
 var ErrInvalidTopLevel = errors.New("invalid top level construct: must be set or def")
+var ErrDefMustBeTopLevel = errors.New("function definitions only allowed in top level")
+var ErrEmptyFuncBody = errors.New("empty function body")
 
 const scopeLevelTop int = 1
 
@@ -41,16 +43,25 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]PolymorphicType, error) 
 	for i, expr := range program {
 		switch e := expr.(type) {
 		case *parse.FuncDef:
-			types[i], err = self.typeLetRhs(e.Name, e)
+			if len(e.Body) == 0 {
+				return nil, fmt.Errorf("in function %s: %w", e.Name, ErrEmptyFuncBody)
+			}
+			fn := parse.Fn{
+				Args: e.Args,
+				Body: e.Body[len(e.Body)-1],
+			}
+			types[i], err = self.typeLetRhs(e.Name, &fn)
 			if err != nil {
 				return nil, err
 			}
+			self.vars.Insert(e.Name, types[i])
 
 		case *parse.Set:
 			types[i], err = self.typeLetRhs(e.Name, e.Value)
 			if err != nil {
 				return nil, err
 			}
+			self.vars.Insert(e.Name, types[i])
 		default:
 			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
 		}
@@ -86,21 +97,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 			return nil, fmt.Errorf("%w: %s", ErrUndefinedVariable, expr.Name)
 		}
 	case *parse.FuncDef:
-		self.vars.NewScope()
-		defer self.vars.PopScope()
-
-		params := make([]SimpleType, len(expr.Args))
-		for i, arg := range expr.Args {
-			param := freshVar()
-			params[i] = param
-			self.vars.Insert(arg, param)
-		}
-		// FIXME: type check other statements in body as well
-		bodyTy, err := self.TypeTerm(expr.Body[len(expr.Body)-1])
-		if err != nil {
-			return nil, err
-		}
-		return Func{Args: params, Ret: bodyTy}, err
+		return nil, fmt.Errorf("%w: %s", ErrDefMustBeTopLevel, expr.Name)
 
 	case *parse.Fn:
 		self.vars.NewScope()
