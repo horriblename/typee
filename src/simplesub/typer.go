@@ -227,6 +227,38 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 		}
 	case *parse.CaseExpr:
 	case *parse.Set:
+		varTy, ok := self.vars.Get(expr.Name).Unwrap()
+		if !ok {
+			return nil, fmt.Errorf("%w: %s", ErrUndefinedVariable, expr.Name)
+		}
+
+		val, err := self.TypeTerm(expr.Value)
+		if err != nil {
+			return nil, err
+		}
+
+		varSTy, ok := varTy.(SimpleType)
+		if !ok {
+			panic("TODO: call set on PolymorphicType")
+		}
+
+		err = constrain(val, varSTy)
+		if err != nil {
+			return nil, err
+		}
+
+		return Record{[]NamedType{}}, err
+
+	case *parse.VarDef:
+		// TODO: should var be a let rec?
+		val, err := self.TypeTerm(expr.Value)
+		if err != nil {
+			return nil, err
+		}
+
+		self.vars.Insert(expr.Name, val)
+		return Record{[]NamedType{}}, err
+
 	case *parse.TaggedExpr:
 	default:
 		panic(fmt.Sprintf("unexpected parse.Expr: %#v", expr))

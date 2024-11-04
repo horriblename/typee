@@ -150,7 +150,7 @@ func TestTypeProgram(t *testing.T) {
 
 			t.Logf("pre-simplify: %v", ty)
 
-			tySimp := fun.Map(ty, func(ty PolymorphicType) SimpleType { return SimplifyType(ty.body) })
+			tySimp := fun.Map(ty, func(ty PolymorphicType) SimpleType { return SimplifyType(ty.Body) })
 			t.Logf("simplified: %v", tySimp)
 
 			typ := fun.Map(tySimp, CoalesceType)

@@ -29,11 +29,11 @@ type TypeScheme interface {
 
 // PolymorphicType is a type with universally quantified type variables
 type PolymorphicType struct {
-	body SimpleType
+	Body SimpleType
 }
 
 func (self PolymorphicType) instantiate() SimpleType {
-	return freshenType(self.body)
+	return freshenType(self.Body)
 }
 
 // SimpleType is a type without universally quantified type variables
