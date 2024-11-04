@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
+
+	"github.com/horriblename/typee/src/parse"
+	"github.com/horriblename/typee/src/simplesub"
 )
 
 const helpMain string = `
@@ -16,6 +20,7 @@ cmd is one of:
 	build    Build a program
 	run      Run a program
 	check    Type check a program
+	repl     Start a repl
 `
 
 func main() {
@@ -35,6 +40,8 @@ func main() {
 		err = cmdRun()
 	case "check":
 		err = cmdCheck()
+	case "repl":
+		err = cmdRepl()
 	default:
 		errorf("Unknown command: %s", cmd)
 		errorf(helpMain)
@@ -115,4 +122,53 @@ func cmdRun() error {
 	}
 
 	return buildProgram(params)
+}
+
+const flagRawType = "raw-type"
+const helpRawType = "print pre-simplified types"
+
+func cmdRepl() error {
+	scanner := bufio.NewScanner(os.Stdin)
+	typer := simplesub.NewTyper(true)
+	rawType := flag.Bool(flagRawType, false, helpRawType)
+	flag.Parse()
+
+	for {
+		os.Stderr.WriteString("\n> ")
+		if ok := scanner.Scan(); !ok {
+			break
+		}
+
+		expr, err := parse.ParseString(scanner.Text())
+		if err != nil {
+			errorf("%s", err.Error())
+			continue
+		}
+
+		if len(expr) == 0 {
+			continue
+		}
+
+		ty, err := typer.TypeTerm(expr[0])
+		if err != nil {
+			errorf("%s", err)
+			continue
+		}
+
+		if *rawType {
+			errorf("pre-simplify: %s", ty.String())
+		}
+
+		simplified := simplesub.SimpleType(ty)
+
+		if *rawType {
+			errorf("pre-coalesce: %v", simplified)
+		}
+
+		simpleTy := simplesub.CoalesceType(simplified)
+
+		errorf(": %s", simpleTy)
+	}
+
+	return scanner.Err()
 }
