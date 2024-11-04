@@ -35,6 +35,7 @@ type FalseLiteral struct{}
 // keywords
 type Def struct{}
 type Set struct{}
+type Var struct{}
 type If struct{}
 type Let struct{}
 type LetRec struct{}
@@ -56,6 +57,7 @@ func (*StrLiteral) token()   {}
 func (*Tag) token()          {}
 func (*Def) token()          {}
 func (*Set) token()          {}
+func (*Var) token()          {}
 func (*If) token()           {}
 func (*Let) token()          {}
 func (*LetRec) token()       {}
@@ -78,6 +80,7 @@ func (self *StrLiteral) String() string { return fmt.Sprintf("StrLiteral{\"%s\"}
 func (self *Tag) String() string        { return fmt.Sprintf("'%s", self.Label) }
 func (*Def) String() string             { return "Def" }
 func (*Set) String() string             { return "Set" }
+func (*Var) String() string             { return "Var" }
 func (*If) String() string              { return "If" }
 func (*Let) String() string             { return "let" }
 func (*LetRec) String() string          { return "letrec" }
