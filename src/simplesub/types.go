@@ -257,9 +257,7 @@ func glb(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
 }
 func lub(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
 	if lhs, rhs, ok := matchPair[ConcreteType, ConcreteType](lhs0, rhs0); ok {
-		if _, err := lubConcrete(lhs, rhs); err != nil {
-			return nil, err
-		}
+		return lubConcrete(lhs, rhs)
 
 	} else if lhs, rhs, ok := matchPair[*Variable, *Variable](lhs0, rhs0); ok {
 		if err := unify(lhs, rhs); err != nil {
@@ -280,7 +278,7 @@ func lub(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
 
 		return lhs, nil
 	}
-	panic("unreachable")
+	panic(fmt.Sprintf("unreachable: type pair %T, %T", lhs0, rhs0))
 }
 
 func matchPair[L, R any](lhs interface{}, rhs interface{}) (_ L, _ R, ok bool) {
