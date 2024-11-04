@@ -159,7 +159,7 @@ func cmdRepl() error {
 			errorf("pre-simplify: %s", ty.String())
 		}
 
-		simplified := simplesub.SimpleType(ty)
+		simplified := simplesub.SimplifyType(ty)
 
 		if *rawType {
 			errorf("pre-coalesce: %v", simplified)
