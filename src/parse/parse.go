@@ -10,6 +10,7 @@ import (
 
 var ErrParse = errors.New("parse error")
 var LexError = errors.New("error in lex")
+var ErrExpectEOF = errors.New("expected EOF")
 
 type internalError struct{ error }
 
@@ -31,7 +32,11 @@ func ParseString(source string) ([]Expr, error) {
 		return nil, errors.Join(LexError, err)
 	}
 
-	_, prog, err := Program(tokens)
+	rest, prog, err := Program(tokens)
+	if len(rest) != 0 {
+		fmt.Printf("remaining tokens: %v\n", rest)
+		return nil, fmt.Errorf("%w: got token %s", ErrExpectEOF, rest[0])
+	}
 	return prog, err
 }
 
@@ -177,6 +182,9 @@ func setForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	check(err)
 
 	in, rval, err := expr(in)
+	check(err)
+
+	in, _, err = rparen(in)
 	check(err)
 
 	setExpr := &Set{
