@@ -296,7 +296,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		tyFields := namedTypesToMap(ty.Fields)
 		for _, boundField := range bound.Fields {
 			if tyField, ok := tyFields[boundField.Name]; ok {
-				if err := constrain(boundField.Type, tyField); err != nil {
+				if err := constrain(tyField, boundField.Type); err != nil {
 					return err
 				}
 			} else {
