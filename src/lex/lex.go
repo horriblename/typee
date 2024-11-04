@@ -13,7 +13,7 @@ type output []Token
 
 func LexString(source string) ([]Token, error) {
 	input := []rune(source)
-	input, _, _ = skipWhitespace(input)
+	input, _, _ = skipped(input)
 
 	token := combinator.WithSuffix(
 		combinator.Any(
@@ -31,7 +31,7 @@ func LexString(source string) ([]Token, error) {
 			keywordOrSymbol,
 			intLiteral,
 		),
-		skipWhitespace,
+		skipped,
 	)
 	parser := combinator.Many(token)
 	_, tokens, err := parser(input)
@@ -179,13 +179,49 @@ func tag(in []rune) ([]rune, Token, error) {
 	}, nil
 }
 
-func skipWhitespace(in []rune) ([]rune, struct{}, error) {
+func skipped(in []rune) ([]rune, struct{}, error) {
+	rest, _, err := whitespace(in)
+	if err != nil {
+		return in, struct{}{}, nil
+	}
+	in = rest
+
+	for {
+		rest, _, err = comment(in)
+		if err != nil {
+			return in, struct{}{}, nil
+		}
+		in = rest
+
+		rest, _, err := whitespace(in)
+		if err != nil {
+			return in, struct{}{}, nil
+		}
+		in = rest
+	}
+}
+
+func whitespace(in []rune) ([]rune, struct{}, error) {
 	for i, char := range in {
 		if !unicode.IsSpace(char) {
 			return in[i:], struct{}{}, nil
 		}
 	}
 
-	// reached end of input
-	return make([]rune, 0), struct{}{}, nil
+	return nil, struct{}{}, ErrLex
+}
+
+func comment(in []rune) ([]rune, struct{}, error) {
+	if len(in) == 0 || in[0] != '#' {
+		return nil, struct{}{}, ErrLex
+	}
+
+	for i, c := range in[1:] {
+		// who cares about windows lmao
+		if c == '\n' {
+			return in[2+i:], struct{}{}, nil
+		}
+	}
+
+	return []rune{}, struct{}{}, nil
 }
