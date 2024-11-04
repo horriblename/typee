@@ -2,6 +2,7 @@ package lex
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"unicode"
 
@@ -10,6 +11,8 @@ import (
 
 type input []rune
 type output []Token
+
+var ErrExpectEOF = errors.New("expected EOF")
 
 func LexString(source string) ([]Token, error) {
 	input := []rune(source)
@@ -34,7 +37,11 @@ func LexString(source string) ([]Token, error) {
 		skipped,
 	)
 	parser := combinator.Many(token)
-	_, tokens, err := parser(input)
+	rest, tokens, err := parser(input)
+
+	if len(rest) != 0 {
+		return nil, fmt.Errorf("%w: found %s...", ErrExpectEOF, string(rest[:min(len(rest), 10)]))
+	}
 
 	return tokens, err
 }

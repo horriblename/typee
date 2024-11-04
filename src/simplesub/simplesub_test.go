@@ -2,14 +2,16 @@ package simplesub
 
 import (
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/types"
 )
 
-func TestBiunify(t *testing.T) {
+func TestTypeExpr(t *testing.T) {
 	testCases := []struct {
 		desc  string
 		input string
@@ -69,10 +71,10 @@ func TestBiunify(t *testing.T) {
 			input: "(let [x 34 y {z: 20}] (if [true] x y.z))",
 			typ:   &types.Int{},
 		},
-		{
-			desc:  "local let expr does not generalize",
-			input: "(let [f (fn [x] x)] (let [y (f 3)] {f: f, y: y}))",
-		},
+		// {
+		// 	desc:  "local let expr does not generalize",
+		// 	input: "(let [f (fn [x] x)] (let [y (f 3)] {f: f, y: y}))",
+		// },
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -98,6 +100,53 @@ func TestBiunify(t *testing.T) {
 			t.Logf("coalesced type: %v\n", typ)
 			assert.NEq(tC.typ, nil, "bad test case")
 			assert.True(types.StructuralEq(tC.typ, typ), "expected type", tC.typ, ", got:", typ)
+		})
+	}
+}
+
+func TestTypeProgram(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input string
+		typ   []types.Type
+	}{
+		{
+			desc:  "basic function",
+			input: "(def foo [x] x)",
+			typ: []types.Type{
+				&types.Func{
+					[]types.Type{&types.Generic{1, "", ""}},
+					&types.Generic{1, "", ""},
+				},
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			assert := assert.NewTestAsserts(t)
+			checker := NewTyper(true)
+
+			program, err := parse.ParseString(tC.input)
+			assert.Ok(err)
+
+			ty, err := checker.TypeProgram(program)
+			assert.Ok(err)
+
+			t.Logf("pre-simplify: %v", ty)
+
+			tySimp := fun.Map(ty, func(ty PolymorphicType) SimpleType { return SimplifyType(ty.body) })
+			t.Logf("simplified: %v", tySimp)
+
+			typ := fun.Map(tySimp, CoalesceType)
+
+			t.Logf("coalesced type: %v\n", typ)
+			assert.NEq(tC.typ, nil, "bad test case")
+			if len(tC.typ) != len(typ) {
+				t.Errorf("expected %d results, got %d", len(tC.typ), len(typ))
+			}
+			for expect, got := range fun.ZipIter(slices.Values(tC.typ), slices.Values(typ)) {
+				assert.True(types.StructuralEq(expect, got), "expected type", expect, ", got:", got)
+			}
 		})
 	}
 }

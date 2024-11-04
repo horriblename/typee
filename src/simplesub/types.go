@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/horriblename/typee/src/assert"
-	"github.com/horriblename/typee/src/simplesub/internal/ordered_set"
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/opt"
+	"github.com/horriblename/typee/src/simplesub/internal/ordered_set"
 	"github.com/horriblename/typee/src/types"
 )
 
@@ -32,7 +32,9 @@ type PolymorphicType struct {
 	body SimpleType
 }
 
-func (self PolymorphicType) instantiate() SimpleType { panic("unimpl") }
+func (self PolymorphicType) instantiate() SimpleType {
+	return freshenType(self.body)
+}
 
 // SimpleType is a type without universally quantified type variables
 type SimpleType interface {

@@ -21,6 +21,7 @@ var ErrTypeMismatch = errors.New("mismatched type")
 var ErrMissingField = errors.New("missing field")
 var ErrConstraintViolated = errors.New("constraint violated")
 var ErrCannotConstrain = errors.New("cannot constrain")
+var ErrInvalidTopLevel = errors.New("invalid top level construct: must be set or def")
 
 const scopeLevelTop int = 1
 
@@ -34,17 +35,46 @@ func NewTyper(debug bool) *Typer {
 	}
 }
 
-func (self *Typer) TypeProgram(program []parse.Expr) ([]SimpleType, error) {
+func (self *Typer) TypeProgram(program []parse.Expr) ([]PolymorphicType, error) {
 	var err error
-	types := make([]SimpleType, len(program))
+	types := make([]PolymorphicType, len(program))
 	for i, expr := range program {
-		types[i], err = self.TypeTerm(expr)
-		if err != nil {
-			return nil, err
+		switch e := expr.(type) {
+		case *parse.FuncDef:
+			types[i], err = self.typeLetRhs(e.Name, e)
+			if err != nil {
+				return nil, err
+			}
+
+		case *parse.Set:
+			types[i], err = self.typeLetRhs(e.Name, e.Value)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
 		}
 	}
 
 	return types, nil
+}
+
+func (self *Typer) typeLetRhs(name string, rhs parse.Expr) (PolymorphicType, error) {
+	// NOTE: currently top level definitions are always recursive let,
+	// and passing FuncDef as rhs is a little hack so I can write (def foo ...)
+	// instead of (set foo (fn ...))
+	eTy := freshVar()
+	self.vars.Insert(name, eTy)
+	ty, err := self.TypeTerm(rhs)
+	if err != nil {
+		return PolymorphicType{}, err
+	}
+
+	if err := constrain(ty, eTy); err != nil {
+		return PolymorphicType{}, err
+	}
+
+	return PolymorphicType{eTy}, nil
 }
 
 func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
@@ -288,4 +318,52 @@ func unify(lhs *Variable, rhs *Variable) error /*FIXME: idk what type*/ {
 
 func freshVar() *Variable {
 	return &Variable{uid: newId(), lowerBound: Bot{}, upperBound: Top{}}
+}
+
+func freshenType(ty SimpleType) SimpleType {
+	freshened := map[*Variable]*Variable{}
+	return freshenInner(freshened, ty)
+}
+
+func freshenInner(freshened map[*Variable]*Variable, ty SimpleType) SimpleType {
+	switch t := ty.(type) {
+	case *Variable:
+		if match, ok := freshened[t]; ok {
+			return match
+		} else {
+			v := freshVar()
+			v.lowerBound = freshenConcrete(freshened, t.LowerBound())
+			v.upperBound = freshenConcrete(freshened, t.UpperBound())
+			freshened[t] = v
+			return v
+		}
+	case ConcreteType:
+		return freshenConcrete(freshened, t)
+	default:
+		panic(fmt.Sprintf("unexpected simplesub.SimpleType: %#v", t))
+	}
+
+}
+
+func freshenConcrete(freshened map[*Variable]*Variable, ty ConcreteType) ConcreteType {
+	switch t := ty.(type) {
+	case Func:
+		return Func{
+			fun.Map(t.Args, func(arg SimpleType) SimpleType {
+				return freshenInner(freshened, arg)
+			}),
+			freshenInner(freshened, t.Ret),
+		}
+	case Int:
+	case Record:
+		return Record{
+			fun.Map(t.Fields, func(arg NamedType) NamedType {
+				return NamedType{arg.Name, freshenInner(freshened, arg.Type)}
+			}),
+		}
+	case Bool, Bot, Str, Top: // terminals
+	default:
+		panic(fmt.Sprintf("unexpected simplesub.ConcreteType: %#v", t))
+	}
+	return ty
 }
