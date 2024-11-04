@@ -71,6 +71,11 @@ func TestTypeExpr(t *testing.T) {
 			input: "(let [x 34 y {z: 20}] (if [true] x y.z))",
 			typ:   &types.Int{},
 		},
+		{
+			desc:  "record access",
+			input: "(let [foo {x: 34}] foo.x)",
+			typ:   &types.Int{},
+		},
 		// {
 		// 	desc:  "local let expr does not generalize",
 		// 	input: "(let [f (fn [x] x)] (let [y (f 3)] {f: f, y: y}))",
