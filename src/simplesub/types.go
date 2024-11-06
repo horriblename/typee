@@ -6,7 +6,6 @@ import (
 	"maps"
 	"reflect"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/horriblename/typee/src/assert"
@@ -62,11 +61,10 @@ func (self *Variable) asTypeVar() types.Type {
 }
 
 func (self *Variable) String() string {
-	repr := "nil"
 	if self.representative != nil {
-		repr = strconv.Itoa(int(self.representative.uid))
+		return fmt.Sprintf("t%d=t%d[%v, %v]", self.uid, self.representative.uid, self.lowerBound, self.upperBound)
 	}
-	return fmt.Sprintf("t%d(repr:%s)[%v, %v]", self.uid, repr, self.lowerBound, self.upperBound)
+	return fmt.Sprintf("t%d[%v, %v]", self.uid, self.lowerBound, self.upperBound)
 }
 func (self *Variable) LowerBound() ConcreteType { return self.lowerBound }
 func (self *Variable) UpperBound() ConcreteType { return self.upperBound }
@@ -334,7 +332,7 @@ func (self Int) concrete()    {}
 func (self Str) concrete()    {}
 
 func (self Top) String() string { return "⊤" }
-func (self Bot) String() string { return "Bot" }
+func (self Bot) String() string { return "⊥" }
 func (self Func) String() string {
 	return fmt.Sprintf("(%s -> %s)",
 		strings.Join(fun.Map(self.Args, func(t SimpleType) string { return t.String() }), ", "),
