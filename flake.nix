@@ -54,6 +54,10 @@
         nativeBuildInputs = with pkgs; [
           go123
           go-sumtype
+
+          pkg-config
+          gobject-introspection
+          glib
         ];
       };
     });
