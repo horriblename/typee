@@ -3,8 +3,8 @@ package simplesub
 import (
 	"fmt"
 
-	orderedset "github.com/horriblename/typee/src/simplesub/internal/ordered_set"
 	"github.com/horriblename/typee/src/fun"
+	orderedset "github.com/horriblename/typee/src/simplesub/internal/ordered_set"
 	"github.com/horriblename/typee/src/types"
 )
 
@@ -33,7 +33,7 @@ func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[*Variable]
 		}
 	case Func:
 		for _, arg := range ty.Args {
-			analyze(arg, pol, pos, neg)
+			analyze(arg, !pol, pos, neg)
 		}
 		analyze(ty.Ret, pol, pos, neg)
 	case *Variable:
