@@ -88,7 +88,13 @@ func (self *Typer) typeLetRhs(name string, rhs parse.Expr) (PolymorphicType, err
 	return PolymorphicType{eTy}, nil
 }
 
-func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
+func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
+	trace("typing: %v", term.Pretty())
+	indentLvl++
+	defer func() {
+		indentLvl--
+		trace(": %v", a)
+	}()
 	switch expr := term.(type) {
 	case *parse.Symbol:
 		if ty, ok := self.vars.Get(expr.Name).Unwrap(); ok {
@@ -267,6 +273,9 @@ func (self *Typer) TypeTerm(term parse.Expr) (SimpleType, error) {
 }
 
 func constrain(ty0 SimpleType, bound0 SimpleType) error {
+	trace("constrain %v <: %v", ty0, bound0)
+	indentLvl++
+	defer func() { indentLvl-- }()
 	// TODO: simpler-sub used type equality I think?
 	if _, _, ok := matchPair[Bool, Bool](ty0, bound0); ok {
 		return nil

@@ -127,12 +127,21 @@ func cmdRun() error {
 }
 
 const flagRawType = "raw-type"
-const helpRawType = "print pre-simplified types"
+const helpRawType = "Print pre-simplified types"
+
+const flagTraceTyper = "trace-typer"
+const helpTraceTyper = "Print the type inference debug trace"
 
 func cmdRepl() error {
 	rawType := flag.Bool(flagRawType, false, helpRawType)
 	flag.Parse()
 
+	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
+	flag.Parse()
+
+	if *traceTyper {
+		simplesub.EnableTrace = true
+	}
 	typer := simplesub.NewTyper(true)
 
 	rl, err := readline.NewEx(&readline.Config{
