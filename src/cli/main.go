@@ -135,7 +135,11 @@ func cmdRepl() error {
 
 	typer := simplesub.NewTyper(true)
 
-	rl, err := readline.New("> ")
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:       "> ",
+		HistoryFile:  "/tmp/typee.hist",
+		HistoryLimit: 100,
+	})
 	if err != nil {
 		return err
 	}
