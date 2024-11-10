@@ -112,6 +112,9 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	case *lex.Class:
 		return classDef(in)
 
+	case *lex.Interface:
+		return interfaceDef(in)
+
 	case nil:
 		return nil, nil, errAt(in)
 
@@ -571,6 +574,9 @@ func kwLetRec(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func kwClass(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Class])(in)
+}
+func kwInterface(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Interface])(in)
 }
 func kwFn(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Fn])(in)

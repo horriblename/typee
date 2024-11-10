@@ -273,6 +273,22 @@ func TestParse(t *testing.T) {
 			}},
 		},
 		{
+			desc:  "interface def",
+			input: `(interface Foo {pub foo Int})`,
+			output: []Expr{&InterfaceDef{
+				id:     1,
+				Name:   "Foo",
+				Supers: []string{},
+				Fields: []ClassField{
+					{
+						Access: types.AccessPublic,
+						Name:   "foo",
+						Type:   TypeName{"Int"},
+					},
+				},
+			}},
+		},
+		{
 			desc:  "accessors",
 			input: `(x#foo x.y)`,
 			output: []Expr{&Form{
@@ -331,7 +347,7 @@ func TestParseType(t *testing.T) {
 			assert.Eq(len(r1), 0)
 
 			if !reflect.DeepEqual(got, tC.output) {
-				t.Fatalf("expected output:\n  %+v\n  %+v", tC.output, got)
+				t.Fatalf("expected output:\n  %+v\ngot:\n  %+v", tC.output, got)
 			}
 		})
 	}

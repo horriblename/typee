@@ -137,6 +137,13 @@ type ClassField struct {
 	Type   TypeRepr
 }
 
+type InterfaceDef struct {
+	id     int
+	Name   string
+	Supers []string
+	Fields []ClassField
+}
+
 type MethodAccess struct {
 	id     int
 	Class  string
@@ -158,6 +165,7 @@ func (*Fn) ast()           {}
 func (*CaseExpr) ast()     {}
 func (*Record) ast()       {}
 func (*ClassDef) ast()     {}
+func (*InterfaceDef) ast() {}
 func (*RecordAccess) ast() {}
 func (*MethodAccess) ast() {}
 
@@ -177,6 +185,7 @@ func (self *Fn) ID() int           { return self.id }
 func (self *CaseExpr) ID() int     { return self.id }
 func (self *Record) ID() int       { return self.id }
 func (self *ClassDef) ID() int     { return self.id }
+func (self *InterfaceDef) ID() int { return self.id }
 func (self *RecordAccess) ID() int { return self.id }
 func (self *MethodAccess) ID() int { return self.id }
 
@@ -227,6 +236,9 @@ func (self *Record) String() string {
 }
 func (self *ClassDef) String() string {
 	return fmt.Sprintf("#%d (class %s %v %v)", self.id, self.Name, self.Super, self.Fields)
+}
+func (self *InterfaceDef) String() string {
+	return fmt.Sprintf("#%d (interface %s %v {%v})", self.id, self.Name, self.Supers, self.Fields)
 }
 func (self *RecordAccess) String() string {
 	return fmt.Sprintf("#%d %s.%s", self.id, self.Record, self.Field)
@@ -349,6 +361,33 @@ func (self *ClassDef) Pretty() string {
 		b.WriteString(super + " ")
 	}
 	b.WriteString("{")
+	b.WriteString(self.Fields[0].Name)
+	b.WriteRune(':')
+	b.WriteString(self.Fields[0].Type.String())
+
+	for _, field := range self.Fields[1:] {
+		b.WriteString(", ")
+		b.WriteString(field.Access.String())
+		b.WriteRune(' ')
+		b.WriteString(field.Name)
+		b.WriteRune(':')
+		b.WriteString(field.Type.String())
+	}
+	b.WriteString("}")
+	return b.String()
+}
+
+func (self *InterfaceDef) Pretty() string {
+	if len(self.Fields) == 0 {
+		return "{}"
+	}
+
+	var b strings.Builder
+	b.WriteString("class ")
+	b.WriteString(self.Name)
+	b.WriteString("(")
+	b.WriteString(strings.Join(self.Supers, ","))
+	b.WriteString(") {")
 	b.WriteString(self.Fields[0].Name)
 	b.WriteRune(':')
 	b.WriteString(self.Fields[0].Type.String())

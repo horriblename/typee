@@ -60,7 +60,6 @@ func classField(in []lex.Token) ([]lex.Token, ClassField, error) {
 		),
 	)(in)
 	if err != nil {
-		println("class field err", err.Error())
 		return nil, ClassField{}, err
 	}
 
@@ -72,6 +71,36 @@ func classField(in []lex.Token) ([]lex.Token, ClassField, error) {
 	return in, c, nil
 }
 
+func interfaceDef(in []lex.Token) ([]lex.Token, Expr, error) {
+	in, res, err := combinator.Surround(lparen,
+		combinator.WithPrefix(
+			kwInterface,
+			combinator.Then(
+				symbolName,
+				combinator.Then(
+					combinator.Maybe(combinator.Surround(lparen, combinator.Many0(symbolName), rparen)),
+					combinator.Surround(
+						lbrace,
+						combinator.Delimited(classField, comma),
+						rbrace,
+					),
+				),
+			),
+		),
+		rparen)(in)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	t := InterfaceDef{
+		id:     newId(),
+		Name:   res.One,
+		Supers: res.Two.One.Or([]string{}),
+		Fields: res.Two.Two,
+	}
+	return in, &t, nil
+}
 func memberVisibility(in []lex.Token) ([]lex.Token, types.AccessLvl, error) {
 	if len(in) == 0 {
 		return nil, 0, errAt(in)
