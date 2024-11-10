@@ -32,6 +32,7 @@ func LexString(source string) ([]Token, error) {
 			colon,
 			comma,
 			dot,
+			hash,
 			strLiteral,
 			tag,
 			keywordOrSymbol,
@@ -66,6 +67,7 @@ func rbrace(in []rune) ([]rune, Token, error)   { return combinator.MatchOne(in,
 func colon(in []rune) ([]rune, Token, error)    { return combinator.MatchOne(in, ':', &Colon{}) }
 func comma(in []rune) ([]rune, Token, error)    { return combinator.MatchOne(in, ',', &Comma{}) }
 func dot(in []rune) ([]rune, Token, error)      { return combinator.MatchOne(in, '.', &Dot{}) }
+func hash(in []rune) ([]rune, Token, error)     { return combinator.MatchOne(in, '#', &Hash{}) }
 func doubleQuote(in []rune) ([]rune, struct{}, error) {
 	return combinator.MatchOne(in, '"', struct{}{})
 }
@@ -157,7 +159,7 @@ func symbolStr(in []rune) ([]rune, string, error) {
 	var char rune
 	for i, char = range in {
 		switch char {
-		case '(', ')', '[', ']', '{', '}', ':', ',', '.', '\'':
+		case '(', ')', '[', ']', '{', '}', ':', ',', '.', '\'', '#':
 			if i == 0 {
 				return nil, "", ErrLex
 			}
@@ -224,7 +226,7 @@ func whitespace(in []rune) ([]rune, struct{}, error) {
 }
 
 func comment(in []rune) ([]rune, struct{}, error) {
-	if len(in) == 0 || in[0] != '#' {
+	if len(in) == 0 || in[0] != ';' {
 		return nil, struct{}{}, ErrLex
 	}
 
@@ -245,24 +247,24 @@ func init() {
 	}
 
 	println("--- inline test simple comment")
-	rest, _, err := comment([]rune("# hi"))
+	rest, _, err := comment([]rune("; hi"))
 	assert.Eq(len(rest), 0)
 	assert.Ok(err)
 
 	println("--- inline test comment endline")
-	in := []rune("#hi\nbye")
+	in := []rune(";hi\nbye")
 	rest, _, err = comment(in)
 	assert.Eq(string(rest), "bye")
 	assert.Ok(err)
 
 	println("--- inline test skips: basic")
-	in = []rune("  #hi\nbye")
+	in = []rune("  ;hi\nbye")
 	rest, _, err = skipped(in)
 	assert.Eq(string(rest), "bye")
 	assert.Ok(err)
 
 	println("--- inline test skips: back to back")
-	in = []rune("  #hi\n  #comment2 \n\t 2")
+	in = []rune("  ;hi\n  ;comment2 \n\t 2")
 	rest, _, err = skipped(in)
 	assert.Eq(string(rest), "2")
 	assert.Ok(err)
