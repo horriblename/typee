@@ -34,11 +34,11 @@ func TestLex(t *testing.T) {
 		},
 		{
 			desc:  "keywords",
-			input: "def set defoo bar true false if let fn case letrec class priv pub protected self",
+			input: "def set defoo bar true false if let fn case letrec class priv pub protected self interface",
 			output: []Token{&tokDef, &tokSet, &Symbol{Name: "defoo"},
 				&Symbol{Name: "bar"}, &TrueLiteral{}, &FalseLiteral{}, &If{},
 				&Let{}, &Fn{}, &Case{}, &LetRec{}, &Class{}, &Priv{}, &Pub{},
-				&Protected{}, &Self{}},
+				&Protected{}, &Self{}, &Interface{}},
 		},
 		{
 			desc:   "simple form",

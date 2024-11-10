@@ -44,6 +44,7 @@ type LetRec struct{}
 type Fn struct{}
 type Case struct{}
 type Class struct{}
+type Interface struct{}
 type Pub struct{}
 type Protected struct{}
 type Priv struct{}
@@ -72,6 +73,7 @@ func (*LetRec) token()       {}
 func (*Fn) token()           {}
 func (*Case) token()         {}
 func (*Class) token()        {}
+func (*Interface) token()    {}
 func (*Pub) token()          {}
 func (*Protected) token()    {}
 func (*Priv) token()         {}
@@ -102,6 +104,7 @@ func (*LetRec) String() string          { return "letrec" }
 func (*Fn) String() string              { return "fn" }
 func (*Case) String() string            { return "case" }
 func (*Class) String() string           { return "class" }
+func (*Interface) String() string       { return "interface" }
 func (*Pub) String() string             { return "pub" }
 func (*Protected) String() string       { return "protected" }
 func (*Priv) String() string            { return "priv" }
