@@ -23,3 +23,10 @@ func None[T any]() Option[T] {
 func (self Option[T]) IsSome() bool {
 	return self.valid
 }
+
+func (self Option[T]) Or(o T) T {
+	if self.valid {
+		return self.value
+	}
+	return o
+}
