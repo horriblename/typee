@@ -109,6 +109,9 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	case *lex.Case:
 		return caseExpr(in)
 
+	case *lex.Class:
+		return classDef(in)
+
 	case nil:
 		return nil, nil, errAt(in)
 
@@ -566,6 +569,9 @@ func kwLet(in []lex.Token) ([]lex.Token, struct{}, error) {
 func kwLetRec(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.LetRec])(in)
 }
+func kwClass(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Class])(in)
+}
 func kwFn(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Fn])(in)
 }
@@ -643,10 +649,10 @@ func wrapIfErr(in []lex.Token, err error) error {
 	if len(in) == 0 {
 		return fmt.Errorf("at the end: %w", err)
 	} else if len(in) <= 10 {
-		return fmt.Errorf("at '%s': %w", in, err)
+		return fmt.Errorf("at %v: %w", in, err)
 	}
 
-	return fmt.Errorf("at '%s...': %w", in[:10], err)
+	return fmt.Errorf("at %v...: %w", in[:10], err)
 }
 
 func wrappedResult[I ~[]lex.Token, O any](parser combinator.Parser[I, O]) combinator.Parser[I, O] {

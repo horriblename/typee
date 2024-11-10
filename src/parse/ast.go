@@ -8,6 +8,7 @@ import (
 
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/opt"
+	"github.com/horriblename/typee/src/types"
 )
 
 type Expr interface {
@@ -123,6 +124,19 @@ type RecordField struct {
 	Value Expr
 }
 
+type ClassDef struct {
+	id     int
+	Name   string
+	Super  opt.Option[string]
+	Fields []ClassField
+}
+
+type ClassField struct {
+	Access types.AccessLvl
+	Name   string
+	Type   TypeRepr
+}
+
 type MethodAccess struct {
 	id     int
 	Class  string
@@ -143,6 +157,7 @@ func (*TaggedExpr) ast()   {}
 func (*Fn) ast()           {}
 func (*CaseExpr) ast()     {}
 func (*Record) ast()       {}
+func (*ClassDef) ast()     {}
 func (*RecordAccess) ast() {}
 func (*MethodAccess) ast() {}
 
@@ -161,6 +176,7 @@ func (self *TaggedExpr) ID() int   { return self.id }
 func (self *Fn) ID() int           { return self.id }
 func (self *CaseExpr) ID() int     { return self.id }
 func (self *Record) ID() int       { return self.id }
+func (self *ClassDef) ID() int     { return self.id }
 func (self *RecordAccess) ID() int { return self.id }
 func (self *MethodAccess) ID() int { return self.id }
 
@@ -208,6 +224,9 @@ func (self *CaseBranch) String() string {
 }
 func (self *Record) String() string {
 	return fmt.Sprintf("#%d %v", self.id, self.Fields)
+}
+func (self *ClassDef) String() string {
+	return fmt.Sprintf("#%d (class %s %v %v)", self.id, self.Name, self.Super, self.Fields)
 }
 func (self *RecordAccess) String() string {
 	return fmt.Sprintf("#%d %s.%s", self.id, self.Record, self.Field)
@@ -312,6 +331,35 @@ func (self *Record) Pretty() string {
 		b.WriteString(field.Name)
 		b.WriteRune(':')
 		b.WriteString(field.Value.Pretty())
+	}
+	b.WriteString("}")
+	return b.String()
+}
+
+func (self *ClassDef) Pretty() string {
+	if len(self.Fields) == 0 {
+		return "{}"
+	}
+
+	var b strings.Builder
+	b.WriteString("class ")
+	b.WriteString(self.Name)
+	b.WriteString(" ")
+	if super, ok := self.Super.Unwrap(); ok {
+		b.WriteString(super + " ")
+	}
+	b.WriteString("{")
+	b.WriteString(self.Fields[0].Name)
+	b.WriteRune(':')
+	b.WriteString(self.Fields[0].Type.String())
+
+	for _, field := range self.Fields[1:] {
+		b.WriteString(", ")
+		b.WriteString(field.Access.String())
+		b.WriteRune(' ')
+		b.WriteString(field.Name)
+		b.WriteRune(':')
+		b.WriteString(field.Type.String())
 	}
 	b.WriteString("}")
 	return b.String()

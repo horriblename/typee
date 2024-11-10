@@ -4,7 +4,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/lex"
 	"github.com/horriblename/typee/src/opt"
+	"github.com/horriblename/typee/src/types"
 )
 
 func TestParse(t *testing.T) {
@@ -246,6 +249,30 @@ func TestParse(t *testing.T) {
 			}},
 		},
 		{
+			desc:  "empty class def",
+			input: `(class Foo {})`,
+			output: []Expr{&ClassDef{
+				id:     1,
+				Name:   "Foo",
+				Fields: []ClassField{},
+			}},
+		},
+		{
+			desc:  "class def",
+			input: `(class Foo {pub foo Int,})`,
+			output: []Expr{&ClassDef{
+				id:   1,
+				Name: "Foo",
+				Fields: []ClassField{
+					{
+						Access: types.AccessPublic,
+						Name:   "foo",
+						Type:   TypeName{"Int"},
+					},
+				},
+			}},
+		},
+		{
 			desc:  "accessors",
 			input: `(x#foo x.y)`,
 			output: []Expr{&Form{
@@ -273,6 +300,35 @@ func TestParse(t *testing.T) {
 				t.Logf("%#v", got)
 				t.Fatal(err)
 			}
+
+			if !reflect.DeepEqual(got, tC.output) {
+				t.Fatalf("expected output:\n  %+v\n  %+v", tC.output, got)
+			}
+		})
+	}
+}
+
+func TestParseType(t *testing.T) {
+	testCases := []struct {
+		desc   string
+		input  string
+		output TypeRepr
+	}{
+		{
+			desc:   "simple name",
+			input:  "Foo",
+			output: TypeName{"Foo"},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			assert := assert.NewTestAsserts(t)
+			tokens, err := lex.LexString(tC.input)
+			assert.Ok(err)
+
+			r1, got, err := type_(tokens)
+			assert.Ok(err)
+			assert.Eq(len(r1), 0)
 
 			if !reflect.DeepEqual(got, tC.output) {
 				t.Fatalf("expected output:\n  %+v\n  %+v", tC.output, got)
