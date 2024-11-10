@@ -6,6 +6,7 @@ import "fmt"
 
 type Token interface {
 	token()
+	String() string
 }
 
 type LParen struct{}
@@ -42,6 +43,11 @@ type Let struct{}
 type LetRec struct{}
 type Fn struct{}
 type Case struct{}
+type Class struct{}
+type Pub struct{}
+type Protected struct{}
+type Priv struct{}
+type Self struct{}
 
 func (*LParen) token()       {}
 func (*RParen) token()       {}
@@ -65,6 +71,11 @@ func (*Let) token()          {}
 func (*LetRec) token()       {}
 func (*Fn) token()           {}
 func (*Case) token()         {}
+func (*Class) token()        {}
+func (*Pub) token()          {}
+func (*Protected) token()    {}
+func (*Priv) token()         {}
+func (*Self) token()         {}
 func (*TrueLiteral) token()  {}
 func (*FalseLiteral) token() {}
 
@@ -75,6 +86,7 @@ func (*RBracket) String() string        { return "RBracket" }
 func (*LBrace) String() string          { return "LBrace" }
 func (*RBrace) String() string          { return "RBrace" }
 func (*Colon) String() string           { return "Colon" }
+func (*Comma) String() string           { return "Comma" }
 func (*Dot) String() string             { return "Dot" }
 func (*Hash) String() string            { return "Hash" }
 func (self *Symbol) String() string     { return fmt.Sprintf("Symbol{\"%s\"}", self.Name) }
@@ -89,5 +101,10 @@ func (*Let) String() string             { return "let" }
 func (*LetRec) String() string          { return "letrec" }
 func (*Fn) String() string              { return "fn" }
 func (*Case) String() string            { return "case" }
+func (*Class) String() string           { return "class" }
+func (*Pub) String() string             { return "pub" }
+func (*Protected) String() string       { return "protected" }
+func (*Priv) String() string            { return "priv" }
+func (*Self) String() string            { return "self" }
 func (*TrueLiteral) String() string     { return "true" }
 func (*FalseLiteral) String() string    { return "false" }
