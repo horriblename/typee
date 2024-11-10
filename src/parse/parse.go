@@ -443,18 +443,37 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 	}
 
 	rest := in[1:]
-	rest, accessor, err := combinator.Maybe(combinator.WithPrefix(dot, symbolName))(rest)
+	rest2, accessor, err := combinator.Maybe(
+		combinator.Any(
+			combinator.Map(
+				combinator.WithPrefix(dot, symbolName),
+				func(member string) Expr {
+					return &RecordAccess{
+						id:     newId(),
+						Record: sym.Name,
+						Field:  member,
+					}
+				},
+			),
+			combinator.Map(
+				combinator.WithPrefix(hash, symbolName),
+				func(member string) Expr {
+					return &MethodAccess{
+						id:     newId(),
+						Class:  sym.Name,
+						Method: member,
+					}
+				},
+			),
+		),
+	)(rest)
 
 	if err != nil {
-		return nil, nil, errAt(in)
+		return nil, nil, err
 	}
 
-	if member, ok := accessor.Unwrap(); ok {
-		return rest, &RecordAccess{
-			id:     newId(),
-			Record: sym.Name,
-			Field:  member,
-		}, nil
+	if a, ok := accessor.Unwrap(); ok {
+		return rest2, a, nil
 	}
 
 	return rest, &Symbol{id: newId(), Name: sym.Name}, nil
@@ -525,6 +544,9 @@ func comma(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func dot(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Dot])(in)
+}
+func hash(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Hash])(in)
 }
 func kwDef(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Def])(in)

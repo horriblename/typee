@@ -123,6 +123,12 @@ type RecordField struct {
 	Value Expr
 }
 
+type MethodAccess struct {
+	id     int
+	Class  string
+	Method string
+}
+
 func (*Form) ast()         {}
 func (*Symbol) ast()       {}
 func (*FuncDef) ast()      {}
@@ -138,6 +144,7 @@ func (*Fn) ast()           {}
 func (*CaseExpr) ast()     {}
 func (*Record) ast()       {}
 func (*RecordAccess) ast() {}
+func (*MethodAccess) ast() {}
 
 func (self *Form) ID() int         { return self.id }
 func (self *Symbol) ID() int       { return self.id }
@@ -155,6 +162,7 @@ func (self *Fn) ID() int           { return self.id }
 func (self *CaseExpr) ID() int     { return self.id }
 func (self *Record) ID() int       { return self.id }
 func (self *RecordAccess) ID() int { return self.id }
+func (self *MethodAccess) ID() int { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
@@ -206,6 +214,9 @@ func (self *RecordAccess) String() string {
 }
 func (self *RecordField) String() string {
 	return fmt.Sprintf("%s: %s", self.Name, self.Value)
+}
+func (self *MethodAccess) String() string {
+	return fmt.Sprintf("#%d %s#%s", self.id, self.Class, self.Method)
 }
 
 func prettySlice(xs []Expr) []string {
@@ -281,6 +292,9 @@ func (self *CaseBranch) Pretty() string {
 }
 func (self *RecordAccess) Pretty() string {
 	return fmt.Sprintf("%s.%s", self.Record, self.Field)
+}
+func (self *MethodAccess) Pretty() string {
+	return fmt.Sprintf("%s#%s", self.Class, self.Method)
 }
 func (self *Record) Pretty() string {
 	if len(self.Fields) == 0 {

@@ -245,6 +245,25 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			desc:  "accessors",
+			input: `(x#foo x.y)`,
+			output: []Expr{&Form{
+				id: 3,
+				Children: []Expr{
+					&MethodAccess{
+						id:     1,
+						Class:  "x",
+						Method: "foo",
+					},
+					&RecordAccess{
+						id:     2,
+						Record: "x",
+						Field:  "y",
+					},
+				},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
