@@ -253,16 +253,18 @@ func TestParse(t *testing.T) {
 			input: `(class Foo {})`,
 			output: []Expr{&ClassDef{
 				id:     1,
+				Supers: []string{},
 				Name:   "Foo",
 				Fields: []ClassField{},
 			}},
 		},
 		{
 			desc:  "class def",
-			input: `(class Foo {pub foo Int,})`,
+			input: `(class Foo(Bar Baz) {pub foo Int,})`,
 			output: []Expr{&ClassDef{
-				id:   1,
-				Name: "Foo",
+				id:     1,
+				Name:   "Foo",
+				Supers: []string{"Bar", "Baz"},
 				Fields: []ClassField{
 					{
 						Access: types.AccessPublic,

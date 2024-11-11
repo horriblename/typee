@@ -27,7 +27,7 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 			combinator.Then(
 				symbolName,
 				combinator.Then(
-					combinator.Maybe(symbolName),
+					combinator.Maybe(combinator.Surround(lparen, combinator.Many0(symbolName), rparen)),
 					combinator.Surround(
 						lbrace,
 						combinator.Delimited(classField, comma),
@@ -45,7 +45,7 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 	t := ClassDef{
 		id:     newId(),
 		Name:   res.One,
-		Super:  res.Two.One,
+		Supers: res.Two.One.Or([]string{}),
 		Fields: res.Two.Two,
 	}
 	return in, &t, nil

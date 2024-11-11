@@ -127,7 +127,7 @@ type RecordField struct {
 type ClassDef struct {
 	id     int
 	Name   string
-	Super  opt.Option[string]
+	Supers []string
 	Fields []ClassField
 }
 
@@ -235,7 +235,7 @@ func (self *Record) String() string {
 	return fmt.Sprintf("#%d %v", self.id, self.Fields)
 }
 func (self *ClassDef) String() string {
-	return fmt.Sprintf("#%d (class %s %v %v)", self.id, self.Name, self.Super, self.Fields)
+	return fmt.Sprintf("#%d (class %s %v %v)", self.id, self.Name, self.Supers, self.Fields)
 }
 func (self *InterfaceDef) String() string {
 	return fmt.Sprintf("#%d (interface %s %v {%v})", self.id, self.Name, self.Supers, self.Fields)
@@ -357,10 +357,9 @@ func (self *ClassDef) Pretty() string {
 	b.WriteString("class ")
 	b.WriteString(self.Name)
 	b.WriteString(" ")
-	if super, ok := self.Super.Unwrap(); ok {
-		b.WriteString(super + " ")
-	}
-	b.WriteString("{")
+	b.WriteString("(")
+	b.WriteString(strings.Join(self.Supers, ","))
+	b.WriteString(") {")
 	b.WriteString(self.Fields[0].Name)
 	b.WriteRune(':')
 	b.WriteString(self.Fields[0].Type.String())
