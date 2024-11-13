@@ -153,6 +153,9 @@ func TestTypeProgram(t *testing.T) {
 			desc: "class definition",
 			input: `
 				(class Foo {x Int, pub (def id (Int Int) [x] x)})
+				(def foo (Foo Foo) [f] f)
+				(def main []
+					(foo (Foo.new)))
 			`,
 			typ: []types.Type{
 				&types.Class{
@@ -174,6 +177,14 @@ func TestTypeProgram(t *testing.T) {
 							},
 						},
 					},
+				},
+				&types.Func{
+					Args: []types.Type{&types.Class{Name: "Foo"}},
+					Ret:  &types.Class{Name: "Foo"},
+				},
+				&types.Func{
+					Args: []types.Type{},
+					Ret:  &types.Class{Name: "Foo"},
 				},
 			},
 		},
