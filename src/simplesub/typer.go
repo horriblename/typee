@@ -23,6 +23,7 @@ var ErrUndefinedTypeName = errors.New("undefined type")
 var ErrWrongArgCount = errors.New("wrong argument count")
 var ErrTypeMismatch = errors.New("mismatched type")
 var ErrMissingField = errors.New("missing field")
+var ErrMissingMethod = errors.New("missing method")
 var ErrConstraintViolated = errors.New("constraint violated")
 var ErrCannotConstrain = errors.New("cannot constrain")
 var ErrInvalidTopLevel = errors.New("invalid top level construct: must be set or def")
@@ -393,12 +394,14 @@ func (self *Typer) defClass(classDef *parse.ClassDef) (SimpleType, error) {
 		supers[i] = sc
 	}
 
-	return ObjectType{
+	t := ObjectType{
 		Name:    classDef.Name,
 		Supers:  supers,
 		Fields:  fields,
 		Methods: methods,
-	}, nil
+	}
+	self.types.Insert(classDef.Name, t)
+	return t, nil
 }
 
 func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
@@ -456,7 +459,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 
 		return nil
 	} else if ty, bound, ok := matchPair[ObjectType, ObjectType](ty0, bound0); ok {
-		tyMembers := namedMembersToMap(ty.Fields)
+		tyMembers := namedMembersToMap(ty.Methods)
 		for _, boundMember := range bound.Methods {
 			if tyMember, ok := tyMembers[boundMember.Name]; ok {
 				//TODO: check visibility
@@ -464,7 +467,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 					return err
 				}
 			} else {
-				return fmt.Errorf("%w %s: %v", ErrMissingField, boundMember.Name, boundMember.Type)
+				return fmt.Errorf("%w %s: %v", ErrMissingMethod, boundMember.Name, boundMember.Type)
 			}
 		}
 
@@ -553,6 +556,20 @@ func freshenConcrete(freshened map[*Variable]*Variable, ty ConcreteType) Concret
 			fun.Map(t.Fields, func(arg NamedType) NamedType {
 				return NamedType{arg.Name, freshenInner(freshened, arg.Type)}
 			}),
+		}
+	case ObjectType:
+		fields := fun.Map(t.Fields, func(arg NamedMember) NamedMember {
+			return NamedMember{arg.Name, Member{freshenInner(freshened, arg.Type), arg.Access}}
+		})
+		methods := fun.Map(t.Methods, func(arg NamedMember) NamedMember {
+			return NamedMember{arg.Name, Member{freshenInner(freshened, arg.Type), arg.Access}}
+		})
+
+		return ObjectType{
+			Name:    t.Name,
+			Supers:  []ObjectType{},
+			Fields:  fields,
+			Methods: methods,
 		}
 	case Bool, Bot, Str, Top: // terminals
 	default:
