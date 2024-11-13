@@ -1,5 +1,7 @@
 package parse
 
+//go-sumtype:decl TypeRepr
+
 type TypeRepr interface {
 	type_()
 	String() string
