@@ -208,7 +208,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
 		assert.Eq(len(lhs.Args), len(rhs.Args), "different arg count")
 
-		args := make([]SimpleType, len(lhs.Args))
+		args := make([]SimpleType, 0, len(lhs.Args))
 		for i, lhsArg := range lhs.Args {
 			ty, err := glb(lhsArg, rhs.Args[i])
 			if err != nil {
