@@ -167,6 +167,13 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		}
 
 		return ret, nil
+
+	case *parse.New:
+		if class, ok := self.types.Get(expr.Class).Unwrap(); ok {
+			return class.instantiate(), nil
+		}
+		return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, expr.Class)
+
 	case *parse.BoolLiteral:
 		return Bool{}, nil
 	case *parse.IntLiteral:
