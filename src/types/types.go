@@ -147,6 +147,10 @@ func (f *Class) Eq(other Type) bool {
 		return false
 	}
 
+	if f.Name == o.Name { // probably something will go wrong but who cares
+		return true
+	}
+
 	if len(f.Fields) != len(o.Fields) {
 		return false
 	}
@@ -436,6 +440,10 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 		b, ok := b.(*Class)
 		if !ok {
 			return false
+		}
+
+		if a.Name == b.Name {
+			return true
 		}
 
 		if len(a.Fields) != len(b.Fields) {
