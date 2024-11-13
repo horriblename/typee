@@ -322,6 +322,16 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			desc:  "constructor",
+			input: `(Foo.new)`,
+			output: []Expr{&Form{
+				id: 2,
+				Children: []Expr{
+					&New{id: 1, Class: "Foo"},
+				},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

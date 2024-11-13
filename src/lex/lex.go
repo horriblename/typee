@@ -157,6 +157,8 @@ func keywordOrSymbol(in []rune) ([]rune, Token, error) {
 		return rest, &Priv{}, nil
 	case "self":
 		return rest, &Self{}, nil
+	case "new":
+		return rest, &New{}, nil
 	}
 
 	return rest, &Symbol{Name: symName}, err

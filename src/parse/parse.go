@@ -470,6 +470,15 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 					}
 				},
 			),
+			combinator.Map(
+				combinator.WithPrefix(dot, kwNew),
+				func(struct{}) Expr {
+					return &New{
+						id:    newId(),
+						Class: sym.Name,
+					}
+				},
+			),
 		),
 	)(rest)
 
@@ -579,6 +588,9 @@ func kwInterface(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func kwFn(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Fn])(in)
+}
+func kwNew(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.New])(in)
 }
 func kwCase(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Case])(in)

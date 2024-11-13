@@ -144,6 +144,11 @@ type MethodAccess struct {
 	Method string
 }
 
+type New struct {
+	id    int
+	Class string
+}
+
 func (*Form) ast()         {}
 func (*Symbol) ast()       {}
 func (*FuncDef) ast()      {}
@@ -162,6 +167,7 @@ func (*ClassDef) ast()     {}
 func (*InterfaceDef) ast() {}
 func (*RecordAccess) ast() {}
 func (*MethodAccess) ast() {}
+func (*New) ast()          {}
 
 func (self *Form) ID() int         { return self.id }
 func (self *Symbol) ID() int       { return self.id }
@@ -182,6 +188,7 @@ func (self *ClassDef) ID() int     { return self.id }
 func (self *InterfaceDef) ID() int { return self.id }
 func (self *RecordAccess) ID() int { return self.id }
 func (self *MethodAccess) ID() int { return self.id }
+func (self *New) ID() int          { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
@@ -240,8 +247,8 @@ func (self *RecordAccess) String() string {
 func (self *RecordField) String() string {
 	return fmt.Sprintf("%s: %s", self.Name, self.Value)
 }
-func (self *MethodAccess) String() string {
-	return fmt.Sprintf("#%d %s#%s", self.id, self.Class, self.Method)
+func (self *New) String() string {
+	return fmt.Sprintf("%s.new", self.Class)
 }
 
 func prettySlice(xs []Expr) []string {
@@ -320,6 +327,9 @@ func (self *RecordAccess) Pretty() string {
 }
 func (self *MethodAccess) Pretty() string {
 	return fmt.Sprintf("%s#%s", self.Class, self.Method)
+}
+func (self *New) Pretty() string {
+	return fmt.Sprintf("%s.new", self.Class)
 }
 func (self *Record) Pretty() string {
 	if len(self.Fields) == 0 {
