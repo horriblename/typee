@@ -177,3 +177,13 @@ func Maybe[I, O any](parser Parser[I, O]) Parser[I, opt.Option[O]] {
 		return rest, opt.Some(o), nil
 	}
 }
+
+func Map[I, O1, O2 any](parser Parser[I, O1], f func(O1) O2) Parser[I, O2] {
+	return func(i I) (i0 I, o0 O2, _ error) {
+		if rest, o1, err := parser(i); err != nil {
+			return i0, o0, err
+		} else {
+			return rest, f(o1), nil
+		}
+	}
+}
