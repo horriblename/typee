@@ -4,16 +4,44 @@ package types
 
 import (
 	"fmt"
+	"iter"
+	"maps"
 	"strings"
 
 	"github.com/horriblename/typee/src/fun"
 )
+
+type AccessLvl uint8
+
+const (
+	AccessPublic AccessLvl = iota
+	AccessProtected
+	AccessPrivate
+)
+
+func (self AccessLvl) String() string {
+	switch self {
+	case AccessPrivate:
+		return "priv"
+	case AccessProtected:
+		return "protected"
+	case AccessPublic:
+		return "pub"
+	default:
+		panic(fmt.Sprintf("unexpected types.AccessLvl: %#v", self))
+	}
+}
 
 type Type interface {
 	type_()
 	String() string
 	Simple() bool
 	Eq(other Type) bool
+}
+
+type Member struct {
+	Access AccessLvl
+	Type   Type
 }
 
 type TypeID int
@@ -23,6 +51,13 @@ type Int struct{}
 type Bool struct{}
 type Record struct {
 	Fields map[string]Type
+}
+type Class struct {
+	Name    string
+	Supers  []*Class
+	Fields  map[string]Member
+	Statics map[string]Member
+	Methods map[string]Member
 }
 type Func struct {
 	Args []Type
@@ -51,6 +86,7 @@ func (*String) type_()     {}
 func (*Int) type_()        {}
 func (*Bool) type_()       {}
 func (*Record) type_()     {}
+func (*Class) type_()      {}
 func (*Func) type_()       {}
 func (*Generic) type_()    {}
 func (*TypeScheme) type_() {}
@@ -62,12 +98,13 @@ func (*String) Simple() bool     { return true }
 func (*Int) Simple() bool        { return true }
 func (*Bool) Simple() bool       { return true }
 func (*Record) Simple() bool     { return false }
+func (*Class) Simple() bool      { return false }
 func (*Func) Simple() bool       { return false }
 func (*Generic) Simple() bool    { return false }
 func (*TypeScheme) Simple() bool { return false }
-func (*Top) Simple() bool        { return true }  // not used by biunification
-func (*Union) Simple() bool      { return false } // not used by biunification
-func (*Inter) Simple() bool      { return false } // not used by biunification
+func (*Top) Simple() bool        { return true }  // only used by biunification
+func (*Union) Simple() bool      { return false } // only used by biunification
+func (*Inter) Simple() bool      { return false } // only used by biunification
 
 func (*String) Eq(other Type) bool {
 	_, ok := other.(*String)
@@ -98,6 +135,33 @@ func (f *Record) Eq(other Type) bool {
 		}
 
 		if !val.Eq(oval) {
+			return false
+		}
+	}
+
+	return true
+}
+func (f *Class) Eq(other Type) bool {
+	o, ok := other.(*Class)
+	if !ok {
+		return false
+	}
+
+	if len(f.Fields) != len(o.Fields) {
+		return false
+	}
+
+	for name, val := range joinSeq2(maps.All(f.Fields), maps.All(f.Methods)) {
+		oval, has := o.Fields[name]
+		if !has {
+			return false
+		}
+
+		if val.Access != oval.Access {
+			return false
+		}
+
+		if !val.Type.Eq(oval.Type) {
 			return false
 		}
 	}
@@ -163,6 +227,41 @@ func (r *Record) String() string {
 		b.WriteString(name)
 		b.WriteString(": ")
 		b.WriteString(val.String())
+		b.WriteString(", ")
+	}
+	b.WriteString("}")
+
+	return b.String()
+}
+func (r *Class) String() string {
+	b := strings.Builder{}
+	if r.Name == "" {
+		b.WriteString("_UnknownObjectType")
+	} else {
+		b.WriteString(r.Name)
+		b.WriteRune('(')
+		b.WriteString(strings.Join(fun.Map(r.Supers, func(c *Class) string {
+			return c.Name
+		}), ", "))
+		b.WriteString(")")
+	}
+	b.WriteString("{")
+	b.WriteString("fields: ")
+	for name, val := range r.Fields {
+		b.WriteString(val.Access.String())
+		b.WriteRune(' ')
+		b.WriteString(name)
+		b.WriteString(": ")
+		b.WriteString(val.Type.String())
+		b.WriteString(", ")
+	}
+	b.WriteString("methods: ")
+	for name, val := range r.Methods {
+		b.WriteString(val.Access.String())
+		b.WriteRune(' ')
+		b.WriteString(name)
+		b.WriteString(": ")
+		b.WriteString(val.Type.String())
 		b.WriteString(", ")
 	}
 	b.WriteString("}")
@@ -423,4 +522,16 @@ func (ctx *PrettyCtx) String(typ Type) string {
 	}
 
 	panic("unreachable")
+}
+
+func joinSeq2[K, V any](seqs ...iter.Seq2[K, V]) iter.Seq2[K, V] {
+	return func(yield func(K, V) bool) {
+		for _, seq := range seqs {
+			for k, v := range seq {
+				if !yield(k, v) {
+					return
+				}
+			}
+		}
+	}
 }
