@@ -518,6 +518,9 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 }
 
 func unify(lhs *Variable, rhs *Variable) error /*FIXME: idk what type*/ {
+	trace("unify %s and %s", lhs.String(), rhs.String())
+	indentLvl++
+	defer func() { indentLvl-- }()
 	rep0 := lhs.Representative()
 	rep1 := rhs.Representative()
 
