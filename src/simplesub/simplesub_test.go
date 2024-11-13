@@ -57,7 +57,15 @@ func TestTypeExpr(t *testing.T) {
 			desc:  "simple function",
 			input: "(fn [x] 12)",
 			typ: &types.Func{
-				Args: []types.Type{&types.Generic{ID: 1}},
+				Args: []types.Type{&types.Top{}},
+				Ret:  &types.Int{},
+			},
+		},
+		{
+			desc:  "type annotated function",
+			input: "(fn (Int Int) [x] 12)",
+			typ: &types.Func{
+				Args: []types.Type{&types.Int{}},
 				Ret:  &types.Int{},
 			},
 		},

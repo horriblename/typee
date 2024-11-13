@@ -32,6 +32,7 @@ var ErrClassDefMustBeTopLevel = errors.New("class and interface definitions must
 var ErrEmptyFuncBody = errors.New("empty function body")
 var ErrIllegalTypeScheme = errors.New("type schemes not allowed here")
 var ErrIllegalSuperType = errors.New("super types must be class or interfaces")
+var ErrBadTypeSignature = errors.New("bad function type signature")
 
 const scopeLevelTop int = 1
 
@@ -59,8 +60,9 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]PolymorphicType, error) 
 				return nil, fmt.Errorf("in function %s: %w", e.Name, ErrEmptyFuncBody)
 			}
 			fn := parse.Fn{
-				Args: e.Args,
-				Body: e.Body[len(e.Body)-1],
+				Signature: e.Signature,
+				Args:      e.Args,
+				Body:      e.Body[len(e.Body)-1],
 			}
 			types[i], err = self.typeLetRhs(e.Name, &fn)
 			if err != nil {
@@ -134,6 +136,37 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		defer self.vars.PopScope()
 
 		params := make([]SimpleType, len(expr.Args))
+		var err error
+		if sig, ok := expr.Signature.Unwrap(); ok {
+			if len(sig) != len(expr.Args)+1 {
+				return nil, fmt.Errorf("%w: function has %d args but type signature only takes %d", ErrBadTypeSignature, len(expr.Args), len(sig)-1)
+			}
+
+			for i, arg := range sig[:len(sig)-1] {
+				param, err := self.parseType(arg)
+				if err != nil {
+					return nil, err
+				}
+
+				p, ok := param.(SimpleType)
+				if !ok {
+					return nil, fmt.Errorf("%w: signature contains global quantifier: %v", ErrBadTypeSignature, arg)
+				}
+
+				params[i] = p
+				self.vars.Insert(expr.Args[i], p)
+			}
+
+			bodyTy, err := self.TypeTerm(expr.Body)
+			if err != nil {
+				return nil, err
+			}
+
+			return Func{Args: params, Ret: bodyTy}, nil
+		}
+
+		// without function signature
+
 		for i, arg := range expr.Args {
 			param := freshVar()
 			params[i] = param
@@ -143,7 +176,8 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		if err != nil {
 			return nil, err
 		}
-		return Func{Args: params, Ret: bodyTy}, err
+
+		return Func{Args: params, Ret: bodyTy}, nil
 
 	case *parse.Form:
 		assert.GreaterThan(len(expr.Children), 0, "unhandled: empty form")
@@ -358,8 +392,9 @@ func (self *Typer) defClass(classDef *parse.ClassDef) (SimpleType, error) {
 				return nil, fmt.Errorf("in function %s: %w", f.Func.Name, ErrEmptyFuncBody)
 			}
 			fn := parse.Fn{
-				Args: f.Func.Args,
-				Body: f.Func.Body[len(f.Func.Body)-1],
+				Signature: f.Func.Signature,
+				Args:      f.Func.Args,
+				Body:      f.Func.Body[len(f.Func.Body)-1],
 			}
 			typ, err := self.typeLetRhs(f.Name(), &fn)
 			if err != nil {
