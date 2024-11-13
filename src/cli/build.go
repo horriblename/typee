@@ -5,10 +5,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 
 	"github.com/horriblename/typee/src/genqbe"
 	"github.com/horriblename/typee/src/parse"
-	"github.com/horriblename/typee/src/solve"
+	"github.com/horriblename/typee/src/simplesub"
+	"github.com/horriblename/typee/src/types"
 
 	"modernc.org/libqbe"
 )
@@ -52,10 +54,16 @@ func buildProgram(params buildParams) error {
 		os.Exit(1)
 	}
 
-	typ, err := solve.Check(ast)
+	typer := simplesub.NewTyper(true)
+	t, err := typer.TypeProgram(ast)
 	if err != nil {
 		errorf("during type inference: %s", err)
 		os.Exit(1)
+	}
+
+	typ := map[string]types.Type{}
+	for i, t := range t {
+		typ[strconv.Itoa(i)] = simplesub.CoalesceType(simplesub.SimplifyType(t.Body))
 	}
 
 	if params.printTypes {
