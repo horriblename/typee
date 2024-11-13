@@ -205,7 +205,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 
 	case *parse.New:
 		if class, ok := self.types.Get(expr.Class).Unwrap(); ok {
-			return class.instantiate(), nil
+			return Func{[]SimpleType{}, class.instantiate()}, nil
 		}
 		return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, expr.Class)
 
