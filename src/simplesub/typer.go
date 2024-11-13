@@ -477,7 +477,6 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 			if err := constrain(bound.Args[i], tyArg); err != nil {
 				return err
 			}
-
 		}
 		return constrain(ty.Ret, bound.Ret)
 	} else if ty, bound, ok := matchPair[Record, Record](ty0, bound0); ok {
@@ -514,7 +513,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 	} else if ty, bound, ok := matchPair[ConcreteType, *Variable](ty0, bound0); ok {
 		return bound.newLowerBound(ty)
 	} else {
-		return fmt.Errorf("%w %#v <: %#v", ErrCannotConstrain, ty0, bound0)
+		return fmt.Errorf("%w %v <: %v", ErrCannotConstrain, ty0, bound0)
 	}
 }
 
