@@ -315,6 +315,12 @@ func fnExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	in, _, err = kwFn(in)
 	check(err)
 
+	in, sig, err := combinator.Maybe(combinator.Surround(
+		lparen,
+		combinator.Many0(type_),
+		rparen,
+	))(in)
+
 	in, args, err := combinator.Surround(
 		lbracket,
 		combinator.Many0(symbolName),
@@ -328,7 +334,7 @@ func fnExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	in, _, err = rparen(in)
 	check(err)
 
-	return in, &Fn{Args: args, Body: body}, nil
+	return in, &Fn{id: newId(), Signature: sig, Args: args, Body: body}, nil
 }
 
 func taggedExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {

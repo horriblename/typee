@@ -87,9 +87,10 @@ type TaggedExpr struct {
 }
 
 type Fn struct {
-	id   int
-	Args []string
-	Body Expr
+	id        int
+	Signature opt.Option[[]TypeRepr]
+	Args      []string
+	Body      Expr
 }
 
 type CaseExpr struct {

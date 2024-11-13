@@ -68,6 +68,23 @@ func TestParse(t *testing.T) {
 			}},
 		},
 		{
+			desc:  "fn with signature",
+			input: "(fn (Foo Bar) [x] x.bar)",
+			output: []Expr{&Fn{
+				id: 2,
+				Signature: opt.Some([]TypeRepr{
+					TypeName{"Foo"},
+					TypeName{"Bar"},
+				}),
+				Args: []string{"x"},
+				Body: &RecordAccess{
+					id:     1,
+					Record: "x",
+					Field:  "bar",
+				},
+			}},
+		},
+		{
 			desc:  "set",
 			input: "(set foo (+ x y))",
 			output: []Expr{&Set{
@@ -140,6 +157,7 @@ func TestParse(t *testing.T) {
 			desc:  "fn expression",
 			input: "(fn [x y] (+ x y))",
 			output: []Expr{&Fn{
+				id:   5,
 				Args: []string{"x", "y"},
 				Body: &Form{
 					id: 4,
