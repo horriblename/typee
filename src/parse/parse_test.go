@@ -255,7 +255,7 @@ func TestParse(t *testing.T) {
 				id:     1,
 				Supers: []string{},
 				Name:   "Foo",
-				Fields: []ClassField{},
+				Fields: []ClassMember{},
 			}},
 		},
 		{
@@ -265,27 +265,40 @@ func TestParse(t *testing.T) {
 				id:     1,
 				Name:   "Foo",
 				Supers: []string{"Bar", "Baz"},
-				Fields: []ClassField{
-					{
-						Access: types.AccessPublic,
-						Name:   "foo",
-						Type:   TypeName{"Int"},
+				Fields: []ClassMember{
+					ClassField{
+						Access_: types.AccessPublic,
+						Name_:   "foo",
+						Type:    TypeName{"Int"},
 					},
 				},
 			}},
 		},
 		{
 			desc:  "interface def",
-			input: `(interface Foo {pub foo Int})`,
+			input: `(interface Foo {pub foo Int, protected (def foo [x] x)})`,
 			output: []Expr{&InterfaceDef{
-				id:     1,
+				id:     3,
 				Name:   "Foo",
 				Supers: []string{},
-				Fields: []ClassField{
-					{
-						Access: types.AccessPublic,
-						Name:   "foo",
-						Type:   TypeName{"Int"},
+				Fields: []ClassMember{
+					ClassField{
+						Access_: types.AccessPublic,
+						Name_:   "foo",
+						Type:    TypeName{"Int"},
+					},
+					ClassMethod{
+						Access_: types.AccessProtected,
+						Func: &FuncDef{
+							id:        2,
+							Name:      "foo",
+							Signature: opt.Option[[]string]{},
+							Args:      []string{"x"},
+							Body: []Expr{&Symbol{
+								id:   1,
+								Name: "x",
+							}},
+						},
 					},
 				},
 			}},

@@ -30,7 +30,7 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 					combinator.Maybe(combinator.Surround(lparen, combinator.Many0(symbolName), rparen)),
 					combinator.Surround(
 						lbrace,
-						combinator.Delimited(classField, comma),
+						combinator.Delimited(classMember, comma),
 						rbrace,
 					),
 				),
@@ -51,24 +51,42 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 	return in, &t, nil
 }
 
-func classField(in []lex.Token) ([]lex.Token, ClassField, error) {
+func classMember(in []lex.Token) ([]lex.Token, ClassMember, error) {
+	in, vis, _ := combinator.Maybe(memberVisibility)(in)
+	rest, res, err := classField(in, vis.Or(types.AccessPrivate))
+	if err != nil {
+		return classMethod(in, vis.Or(types.AccessPrivate))
+	}
+
+	return rest, res, nil
+}
+
+func classField(in []lex.Token, visibility types.AccessLvl) ([]lex.Token, ClassField, error) {
 	in, res, err := combinator.Then(
-		combinator.Maybe(memberVisibility),
-		combinator.Then(
-			symbolName,
-			type_,
-		),
+		symbolName,
+		type_,
 	)(in)
 	if err != nil {
 		return nil, ClassField{}, err
 	}
 
-	c := ClassField{
-		Access: res.One.Or(types.AccessPrivate),
-		Name:   res.Two.One,
-		Type:   res.Two.Two,
+	return in, ClassField{
+		Access_: visibility,
+		Name_:   res.One,
+		Type:    res.Two,
+	}, nil
+}
+
+func classMethod(in []lex.Token, visibility types.AccessLvl) ([]lex.Token, ClassMember, error) {
+	in, res, err := defForm(in)
+	if err != nil {
+		return nil, nil, err
 	}
-	return in, c, nil
+
+	return in, ClassMethod{
+		Access_: visibility,
+		Func:    res,
+	}, nil
 }
 
 func interfaceDef(in []lex.Token) ([]lex.Token, Expr, error) {
@@ -81,7 +99,7 @@ func interfaceDef(in []lex.Token) ([]lex.Token, Expr, error) {
 					combinator.Maybe(combinator.Surround(lparen, combinator.Many0(symbolName), rparen)),
 					combinator.Surround(
 						lbrace,
-						combinator.Delimited(classField, comma),
+						combinator.Delimited(classMember, comma),
 						rbrace,
 					),
 				),
@@ -122,9 +140,9 @@ func dbg[I, O any](tag string, p combinator.Parser[I, O]) combinator.Parser[I, O
 	return func(i I) (I, O, error) {
 		r, o, e := p(i)
 		if e != nil {
-			println(tag, e.Error(), "at", i)
+			fmt.Printf("[dbg] %s: %s at %v\n", tag, e.Error(), i)
 		} else {
-			fmt.Printf("%s got %v\n", tag, o)
+			fmt.Printf("[dbg] %s got %v\n", tag, o)
 		}
 		return r, o, e
 	}

@@ -128,20 +128,14 @@ type ClassDef struct {
 	id     int
 	Name   string
 	Supers []string
-	Fields []ClassField
-}
-
-type ClassField struct {
-	Access types.AccessLvl
-	Name   string
-	Type   TypeRepr
+	Fields []ClassMember
 }
 
 type InterfaceDef struct {
 	id     int
 	Name   string
 	Supers []string
-	Fields []ClassField
+	Fields []ClassMember
 }
 
 type MethodAccess struct {
@@ -360,18 +354,9 @@ func (self *ClassDef) Pretty() string {
 	b.WriteString("(")
 	b.WriteString(strings.Join(self.Supers, ","))
 	b.WriteString(") {")
-	b.WriteString(self.Fields[0].Name)
-	b.WriteRune(':')
-	b.WriteString(self.Fields[0].Type.String())
-
-	for _, field := range self.Fields[1:] {
-		b.WriteString(", ")
-		b.WriteString(field.Access.String())
-		b.WriteRune(' ')
-		b.WriteString(field.Name)
-		b.WriteRune(':')
-		b.WriteString(field.Type.String())
-	}
+	b.WriteString(strings.Join(
+		fun.Map(self.Fields, func(m ClassMember) string { return m.String() }),
+		", "))
 	b.WriteString("}")
 	return b.String()
 }
@@ -387,18 +372,41 @@ func (self *InterfaceDef) Pretty() string {
 	b.WriteString("(")
 	b.WriteString(strings.Join(self.Supers, ","))
 	b.WriteString(") {")
-	b.WriteString(self.Fields[0].Name)
-	b.WriteRune(':')
-	b.WriteString(self.Fields[0].Type.String())
-
-	for _, field := range self.Fields[1:] {
-		b.WriteString(", ")
-		b.WriteString(field.Access.String())
-		b.WriteRune(' ')
-		b.WriteString(field.Name)
-		b.WriteRune(':')
-		b.WriteString(field.Type.String())
-	}
+	b.WriteString(strings.Join(
+		fun.Map(self.Fields, func(m ClassMember) string { return m.String() }),
+		", "))
 	b.WriteString("}")
 	return b.String()
+}
+
+// class member
+
+type ClassMember interface {
+	Access() types.AccessLvl
+	Name() string
+	String() string
+}
+
+type ClassField struct {
+	Access_ types.AccessLvl
+	Name_   string
+	Type    TypeRepr
+}
+
+type ClassMethod struct {
+	Access_ types.AccessLvl
+	Func    *FuncDef
+}
+
+func (self ClassField) Access() types.AccessLvl  { return self.Access_ }
+func (self ClassMethod) Access() types.AccessLvl { return self.Access_ }
+
+func (self ClassField) Name() string  { return self.Name_ }
+func (self ClassMethod) Name() string { return self.Func.Name }
+
+func (self ClassField) String() string {
+	return fmt.Sprintf("%s %s %s", self.Access_, self.Name_, self.Type.String())
+}
+func (self ClassMethod) String() string {
+	return fmt.Sprintf("%s %s", self.Access(), self.Func.String())
 }

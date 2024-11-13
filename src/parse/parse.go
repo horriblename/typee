@@ -34,7 +34,6 @@ func ParseString(source string) ([]Expr, error) {
 
 	rest, prog, err := Program(tokens)
 	if len(rest) != 0 {
-		fmt.Printf("remaining tokens: %v\n", rest)
 		return nil, fmt.Errorf("%w: got token %s", ErrExpectEOF, rest[0])
 	}
 	return prog, err
@@ -133,7 +132,7 @@ func form(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
 	return rest, &Form{id: newId(), Children: out}, err
 }
 
-func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
+func defForm(in []lex.Token) (_ []lex.Token, _ *FuncDef, err error) {
 	defer func() { err = handleCheck(recover()) }()
 
 	in, _, err = lparen(in)
