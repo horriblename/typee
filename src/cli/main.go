@@ -77,8 +77,13 @@ const flagPrintTypes = "print-types"
 const defaultPrintTypes = false
 
 func cmdCheck() error {
+	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
 	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, "Print top-level type info to stdout")
 	flag.Parse()
+
+	if *traceTyper {
+		simplesub.EnableTrace = true
+	}
 
 	params := buildParams{
 		targetStage: check,
