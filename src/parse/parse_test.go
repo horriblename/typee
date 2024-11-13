@@ -31,10 +31,14 @@ func TestParse(t *testing.T) {
 			desc:  "def",
 			input: "(def foo (Str Int Str) [x y] (foo x y))",
 			output: []Expr{&FuncDef{
-				id:        5,
-				Name:      "foo",
-				Signature: opt.Some([]string{"Str", "Int", "Str"}),
-				Args:      []string{"x", "y"},
+				id:   5,
+				Name: "foo",
+				Signature: opt.Some([]TypeRepr{
+					TypeName{"Str"},
+					TypeName{"Int"},
+					TypeName{"Str"},
+				}),
+				Args: []string{"x", "y"},
 				Body: []Expr{&Form{
 					id: 4,
 					Children: []Expr{
@@ -51,7 +55,7 @@ func TestParse(t *testing.T) {
 			output: []Expr{&FuncDef{
 				id:        5,
 				Name:      "foo",
-				Signature: opt.None[[]string](),
+				Signature: opt.None[[]TypeRepr](),
 				Args:      []string{"x", "y"},
 				Body: []Expr{&Form{
 					id: 4,
@@ -292,7 +296,7 @@ func TestParse(t *testing.T) {
 						Func: &FuncDef{
 							id:        2,
 							Name:      "foo",
-							Signature: opt.Option[[]string]{},
+							Signature: opt.Option[[]TypeRepr]{},
 							Args:      []string{"x"},
 							Body: []Expr{&Symbol{
 								id:   1,

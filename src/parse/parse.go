@@ -147,7 +147,7 @@ func defForm(in []lex.Token) (_ []lex.Token, _ *FuncDef, err error) {
 	// optional (T1 T2 ...)
 	in, sig, err := combinator.Maybe(combinator.Surround(
 		lparen,
-		combinator.Many(symbolName),
+		combinator.Many(type_),
 		rparen,
 	))(in)
 	check(err)

@@ -34,7 +34,7 @@ type Int struct {
 type FuncDef struct {
 	id        int
 	Name      string
-	Signature opt.Option[[]string]
+	Signature opt.Option[[]TypeRepr]
 	Args      []string
 	Body      []Expr
 }
