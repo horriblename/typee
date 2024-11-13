@@ -356,8 +356,20 @@ type structuralEqCtx struct {
 
 func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 	switch a := a.(type) {
-	case *Int, *String, *Bool:
+	case *Int, *String, *Bool, *Top:
 		return a.Eq(b)
+	case *Inter:
+		b, ok := b.(*Inter)
+		if !ok {
+			return false
+		}
+		return structuralEq(ctx, a.Lhs, b.Lhs) && structuralEq(ctx, a.Rhs, b.Rhs)
+	case *Union:
+		b, ok := b.(*Union)
+		if !ok {
+			return false
+		}
+		return structuralEq(ctx, a.Lhs, b.Lhs) && structuralEq(ctx, a.Rhs, b.Rhs)
 	case *Func:
 		b, ok := b.(*Func)
 		if !ok || len(b.Args) != len(a.Args) {
@@ -420,11 +432,52 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 		}
 
 		return true
+	case *Class:
+		b, ok := b.(*Class)
+		if !ok {
+			return false
+		}
+
+		if len(a.Fields) != len(b.Fields) {
+			return false
+		}
+
+		for name, aval := range a.Fields {
+			bval, ok := b.Fields[name]
+			if !ok {
+				return false
+			}
+			if aval.Access != bval.Access {
+				return false
+			}
+			if !structuralEq(ctx, aval.Type, bval.Type) {
+				return false
+			}
+		}
+
+		if len(a.Methods) != len(b.Methods) {
+			return false
+		}
+
+		for name, aval := range a.Methods {
+			bval, ok := b.Methods[name]
+			if !ok {
+				return false
+			}
+			if aval.Access != bval.Access {
+				return false
+			}
+			if !structuralEq(ctx, aval.Type, bval.Type) {
+				return false
+			}
+		}
+		return true
 	}
 
 	panic("unreachable")
 }
 
+// TODO: remove
 func Clone(typ Type) Type {
 	switch t := typ.(type) {
 	case *String:
