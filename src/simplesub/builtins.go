@@ -25,3 +25,9 @@ func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 		Ret:  Str{},
 	})
 }
+
+func addBuiltinTypes(types *scope.ScopedMap[TypeScheme]) {
+	types.Insert("Int", Int{})
+	types.Insert("Str", Str{})
+	types.Insert("Bool", Bool{})
+}

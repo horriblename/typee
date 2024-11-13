@@ -159,6 +159,31 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 			}
 		}
 		return Record{mapToNamedTypes(mergedMap)}, nil
+	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
+		lhsMap := namedMembersToMap(lhs.Methods)
+		rhsMap := namedMembersToMap(rhs.Methods)
+
+		mergedMap := maps.Clone(lhsMap)
+		for rhsKey, rhsVal := range rhsMap {
+			if lhsVal, ok := mergedMap[rhsKey]; ok {
+				// TODO: visibility
+				ty, err := glb(lhsVal.Type, rhsVal.Type)
+				if err != nil {
+					return nil, err
+				}
+				mergedMap[rhsKey] = Member{
+					Type:   ty,
+					Access: types.AccessPublic,
+				}
+			}
+		}
+		// TODO: named classes
+		return ObjectType{
+			Name:    "",
+			Supers:  []ObjectType{},
+			Fields:  []NamedMember{},
+			Methods: mapToNamedMembers(mergedMap),
+		}, nil
 	} else if _, _, ok := matchPair[Bool, Bool](lhs0, rhs0); ok {
 		return Bool{}, nil
 	} else if _, _, ok := matchPair[Int, Int](lhs0, rhs0); ok {
@@ -218,6 +243,32 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 			}
 		}
 		return Record{Fields: merged}, nil
+	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
+		rhsMap := namedMembersToMap(rhs.Methods)
+
+		merged := []NamedMember{}
+		for _, lhsMember := range lhs.Methods {
+			if rhsMember, ok := rhsMap[lhsMember.Name]; ok {
+				ty, err := lub(lhsMember.Type, rhsMember.Type)
+				if err != nil {
+					return nil, err
+				}
+
+				merged = append(merged, NamedMember{
+					Name: lhsMember.Name,
+					Member: Member{
+						Type:   ty,
+						Access: types.AccessPublic, // TODO
+					},
+				})
+			}
+		}
+		return ObjectType{
+			Name:    "",
+			Supers:  []ObjectType{},  // TODO
+			Fields:  []NamedMember{}, // TODO
+			Methods: merged,
+		}, nil
 	} else if _, _, ok := matchPair[Bool, Bool](lhs0, rhs0); ok {
 		return Bool{}, nil
 	} else if _, _, ok := matchPair[Int, Int](lhs0, rhs0); ok {
@@ -302,14 +353,21 @@ type Record struct{ Fields []NamedType }
 type Bool struct{}
 type Int struct{}
 type Str struct{}
+type ObjectType struct {
+	Name    string
+	Supers  []ObjectType
+	Fields  []NamedMember
+	Methods []NamedMember
+}
 
-func (self Top) instantiate() SimpleType    { return self }
-func (self Bot) instantiate() SimpleType    { return self }
-func (self Func) instantiate() SimpleType   { return self }
-func (self Record) instantiate() SimpleType { return self }
-func (self Bool) instantiate() SimpleType   { return self }
-func (self Int) instantiate() SimpleType    { return self }
-func (self Str) instantiate() SimpleType    { return self }
+func (self Top) instantiate() SimpleType        { return self }
+func (self Bot) instantiate() SimpleType        { return self }
+func (self Func) instantiate() SimpleType       { return self }
+func (self Record) instantiate() SimpleType     { return self }
+func (self ObjectType) instantiate() SimpleType { return self }
+func (self Bool) instantiate() SimpleType       { return self }
+func (self Int) instantiate() SimpleType        { return self }
+func (self Str) instantiate() SimpleType        { return self }
 
 func (self Top) children() []SimpleType { return []SimpleType{} }
 func (self Bot) children() []SimpleType { return []SimpleType{} }
@@ -319,17 +377,28 @@ func (self Func) children() []SimpleType {
 func (self Record) children() []SimpleType {
 	return fun.Map(self.Fields, func(field NamedType) SimpleType { return field.Type })
 }
+func (self ObjectType) children() []SimpleType {
+	c := make([]SimpleType, 0, len(self.Fields)+len(self.Methods))
+	for _, field := range self.Fields {
+		c = append(c, field.Type)
+	}
+	for _, meth := range self.Methods {
+		c = append(c, meth.Type)
+	}
+	return c
+}
 func (self Bool) children() []SimpleType { return []SimpleType{} }
 func (self Int) children() []SimpleType  { return []SimpleType{} }
 func (self Str) children() []SimpleType  { return []SimpleType{} }
 
-func (self Top) concrete()    {}
-func (self Bot) concrete()    {}
-func (self Func) concrete()   {}
-func (self Record) concrete() {}
-func (self Bool) concrete()   {}
-func (self Int) concrete()    {}
-func (self Str) concrete()    {}
+func (self Top) concrete()        {}
+func (self Bot) concrete()        {}
+func (self Func) concrete()       {}
+func (self Record) concrete()     {}
+func (self ObjectType) concrete() {}
+func (self Bool) concrete()       {}
+func (self Int) concrete()        {}
+func (self Str) concrete()        {}
 
 func (self Top) String() string { return "⊤" }
 func (self Bot) String() string { return "⊥" }
@@ -344,9 +413,40 @@ func (self Record) String() string {
 		return fmt.Sprintf("%s: %s", field.Name, field.Type.String())
 	}), ", "))
 }
+func (self ObjectType) String() string {
+	name := self.Name
+	if name == "" {
+		name = "_UnknownClass"
+	}
+	return fmt.Sprintf("%s { %s, %s }",
+		name,
+		strings.Join(fun.Map(self.Fields, func(field NamedMember) string {
+			return fmt.Sprintf("%s: %s", field.Name, field.Type.String())
+		}), ", "),
+		strings.Join(fun.Map(self.Methods, func(field NamedMember) string {
+			return fmt.Sprintf("%s: %s", field.Name, field.Type.String())
+		}), ", "),
+	)
+}
 func (self Bool) String() string { return "Bool" }
 func (self Int) String() string  { return "Int" }
 func (self Str) String() string  { return "Str" }
+
+func (self ObjectType) FindMethod(name string) (method Member, found bool) {
+	classes := []ObjectType{self}
+	for len(classes) > 0 {
+		c, ok := popSlice(&classes).Unwrap()
+		assert.True(ok, "popSlice returned nothing despite len check")
+
+		for _, m := range c.Methods {
+			if m.Name == name {
+				return m.Member, true
+			}
+		}
+	}
+
+	return Member{}, false
+}
 
 func getVars(ty SimpleType) *orderedset.OrderedSet[*Variable] {
 	result := orderedset.NewOrderedSet[*Variable]()
@@ -374,6 +474,16 @@ func getVars(ty SimpleType) *orderedset.OrderedSet[*Variable] {
 type SimpleTypeImpl struct{}
 
 // helpers
+
+type Member struct {
+	Type   SimpleType
+	Access types.AccessLvl
+}
+
+type NamedMember struct {
+	Name string
+	Member
+}
 
 type NamedType struct {
 	Name string
@@ -462,10 +572,26 @@ func namedTypesToMap(fields []NamedType) map[string]SimpleType {
 	return m
 }
 
+func namedMembersToMap(members []NamedMember) map[string]Member {
+	m := map[string]Member{}
+	for _, member := range members {
+		m[member.Name] = member.Member
+	}
+	return m
+}
+
 func mapToNamedTypes(fields map[string]SimpleType) []NamedType {
 	s := make([]NamedType, 0, len(fields))
 	for k, v := range fields {
 		s = append(s, NamedType{Name: k, Type: v})
+	}
+	return s
+}
+
+func mapToNamedMembers(fields map[string]Member) []NamedMember {
+	s := make([]NamedMember, 0, len(fields))
+	for k, v := range fields {
+		s = append(s, NamedMember{k, v})
 	}
 	return s
 }

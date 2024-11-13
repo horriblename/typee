@@ -8,14 +8,18 @@ import (
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/internal/scope"
 	"github.com/horriblename/typee/src/parse"
+	"github.com/horriblename/typee/src/types"
 )
 
 type Typer struct {
-	debug bool
-	vars  scope.ScopedMap[TypeScheme]
+	debug      bool
+	classScope *ObjectType
+	vars       scope.ScopedMap[TypeScheme]
+	types      scope.ScopedMap[TypeScheme]
 }
 
 var ErrUndefinedVariable = errors.New("undefined variable")
+var ErrUndefinedTypeName = errors.New("undefined type")
 var ErrWrongArgCount = errors.New("wrong argument count")
 var ErrTypeMismatch = errors.New("mismatched type")
 var ErrMissingField = errors.New("missing field")
@@ -23,7 +27,10 @@ var ErrConstraintViolated = errors.New("constraint violated")
 var ErrCannotConstrain = errors.New("cannot constrain")
 var ErrInvalidTopLevel = errors.New("invalid top level construct: must be set or def")
 var ErrDefMustBeTopLevel = errors.New("function definitions only allowed in top level")
+var ErrClassDefMustBeTopLevel = errors.New("class and interface definitions must be top-level")
 var ErrEmptyFuncBody = errors.New("empty function body")
+var ErrIllegalTypeScheme = errors.New("type schemes not allowed here")
+var ErrIllegalSuperType = errors.New("super types must be class or interfaces")
 
 const scopeLevelTop int = 1
 
@@ -31,9 +38,13 @@ func NewTyper(debug bool) *Typer {
 	vars := scope.NewScopedMap[TypeScheme]()
 	addBuiltins(&vars)
 	vars.NewScope()
+	types := scope.NewScopedMap[TypeScheme]()
+	addBuiltinTypes(&types)
+	types.NewScope()
 	return &Typer{
 		debug: debug,
 		vars:  vars,
+		types: types,
 	}
 }
 
@@ -62,6 +73,13 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]PolymorphicType, error) 
 				return nil, err
 			}
 			self.vars.Insert(e.Name, types[i])
+		case *parse.ClassDef:
+			t, err := self.defClass(e)
+			if err != nil {
+				return nil, err
+			}
+
+			types[i] = PolymorphicType{t}
 		default:
 			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
 		}
@@ -104,6 +122,11 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		}
 	case *parse.FuncDef:
 		return nil, fmt.Errorf("%w: %s", ErrDefMustBeTopLevel, expr.Name)
+
+	case *parse.ClassDef:
+		return nil, fmt.Errorf("%w: %s", ErrClassDefMustBeTopLevel, expr.Name)
+	case *parse.InterfaceDef:
+		return nil, fmt.Errorf("%w: %s", ErrClassDefMustBeTopLevel, expr.Name)
 
 	case *parse.Fn:
 		self.vars.NewScope()
@@ -174,6 +197,31 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 
 		ret := freshVar()
 		if err := constrain(recordTy, Record{[]NamedType{{expr.Field, ret}}}); err != nil {
+			return nil, err
+		}
+
+		return ret, nil
+
+	case *parse.MethodAccess:
+		objTy, err := self.TypeTerm(&parse.Symbol{Name: expr.Class})
+		if err != nil {
+			return nil, err
+		}
+
+		ret := freshVar()
+		err = constrain(objTy, ObjectType{
+			Name:   "",
+			Supers: []ObjectType{},
+			Fields: []NamedMember{},
+			Methods: []NamedMember{{
+				Name: expr.Method,
+				Member: Member{
+					Type:   ret,
+					Access: types.AccessPublic, // TODO
+				},
+			}},
+		})
+		if err != nil {
 			return nil, err
 		}
 
@@ -272,6 +320,92 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 	panic(fmt.Sprintf("unhandled: TypeTerm(%s)", term.Pretty()))
 }
 
+func (self *Typer) defClass(classDef *parse.ClassDef) (SimpleType, error) {
+	fields := []NamedMember{}
+	methods := []NamedMember{}
+
+	// TODO: methods
+	for _, field := range classDef.Fields {
+		switch f := field.(type) {
+		case parse.ClassField:
+			typ, err := self.parseType(f.Type)
+			if err != nil {
+				return nil, err
+			}
+
+			st, ok := typ.(SimpleType)
+			if !ok {
+				return nil, fmt.Errorf("type checking class member: %w", ErrIllegalTypeScheme)
+			}
+
+			fields = append(fields, NamedMember{
+				Name: f.Name(),
+				Member: Member{
+					Type:   st,
+					Access: f.Access(),
+				},
+			})
+		case parse.ClassMethod:
+			if len(f.Func.Body) == 0 {
+				return nil, fmt.Errorf("in function %s: %w", f.Func.Name, ErrEmptyFuncBody)
+			}
+			fn := parse.Fn{
+				Args: f.Func.Args,
+				Body: f.Func.Body[len(f.Func.Body)-1],
+			}
+			typ, err := self.typeLetRhs(f.Name(), &fn)
+			if err != nil {
+				return nil, err
+			}
+
+			methods = append(methods, NamedMember{
+				Name: f.Name(),
+				Member: Member{
+					Type:   typ.Body, // FIXME
+					Access: f.Access(),
+				},
+			})
+
+		default:
+			panic(fmt.Sprintf("unexpected parse.ClassMember: %#v", field))
+		}
+	}
+
+	supers := make([]ObjectType, len(classDef.Supers))
+	for i, s := range classDef.Supers {
+		sup, ok := self.types.Get(s).Unwrap()
+		if !ok {
+			return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, s)
+		}
+
+		sc, ok := sup.(ObjectType)
+		if !ok {
+			return nil, fmt.Errorf("%w: %s", ErrIllegalSuperType, s)
+		}
+
+		supers[i] = sc
+	}
+
+	return ObjectType{
+		Name:    classDef.Name,
+		Supers:  supers,
+		Fields:  fields,
+		Methods: methods,
+	}, nil
+}
+
+func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
+	switch t := tr.(type) {
+	case parse.TypeName:
+		if typ, ok := self.types.Get(t.Name).Unwrap(); ok {
+			return typ, nil
+		}
+		return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, t.Name)
+	default:
+		panic(fmt.Sprintf("unexpected parse.TypeRepr: %#v", t))
+	}
+}
+
 func constrain(ty0 SimpleType, bound0 SimpleType) error {
 	trace("constrain %v <: %v", ty0, bound0)
 	indentLvl++
@@ -310,6 +444,20 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 				}
 			} else {
 				return fmt.Errorf("%w: missing field %s: %#v", ErrMissingField, boundField.Name, boundField.Type)
+			}
+		}
+
+		return nil
+	} else if ty, bound, ok := matchPair[ObjectType, ObjectType](ty0, bound0); ok {
+		tyMembers := namedMembersToMap(ty.Fields)
+		for _, boundMember := range bound.Methods {
+			if tyMember, ok := tyMembers[boundMember.Name]; ok {
+				//TODO: check visibility
+				if err := constrain(tyMember.Type, boundMember.Type); err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("%w %s: %v", ErrMissingField, boundMember.Name, boundMember.Type)
 			}
 		}
 

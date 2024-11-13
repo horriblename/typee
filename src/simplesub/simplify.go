@@ -31,6 +31,11 @@ func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[*Variable]
 		for _, field := range ty.Fields {
 			analyze(field.Type, pol, pos, neg)
 		}
+	case ObjectType:
+		// TODO: fields
+		for _, meth := range ty.Methods {
+			analyze(meth.Type, pol, pos, neg)
+		}
 	case Func:
 		for _, arg := range ty.Args {
 			analyze(arg, !pol, pos, neg)
@@ -56,6 +61,19 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleTy
 		})
 
 		return Record{fields}
+	case ObjectType:
+		fields := fun.Map(ty.Fields, func(field NamedMember) NamedMember {
+			return NamedMember{field.Name, Member{transform(field.Type, pol, mapping, pos, neg), field.Access}}
+		})
+		methods := fun.Map(ty.Methods, func(meth NamedMember) NamedMember {
+			return NamedMember{meth.Name, Member{transform(meth.Type, pol, mapping, pos, neg), meth.Access}}
+		})
+		return ObjectType{
+			Name:    ty.Name,
+			Supers:  ty.Supers,
+			Fields:  fields,
+			Methods: methods,
+		}
 	case Func:
 		args := fun.Map(ty.Args, func(field SimpleType) SimpleType {
 			return transform(field, !pol, mapping, pos, neg)
@@ -135,6 +153,28 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 			fields[field.Name] = coalesceTypeInner(field.Type, polarity)
 		}
 		return &types.Record{Fields: fields}
+	case ObjectType:
+		fields := map[string]types.Member{}
+		for _, field := range ty.Fields {
+			fields[field.Name] = types.Member{
+				Access: field.Access,
+				Type:   coalesceTypeInner(field.Type, polarity),
+			}
+		}
+
+		methods := map[string]types.Member{}
+		for _, meth := range ty.Methods {
+			methods[meth.Name] = types.Member{
+				Access: meth.Access,
+				Type:   coalesceTypeInner(meth.Type, polarity),
+			}
+		}
+		return &types.Class{
+			Name:    ty.Name,
+			Fields:  fields,
+			Statics: map[string]types.Member{},
+			Methods: methods,
+		}
 	case Bot:
 		return &types.Record{Fields: map[string]types.Type{}}
 	case Top:
