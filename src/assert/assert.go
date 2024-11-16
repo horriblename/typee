@@ -22,6 +22,13 @@ func Eq[T comparable](a T, b T, msg ...any) {
 	}
 }
 
+func Neq[T comparable](a T, b T, msg ...any) {
+	if a == b {
+		panic(fmt.Errorf("failed assertion a != b:\n  left: %v\n  right: %v\n%s", a, b,
+			joinHint(msg)))
+	}
+}
+
 func GreaterThan[T cmp.Ordered](a T, b T, msg ...any) {
 	if a <= b {
 		panic(fmt.Errorf("failed assertion a > b:\n  left: %v\n  right: %v\n%s", a, b,
