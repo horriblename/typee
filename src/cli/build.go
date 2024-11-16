@@ -55,7 +55,7 @@ func buildProgram(params buildParams) error {
 	}
 
 	typer := simplesub.NewTyper(true)
-	t, err := typer.TypeProgram(ast)
+	t, _, err := typer.TypeProgram(ast)
 	if err != nil {
 		errorf("during type inference: %s", err)
 		os.Exit(1)

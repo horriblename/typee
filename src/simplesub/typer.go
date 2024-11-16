@@ -50,7 +50,17 @@ func NewTyper(debug bool) *Typer {
 	}
 }
 
-func (self *Typer) TypeProgram(program []parse.Expr) ([]PolymorphicType, error) {
+type context struct {
+	inferred map[int]types.Type
+}
+
+func (self *Typer) TypeProgram(program []parse.Expr) ([]PolymorphicType, map[int]types.Type, error) {
+	ctx := context{map[int]types.Type{}}
+	t, err := self.typeProgram(&ctx, program)
+	return t, ctx.inferred, err
+}
+
+func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]PolymorphicType, error) {
 	var err error
 	types := make([]PolymorphicType, len(program))
 	for i, expr := range program {
@@ -60,24 +70,25 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]PolymorphicType, error) 
 				return nil, fmt.Errorf("in function %s: %w", e.Name, ErrEmptyFuncBody)
 			}
 			fn := parse.Fn{
+				Id:        expr.ID(),
 				Signature: e.Signature,
 				Args:      e.Args,
 				Body:      e.Body[len(e.Body)-1],
 			}
-			types[i], err = self.typeLetRhs(e.Name, &fn)
+			types[i], err = self.typeLetRhs(ctx, e.Name, &fn)
 			if err != nil {
 				return nil, err
 			}
 			self.vars.Insert(e.Name, types[i])
 
 		case *parse.Set:
-			types[i], err = self.typeLetRhs(e.Name, e.Value)
+			types[i], err = self.typeLetRhs(ctx, e.Name, e.Value)
 			if err != nil {
 				return nil, err
 			}
 			self.vars.Insert(e.Name, types[i])
 		case *parse.ClassDef:
-			t, err := self.defClass(e)
+			t, err := self.defClass(ctx, e)
 			if err != nil {
 				return nil, err
 			}
@@ -91,13 +102,13 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]PolymorphicType, error) 
 	return types, nil
 }
 
-func (self *Typer) typeLetRhs(name string, rhs parse.Expr) (PolymorphicType, error) {
+func (self *Typer) typeLetRhs(ctx *context, name string, rhs parse.Expr) (PolymorphicType, error) {
 	// NOTE: currently top level definitions are always recursive let,
 	// and passing FuncDef as rhs is a little hack so I can write (def foo ...)
 	// instead of (set foo (fn ...))
 	eTy := freshVar()
 	self.vars.Insert(name, eTy)
-	ty, err := self.TypeTerm(rhs)
+	ty, err := self.TypeTerm(ctx, rhs)
 	if err != nil {
 		return PolymorphicType{}, err
 	}
@@ -109,7 +120,7 @@ func (self *Typer) typeLetRhs(name string, rhs parse.Expr) (PolymorphicType, err
 	return PolymorphicType{eTy}, nil
 }
 
-func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
+func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ error) {
 	trace("typing: %v", term.Pretty())
 	indentLvl++
 	defer func() {
@@ -157,7 +168,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 				self.vars.Insert(expr.Args[i], p)
 			}
 
-			bodyTy, err := self.TypeTerm(expr.Body)
+			bodyTy, err := self.TypeTerm(ctx, expr.Body)
 			if err != nil {
 				return nil, err
 			}
@@ -172,7 +183,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 			params[i] = param
 			self.vars.Insert(arg, param)
 		}
-		bodyTy, err := self.TypeTerm(expr.Body)
+		bodyTy, err := self.TypeTerm(ctx, expr.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -182,14 +193,14 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 	case *parse.Form:
 		assert.GreaterThan(len(expr.Children), 0, "unhandled: empty form")
 
-		funcTy, err := self.TypeTerm(expr.Children[0])
+		funcTy, err := self.TypeTerm(ctx, expr.Children[0])
 		if err != nil {
 			return nil, err
 		}
 
 		argTys := make([]SimpleType, len(expr.Children)-1)
 		for i, arg := range expr.Children[1:] {
-			ty, err := self.TypeTerm(arg)
+			ty, err := self.TypeTerm(ctx, arg)
 			if err != nil {
 				return nil, err
 			}
@@ -218,7 +229,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 	case *parse.Record:
 		fields := make([]NamedType, len(expr.Fields))
 		for i, field := range expr.Fields {
-			fieldTy, err := self.TypeTerm(field.Value)
+			fieldTy, err := self.TypeTerm(ctx, field.Value)
 			if err != nil {
 				return nil, err
 			}
@@ -232,7 +243,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 
 	case *parse.RecordAccess:
 		// TODO: allow non-variable as record
-		recordTy, err := self.TypeTerm(&parse.Symbol{Name: expr.Record})
+		recordTy, err := self.TypeTerm(ctx, &parse.Symbol{Name: expr.Record})
 		if err != nil {
 			return nil, err
 		}
@@ -245,7 +256,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		return ret, nil
 
 	case *parse.MethodAccess:
-		objTy, err := self.TypeTerm(&parse.Symbol{Name: expr.Class})
+		objTy, err := self.TypeTerm(ctx, &parse.Symbol{Name: expr.Class})
 		if err != nil {
 			return nil, err
 		}
@@ -270,7 +281,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		return ret, nil
 
 	case *parse.IfExpr:
-		condTy, err := self.TypeTerm(expr.Condition)
+		condTy, err := self.TypeTerm(ctx, expr.Condition)
 		if err != nil {
 			return nil, err
 		}
@@ -280,12 +291,12 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		}
 
 		retTy := freshVar()
-		thenTy, err := self.TypeTerm(expr.Consequence)
+		thenTy, err := self.TypeTerm(ctx, expr.Consequence)
 		if err != nil {
 			return nil, err
 		}
 
-		elseTy, err := self.TypeTerm(expr.Alternative)
+		elseTy, err := self.TypeTerm(ctx, expr.Alternative)
 		if err != nil {
 			return nil, err
 		}
@@ -312,9 +323,10 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 			argNames := fun.Map(expr.Assignments, func(ass parse.Assignment) string {
 				return ass.Var
 			})
-			return self.TypeTerm(&parse.Form{
+			return self.TypeTerm(ctx, &parse.Form{
 				Children: append([]parse.Expr{
 					&parse.Fn{
+						Id:   expr.ID(),
 						Args: argNames,
 						Body: expr.Body,
 					},
@@ -328,7 +340,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 			return nil, fmt.Errorf("%w: %s", ErrUndefinedVariable, expr.Name)
 		}
 
-		val, err := self.TypeTerm(expr.Value)
+		val, err := self.TypeTerm(ctx, expr.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -347,7 +359,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 
 	case *parse.VarDef:
 		// TODO: should var be a let rec?
-		val, err := self.TypeTerm(expr.Value)
+		val, err := self.TypeTerm(ctx, expr.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -362,7 +374,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 	panic(fmt.Sprintf("unhandled: TypeTerm(%s)", term.Pretty()))
 }
 
-func (self *Typer) defClass(classDef *parse.ClassDef) (SimpleType, error) {
+func (self *Typer) defClass(ctx *context, classDef *parse.ClassDef) (SimpleType, error) {
 	fields := []NamedMember{}
 	methods := []NamedMember{}
 
@@ -396,7 +408,7 @@ func (self *Typer) defClass(classDef *parse.ClassDef) (SimpleType, error) {
 				Args:      f.Func.Args,
 				Body:      f.Func.Body[len(f.Func.Body)-1],
 			}
-			typ, err := self.typeLetRhs(f.Name(), &fn)
+			typ, err := self.typeLetRhs(ctx, f.Name(), &fn)
 			if err != nil {
 				return nil, err
 			}
