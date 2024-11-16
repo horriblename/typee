@@ -27,10 +27,6 @@ type Symbol struct {
 	Name string
 	id   int
 }
-type Int struct {
-	Value int64
-	id    int
-}
 type FuncDef struct {
 	id        int
 	Name      string
@@ -172,7 +168,6 @@ func (*New) ast()          {}
 
 func (self *Form) ID() int         { return self.id }
 func (self *Symbol) ID() int       { return self.id }
-func (self *Int) ID() int          { return self.id }
 func (self *FuncDef) ID() int      { return self.id }
 func (self *Set) ID() int          { return self.id }
 func (self *VarDef) ID() int       { return self.id }
@@ -193,7 +188,6 @@ func (self *New) ID() int          { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
-func (self *Int) String() string    { return fmt.Sprintf("#%d Int {%d}", self.id, self.Value) }
 func (self *FuncDef) String() string {
 	return fmt.Sprintf("#%d (def %s [%+v] %+v)", self.id, self.Name, self.Args, self.Body)
 }
@@ -263,7 +257,6 @@ func prettySlice(xs []Expr) []string {
 
 func (self *Form) Pretty() string   { return fmt.Sprintf("(%v)", prettySlice(self.Children)) }
 func (self *Symbol) Pretty() string { return fmt.Sprintf("%s", self.Name) }
-func (self *Int) Pretty() string    { return fmt.Sprintf("%d", self.Value) }
 func (self *FuncDef) Pretty() string {
 	return fmt.Sprintf("(def %s [%v] %v)", self.Name, self.Args, prettySlice(self.Body))
 }
