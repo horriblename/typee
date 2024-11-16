@@ -184,20 +184,20 @@ func cmdRepl() error {
 			continue
 		}
 
-		ty, err := typer.TypeTerm(expr[0])
+		ty, _, err := typer.TypeProgram(expr)
 		if err != nil {
 			errorf("%s", err)
 			continue
 		}
 
 		if *rawType {
-			errorf("pre-simplify: %s", ty.String())
+			errorf("pre-simplify: (polymorphic) %s", ty[0].Body.String())
 		}
 
-		simplified := simplesub.SimplifyType(ty)
+		simplified := simplesub.SimplifyType(ty[0].Body)
 
 		if *rawType {
-			errorf("pre-coalesce: %v", simplified)
+			errorf("pre-coalesce: (polymorphic) %v", simplified)
 		}
 
 		simpleTy := simplesub.CoalesceType(simplified)
