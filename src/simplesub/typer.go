@@ -51,11 +51,11 @@ func NewTyper(debug bool) *Typer {
 }
 
 type context struct {
-	inferred map[int]types.Type
+	inferred map[int]TypeScheme
 }
 
-func (self *Typer) TypeProgram(program []parse.Expr) ([]PolymorphicType, map[int]types.Type, error) {
-	ctx := context{map[int]types.Type{}}
+func (self *Typer) TypeProgram(program []parse.Expr) ([]PolymorphicType, map[int]TypeScheme, error) {
+	ctx := context{map[int]TypeScheme{}}
 	t, err := self.typeProgram(&ctx, program)
 	return t, ctx.inferred, err
 }
@@ -126,6 +126,9 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 	defer func() {
 		indentLvl--
 		trace(": %v", a)
+	}()
+	defer func() {
+		ctx.inferred[term.ID()] = a
 	}()
 	switch expr := term.(type) {
 	case *parse.Symbol:
