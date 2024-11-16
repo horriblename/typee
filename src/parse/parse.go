@@ -334,7 +334,7 @@ func fnExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	in, _, err = rparen(in)
 	check(err)
 
-	return in, &Fn{id: newId(), Signature: sig, Args: args, Body: body}, nil
+	return in, &Fn{Id: newId(), Signature: sig, Args: args, Body: body}, nil
 }
 
 func taggedExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {

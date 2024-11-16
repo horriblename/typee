@@ -83,7 +83,7 @@ type TaggedExpr struct {
 }
 
 type Fn struct {
-	id        int
+	Id        int // export id since Fn is used as a desugar target
 	Signature opt.Option[[]TypeRepr]
 	Args      []string
 	Body      Expr
@@ -177,7 +177,7 @@ func (self *IntLiteral) ID() int   { return self.id }
 func (self *BoolLiteral) ID() int  { return self.id }
 func (self *LetExpr) ID() int      { return self.id }
 func (self *TaggedExpr) ID() int   { return self.id }
-func (self *Fn) ID() int           { return self.id }
+func (self *Fn) ID() int           { return self.Id }
 func (self *CaseExpr) ID() int     { return self.id }
 func (self *Record) ID() int       { return self.id }
 func (self *ClassDef) ID() int     { return self.id }
@@ -217,7 +217,7 @@ func (self *TaggedExpr) String() string {
 	return fmt.Sprintf("#%d ('%s %v)", self.id, self.Tag, self.Body)
 }
 func (self *Fn) String() string {
-	return fmt.Sprintf("#%d (fn [%v] %v)", self.id, self.Args, self.Body)
+	return fmt.Sprintf("#%d (fn [%v] %v)", self.Id, self.Args, self.Body)
 }
 func (self *CaseExpr) String() string {
 	return fmt.Sprintf("#%d (case %v [%s])", self.id, self.Match, strings.Join(fun.Map(self.Branches, func(branch CaseBranch) string {
