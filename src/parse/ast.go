@@ -14,6 +14,7 @@ import (
 type Expr interface {
 	ast()
 	ID() int
+	String() string
 	Pretty() string
 }
 
@@ -194,6 +195,9 @@ func (self *FuncDef) String() string {
 func (self *Set) String() string {
 	return fmt.Sprintf("#%d (set %s %+v)", self.id, self.Name, self.Value)
 }
+func (self *VarDef) String() string {
+	return fmt.Sprintf("#%d (var %s %+v)", self.id, self.Name, self.Value)
+}
 func (self *IfExpr) String() string {
 	return fmt.Sprintf("#%d (if [%v] %v %v)", self.id, self.Condition, self.Consequence, self.Alternative)
 }
@@ -238,6 +242,9 @@ func (self *InterfaceDef) String() string {
 }
 func (self *RecordAccess) String() string {
 	return fmt.Sprintf("#%d %s.%s", self.id, self.Record, self.Field)
+}
+func (self *MethodAccess) String() string {
+	return fmt.Sprintf("#%d %s.%s", self.id, self.Class, self.Method)
 }
 func (self *RecordField) String() string {
 	return fmt.Sprintf("%s: %s", self.Name, self.Value)
