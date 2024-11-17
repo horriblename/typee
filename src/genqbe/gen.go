@@ -30,7 +30,6 @@ type ctx struct {
 }
 
 func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
-	// top-levels
 	ctx := ctx{
 		qbeil.Builder{OutFile: w},
 		typs,
