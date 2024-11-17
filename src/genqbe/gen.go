@@ -2,6 +2,7 @@ package genqbe
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
 
@@ -9,24 +10,33 @@ import (
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/genqbe/qbeil"
 	"github.com/horriblename/typee/src/parse"
-	"github.com/horriblename/typee/src/solve"
+	"github.com/horriblename/typee/src/simplesub"
 	"github.com/horriblename/typee/src/types"
 )
 
 //go:embed builtins.qbe
 var builtinsQbe string
 
+// compiler bugs
+var ErrCannotCompilePolymorphicType = errors.New("tried to compile a polymorphic type")
+
 type ctx struct {
-	il        qbeil.Builder
-	topLevels solve.SymbolTable
-	statics   map[qbeil.Var]string
-	userTypes map[string]qbeil.StructType
+	il         qbeil.Builder
+	types      map[int]simplesub.TypeScheme
+	simplified map[int]types.Type
+	statics    map[qbeil.Var]string
+	userTypes  map[string]qbeil.StructType
 }
 
-func Gen(w io.Writer, types solve.SymbolTable, ast []parse.Expr) {
+func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 	// top-levels
-	ctx := ctx{qbeil.Builder{OutFile: w}, types, map[qbeil.Var]string{},
-		map[string]qbeil.StructType{}}
+	ctx := ctx{
+		qbeil.Builder{OutFile: w},
+		typs,
+		map[int]types.Type{},
+		map[qbeil.Var]string{},
+		map[string]qbeil.StructType{},
+	}
 
 	ctx.userTypes["Str"] = qbeil.StructType{
 		Name: "Str",
@@ -53,7 +63,7 @@ func gen(ctx *ctx, expr parse.Expr) (val qbeil.Value) {
 		return genCall(ctx, e)
 	case *parse.Symbol:
 		// FIXME: bad global lookup
-		if _, ok := ctx.topLevels[e.Name]; ok {
+		if _, ok := ctx.types[e.ID()]; ok {
 			return qbeil.Var{Global: true, Name: e.Name}
 		}
 		return qbeil.Var{Global: false, Name: e.Name}
@@ -81,17 +91,17 @@ func gen(ctx *ctx, expr parse.Expr) (val qbeil.Value) {
 }
 
 func genFunc(ctx *ctx, expr *parse.FuncDef) (val qbeil.Value) {
-	funcTyp, ok := ctx.topLevels[expr.Name].(*types.Func)
+	funcTyp, ok := ctx.simplify(expr.ID()).(*types.Func)
 	assert.True(ok, "generate function code: type of ", expr.Name, " is not function")
 	assert.Eq(len(expr.Args), len(funcTyp.Args))
 	assert.GreaterThan(len(expr.Body), 0, "function", expr.Name, "has empty body")
 
 	thisFunc := qbeil.Var{Global: true, Name: expr.Name}
-	args := make([]qbeil.TypedVar, 0, len(expr.Args))
+	argTyps := make([]qbeil.TypedVar, 0, len(expr.Args))
 
-	for i, arg := range funcTyp.Args {
-		args = append(args, qbeil.NewTypedVar(
-			ctx.toILType(arg),
+	for i, argTyp := range funcTyp.Args {
+		argTyps = append(argTyps, qbeil.NewTypedVar(
+			ctx.toILType(argTyp),
 			qbeil.Var{Global: false, Name: expr.Args[i]},
 		))
 	}
@@ -103,7 +113,7 @@ func genFunc(ctx *ctx, expr *parse.FuncDef) (val qbeil.Value) {
 		retTyp = qbeil.Word
 	}
 
-	assert.Ok(ctx.il.Func(linkage, &retTyp, thisFunc.IL(), args))
+	assert.Ok(ctx.il.Func(linkage, &retTyp, thisFunc.IL(), argTyps))
 
 	for _, stmt := range expr.Body[:len(expr.Body)-1] {
 		gen(ctx, stmt)
@@ -145,8 +155,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 			return target
 		default:
 			// TODO: local functions
-			fn, found := ctx.topLevels[callee.Name]
-			assert.True(found, "function does not exist:", callee.Name)
+			fn := ctx.simplify(callee.ID())
 
 			funcSig, ok := fn.(*types.Func)
 			assert.True(ok, "tried to call non-function top-level:", callee.Name)
@@ -212,4 +221,21 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	default:
 		panic("unimpl: conversion to IL of type " + typ.String())
 	}
+}
+
+func (ctx *ctx) simplify(exprID int) types.Type {
+	// this cache probably isn't that helpful? but caching by simplesub.Type is
+	// probably too costly to hash
+	if t, ok := ctx.simplified[exprID]; ok {
+		return t
+	}
+
+	st, ok := ctx.types[exprID].(simplesub.SimpleType)
+	if !ok {
+		panic("compiler bug: " + ErrCannotCompilePolymorphicType.Error())
+	}
+	t1 := simplesub.SimplifyType(st)
+	t2 := simplesub.CoalesceType(t1)
+	ctx.simplified[exprID] = t2
+	return t2
 }

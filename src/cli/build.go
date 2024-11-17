@@ -5,12 +5,10 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"strconv"
 
 	"github.com/horriblename/typee/src/genqbe"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
-	"github.com/horriblename/typee/src/types"
 
 	"modernc.org/libqbe"
 )
@@ -55,20 +53,15 @@ func buildProgram(params buildParams) error {
 	}
 
 	typer := simplesub.NewTyper(true)
-	t, _, err := typer.TypeProgram(ast)
+	t, treeType, err := typer.TypeProgram(ast)
 	if err != nil {
 		errorf("during type inference: %s", err)
 		os.Exit(1)
 	}
 
-	typ := map[string]types.Type{}
-	for i, t := range t {
-		typ[strconv.Itoa(i)] = simplesub.CoalesceType(simplesub.SimplifyType(t.Body))
-	}
-
 	if params.printTypes {
-		for name, typ := range typ {
-			errorf("%s: %s", name, typ.String())
+		for name, typ := range t {
+			errorf("%s: %s", name, typ.Body.String())
 		}
 	}
 
@@ -82,7 +75,7 @@ func buildProgram(params buildParams) error {
 	}
 	defer qbeFile.Close()
 
-	genqbe.Gen(qbeFile, typ, ast)
+	genqbe.Gen(qbeFile, treeType, ast)
 	qbeFile.Seek(0, 0)
 
 	asmFName := params.inFile + ".s"

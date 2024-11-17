@@ -6,7 +6,7 @@ import (
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/parse"
-	"github.com/horriblename/typee/src/solve"
+	"github.com/horriblename/typee/src/simplesub"
 )
 
 func TestGen(t *testing.T) {
@@ -46,7 +46,8 @@ function l $foo(l %x, l %y) {
 			program, err := parse.ParseString(tC.input)
 			assert.Ok(err)
 
-			types, err := solve.Check(program)
+			typer := simplesub.NewTyper(false)
+			_, types, err := typer.TypeProgram(program)
 			assert.Ok(err)
 
 			var buf bytes.Buffer
