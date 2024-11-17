@@ -25,6 +25,7 @@ type ctx struct {
 	types      map[int]simplesub.TypeScheme
 	simplified map[int]types.Type
 	statics    map[qbeil.Var]string
+	globals    map[string]int
 	userTypes  map[string]qbeil.StructType
 }
 
@@ -35,6 +36,7 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 		typs,
 		map[int]types.Type{},
 		map[qbeil.Var]string{},
+		globals(ast),
 		map[string]qbeil.StructType{},
 	}
 
@@ -62,8 +64,7 @@ func gen(ctx *ctx, expr parse.Expr) (val qbeil.Value) {
 	case *parse.Form:
 		return genCall(ctx, e)
 	case *parse.Symbol:
-		// FIXME: bad global lookup
-		if _, ok := ctx.types[e.ID()]; ok {
+		if _, ok := ctx.globals[e.Name]; ok {
 			return qbeil.Var{Global: true, Name: e.Name}
 		}
 		return qbeil.Var{Global: false, Name: e.Name}
@@ -238,4 +239,28 @@ func (ctx *ctx) simplify(exprID int) types.Type {
 	t2 := simplesub.CoalesceType(t1)
 	ctx.simplified[exprID] = t2
 	return t2
+}
+
+type globalVar struct {
+	id   int
+	name string
+}
+
+func globals(program []parse.Expr) map[string]int {
+	// TODO: probably don't need this
+	vars := map[string]int{}
+	for _, e := range program {
+		switch et := e.(type) {
+		case *parse.Set:
+			vars[et.Name] = et.ID()
+		case *parse.FuncDef:
+			vars[et.Name] = et.ID()
+		case *parse.ClassDef:
+
+		default:
+			panic(fmt.Sprintf("illegal global expression: %v", e.Pretty()))
+		}
+	}
+
+	return vars
 }
