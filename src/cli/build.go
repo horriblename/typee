@@ -60,8 +60,15 @@ func buildProgram(params buildParams) error {
 	}
 
 	if params.printTypes {
-		for name, typ := range t {
-			errorf("%s: %s", name, typ.Body.String())
+		for i, expr := range ast {
+			switch e := expr.(type) {
+			case *parse.Set:
+				errorf("%s: %s", e.Name, t[i].Body.String())
+			case *parse.FuncDef:
+				errorf("%s: %s", e.Name, t[i].Body.String())
+			case *parse.ClassDef:
+				errorf("%s: %s", e.Name, t[i].Body.String())
+			}
 		}
 	}
 
