@@ -5,7 +5,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 
+	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/genqbe"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
@@ -22,10 +24,12 @@ const (
 )
 
 type buildParams struct {
-	targetStage stage
-	inFile      string
-	outFile     string
-	printTypes  bool
+	targetStage    stage
+	inFile         string
+	outFile        string
+	printTypes     bool
+	printAst       bool
+	printTypeTable bool
 }
 
 func buildProgram(params buildParams) error {
@@ -52,11 +56,23 @@ func buildProgram(params buildParams) error {
 		os.Exit(1)
 	}
 
+	if params.printAst {
+		errorf(strings.Join(fun.Map(ast, func(e parse.Expr) string {
+			return e.String()
+		}), "\n"))
+	}
+
 	typer := simplesub.NewTyper(true)
 	t, treeType, err := typer.TypeProgram(ast)
 	if err != nil {
 		errorf("during type inference: %s", err)
 		os.Exit(1)
+	}
+
+	if params.printTypeTable {
+		for id, typ := range treeType {
+			errorf("%d: %s", id, typ)
+		}
 	}
 
 	if params.printTypes {

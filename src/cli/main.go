@@ -75,10 +75,14 @@ const defaultOut = "a.out"
 
 const flagPrintTypes = "print-types"
 const defaultPrintTypes = false
+const helpPrintTypes = "Print top-level type info to stdout"
+
+const flagPrintTypeTable = "print-type-table"
+const flagPrintAst = "print-ast"
 
 func cmdCheck() error {
 	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
-	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, "Print top-level type info to stdout")
+	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
 	flag.Parse()
 
 	if *traceTyper {
@@ -98,6 +102,9 @@ func cmdCheck() error {
 func cmdBuild() error {
 	outPath := flag.String(flagOut, defaultOut, "")
 	outPathLong := flag.String(flagOutLong, defaultOut, "")
+	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
+	printTypeTable := flag.Bool(flagPrintTypeTable, false, "Print a table of expr ID to type.")
+	printAst := flag.Bool(flagPrintAst, true, "Print the parse ast")
 
 	if *outPathLong != defaultOut {
 		*outPath = *outPathLong
@@ -105,9 +112,12 @@ func cmdBuild() error {
 
 	flag.Parse()
 	params := buildParams{
-		targetStage: build,
-		inFile:      flag.Arg(0),
-		outFile:     *outPath,
+		targetStage:    build,
+		inFile:         flag.Arg(0),
+		outFile:        *outPath,
+		printTypes:     *printTypes,
+		printAst:       *printAst,
+		printTypeTable: *printTypeTable,
 	}
 
 	return buildProgram(params)
