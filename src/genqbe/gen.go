@@ -21,6 +21,9 @@ var builtinsQbe string
 var ErrCannotCompilePolymorphicType = errors.New("tried to compile a polymorphic type")
 
 type ctx struct {
+	ptrType qbeil.BaseType
+	intType qbeil.BaseType
+
 	il         qbeil.Builder
 	types      map[int]simplesub.TypeScheme
 	simplified map[int]types.Type
@@ -31,6 +34,8 @@ type ctx struct {
 
 func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 	ctx := ctx{
+		qbeil.Long, // TODO: infer ptr & int size + manual options
+		qbeil.Long,
 		qbeil.Builder{OutFile: w},
 		typs,
 		map[int]types.Type{},
@@ -40,18 +45,51 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 	}
 
 	ctx.userTypes["Str"] = qbeil.StructType{
-		Name: "Str",
+		Align:  0,
+		Name:   "Str",
+		Fields: []qbeil.Type{ctx.ptrType, ctx.ptrType},
+	}
+
+	// struct GObject {
+	//  GTypeInstance g_type_instance
+	//  guint ref_count; /* atomic */
+	//  GData* qdata
+	// }
+	//
+	// struct GTypeInstance {
+	//  GTypeClass* g_class;
+	// }
+	ctx.userTypes["GObject"] = qbeil.StructType{
+		Name: "GObject",
 		Fields: []qbeil.Type{
-			qbeil.Long, // pointer to string
-			qbeil.Word, // size
+			ctx.ptrType,
+			ctx.intType,
+			ctx.ptrType,
 		},
 	}
 
 	for _, expr := range ast {
-		gen(&ctx, expr)
+		genTopLevel(&ctx, expr)
 	}
 
 	ctx.finish()
+}
+
+func genTopLevel(ctx *ctx, expr parse.Expr) {
+	switch e := expr.(type) {
+	case *parse.ClassDef:
+		ctx.userTypes[e.Name] = qbeil.StructType{
+			Align:  0,
+			Name:   e.Name,
+			Fields: []qbeil.Type{},
+		}
+	case *parse.Set:
+		gen(ctx, expr)
+	case *parse.FuncDef:
+		gen(ctx, expr)
+	default:
+		panic(fmt.Sprintf("unexpected parse.Expr: %#v", e))
+	}
 }
 
 func gen(ctx *ctx, expr parse.Expr) (val qbeil.Value) {
@@ -211,15 +249,53 @@ func (ctx *ctx) finish() {
 }
 
 func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
-	switch typ.(type) {
+	switch t := typ.(type) {
 	case *types.Int:
-		return qbeil.Long
+		return ctx.intType
 	case *types.Bool:
-		return qbeil.Word
+		return ctx.intType
 	case *types.String:
 		return ctx.userTypes["Str"]
+	case *types.Class:
+		if t.Name == "" {
+			panic("unnamed classes should be illegal at codegen")
+		}
+
+		if ut, ok := ctx.userTypes[t.Name]; ok {
+			return ut
+		}
+
+		if len(t.Supers) == 0 {
+			fields := []qbeil.Type{
+				ctx.userTypes["GObject"], // parent
+				ctx.ptrType,              // private pointer
+			}
+			for _, field := range t.Fields {
+				if field.Access == types.AccessPublic || field.Access == types.AccessProtected {
+					fields = append(fields, ctx.fieldToILType(field.Type))
+				}
+			}
+			ctx.userTypes[t.Name] = qbeil.StructType{
+				Align:  0,
+				Name:   t.Name,
+				Fields: fields,
+			}
+		}
+		panic("unimpl: super types")
+
 	default:
 		panic("unimpl: conversion to IL of type " + typ.String())
+	}
+}
+
+func (ctx *ctx) fieldToILType(field types.Type) qbeil.Type {
+	switch t := field.(type) {
+	case *types.Class:
+		return ctx.ptrType
+	case *types.Bool, *types.Int, *types.String:
+		return ctx.toILType(field)
+	default:
+		panic(fmt.Sprintf("unexpected types.Type: %#v", t))
 	}
 }
 
