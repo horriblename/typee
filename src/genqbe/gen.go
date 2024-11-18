@@ -21,8 +21,9 @@ var builtinsQbe string
 var ErrCannotCompilePolymorphicType = errors.New("tried to compile a polymorphic type")
 
 type ctx struct {
-	ptrType qbeil.BaseType
-	intType qbeil.BaseType
+	ptrType      qbeil.BaseType
+	intType      qbeil.BaseType
+	defaultAlign int
 
 	il         qbeil.Builder
 	types      map[int]simplesub.TypeScheme
@@ -36,6 +37,7 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 	ctx := ctx{
 		qbeil.Long, // TODO: infer ptr & int size + manual options
 		qbeil.Long,
+		64,
 		qbeil.Builder{OutFile: w},
 		typs,
 		map[int]types.Type{},
@@ -168,6 +170,26 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 	assert.GreaterThan(len(expr.Children), 0, "empty form")
 
 	switch callee := expr.Children[0].(type) {
+	case *parse.New:
+		classIL := ctx.userTypes[callee.Class]
+		bits, _ := ctx.sizeOf(classIL)
+
+		val := ctx.il.TempVar(false)
+		ctx.il.Call(
+			&val,
+			ctx.ptrType,
+			qbeil.Var{Global: true, Name: "malloc"},
+			[]qbeil.TypedValue{{
+				Type:  ctx.intType,
+				Value: qbeil.IntLiteral{Value: int64(bits)}},
+			},
+		)
+
+		return val
+
+	case *parse.MethodAccess:
+		panic("TODO: gen method call")
+
 	case *parse.Symbol:
 		switch callee.Name {
 		case "+":
@@ -316,9 +338,34 @@ func (ctx *ctx) simplify(exprID int) types.Type {
 	return t2
 }
 
-type globalVar struct {
-	id   int
-	name string
+func (self *ctx) sizeOf(t qbeil.Type) (bits int, align int) {
+	switch t := t.(type) {
+	case qbeil.BaseType:
+		switch t {
+		case qbeil.Word:
+			return 32, self.defaultAlign
+		case qbeil.Long:
+			return 64, self.defaultAlign
+		case qbeil.Single:
+			return 32, self.defaultAlign
+		case qbeil.Double:
+			return 64, self.defaultAlign
+		default:
+			panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", t))
+		}
+	case qbeil.StructType:
+		bits := 0
+		align := 0
+		for _, field := range t.Fields {
+			// TODO: actually handle align
+			fs, fa := self.sizeOf(field)
+			align = max(align, fa)
+			bits += fs
+		}
+		return bits, align
+	default:
+		panic(fmt.Sprintf("unexpected qbeil.Type: %#v", t))
+	}
 }
 
 func globals(program []parse.Expr) map[string]int {
