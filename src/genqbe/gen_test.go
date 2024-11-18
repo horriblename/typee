@@ -86,8 +86,6 @@ export function w $main() {
 			program, err := parse.ParseString(tC.input)
 			assert.Ok(err)
 
-			fmt.Printf("ast:\n%+v", program)
-
 			typer := simplesub.NewTyper(false)
 			_, types, err := typer.TypeProgram(program)
 			assert.Ok(err)
@@ -119,7 +117,7 @@ func diffStr(t *testing.T, a, b string) string {
 		t.Fatalf("diffStr: %s", err.Error())
 	}
 
-	out, err := exec.Command("diff", "--color=always", pathA, pathB).Output()
+	out, err := exec.Command("git", "diff", "--color=always", pathA, pathB).Output()
 	_, exitErr := err.(*exec.ExitError)
 	if err != nil && !exitErr {
 		t.Fatalf("diffStr: running diff cmd: %s", err.Error())
