@@ -65,8 +65,9 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 	// struct GTypeInstance {
 	//  GTypeClass* g_class;
 	// }
-	ctx.userTypes["GObject"] = qbeil.StructType{
-		Name: "GObject",
+	ctx.declareType("GObject", qbeil.StructType{
+		Name:    "GObject",
+		Layouts: map[string]qbeil.FieldLayout{},
 		Fields: []qbeil.Type{
 			ctx.ptrType,
 			ctx.intType,
@@ -108,6 +109,47 @@ func gen(ctx *ctx, expr parse.Expr) (val qbeil.Value) {
 			return qbeil.Var{Global: true, Name: e.Name}
 		}
 		return qbeil.Var{Global: false, Name: e.Name}
+
+	case *parse.RecordAccess:
+		ty := ctx.simplify(e.Record.ID())
+		class := ty.(*types.Class)
+		assert.Neq(class.Name, "", "unnamed class not yet supported")
+
+		classTy := ctx.userTypes[class.Name]
+		fieldLayout, ok := classTy.Layouts[e.Field]
+		if !ok {
+			panic(fmt.Sprintf("typer bug: tried to use a non-existent class field %s.%s", class.Name, e.Field))
+		}
+
+		// TODO: once we support structs, we can't just pass this around (can we?)
+		bt, ok := fieldLayout.Type.(qbeil.BaseType)
+		if !ok {
+			panic("unreachable: embedded struct types are currently invalid in classes")
+		}
+
+		// TODO: 32-bit system
+		addr := ctx.il.TempVar(false)
+		ctx.il.Arithmetic(addr.IL(), ctx.ptrType, "add",
+			gen(ctx, &e.Record),
+			qbeil.IntLiteral{Value: int64(fieldLayout.Offset)},
+		)
+
+		val := ctx.il.TempVar(false)
+		switch bt {
+		case qbeil.Double:
+			ctx.il.Arithmetic(val.IL(), bt, "loadd", addr)
+		case qbeil.Long:
+			ctx.il.Arithmetic(val.IL(), bt, "loadl", addr)
+		case qbeil.Single:
+			ctx.il.Arithmetic(val.IL(), bt, "loads", addr)
+		case qbeil.Word:
+			ctx.il.Arithmetic(val.IL(), bt, "loadw", addr)
+		default:
+			panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", bt))
+		}
+
+		return val
+
 	case *parse.StrLiteral:
 		dataGlobal := ctx.il.TempVar(true)
 		ctx.statics[dataGlobal] = fmt.Sprintf(`{b "%s"}`, e.Content)
@@ -195,6 +237,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 	case *parse.MethodAccess:
 		ty := ctx.simplify(callee.Var.ID())
 		class := ty.(*types.Class).Name
+		assert.Neq(class, "", "unnamed class not yet supported")
 		return genCallWithFuncName(ctx, class, callee.Method, expr)
 
 	case *parse.Symbol:
@@ -265,17 +308,11 @@ func genClassDef(ctx *ctx, e *parse.ClassDef) {
 		panic(fmt.Sprintf("compiler bug: class definition yields non-class type %#v", ct))
 	}
 
-	ctx.userTypes[e.Name] = ctx.classDefIL(classTy, e)
+	ctx.declareType(e.Name, ctx.classDefIL(classTy, e))
 }
 
 func (ctx *ctx) finish() {
-	for _, typ := range ctx.userTypes {
-		_, err := ctx.il.OutFile.Write([]byte(typ.Define()))
-		assert.Ok(err)
-
-		_, err = ctx.il.OutFile.Write([]byte{'\n'})
-		assert.Ok(err)
-	}
+	ctx.il.OutFile.Write(ctx.typeDecl.Bytes())
 
 	for name, data := range ctx.statics {
 		_, err := ctx.il.OutFile.Write([]byte("data "))
@@ -330,9 +367,20 @@ func (ctx *ctx) classDefIL(t *types.Class, e *parse.ClassDef) qbeil.StructType {
 			ctx.userTypes["GObject"], // parent
 			ctx.ptrType,              // private pointer
 		}
-		for _, field := range t.Fields {
+		bits, _ := ctx.sizeOf(ctx.userTypes["GObject"]) // TODO: align
+		pubOffset := bits / 8
+		layouts := map[string]qbeil.FieldLayout{}
+
+		for name, field := range t.Fields {
 			if field.Access == types.AccessPublic || field.Access == types.AccessProtected {
-				fields = append(fields, ctx.toILType(field.Type))
+				ilTy := ctx.toILType(field.Type)
+				bits, _ := ctx.sizeOf(ilTy) // TODO: align
+				fields = append(fields, ilTy)
+				layouts[name] = qbeil.FieldLayout{
+					Offset: pubOffset,
+					Type:   ilTy,
+				}
+				pubOffset += bits / 8
 			}
 		}
 
@@ -347,9 +395,10 @@ func (ctx *ctx) classDefIL(t *types.Class, e *parse.ClassDef) qbeil.StructType {
 		}
 
 		return qbeil.StructType{
-			Align:  0,
-			Name:   t.Name,
-			Fields: fields,
+			Align:   0,
+			Layouts: layouts,
+			Name:    t.Name,
+			Fields:  fields,
 		}
 
 	}

@@ -42,9 +42,9 @@ type :GObject = {l, l, l, }
 					(print (bar (Foo.new))))
 			`,
 			output: //
-			`type :Foo = {:GObject, l, }
-type :Str = {l, l, }
+			`type :Str = {l, l, }
 type :GObject = {l, l, l, }
+type :Foo = {:GObject, l, }
 data $_tmp_1 = {b "foo"}
 function w $print(:Str %s) {
 @start
@@ -67,15 +67,42 @@ function :Str $Foo_name() {
 }
 function :Str $bar(l %foo) {
 @start
-	%_tmp_4 =:Str call $foo_name ()
+	%_tmp_4 =:Str call $Foo_name ()
 	ret %_tmp_4
 }
 export function w $main() {
 @start
-	%_tmp_6 =l call $malloc (l 256)
+	%_tmp_6 =l call $malloc (l 32)
 	%_tmp_5 =:Str call $bar (l %_tmp_6)
 	%_tmp_7 =w call $print (:Str %_tmp_5)
 	ret %_tmp_7
+}
+`,
+		},
+		{
+			desc: "class field access",
+			input: `(class Foo {pub x Int})
+				(def getX (Foo Int) [foo] foo.x)
+			`,
+			output: `type :Str = {l, l, }
+type :GObject = {l, l, l, }
+type :Foo = {:GObject, l, l, }
+function w $print(:Str %s) {
+@start
+	%str_data =l loadl %s
+	# 64-bit architecture only lul
+	%len_loc =l add %s, 8
+	%str_len =w loadw %len_loc
+	%stdout =l loadl $stdout
+	%res =w call $fwrite(l %str_data, w 1, w %str_len, l %stdout)
+	ret 0
+}
+
+function l $getX(l %foo) {
+@start
+	%_tmp_1 =l add %foo, 24
+	%_tmp_2 =l loadl %_tmp_1
+	ret %_tmp_2
 }
 `,
 		},
