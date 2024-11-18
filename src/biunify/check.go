@@ -104,7 +104,7 @@ func CheckExpr(engine TypeChecker, bindings Bindings, expr parse.Expr) (val Valu
 
 	case *parse.RecordAccess:
 		// FIXME: non-variable record access
-		lhsExpr := parse.Symbol{Name: expr.Record}
+		lhsExpr := expr.Record
 		lhsTy, err := CheckExpr(engine, bindings, &lhsExpr)
 		if err != nil {
 			return Value{}, err

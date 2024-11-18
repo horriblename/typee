@@ -461,7 +461,7 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 				func(member string) Expr {
 					return &RecordAccess{
 						id:     newId(),
-						Record: sym.Name,
+						Record: Symbol{sym.Name, newId()},
 						Field:  member,
 					}
 				},

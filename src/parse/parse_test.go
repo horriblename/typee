@@ -53,16 +53,16 @@ func TestParse(t *testing.T) {
 			desc:  "def no function signature",
 			input: "(def foo [x y] (foo x.bar y))",
 			output: []Expr{&FuncDef{
-				id:        5,
+				id:        6,
 				Name:      "foo",
 				Signature: opt.None[[]TypeRepr](),
 				Args:      []string{"x", "y"},
 				Body: []Expr{&Form{
-					id: 4,
+					id: 5,
 					Children: []Expr{
 						&Symbol{id: 1, Name: "foo"},
-						&RecordAccess{id: 2, Record: "x", Field: "bar"},
-						&Symbol{id: 3, Name: "y"},
+						&RecordAccess{id: 2, Record: Symbol{"x", 3}, Field: "bar"},
+						&Symbol{id: 4, Name: "y"},
 					},
 				}},
 			}},
@@ -71,7 +71,7 @@ func TestParse(t *testing.T) {
 			desc:  "fn with signature",
 			input: "(fn (Foo Bar) [x] x.bar)",
 			output: []Expr{&Fn{
-				Id: 2,
+				Id: 3,
 				Signature: opt.Some([]TypeRepr{
 					TypeName{"Foo"},
 					TypeName{"Bar"},
@@ -79,7 +79,7 @@ func TestParse(t *testing.T) {
 				Args: []string{"x"},
 				Body: &RecordAccess{
 					id:     1,
-					Record: "x",
+					Record: Symbol{"x", 2},
 					Field:  "bar",
 				},
 			}},
@@ -329,16 +329,16 @@ func TestParse(t *testing.T) {
 			desc:  "accessors",
 			input: `(x#foo x.y)`,
 			output: []Expr{&Form{
-				id: 3,
+				id: 5,
 				Children: []Expr{
 					&MethodAccess{
 						id:     1,
-						Var:    "x",
+						Var:    Symbol{"x", 2},
 						Method: "foo",
 					},
 					&RecordAccess{
-						id:     2,
-						Record: "x",
+						id:     3,
+						Record: Symbol{"x", 4},
 						Field:  "y",
 					},
 				},

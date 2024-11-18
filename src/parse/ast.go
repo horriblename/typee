@@ -113,7 +113,7 @@ type Record struct {
 
 type RecordAccess struct {
 	id     int
-	Record string
+	Record Symbol
 	Field  string
 }
 
@@ -241,10 +241,10 @@ func (self *InterfaceDef) String() string {
 	return fmt.Sprintf("#%d (interface %s %v {%v})", self.id, self.Name, self.Supers, self.Fields)
 }
 func (self *RecordAccess) String() string {
-	return fmt.Sprintf("#%d %s.%s", self.id, self.Record, self.Field)
+	return fmt.Sprintf("#%d %s.%s", self.id, self.Record.Name, self.Field)
 }
 func (self *MethodAccess) String() string {
-	return fmt.Sprintf("#%d %s.%s", self.id, self.Var, self.Method)
+	return fmt.Sprintf("#%d %s.%s", self.id, self.Var.Name, self.Method)
 }
 func (self *RecordField) String() string {
 	return fmt.Sprintf("%s: %s", self.Name, self.Value)
@@ -324,10 +324,10 @@ func (self *CaseBranch) Pretty() string {
 	return fmt.Sprintf("('%s %s) %s", self.Pattern.Tag, self.Pattern.Pattern, self.Body.Pretty())
 }
 func (self *RecordAccess) Pretty() string {
-	return fmt.Sprintf("%s.%s", self.Record, self.Field)
+	return fmt.Sprintf("%s.%s", self.Record.Name, self.Field)
 }
 func (self *MethodAccess) Pretty() string {
-	return fmt.Sprintf("%s#%s", self.Var, self.Method)
+	return fmt.Sprintf("%s#%s", self.Var.Name, self.Method)
 }
 func (self *New) Pretty() string {
 	return fmt.Sprintf("%s.new", self.Class)
