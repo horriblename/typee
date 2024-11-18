@@ -347,7 +347,7 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 		return ctx.ptrType
 
 	default:
-		panic("unimpl: conversion to IL of type " + typ.String())
+		panic("unimpl: conversion to QBE IL from type " + typ.String())
 	}
 }
 
