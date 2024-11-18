@@ -93,6 +93,7 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]Polymorphi
 				return nil, err
 			}
 
+			ctx.inferred[e.ID()] = PolymorphicType{t}
 			types[i] = PolymorphicType{t}
 		default:
 			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
@@ -407,6 +408,7 @@ func (self *Typer) defClass(ctx *context, classDef *parse.ClassDef) (SimpleType,
 				return nil, fmt.Errorf("in function %s: %w", f.Func.Name, ErrEmptyFuncBody)
 			}
 			fn := parse.Fn{
+				Id:        f.Func.ID(),
 				Signature: f.Func.Signature,
 				Args:      f.Func.Args,
 				Body:      f.Func.Body[len(f.Func.Body)-1],
