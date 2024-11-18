@@ -470,8 +470,11 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 				combinator.WithPrefix(hash, symbolName),
 				func(member string) Expr {
 					return &MethodAccess{
-						id:     newId(),
-						Class:  sym.Name,
+						id: newId(),
+						Var: Symbol{
+							Name: sym.Name,
+							id:   newId(),
+						},
 						Method: member,
 					}
 				},

@@ -333,7 +333,7 @@ func TestParse(t *testing.T) {
 				Children: []Expr{
 					&MethodAccess{
 						id:     1,
-						Class:  "x",
+						Var:    "x",
 						Method: "foo",
 					},
 					&RecordAccess{

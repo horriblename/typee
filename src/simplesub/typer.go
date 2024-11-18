@@ -260,7 +260,7 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 		return ret, nil
 
 	case *parse.MethodAccess:
-		objTy, err := self.TypeTerm(ctx, &parse.Symbol{Name: expr.Class})
+		objTy, err := self.TypeTerm(ctx, &expr.Var)
 		if err != nil {
 			return nil, err
 		}

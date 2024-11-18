@@ -138,7 +138,7 @@ type InterfaceDef struct {
 
 type MethodAccess struct {
 	id     int
-	Class  string
+	Var    Symbol
 	Method string
 }
 
@@ -244,7 +244,7 @@ func (self *RecordAccess) String() string {
 	return fmt.Sprintf("#%d %s.%s", self.id, self.Record, self.Field)
 }
 func (self *MethodAccess) String() string {
-	return fmt.Sprintf("#%d %s.%s", self.id, self.Class, self.Method)
+	return fmt.Sprintf("#%d %s.%s", self.id, self.Var, self.Method)
 }
 func (self *RecordField) String() string {
 	return fmt.Sprintf("%s: %s", self.Name, self.Value)
@@ -327,7 +327,7 @@ func (self *RecordAccess) Pretty() string {
 	return fmt.Sprintf("%s.%s", self.Record, self.Field)
 }
 func (self *MethodAccess) Pretty() string {
-	return fmt.Sprintf("%s#%s", self.Class, self.Method)
+	return fmt.Sprintf("%s#%s", self.Var, self.Method)
 }
 func (self *New) Pretty() string {
 	return fmt.Sprintf("%s.new", self.Class)
