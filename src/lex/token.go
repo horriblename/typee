@@ -49,6 +49,7 @@ type Pub struct{}
 type Protected struct{}
 type Priv struct{}
 type Self struct{}
+type SelfType struct{}
 type New struct{}
 
 func (*LParen) token()       {}
@@ -79,6 +80,7 @@ func (*Pub) token()          {}
 func (*Protected) token()    {}
 func (*Priv) token()         {}
 func (*Self) token()         {}
+func (*SelfType) token()     {}
 func (*New) token()          {}
 func (*TrueLiteral) token()  {}
 func (*FalseLiteral) token() {}
@@ -111,6 +113,7 @@ func (*Pub) String() string             { return "pub" }
 func (*Protected) String() string       { return "protected" }
 func (*Priv) String() string            { return "priv" }
 func (*Self) String() string            { return "self" }
+func (*SelfType) String() string        { return "Self" }
 func (*New) String() string             { return "new" }
 func (*TrueLiteral) String() string     { return "true" }
 func (*FalseLiteral) String() string    { return "false" }

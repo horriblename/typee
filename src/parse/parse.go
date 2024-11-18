@@ -43,6 +43,7 @@ func expr(in []lex.Token) ([]lex.Token, Expr, error) {
 	return combinator.Any(
 		formLike,
 		recordExpr,
+		selfLiteral,
 		symbol,
 		strLiteral,
 		intLiteral,
@@ -153,7 +154,10 @@ func defForm(in []lex.Token) (_ []lex.Token, _ *FuncDef, err error) {
 	check(err)
 
 	// [x y z ...]
-	in, args, err := combinator.Surround(lbracket, combinator.Many0(symbolName), rbracket)(in)
+	in, args, err := combinator.Surround(lbracket, combinator.Then(
+		combinator.Maybe(kwSelf),
+		combinator.Many0(symbolName),
+	), rbracket)(in)
 	check(err)
 
 	in, body, err := combinator.Many(expr)(in)
@@ -162,15 +166,20 @@ func defForm(in []lex.Token) (_ []lex.Token, _ *FuncDef, err error) {
 	in, _, err = rparen(in)
 	check(err)
 
-	if sig, exist := sig.Unwrap(); exist && len(sig) != len(args)+1 {
+	if sig, exist := sig.Unwrap(); exist && len(sig) != len(args.Two)+1 {
 		return nil, nil, errors.New("function signature does not match arguments")
+	}
+
+	if args.One.IsSome() {
+		// so bad
+		args.Two = append([]string{"self"}, args.Two...)
 	}
 
 	def := FuncDef{
 		id:        newId(),
 		Name:      name,
 		Signature: sig,
-		Args:      args,
+		Args:      args.Two,
 		Body:      body,
 	}
 
@@ -443,6 +452,15 @@ func recordField(in []lex.Token) (_ []lex.Token, _ combinator.Pair[string, Expr]
 	return combinator.SeperatedBy(symbolName, colon, expr)(in)
 }
 
+func selfLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
+	in, _, err := kwSelf(in)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return in, &SelfLiteral{newId()}, err
+}
+
 func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 	if len(in) == 0 {
 		return nil, nil, errAt(in)
@@ -603,6 +621,12 @@ func kwNew(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func kwCase(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Case])(in)
+}
+func kwSelf(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Self])(in)
+}
+func kwSelfType(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.SelfType])(in)
 }
 func kwTrue(in []lex.Token) ([]lex.Token, Expr, error) {
 	rest, _, err := wrappedResult(matchOne[*lex.TrueLiteral])(in)

@@ -354,6 +354,17 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			desc:  "method",
+			input: `(def meth [self] self)`,
+			output: []Expr{&FuncDef{
+				id:        2,
+				Name:      "meth",
+				Signature: opt.Option[[]TypeRepr]{},
+				Args:      []string{"self"},
+				Body:      []Expr{&SelfLiteral{1}},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

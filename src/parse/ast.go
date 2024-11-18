@@ -65,6 +65,8 @@ type BoolLiteral struct {
 	Value bool
 }
 
+type SelfLiteral struct{ id int }
+
 type Assignment struct {
 	Var   string
 	Value Expr
@@ -156,6 +158,7 @@ func (*IfExpr) ast()       {}
 func (*StrLiteral) ast()   {}
 func (*IntLiteral) ast()   {}
 func (*BoolLiteral) ast()  {}
+func (*SelfLiteral) ast()  {}
 func (*LetExpr) ast()      {}
 func (*TaggedExpr) ast()   {}
 func (*Fn) ast()           {}
@@ -176,6 +179,7 @@ func (self *IfExpr) ID() int       { return self.id }
 func (self *StrLiteral) ID() int   { return self.id }
 func (self *IntLiteral) ID() int   { return self.id }
 func (self *BoolLiteral) ID() int  { return self.id }
+func (self *SelfLiteral) ID() int  { return self.id }
 func (self *LetExpr) ID() int      { return self.id }
 func (self *TaggedExpr) ID() int   { return self.id }
 func (self *Fn) ID() int           { return self.Id }
@@ -209,6 +213,9 @@ func (self *IntLiteral) String() string {
 }
 func (self *BoolLiteral) String() string {
 	return fmt.Sprintf("#%d BoolLiteral %t", self.id, self.Value)
+}
+func (self *SelfLiteral) String() string {
+	return fmt.Sprintf("#%d SelfLiteral", self.id)
 }
 func (self *LetExpr) String() string {
 	keyword := "let"
@@ -284,6 +291,9 @@ func (self *IntLiteral) Pretty() string {
 }
 func (self *BoolLiteral) Pretty() string {
 	return fmt.Sprintf("%t", self.Value)
+}
+func (self *SelfLiteral) Pretty() string {
+	return fmt.Sprintf("self")
 }
 func (self *LetExpr) Pretty() string {
 	var b strings.Builder
