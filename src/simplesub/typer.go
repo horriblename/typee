@@ -247,13 +247,25 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 
 	case *parse.RecordAccess:
 		// TODO: allow non-variable as record
-		recordTy, err := self.TypeTerm(ctx, &parse.Symbol{Name: expr.Record})
+		recordTy, err := self.TypeTerm(ctx, &expr.Record)
 		if err != nil {
 			return nil, err
 		}
 
 		ret := freshVar()
-		if err := constrain(recordTy, Record{[]NamedType{{expr.Field, ret}}}); err != nil {
+		err = constrain(recordTy, ObjectType{
+			Name:   "",
+			Supers: []ObjectType{},
+			Fields: []NamedMember{{
+				Name: expr.Field,
+				Member: Member{
+					Type:   ret,
+					Access: types.AccessPublic, // TODO: protected/private if in class
+				},
+			}},
+			Methods: []NamedMember{},
+		})
+		if err != nil {
 			return nil, err
 		}
 
