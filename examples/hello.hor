@@ -1,5 +1,15 @@
 (def addOne [x]
 	 (+ x 1))
 
+(class Foo {
+	pub name Str,
+	pub age Int,
+	pub (def hello (Str Str) [name] name),
+})
+
+(def bar (Foo Str) [foo] (foo#hello "world"))
+
+(def testing (Foo Int) [foo] foo.age)
+
 (def main []
-	(print "hello world"))
+	(print (bar (Foo.new))))
