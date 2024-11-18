@@ -80,11 +80,8 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 func genTopLevel(ctx *ctx, expr parse.Expr) {
 	switch e := expr.(type) {
 	case *parse.ClassDef:
-		ctx.userTypes[e.Name] = qbeil.StructType{
-			Align:  0,
-			Name:   e.Name,
-			Fields: []qbeil.Type{},
-		}
+		genClassDef(ctx, e)
+
 	case *parse.Set:
 		gen(ctx, expr)
 	case *parse.FuncDef:
@@ -99,7 +96,7 @@ func gen(ctx *ctx, expr parse.Expr) (val qbeil.Value) {
 	case *parse.IntLiteral:
 		return qbeil.IntLiteral{Value: e.Number}
 	case *parse.FuncDef:
-		return genFunc(ctx, e)
+		return genFunc(ctx, "", e)
 	case *parse.Form:
 		return genCall(ctx, e)
 	case *parse.Symbol:
@@ -130,13 +127,17 @@ func gen(ctx *ctx, expr parse.Expr) (val qbeil.Value) {
 	panic("unimpl gen " + expr.Pretty())
 }
 
-func genFunc(ctx *ctx, expr *parse.FuncDef) (val qbeil.Value) {
+// class should be empty string for non-methods
+func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
+	friendlyName := fmt.Sprintf("%s.%s", class, expr.Name)
 	funcTyp, ok := ctx.simplify(expr.ID()).(*types.Func)
-	assert.True(ok, "generate function code: type of ", expr.Name, " is not function")
+	assert.True(ok, "generate function code: type of ", friendlyName, " is not function")
 	assert.Eq(len(expr.Args), len(funcTyp.Args))
-	assert.GreaterThan(len(expr.Body), 0, "function", expr.Name, "has empty body")
+	assert.GreaterThan(len(expr.Body), 0, "function", friendlyName, "has empty body")
 
-	thisFunc := qbeil.Var{Global: true, Name: expr.Name}
+	mangled := mangleName(mangleOpts{class: class, name: expr.Name})
+
+	thisFunc := qbeil.Var{Global: true, Name: mangled}
 	argTyps := make([]qbeil.TypedVar, 0, len(expr.Args))
 
 	for i, argTyp := range funcTyp.Args {
@@ -148,7 +149,7 @@ func genFunc(ctx *ctx, expr *parse.FuncDef) (val qbeil.Value) {
 
 	linkage := qbeil.Linkage{}
 	retTyp := ctx.toILType(funcTyp.Ret)
-	if expr.Name == "main" {
+	if expr.Name == "main" && class == "" {
 		linkage.Type = qbeil.Export
 		retTyp = qbeil.Word
 	}
@@ -188,56 +189,78 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		return val
 
 	case *parse.MethodAccess:
-		panic("TODO: gen method call")
+		// FIXME: callee.Class is not the class name, but the object name
+		return genCallWithFuncName(ctx, callee.Class, callee.Method, expr)
 
 	case *parse.Symbol:
-		switch callee.Name {
-		case "+":
-			assert.Eq(len(expr.Children), 3, "wrong function arg count")
+		return genCallWithFuncName(ctx, "", callee.Name, expr)
 
-			left := gen(ctx, expr.Children[1])
-			right := gen(ctx, expr.Children[2])
-			target := ctx.il.TempVar(false)
-			ctx.il.Arithmetic(target.IL(), qbeil.Long, "add", left, right)
-
-			return target
-		case "print":
-			assert.Eq(len(expr.Children), 2, `wrong arg count for "print"`)
-			arg := gen(ctx, expr.Children[1])
-			target := ctx.il.TempVar(false)
-			ctx.il.Call(&target, qbeil.Word,
-				qbeil.Var{Global: true, Name: "print"},
-				[]qbeil.TypedValue{{
-					Type:  ctx.toILType(&types.String{}),
-					Value: arg,
-				}})
-
-			return target
-		default:
-			// TODO: local functions
-			fn := ctx.simplify(callee.ID())
-
-			funcSig, ok := fn.(*types.Func)
-			assert.True(ok, "tried to call non-function top-level:", callee.Name)
-			assert.Eq(len(expr.Children), len(funcSig.Args)+1, callee.Name, ": function argument count does not match signature")
-			target := ctx.il.TempVar(false)
-
-			args := fun.ZipMap(expr.Children[1:], funcSig.Args, func(arg parse.Expr, typ types.Type) qbeil.TypedValue {
-				return qbeil.TypedValue{Type: ctx.toILType(typ), Value: gen(ctx, arg)}
-			})
-			funcVar := qbeil.Var{Global: true, Name: callee.Name}
-
-			ctx.il.Call(&target, ctx.toILType(funcSig.Ret), funcVar, args)
-
-			return target
-		}
 	default:
 		panic("unimpl: genCall for callee of the form " + expr.Pretty())
 	}
 }
 
+func genCallWithFuncName(ctx *ctx, class string, fnName string, expr *parse.Form) qbeil.Value {
+	mangled := mangleName(mangleOpts{class: class, name: fnName})
+	fnFriendlyName := fmt.Sprintf("%s.%s", class, fnName)
+	callee := expr.Children[0]
+
+	switch mangled {
+	case "+":
+		assert.Eq(len(expr.Children), 3, "wrong function arg count")
+
+		left := gen(ctx, expr.Children[1])
+		right := gen(ctx, expr.Children[2])
+		target := ctx.il.TempVar(false)
+		ctx.il.Arithmetic(target.IL(), qbeil.Long, "add", left, right)
+
+		return target
+	case "print":
+		assert.Eq(len(expr.Children), 2, `wrong arg count for "print"`)
+		arg := gen(ctx, expr.Children[1])
+		target := ctx.il.TempVar(false)
+		ctx.il.Call(&target, qbeil.Word,
+			qbeil.Var{Global: true, Name: "print"},
+			[]qbeil.TypedValue{{
+				Type:  ctx.toILType(&types.String{}),
+				Value: arg,
+			}})
+
+		return target
+	default:
+		// TODO: local functions
+		fn := ctx.simplify(callee.ID())
+
+		funcSig, ok := fn.(*types.Func)
+		assert.True(ok, "tried to call non-function top-level:", fnFriendlyName)
+		assert.Eq(len(expr.Children), len(funcSig.Args)+1, fnFriendlyName, ": function argument count does not match signature")
+		target := ctx.il.TempVar(false)
+
+		args := fun.ZipMap(expr.Children[1:], funcSig.Args, func(arg parse.Expr, typ types.Type) qbeil.TypedValue {
+			return qbeil.TypedValue{Type: ctx.toILType(typ), Value: gen(ctx, arg)}
+		})
+		funcVar := qbeil.Var{Global: true, Name: mangled}
+
+		ctx.il.Call(&target, ctx.toILType(funcSig.Ret), funcVar, args)
+
+		return target
+	}
+}
+
 func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 	panic("unimpl: gen let")
+}
+
+func genClassDef(ctx *ctx, e *parse.ClassDef) {
+
+	// TODO: support generics
+	ct := ctx.simplify(e.ID())
+	classTy, ok := ct.(*types.Class)
+	if !ok {
+		panic(fmt.Sprintf("compiler bug: class definition yields non-class type %#v", ct))
+	}
+
+	ctx.userTypes[e.Name] = ctx.classDefIL(classTy, e)
 }
 
 func (ctx *ctx) finish() {
@@ -271,7 +294,7 @@ func (ctx *ctx) finish() {
 }
 
 func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
-	switch t := typ.(type) {
+	switch typ.(type) {
 	case *types.Int:
 		return ctx.intType
 	case *types.Bool:
@@ -279,46 +302,53 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	case *types.String:
 		return ctx.userTypes["Str"]
 	case *types.Class:
-		if t.Name == "" {
-			panic("unnamed classes should be illegal at codegen")
-		}
-
-		if ut, ok := ctx.userTypes[t.Name]; ok {
-			return ut
-		}
-
-		if len(t.Supers) == 0 {
-			fields := []qbeil.Type{
-				ctx.userTypes["GObject"], // parent
-				ctx.ptrType,              // private pointer
-			}
-			for _, field := range t.Fields {
-				if field.Access == types.AccessPublic || field.Access == types.AccessProtected {
-					fields = append(fields, ctx.fieldToILType(field.Type))
-				}
-			}
-			ctx.userTypes[t.Name] = qbeil.StructType{
-				Align:  0,
-				Name:   t.Name,
-				Fields: fields,
-			}
-		}
-		panic("unimpl: super types")
+		return ctx.ptrType
 
 	default:
 		panic("unimpl: conversion to IL of type " + typ.String())
 	}
 }
 
-func (ctx *ctx) fieldToILType(field types.Type) qbeil.Type {
-	switch t := field.(type) {
-	case *types.Class:
-		return ctx.ptrType
-	case *types.Bool, *types.Int, *types.String:
-		return ctx.toILType(field)
-	default:
-		panic(fmt.Sprintf("unexpected types.Type: %#v", t))
+// like [ctx.toILType] but converts class type to a pointer instead of its full [qbeil.StructType]
+func (ctx *ctx) classDefIL(t *types.Class, e *parse.ClassDef) qbeil.StructType {
+	if t.Name == "" {
+		// FIXME: generic support
+		panic("unnamed classes should be illegal at codegen")
 	}
+
+	if ut, ok := ctx.userTypes[t.Name]; ok {
+		return ut
+	}
+
+	if len(t.Supers) == 0 {
+		fields := []qbeil.Type{
+			ctx.userTypes["GObject"], // parent
+			ctx.ptrType,              // private pointer
+		}
+		for _, field := range t.Fields {
+			if field.Access == types.AccessPublic || field.Access == types.AccessProtected {
+				fields = append(fields, ctx.toILType(field.Type))
+			}
+		}
+
+		// generate methods
+		for _, field := range e.Fields {
+			method, ok := field.(parse.ClassMethod)
+			if !ok {
+				continue
+			}
+
+			genFunc(ctx, t.Name, method.Func)
+		}
+
+		return qbeil.StructType{
+			Align:  0,
+			Name:   t.Name,
+			Fields: fields,
+		}
+
+	}
+	panic("unimpl: super types")
 }
 
 func (ctx *ctx) simplify(exprID int) types.Type {
@@ -330,7 +360,12 @@ func (ctx *ctx) simplify(exprID int) types.Type {
 
 	st, ok := ctx.types[exprID].(simplesub.SimpleType)
 	if !ok {
-		panic("compiler bug: " + ErrCannotCompilePolymorphicType.Error())
+		pt, ok := ctx.types[exprID].(simplesub.PolymorphicType)
+		// HACK: temp workaround for class and method types
+		if !ok {
+			panic(fmt.Sprintf("unreachable or nil TypeScheme: %v", ctx.types[exprID]))
+		}
+		st = pt.Body
 	}
 	t1 := simplesub.SimplifyType(st)
 	t2 := simplesub.CoalesceType(t1)
