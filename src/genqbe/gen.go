@@ -1,6 +1,7 @@
 package genqbe
 
 import (
+	"bytes"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ type ctx struct {
 	intType      qbeil.BaseType
 	defaultAlign int
 
+	typeDecl   bytes.Buffer
 	il         qbeil.Builder
 	types      map[int]simplesub.TypeScheme
 	simplified map[int]types.Type
@@ -38,6 +40,7 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 		qbeil.Long, // TODO: infer ptr & int size + manual options
 		qbeil.Long,
 		64,
+		bytes.Buffer{},
 		qbeil.Builder{OutFile: w},
 		typs,
 		map[int]types.Type{},
@@ -46,11 +49,12 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 		map[string]qbeil.StructType{},
 	}
 
-	ctx.userTypes["Str"] = qbeil.StructType{
-		Align:  0,
-		Name:   "Str",
-		Fields: []qbeil.Type{ctx.ptrType, ctx.ptrType},
-	}
+	ctx.declareType("Str", qbeil.StructType{
+		Align:   0,
+		Name:    "Str",
+		Layouts: map[string]qbeil.FieldLayout{},
+		Fields:  []qbeil.Type{ctx.ptrType, ctx.ptrType},
+	})
 
 	// struct GObject {
 	//  GTypeInstance g_type_instance
@@ -68,7 +72,7 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 			ctx.intType,
 			ctx.ptrType,
 		},
-	}
+	})
 
 	for _, expr := range ast {
 		genTopLevel(&ctx, expr)
@@ -372,6 +376,15 @@ func (ctx *ctx) simplify(exprID int) types.Type {
 	t2 := simplesub.CoalesceType(t1)
 	ctx.simplified[exprID] = t2
 	return t2
+}
+
+func (ctx *ctx) declareType(name string, t qbeil.StructType) {
+	ctx.userTypes[name] = t
+	_, err := ctx.typeDecl.Write([]byte(t.Define()))
+	assert.Ok(err)
+
+	_, err = ctx.typeDecl.Write([]byte{'\n'})
+	assert.Ok(err)
 }
 
 func (self *ctx) sizeOf(t qbeil.Type) (bits int, align int) {

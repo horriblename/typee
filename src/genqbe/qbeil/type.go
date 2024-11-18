@@ -14,9 +14,15 @@ type Type interface {
 
 type BaseType int
 type StructType struct {
-	Align  int // 0 means default: maximum alignment of children
-	Name   string
-	Fields []Type
+	Align   int // 0 means default: maximum alignment of children
+	Name    string
+	Layouts map[string]FieldLayout
+	Fields  []Type
+}
+
+type FieldLayout struct {
+	Type
+	Offset int
 }
 
 const (
