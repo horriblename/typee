@@ -182,7 +182,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 			qbeil.Var{Global: true, Name: "malloc"},
 			[]qbeil.TypedValue{{
 				Type:  ctx.intType,
-				Value: qbeil.IntLiteral{Value: int64(bits)}},
+				Value: qbeil.IntLiteral{Value: int64(bits / 8)}},
 			},
 		)
 
