@@ -189,8 +189,9 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		return val
 
 	case *parse.MethodAccess:
-		// FIXME: callee.Class is not the class name, but the object name
-		return genCallWithFuncName(ctx, callee.Class, callee.Method, expr)
+		ty := ctx.simplify(callee.Var.ID())
+		class := ty.(*types.Class).Name
+		return genCallWithFuncName(ctx, class, callee.Method, expr)
 
 	case *parse.Symbol:
 		return genCallWithFuncName(ctx, "", callee.Name, expr)
