@@ -94,7 +94,7 @@ func buildProgram(params buildParams) error {
 
 	qbeFile, err := os.OpenFile(params.inFile+".qbe", os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0o755)
 	if err != nil {
-		return fmt.Errorf("build: %w", err)
+		return fmt.Errorf("building qbe IL file: %w", err)
 	}
 	defer qbeFile.Close()
 
@@ -104,14 +104,14 @@ func buildProgram(params buildParams) error {
 	asmFName := params.inFile + ".s"
 	asmFile, err := os.OpenFile(asmFName, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o755)
 	if err != nil {
-		return fmt.Errorf("build: %w", err)
+		return fmt.Errorf("building asm file: %w", err)
 	}
 	defer asmFile.Close()
 
 	qbePath := params.inFile + ".qbe"
 	err = libqbe.Main("amd64_sysv", qbePath, qbeFile, asmFile, nil)
 	if err != nil {
-		return fmt.Errorf("build: %w", err)
+		return fmt.Errorf("qbe build: %w", err)
 	}
 
 	// maybe I should use `as` and `ld` instead? idk
