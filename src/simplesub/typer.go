@@ -127,6 +127,8 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]Polymorphi
 				return nil, err
 			}
 
+			ctx.inferred[e.ID()] = PolymorphicType{t}
+
 		default:
 			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
 		}
