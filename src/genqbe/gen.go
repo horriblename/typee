@@ -427,7 +427,7 @@ func (ctx *ctx) simplify(exprID int) types.Type {
 		pt, ok := ctx.types[exprID].(simplesub.PolymorphicType)
 		// HACK: temp workaround for class and method types
 		if !ok {
-			panic(fmt.Sprintf("unreachable or nil TypeScheme: %v", ctx.types[exprID]))
+			panic(fmt.Sprintf("unreachable or nil TypeScheme at expr ID %d: %v", exprID, ctx.types[exprID]))
 		}
 		st = pt.Body
 	}
