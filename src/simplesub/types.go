@@ -80,6 +80,9 @@ func (self *Variable) newUpperBound(ub ConcreteType) error {
 	}
 	rep.upperBound = newUb
 
+	trace("new upper bound for t%d: %v", self.uid, newUb)
+	indentLvl++
+	defer func() { indentLvl-- }()
 	return constrain(rep.lowerBound, ub)
 }
 func (self *Variable) newLowerBound(lb ConcreteType) error {
@@ -95,6 +98,9 @@ func (self *Variable) newLowerBound(lb ConcreteType) error {
 		return err
 	}
 
+	trace("new lower bound for t%d: %v", self.uid, rep.lowerBound)
+	indentLvl++
+	defer func() { indentLvl-- }()
 	return constrain(lb, rep.upperBound)
 }
 func (self *Variable) Representative() *Variable {
