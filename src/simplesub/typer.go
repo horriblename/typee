@@ -13,13 +13,15 @@ import (
 
 type Typer struct {
 	debug      bool
-	classScope *ObjectType
+	classScope string
 	vars       scope.ScopedMap[TypeScheme]
 	types      scope.ScopedMap[TypeScheme]
 }
 
 var ErrUndefinedVariable = errors.New("undefined variable")
 var ErrUndefinedTypeName = errors.New("undefined type")
+var ErrSelfUnbound = errors.New("keyword self used outside of a method")
+var ErrSelfTypeUnbound = errors.New("keyword Self used outside of a class definition")
 var ErrWrongArgCount = errors.New("wrong argument count")
 var ErrTypeMismatch = errors.New("mismatched type")
 var ErrMissingField = errors.New("missing field")
@@ -138,6 +140,12 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 		} else {
 			return nil, fmt.Errorf("%w: %s", ErrUndefinedVariable, expr.Name)
 		}
+	case *parse.SelfLiteral:
+		if ty, ok := self.vars.Get("self").Unwrap(); ok {
+			return ty.instantiate(), nil
+		} else {
+			return nil, ErrSelfUnbound
+		}
 	case *parse.FuncDef:
 		return nil, fmt.Errorf("%w: %s", ErrDefMustBeTopLevel, expr.Name)
 
@@ -182,7 +190,18 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 
 		// without function signature
 
-		for i, arg := range expr.Args {
+		start := 0
+		if len(expr.Args) > 0 && expr.Args[0] == "self" {
+			ty, err := self.parseType(parse.SelfType{})
+			if err != nil {
+				return nil, err
+			}
+
+			self.vars.Insert("self", ty)
+			start = 1
+		}
+
+		for i, arg := range expr.Args[start:] {
 			param := freshVar()
 			params[i] = param
 			self.vars.Insert(arg, param)
@@ -391,6 +410,8 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 }
 
 func (self *Typer) defClass(ctx *context, classDef *parse.ClassDef) (SimpleType, error) {
+	self.classScope = classDef.Name
+	defer func() { self.classScope = "" }()
 	fields := []NamedMember{}
 	methods := []NamedMember{}
 
@@ -475,6 +496,17 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 			return typ, nil
 		}
 		return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, t.Name)
+	case parse.SelfType:
+		if self.classScope == "" {
+			return nil, ErrSelfTypeUnbound
+		}
+
+		if t, found := self.types.Get(self.classScope).Unwrap(); found {
+			return t, nil
+		}
+
+		panic(fmt.Sprintf("type checker bug: class scope '%s' exists but corresponding type not found", self.classScope))
+
 	default:
 		panic(fmt.Sprintf("unexpected parse.TypeRepr: %#v", t))
 	}
