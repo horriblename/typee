@@ -355,20 +355,28 @@ func TestParse(t *testing.T) {
 			}},
 		},
 		{
-			desc:  "method",
-			input: `(def meth [self] (self#meth))`,
+			desc:  "self",
+			input: `(def meth (Self) [self] (self#meth self.x self))`,
 			output: []Expr{&FuncDef{
-				id:        4,
+				id:        7,
 				Name:      "meth",
-				Signature: opt.Option[[]TypeRepr]{},
+				Signature: opt.Some([]TypeRepr{SelfType{}}),
 				Args:      []string{"self"},
 				Body: []Expr{&Form{
-					id: 3,
-					Children: []Expr{&MethodAccess{
-						id:     2,
-						Var:    &SelfLiteral{1},
-						Method: "meth",
-					}},
+					id: 6,
+					Children: []Expr{
+						&MethodAccess{
+							id:     2,
+							Var:    &SelfLiteral{1},
+							Method: "meth",
+						},
+						&RecordAccess{
+							id:     4,
+							Record: &SelfLiteral{3},
+							Field:  "x",
+						},
+						&SelfLiteral{5},
+					},
 				}},
 			}},
 		},
