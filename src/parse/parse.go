@@ -43,8 +43,8 @@ func expr(in []lex.Token) ([]lex.Token, Expr, error) {
 	return combinator.Any(
 		formLike,
 		recordExpr,
-		selfLiteral,
 		symbol,
+		selfExpr,
 		strLiteral,
 		intLiteral,
 		kwTrue,
@@ -466,46 +466,18 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, errAt(in)
 	}
 
-	sym, ok := in[0].(*lex.Symbol)
-	if !ok {
-		return nil, nil, errAt(in)
+	rest, lhs, err := combinator.Map(symbolName, func(n string) *Symbol {
+		return &Symbol{n, newId()}
+	})(in)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	rest := in[1:]
 	rest2, accessor, err := combinator.Maybe(
 		combinator.Any(
-			combinator.Map(
-				combinator.WithPrefix(dot, symbolName),
-				func(member string) Expr {
-					return &RecordAccess{
-						id:     newId(),
-						Record: Symbol{sym.Name, newId()},
-						Field:  member,
-					}
-				},
-			),
-			combinator.Map(
-				combinator.WithPrefix(hash, symbolName),
-				func(member string) Expr {
-					return &MethodAccess{
-						id: newId(),
-						Var: Symbol{
-							Name: sym.Name,
-							id:   newId(),
-						},
-						Method: member,
-					}
-				},
-			),
-			combinator.Map(
-				combinator.WithPrefix(dot, kwNew),
-				func(struct{}) Expr {
-					return &New{
-						id:    newId(),
-						Class: sym.Name,
-					}
-				},
-			),
+			recordAccess(lhs),
+			methodAccess(lhs),
+			classConstructor(lhs.Name),
 		),
 	)(rest)
 
@@ -517,8 +489,63 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 		return rest2, a, nil
 	}
 
-	return rest, &Symbol{id: newId(), Name: sym.Name}, nil
+	return rest, lhs, nil
+}
 
+func recordAccess(lhs Expr) combinator.Parser[[]lex.Token, Expr] {
+	return combinator.Map(
+		combinator.WithPrefix(dot, symbolName),
+		func(member string) Expr {
+			return &RecordAccess{
+				id:     newId(),
+				Record: lhs,
+				Field:  member,
+			}
+		},
+	)
+}
+
+func methodAccess(lhs Expr) combinator.Parser[[]lex.Token, Expr] {
+	return combinator.Map(
+		combinator.WithPrefix(hash, symbolName),
+		func(member string) Expr {
+			return &MethodAccess{
+				id:     newId(),
+				Var:    lhs,
+				Method: member,
+			}
+		},
+	)
+}
+
+func classConstructor(class string) combinator.Parser[[]lex.Token, Expr] {
+	return combinator.Map(
+		combinator.WithPrefix(dot, kwNew),
+		func(struct{}) Expr {
+			return &New{
+				id:    newId(),
+				Class: class,
+			}
+		},
+	)
+}
+
+func selfExpr(in []lex.Token) ([]lex.Token, Expr, error) {
+	in, s, err := selfLiteral(in)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rest, accessor, err := combinator.Any(
+		recordAccess(s),
+		methodAccess(s),
+	)(in)
+
+	if err != nil {
+		return in, s, nil
+	}
+
+	return rest, accessor, nil
 }
 
 func symbolName(in []lex.Token) ([]lex.Token, string, error) {

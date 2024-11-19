@@ -61,7 +61,7 @@ func TestParse(t *testing.T) {
 					id: 5,
 					Children: []Expr{
 						&Symbol{id: 1, Name: "foo"},
-						&RecordAccess{id: 2, Record: Symbol{"x", 3}, Field: "bar"},
+						&RecordAccess{id: 3, Record: &Symbol{"x", 2}, Field: "bar"},
 						&Symbol{id: 4, Name: "y"},
 					},
 				}},
@@ -78,8 +78,8 @@ func TestParse(t *testing.T) {
 				}),
 				Args: []string{"x"},
 				Body: &RecordAccess{
-					id:     1,
-					Record: Symbol{"x", 2},
+					id:     2,
+					Record: &Symbol{"x", 1},
 					Field:  "bar",
 				},
 			}},
@@ -332,13 +332,13 @@ func TestParse(t *testing.T) {
 				id: 5,
 				Children: []Expr{
 					&MethodAccess{
-						id:     1,
-						Var:    Symbol{"x", 2},
+						id:     2,
+						Var:    &Symbol{"x", 1},
 						Method: "foo",
 					},
 					&RecordAccess{
-						id:     3,
-						Record: Symbol{"x", 4},
+						id:     4,
+						Record: &Symbol{"x", 3},
 						Field:  "y",
 					},
 				},
@@ -348,21 +348,28 @@ func TestParse(t *testing.T) {
 			desc:  "constructor",
 			input: `(Foo.new)`,
 			output: []Expr{&Form{
-				id: 2,
+				id: 3,
 				Children: []Expr{
-					&New{id: 1, Class: "Foo"},
+					&New{id: 2, Class: "Foo"},
 				},
 			}},
 		},
 		{
 			desc:  "method",
-			input: `(def meth [self] self)`,
+			input: `(def meth [self] (self#meth))`,
 			output: []Expr{&FuncDef{
-				id:        2,
+				id:        4,
 				Name:      "meth",
 				Signature: opt.Option[[]TypeRepr]{},
 				Args:      []string{"self"},
-				Body:      []Expr{&SelfLiteral{1}},
+				Body: []Expr{&Form{
+					id: 3,
+					Children: []Expr{&MethodAccess{
+						id:     2,
+						Var:    &SelfLiteral{1},
+						Method: "meth",
+					}},
+				}},
 			}},
 		},
 	}
