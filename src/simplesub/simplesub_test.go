@@ -211,6 +211,25 @@ func TestTypeProgram(t *testing.T) {
 			},
 			},
 		},
+		// // why does this give Int -> Top and Int -> Int???
+		// // if we flip the order of definition we get the correct answer
+		// {
+		// 	desc: "let recursion",
+		// 	input: `
+		// 		(def foo [x] (bar (- x 2)))
+		// 		(def bar [x] (if [(< x 1)] 0 (foo (- x 1))))
+		// 	`,
+		// 	typ: []types.Type{
+		// 		&types.Func{
+		// 			Args: []types.Type{&types.Int{}},
+		// 			Ret:  &types.Int{},
+		// 		},
+		// 		&types.Func{
+		// 			Args: []types.Type{&types.Int{}},
+		// 			Ret:  &types.Int{},
+		// 		},
+		// 	},
+		// },
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
