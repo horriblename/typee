@@ -130,7 +130,7 @@ func (b *Builder) Call(target *Var, typ Type, name Var, args []TypedValue) {
 				target.IL(), typ.IL(), name.IL(), argsStr)),
 		)
 	} else {
-		b.indented([]byte(fmt.Sprintf("call %s (%s)\n", target.IL(), argsStr)))
+		b.indented([]byte(fmt.Sprintf("call %s (%s)\n", name.IL(), argsStr)))
 	}
 }
 
