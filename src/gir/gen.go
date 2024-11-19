@@ -154,7 +154,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	for i, args := 0, fi.NumArg(); i < args; i++ {
 		arg := fi.Arg(i)
-		p("%s0 %s", arg.Name(), horType(arg.Type()))
+		p("%s0 %s", arg.Name(), horType(arg.Type(), typeNone))
 	}
 }
 func (self *Generator) processInterfaceInfo(*gi.InterfaceInfo) {}
@@ -164,8 +164,23 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 	defer func() { self.currentClass = nil }()
 }
 
-func horType(ti *gi.TypeInfo /*, flags typeFlags*/) parse.Expr {
+func horType(ti *gi.TypeInfo, flags typeFlags) parse.Expr {
+	var out bytes.Buffer
 
+	switch tag := ti.Tag(); tag {
+	case gi.TYPE_TAG_VOID:
+		if ti.IsPointer() {
+			out.WriteString("opaque")
+			break
+		}
+		panic("Non-pointer void type is not supported")
+	case gi.TYPE_TAG_UTF8, gi.TYPE_TAG_FILENAME:
+		if flags&typeExact != 0 {
+			out.WriteString("opaque")
+		} else {
+			out.WriteString("Str")
+		}
+	}
 }
 
 func printerTo(w io.Writer) func(format string, args ...any) {

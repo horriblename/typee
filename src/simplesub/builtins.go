@@ -24,6 +24,10 @@ func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 		Args: []SimpleType{Str{}},
 		Ret:  Str{},
 	})
+	scope.Insert("exit", Func{
+		Args: []SimpleType{Int{}},
+		Ret:  Bot{},
+	})
 }
 
 func addBuiltinTypes(types *scope.ScopedMap[TypeScheme]) {

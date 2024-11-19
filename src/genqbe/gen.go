@@ -96,7 +96,7 @@ func genTopLevel(ctx *ctx, expr parse.Expr) {
 	}
 }
 
-func gen(ctx *ctx, expr parse.Expr) (val qbeil.Value) {
+func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 	switch e := expr.(type) {
 	case *parse.IntLiteral:
 		return qbeil.IntLiteral{Value: e.Number}
@@ -263,6 +263,14 @@ func genCallWithFuncName(ctx *ctx, class string, fnName string, expr *parse.Form
 		ctx.il.Arithmetic(target.IL(), qbeil.Long, "add", left, right)
 
 		return target
+	case "exit":
+		assert.Eq(len(expr.Children), 2, "wrong function arg count")
+
+		exitCode := gen(ctx, expr.Children[1])
+		ctx.il.Call(nil, qbeil.Long, qbeil.Var{Global: true, Name: "exit"}, []qbeil.TypedValue{
+			{Type: ctx.intType, Value: exitCode},
+		})
+		return qbeil.IntLiteral{Value: 0} // TODO: there's probably a better way
 	case "print":
 		assert.Eq(len(expr.Children), 2, `wrong arg count for "print"`)
 		arg := gen(ctx, expr.Children[1])
@@ -344,6 +352,8 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	case *types.String:
 		return ctx.userTypes["Str"]
 	case *types.Class:
+		return ctx.ptrType
+	case *types.Record:
 		return ctx.ptrType
 
 	default:
