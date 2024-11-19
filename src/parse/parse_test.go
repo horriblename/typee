@@ -393,6 +393,11 @@ func TestParseType(t *testing.T) {
 			input:  "Foo",
 			output: TypeName{"Foo"},
 		},
+		{
+			desc:   "Self",
+			input:  "Self",
+			output: SelfType{},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

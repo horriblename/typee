@@ -11,6 +11,7 @@ import (
 func type_(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 	return combinator.Any(
 		typeName,
+		selfType,
 	)(in)
 }
 
@@ -18,6 +19,15 @@ func typeName(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 	return combinator.Map(symbolName, func(s string) TypeRepr {
 		return TypeName{s}
 	})(in)
+}
+
+func selfType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
+	in, _, err := kwSelfType(in)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return in, SelfType{}, nil
 }
 
 func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
