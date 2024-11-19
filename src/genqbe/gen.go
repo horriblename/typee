@@ -130,7 +130,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		// TODO: 32-bit system
 		addr := ctx.il.TempVar(false)
 		ctx.il.Arithmetic(addr.IL(), ctx.ptrType, "add",
-			gen(ctx, &e.Record),
+			gen(ctx, e.Record),
 			qbeil.IntLiteral{Value: int64(fieldLayout.Offset)},
 		)
 

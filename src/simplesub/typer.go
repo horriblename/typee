@@ -247,7 +247,7 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 
 	case *parse.RecordAccess:
 		// TODO: allow non-variable as record
-		recordTy, err := self.TypeTerm(ctx, &expr.Record)
+		recordTy, err := self.TypeTerm(ctx, expr.Record)
 		if err != nil {
 			return nil, err
 		}
@@ -272,7 +272,7 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 		return ret, nil
 
 	case *parse.MethodAccess:
-		objTy, err := self.TypeTerm(ctx, &expr.Var)
+		objTy, err := self.TypeTerm(ctx, expr.Var)
 		if err != nil {
 			return nil, err
 		}

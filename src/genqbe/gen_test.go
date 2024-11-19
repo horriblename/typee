@@ -2,7 +2,6 @@ package genqbe
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"os/exec"
 	"path"
