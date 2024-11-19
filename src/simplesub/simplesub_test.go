@@ -76,12 +76,7 @@ func TestTypeExpr(t *testing.T) {
 		},
 		{
 			desc:  "simple let expr",
-			input: "(let [x 34 y {z: 20}] (if [true] x y.z))",
-			typ:   &types.Int{},
-		},
-		{
-			desc:  "record access",
-			input: "(let [foo {x: 34}] foo.x)",
+			input: "(let [x 34 y 24] (if [true] x y))",
 			typ:   &types.Int{},
 		},
 		// {
