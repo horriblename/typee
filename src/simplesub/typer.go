@@ -63,8 +63,26 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]PolymorphicType, map[int
 }
 
 func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]PolymorphicType, error) {
-	var err error
 	types := make([]PolymorphicType, len(program))
+	for i, expr := range program {
+		switch e := expr.(type) {
+		case *parse.FuncDef:
+			types[i] = PolymorphicType{freshVar()}
+			self.vars.Insert(e.Name, types[i])
+
+		case *parse.Set:
+			types[i] = PolymorphicType{freshVar()}
+			self.vars.Insert(e.Name, types[i])
+
+		case *parse.ClassDef:
+			types[i] = PolymorphicType{freshVar()}
+			self.vars.Insert(e.Name, types[i])
+
+		default:
+			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
+		}
+	}
+
 	for i, expr := range program {
 		switch e := expr.(type) {
 		case *parse.FuncDef:
@@ -77,26 +95,38 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]Polymorphi
 				Args:      e.Args,
 				Body:      e.Body[len(e.Body)-1],
 			}
-			types[i], err = self.typeLetRhs(ctx, e.Name, &fn)
+			typ, err := self.TypeTerm(ctx, &fn)
 			if err != nil {
 				return nil, err
 			}
-			self.vars.Insert(e.Name, types[i])
+
+			if err := constrain(typ, types[i].Body); err != nil {
+				return nil, err
+			}
 
 		case *parse.Set:
-			types[i], err = self.typeLetRhs(ctx, e.Name, e.Value)
+			typ, err := self.TypeTerm(ctx, e.Value)
 			if err != nil {
 				return nil, err
 			}
-			self.vars.Insert(e.Name, types[i])
+
+			if err := constrain(typ, types[i].Body); err != nil {
+				return nil, err
+			}
+
 		case *parse.ClassDef:
+			// TODO: idk if this is the best place to do this
+			self.types.Insert(e.Name, types[i])
+
 			t, err := self.defClass(ctx, e)
 			if err != nil {
 				return nil, err
 			}
 
-			ctx.inferred[e.ID()] = PolymorphicType{t}
-			types[i] = PolymorphicType{t}
+			if err := constrain(t, types[i].Body); err != nil {
+				return nil, err
+			}
+
 		default:
 			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
 		}
@@ -188,9 +218,6 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 			return Func{Args: params, Ret: bodyTy}, nil
 		}
 
-		// without function signature
-
-		start := 0
 		if len(expr.Args) > 0 && expr.Args[0] == "self" {
 			ty, err := self.parseType(parse.SelfType{})
 			if err != nil {
@@ -198,10 +225,9 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 			}
 
 			self.vars.Insert("self", ty)
-			start = 1
 		}
 
-		for i, arg := range expr.Args[start:] {
+		for i, arg := range expr.Args {
 			param := freshVar()
 			params[i] = param
 			self.vars.Insert(arg, param)
@@ -415,7 +441,7 @@ func (self *Typer) defClass(ctx *context, classDef *parse.ClassDef) (SimpleType,
 	fields := []NamedMember{}
 	methods := []NamedMember{}
 
-	// TODO: methods
+	// TODO: let recursive + generalize
 	for _, field := range classDef.Fields {
 		switch f := field.(type) {
 		case parse.ClassField:
@@ -437,6 +463,9 @@ func (self *Typer) defClass(ctx *context, classDef *parse.ClassDef) (SimpleType,
 				},
 			})
 		case parse.ClassMethod:
+			// TODO: there might be a way to keep the "only top-levels can generalize" rule if
+			// we make methods "polymorphic except [a, b, c]", where a,b,c are explicitly written
+			// down generics at the class level
 			if len(f.Func.Body) == 0 {
 				return nil, fmt.Errorf("in function %s: %w", f.Func.Name, ErrEmptyFuncBody)
 			}
@@ -674,4 +703,12 @@ func freshenConcrete(freshened map[*Variable]*Variable, ty ConcreteType) Concret
 		panic(fmt.Sprintf("unexpected simplesub.ConcreteType: %#v", t))
 	}
 	return ty
+}
+
+func assertCast[O any](x any, msg any) O {
+	if o, ok := x.(O); ok {
+		return o
+	} else {
+		panic(fmt.Sprintf("cast from %v to %T failed. %v", x, o, msg))
+	}
 }

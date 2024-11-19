@@ -183,6 +183,34 @@ func TestTypeProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc:  "self and Self alias",
+			input: "(class Foo {pub x Int, pub (def foo  [self] self.x)})",
+			typ: []types.Type{&types.Class{
+				Name:   "Foo",
+				Supers: []*types.Class{},
+				Fields: map[string]types.Member{
+					"x": {
+						Access: types.AccessPrivate,
+						Type:   &types.Int{},
+					},
+				},
+				Statics: map[string]types.Member{},
+				Methods: map[string]types.Member{
+					"id": {
+						Access: types.AccessPublic,
+						Type: &types.Func{
+							Args: []types.Type{
+								&types.Class{Name: "Foo"},
+								&types.Int{},
+							},
+							Ret: &types.Int{},
+						},
+					},
+				},
+			},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
