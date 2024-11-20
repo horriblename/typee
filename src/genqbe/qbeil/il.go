@@ -10,7 +10,7 @@ import (
 	"github.com/horriblename/typee/src/fun"
 )
 
-const indentSym string = "\t"
+var indentSym = []byte{'\t'}
 
 type Builder struct {
 	Writer    bytes.Buffer
@@ -33,7 +33,7 @@ func NewTypedVar(typ Type, name Var) TypedVar {
 }
 
 func (b *Builder) indented(l []byte) error {
-	_, err := b.Writer.Write([]byte(strings.Repeat(indentSym, b.indentLvl)))
+	_, err := b.Writer.Write(bytes.Repeat(indentSym, b.indentLvl))
 	if err != nil {
 		return err
 	}
