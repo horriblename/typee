@@ -202,6 +202,34 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 	// TODO: are there nested class?
 	self.currentClass = oi
 	defer func() { self.currentClass = nil }()
+
+	p := printerTo(&self.goBindings)
+
+	p("(class %s (", snake_case_to_PascalCase(oi.Name()))
+
+	for i, n := 0, oi.NumInterface(); i < n; i++ {
+		ii := oi.Interface(i)
+		name := ii.Name()
+		ns := ii.Namespace()
+		if i != 0 {
+			p(" ")
+		}
+		if ns != self.namespace {
+			p("%s.", snake_case_to_PascalCase(ns))
+		}
+		p("%s", snake_case_to_PascalCase(name))
+	}
+
+	p(") {\n")
+
+	for i, n := 0, oi.NumMethod(); i < n; i++ {
+		if i != 0 {
+			p(", ")
+		}
+		meth := oi.Method(i)
+		self.processFunctionInfo(meth)
+	}
+	p("})\n")
 }
 
 func horType(ti *gi.TypeInfo, flags typeFlags) string {
@@ -235,10 +263,10 @@ func horType(ti *gi.TypeInfo, flags typeFlags) string {
 		out.WriteString(horType(ti.ParamType(0), flags))
 		out.WriteString("[]")
 	case gi.TYPE_TAG_GHASH:
-		out.WriteString("map[")
-		out.WriteString(horType(ti.ParamType(0), flags))
-		out.WriteString("]")
-		out.WriteString(horType(ti.ParamType(1), flags))
+		// out.WriteString("map[")
+		// out.WriteString(horType(ti.ParamType(0), flags))
+		// out.WriteString("]")
+		// out.WriteString(horType(ti.ParamType(1), flags))
 	case gi.TYPE_TAG_ERROR:
 		// not used?
 		// out.WriteString("error")
