@@ -5,12 +5,20 @@ import (
 	"unicode"
 )
 
-func snakeToPascalCase(name string) string {
+func snake_case_to_PascalCase(name string) string {
+	return camelCaseInner(name, true)
+}
+
+func snake_case_to_camelCase(name string) string {
+	return camelCaseInner(name, false)
+}
+
+func camelCaseInner(name string, capitalizeFirst bool) string {
 	if name == "" {
 		return ""
 	}
 
-	capitalize := true
+	capitalize := capitalizeFirst
 	var b strings.Builder
 	for _, c := range name {
 		if c == '_' {
@@ -31,7 +39,7 @@ func snakeToPascalCase(name string) string {
 
 func ctorSuffix(name string) string {
 	if len(name) > 4 {
-		return snakeToPascalCase(name)
+		return snake_case_to_PascalCase(name)
 	}
 	return ""
 }

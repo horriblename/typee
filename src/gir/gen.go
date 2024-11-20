@@ -75,7 +75,7 @@ func (self *Generator) processEnumInfo(ei *gi.EnumInfo) {
 	p("(: %s [\n", ei.Name())
 	for i, n := 0, ei.NumValue(); i < n; i++ {
 		val := ei.Value(i)
-		p("  %s = %d,\n", snakeToPascalCase(val.Name()), val.Value())
+		p("  %s = %d,\n", snake_case_to_PascalCase(val.Name()), val.Value())
 	}
 	p("])\n")
 }
@@ -88,7 +88,7 @@ func (self *Generator) processConstantInfo(ci *gi.ConstantInfo) {
 		p("(const Key_%s %s)\n", name[4:], ci.Value())
 		return
 	}
-	p("(const %s %#v)\n", snakeToPascalCase(name), ci.Value())
+	p("(const %s %#v)\n", snake_case_to_PascalCase(name), ci.Value())
 }
 func (self *Generator) processCallbackInfo(ci *gi.CallableInfo) {
 	// p := printerTo(&this.goBindings)
@@ -136,26 +136,66 @@ func (self *Generator) processCallbackInfo(ci *gi.CallableInfo) {
 func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	p := printerTo(&self.goBindings)
 
-	var fullName string
+	// var fullName string
 	flags := fi.Flags()
 	name := fi.Name()
 
 	if (flags&gi.FUNCTION_IS_METHOD != 0) && self.currentClass == nil {
 		panic("tried processing a method but no current class")
 	}
-
 	container := fi.Container()
+	isValidMethod := flags&gi.FUNCTION_IS_METHOD != 0 && self.currentClass != nil
+	fb := newFunctionBuilder(fi)
 
-	// fb := newFuncBuilder(fi)
-	p("(: %s (fn [", fi.Name())
-	if flags&gi.FUNCTION_IS_METHOD != 0 && container != nil {
-		p("Self ")
+	p("(def ")
+
+	switch {
+	case flags&gi.FUNCTION_IS_CONSTRUCTOR != 0:
+		name = "init"
+	case isValidMethod:
+		name = snake_case_to_camelCase(name)
+	default:
+		name = snake_case_to_camelCase(name)
+	}
+	// fullName += name
+	p("%s (", name)
+	if isValidMethod {
+		p("Self")
+	}
+	for i, arg := range fb.args {
+		if i != 0 || isValidMethod {
+			p(" ")
+		}
+		p("%s", horType(arg.typeInfo, typeNone))
 	}
 
-	for i, args := 0, fi.NumArg(); i < args; i++ {
-		arg := fi.Arg(i)
-		p("%s0 %s", arg.Name(), horType(arg.Type(), typeNone))
+	if len(fb.args) > 0 || isValidMethod {
+		p(" ")
 	}
+
+	switch len(fb.rets) {
+	case 0:
+		p("{}")
+
+	case 1:
+		if flags&gi.FUNCTION_IS_CONSTRUCTOR != 0 {
+
+			p("%s", container.Name())
+		}
+	}
+
+	p(") [")
+	if isValidMethod {
+		p("self")
+	}
+	for i, arg := range fb.args {
+		if i != 0 || isValidMethod {
+			p(" ")
+		}
+		p("%s", snake_case_to_camelCase(arg.argInfo.Name()))
+	}
+	p("])\n")
+
 }
 func (self *Generator) processInterfaceInfo(*gi.InterfaceInfo) {}
 func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
@@ -201,7 +241,7 @@ func horType(ti *gi.TypeInfo, flags typeFlags) string {
 		out.WriteString(horType(ti.ParamType(1), flags))
 	case gi.TYPE_TAG_ERROR:
 		// not used?
-		out.WriteString("error")
+		// out.WriteString("error")
 	case gi.TYPE_TAG_INTERFACE:
 		// TODO
 		// if ti.IsPointer() {
