@@ -164,7 +164,7 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 	defer func() { self.currentClass = nil }()
 }
 
-func horType(ti *gi.TypeInfo, flags typeFlags) parse.Expr {
+func horType(ti *gi.TypeInfo, flags typeFlags) string {
 	var out bytes.Buffer
 
 	switch tag := ti.Tag(); tag {
@@ -180,12 +180,47 @@ func horType(ti *gi.TypeInfo, flags typeFlags) parse.Expr {
 		} else {
 			out.WriteString("Str")
 		}
+	case gi.TYPE_TAG_ARRAY:
+		size := ti.ArrayFixedSize()
+		out.WriteString(horType(ti.ParamType(0), flags))
+		if size != -1 {
+			fmt.Fprintf(&out, "[%d]", size)
+		} else {
+			out.WriteString("[]")
+		}
+	case gi.TYPE_TAG_GLIST:
+		out.WriteString(horType(ti.ParamType(0), flags))
+		out.WriteString("[]")
+	case gi.TYPE_TAG_GSLIST:
+		out.WriteString(horType(ti.ParamType(0), flags))
+		out.WriteString("[]")
+	case gi.TYPE_TAG_GHASH:
+		out.WriteString("map[")
+		out.WriteString(horType(ti.ParamType(0), flags))
+		out.WriteString("]")
+		out.WriteString(horType(ti.ParamType(1), flags))
+	case gi.TYPE_TAG_ERROR:
+		// not used?
+		out.WriteString("error")
+	case gi.TYPE_TAG_INTERFACE:
+		// TODO
+		// if ti.IsPointer() {
+		// 	flags |= typePointer
+		// }
+		// out.WriteString(horTypeForInterface(ti.Interface(), flags))
+	default:
+		// TODO
+		// if ti.IsPointer() {
+		// 	flags |= typePointer
+		// }
+		// out.WriteString(go_type_for_tag(tag, flags))
 	}
+	return out.String()
 }
 
 func printerTo(w io.Writer) func(format string, args ...any) {
 	return func(format string, args ...any) {
-		_, err := fmt.Printf(format, args...)
+		_, err := fmt.Fprintf(w, format, args...)
 		if err != nil {
 			panic("TODO: unhandled: " + err.Error())
 		}
