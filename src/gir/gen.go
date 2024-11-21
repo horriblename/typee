@@ -399,16 +399,7 @@ func horTypeForInterface(bi *gi.BaseInfo, flags typeFlags) string {
 		p("%s.", ns)
 
 		p(bi.Name())
-		if flags&(typeReturn|typeReceiver) == 0 {
-			// ordinary function arguments are substituted by their *Like
-			// counterparts
-			p("Like")
-		}
-		if flags&typeReceiver != 0 && t == gi.INFO_TYPE_INTERFACE {
-			// special case for interfaces, we use *Impl structures
-			// as receivers
-			p("Impl")
-		}
+
 	case gi.INFO_TYPE_CALLBACK:
 		if flags&typeExact != 0 {
 			p("opaque")
