@@ -272,10 +272,10 @@ func horType(ti *gi.TypeInfo, flags typeFlags) string {
 		// out.WriteString("error")
 	case gi.TYPE_TAG_INTERFACE:
 		// TODO
-		// if ti.IsPointer() {
-		// 	flags |= typePointer
-		// }
-		// out.WriteString(horTypeForInterface(ti.Interface(), flags))
+		if ti.IsPointer() {
+			flags |= typePointer
+		}
+		out.WriteString(horTypeForInterface(ti.Interface(), flags))
 	default:
 		// TODO
 		// if ti.IsPointer() {
@@ -283,6 +283,70 @@ func horType(ti *gi.TypeInfo, flags typeFlags) string {
 		// }
 		// out.WriteString(go_type_for_tag(tag, flags))
 	}
+	return out.String()
+}
+
+func horTypeForInterface(bi *gi.BaseInfo, flags typeFlags) string {
+	var out bytes.Buffer
+	p := printerTo(&out)
+	ns := snake_case_to_PascalCase(bi.Namespace())
+
+	if flags&typeListMember != 0 {
+		switch bi.Type() {
+		case gi.INFO_TYPE_OBJECT, gi.INFO_TYPE_INTERFACE:
+			return horTypeForInterface(bi, typePointer|typeReturn)
+		default:
+			return horTypeForInterface(bi, typeReturn)
+		}
+	}
+
+	switch t := bi.Type(); t {
+	case gi.INFO_TYPE_OBJECT, gi.INFO_TYPE_INTERFACE:
+		if flags&typeExact != 0 {
+			// exact type for object/interface is always an unsafe.Pointer
+			p("opaque")
+			break
+		}
+
+		if flags&(typeReturn|typeReceiver) != 0 && flags&typePointer != 0 {
+			// receivers and return values are actual types,
+			// and a pointer most likely
+			p("*")
+		}
+		// TODO:  check namespace
+		// prepend foreign types with appropriate namespace
+		p("%s.", ns)
+
+		p(bi.Name())
+		if flags&(typeReturn|typeReceiver) == 0 {
+			// ordinary function arguments are substituted by their *Like
+			// counterparts
+			p("Like")
+		}
+		if flags&typeReceiver != 0 && t == gi.INFO_TYPE_INTERFACE {
+			// special case for interfaces, we use *Impl structures
+			// as receivers
+			p("Impl")
+		}
+	case gi.INFO_TYPE_CALLBACK:
+		if flags&typeExact != 0 {
+			p("opaque")
+			break
+		}
+		goto handle_default
+	case gi.INFO_TYPE_STRUCT:
+		goto handle_default
+	default:
+		goto handle_default
+	}
+	return out.String()
+handle_default:
+	if flags&typePointer != 0 /* && !config.is_disguised(fullnm) */ {
+		p("*")
+	}
+	// TODO: check namespace
+	p("%s.", ns)
+	p(bi.Name())
 	return out.String()
 }
 
