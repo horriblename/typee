@@ -278,11 +278,92 @@ func horType(ti *gi.TypeInfo, flags typeFlags) string {
 		out.WriteString(horTypeForInterface(ti.Interface(), flags))
 	default:
 		// TODO
-		// if ti.IsPointer() {
-		// 	flags |= typePointer
-		// }
-		// out.WriteString(go_type_for_tag(tag, flags))
+		if ti.IsPointer() {
+			flags |= typePointer
+		}
+		out.WriteString(horTypeForTag(tag, flags))
 	}
+	return out.String()
+}
+
+func horTypeForTag(tag gi.TypeTag, flags typeFlags) string {
+	var out bytes.Buffer
+	p := printerTo(&out)
+
+	if flags&typePointer != 0 {
+		p("*")
+	}
+
+	if flags&typeExact != 0 {
+		switch tag {
+		case gi.TYPE_TAG_BOOLEAN:
+			p("int32") // sadly
+		case gi.TYPE_TAG_INT8:
+			p("int8")
+		case gi.TYPE_TAG_UINT8:
+			p("uint8")
+		case gi.TYPE_TAG_INT16:
+			p("int16")
+		case gi.TYPE_TAG_UINT16:
+			p("uint16")
+		case gi.TYPE_TAG_INT32:
+			p("int32")
+		case gi.TYPE_TAG_UINT32:
+			p("uint32")
+		case gi.TYPE_TAG_INT64:
+			p("int64")
+		case gi.TYPE_TAG_UINT64:
+			p("uint64")
+		case gi.TYPE_TAG_FLOAT:
+			p("float32")
+		case gi.TYPE_TAG_DOUBLE:
+			p("float64")
+		case gi.TYPE_TAG_GTYPE:
+			// if config.namespace != "GObject" {
+			// 	p("gobject.Type")
+			// } else {
+			p("Type")
+		case gi.TYPE_TAG_UNICHAR:
+			p("U32")
+		default:
+			panic("unreachable")
+		}
+	} else {
+		switch tag {
+		case gi.TYPE_TAG_BOOLEAN:
+			p("Bool")
+		case gi.TYPE_TAG_INT8:
+			p("I8")
+		case gi.TYPE_TAG_UINT8:
+			p("U8")
+		case gi.TYPE_TAG_INT16:
+			p("I16")
+		case gi.TYPE_TAG_UINT16:
+			p("U16")
+		case gi.TYPE_TAG_INT32:
+			p("I32")
+		case gi.TYPE_TAG_UINT32:
+			p("U32")
+		case gi.TYPE_TAG_INT64:
+			p("I64")
+		case gi.TYPE_TAG_UINT64:
+			p("U64")
+		case gi.TYPE_TAG_FLOAT:
+			p("F32")
+		case gi.TYPE_TAG_DOUBLE:
+			p("F64")
+		case gi.TYPE_TAG_GTYPE:
+			// if config.namespace != "GObject" {
+			// 	p("gobject.Type")
+			// } else {
+			p("Type")
+		case gi.TYPE_TAG_UNICHAR:
+			p("U32")
+		default:
+			panic("unreachable")
+		}
+	}
+
 	return out.String()
 }
 
