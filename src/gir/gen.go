@@ -34,7 +34,6 @@ func (self *Generator) Gen(lib string, version string) (parse.Expr, error) {
 func (self *Generator) process_base_info(bi *gi.BaseInfo) {
 	switch bi.Type() {
 	case gi.INFO_TYPE_UNION:
-		println("union:", gi.ToUnionInfo(bi).Name())
 		self.processUnionInfo(gi.ToUnionInfo(bi))
 	case gi.INFO_TYPE_STRUCT:
 		self.processStructInfo(gi.ToStructInfo(bi))
@@ -57,12 +56,14 @@ func (self *Generator) processUnionInfo(ui *gi.UnionInfo) {
 	p := printerTo(&self.goBindings)
 
 	name := ui.Name()
-	p("(: %s {\n", name)
-	p("  _data [%d]U8", ui.Size())
+	p("(union %s {\n", name)
+	p("  _data [%d]U8\n", ui.Size())
+	self.classInScope = append(self.classInScope, name)
+	defer func() { popDelete(&self.classInScope) }()
 
 	for i, n := 0, ui.NumMethod(); i < n; i++ {
-		// meth :=ui.Method(i)
-		// self.processFunctionInfo(meth)
+		meth := ui.Method(i)
+		self.processFunctionInfo(meth)
 	}
 
 	p("})\n")
