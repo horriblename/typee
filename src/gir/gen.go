@@ -12,7 +12,7 @@ import (
 
 type Generator struct {
 	namespace    string
-	currentClass *gi.ObjectInfo
+	classInScope []string
 	goBindings   bytes.Buffer
 }
 
@@ -140,11 +140,11 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	flags := fi.Flags()
 	name := fi.Name()
 
-	if (flags&gi.FUNCTION_IS_METHOD != 0) && self.currentClass == nil {
-		panic("tried processing a method but no current class")
+	if (flags&gi.FUNCTION_IS_METHOD != 0) && len(self.classInScope) == 0 {
+		panic(fmt.Sprintf("tried processing a method %s but no current class", name))
 	}
 	container := fi.Container()
-	isValidMethod := flags&gi.FUNCTION_IS_METHOD != 0 && self.currentClass != nil
+	isValidMethod := flags&gi.FUNCTION_IS_METHOD != 0 && len(self.classInScope) != 0
 	fb := newFunctionBuilder(fi)
 
 	p("(def ")
@@ -179,7 +179,6 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	case 1:
 		if flags&gi.FUNCTION_IS_CONSTRUCTOR != 0 {
-
 			p("%s", container.Name())
 		}
 	}
@@ -200,8 +199,8 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 func (self *Generator) processInterfaceInfo(*gi.InterfaceInfo) {}
 func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 	// TODO: are there nested class?
-	self.currentClass = oi
-	defer func() { self.currentClass = nil }()
+	self.classInScope = append(self.classInScope, oi.Name())
+	defer func() { popDelete(&self.classInScope) }()
 
 	p := printerTo(&self.goBindings)
 
@@ -438,4 +437,10 @@ func printerTo(w io.Writer) func(format string, args ...any) {
 			panic("TODO: unhandled: " + err.Error())
 		}
 	}
+}
+
+func popDelete[T any](xs *[]T) {
+	var zero T
+	(*xs)[len(*xs)-1] = zero
+	*xs = (*xs)[:len(*xs)-1]
 }
