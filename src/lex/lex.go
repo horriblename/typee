@@ -161,6 +161,10 @@ func keywordOrSymbol(in []rune) ([]rune, Token, error) {
 		return rest, &SelfType{}, nil
 	case "new":
 		return rest, &New{}, nil
+	case "union":
+		return rest, &Union{}, nil
+	case "enum":
+		return rest, &Enum{}, nil
 	}
 
 	return rest, &Symbol{Name: symName}, err
