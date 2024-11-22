@@ -5,10 +5,14 @@ type OrderedSet[T comparable] struct {
 	mapping map[T]struct{}
 }
 
-func NewOrderedSet[T comparable]() *OrderedSet[T] {
+func NewOrderedSet[T comparable](items ...T) *OrderedSet[T] {
+	m := map[T]struct{}{}
+	for _, v := range items {
+		m[v] = struct{}{}
+	}
 	return &OrderedSet[T]{
-		list:    []T{},
-		mapping: map[T]struct{}{},
+		list:    items,
+		mapping: m,
 	}
 }
 
