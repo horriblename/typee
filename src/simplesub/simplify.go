@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/horriblename/typee/src/fun"
-	orderedset "github.com/horriblename/typee/src/simplesub/internal/ordered_set"
+	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/types"
 )
 

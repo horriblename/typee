@@ -10,8 +10,8 @@ import (
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
+	"github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/opt"
-	"github.com/horriblename/typee/src/simplesub/internal/ordered_set"
 	"github.com/horriblename/typee/src/types"
 )
 
