@@ -408,7 +408,6 @@ func TestParse(t *testing.T) {
 			gIdCounter = 1
 			got, err := ParseString(tC.input)
 			if err != nil {
-				t.Logf("%#v", got)
 				t.Fatal(err)
 			}
 
