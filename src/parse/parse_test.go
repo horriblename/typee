@@ -402,6 +402,18 @@ func TestParse(t *testing.T) {
 				Key:  "A",
 			}},
 		},
+		{
+			desc:  "union definition",
+			input: "(union Foo {Int Str})",
+			output: []Expr{&UnionDef{
+				id:   1,
+				Name: "Foo",
+				Variants: []TypeRepr{
+					TypeName{"Int"},
+					TypeName{"Str"},
+				},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

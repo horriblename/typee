@@ -192,6 +192,30 @@ func enumVariant(in []lex.Token) ([]lex.Token, EnumVariant, error) {
 	}, nil
 }
 
+func unionDef(in []lex.Token) ([]lex.Token, Expr, error) {
+	in, u, err := combinator.Surround(lparen,
+		combinator.WithPrefix(
+			kwUnion,
+			combinator.Then(
+				symbolName,
+				combinator.Surround(lbrace,
+					combinator.Many(type_),
+					rbrace),
+			),
+		),
+		rparen)(in)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return in, &UnionDef{
+		id:       newId(),
+		Name:     u.One,
+		Variants: u.Two,
+	}, nil
+}
+
 func dbg[I, O any](tag string, p combinator.Parser[I, O]) combinator.Parser[I, O] {
 	return func(i I) (I, O, error) {
 		r, o, e := p(i)

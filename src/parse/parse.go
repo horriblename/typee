@@ -130,6 +130,9 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	case *lex.Enum:
 		return enumDef(in)
 
+	case *lex.Union:
+		return unionDef(in)
+
 	case nil:
 		return nil, nil, errAt(in)
 
