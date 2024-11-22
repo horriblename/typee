@@ -7,6 +7,7 @@ import (
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
+	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/types"
 )
@@ -211,6 +212,59 @@ func TestTypeProgram(t *testing.T) {
 			},
 			},
 		},
+		{
+			desc: "union",
+			input: `
+				(union Foo {Int Str})
+				(def foo (Foo Int) [f] 32)
+				(def testFoo [] (foo 42))
+			`,
+			typ: func() []types.Type {
+				fooSet := orderedset.NewOrderedSet[types.Type](&types.String{})
+				fooUnion := types.Union{Name: "Foo", Variants: fooSet}
+				return []types.Type{
+					&types.Union{
+						Name:     "Foo",
+						Variants: fooSet,
+					},
+					&types.Func{
+						Args: []types.Type{&fooUnion},
+						Ret:  &types.Int{},
+					},
+					&types.Func{
+						Args: []types.Type{},
+						Ret:  &types.Int{},
+					},
+				}
+			}(),
+		},
+		// {
+		// 	desc: "union return value",
+		// 	input: `
+		// 		(union Foo {Int Str})
+		// 		(def bar (Foo) [] "hi")
+		// 		(def testBar [] (bar))
+		// 	`,
+		// 	typ: func() []types.Type {
+		// 		fooSet := orderedset.NewOrderedSet[types.Type](&types.String{})
+		// 		fooUnion := types.Union{Name: "Foo", Variants: fooSet}
+		// 		return []types.Type{
+		// 			&types.Union{
+		// 				Name:     "Foo",
+		// 				Variants: fooSet,
+		// 			},
+		// 			&types.Func{
+		// 				Args: []types.Type{},
+		// 				Ret:  &fooUnion,
+		// 			},
+		// 			&types.Func{
+		// 				Args: []types.Type{},
+		// 				Ret:  &fooUnion,
+		// 			},
+		// 		}
+		// 	}(),
+		// },
+		//
 		// // why does this give Int -> Top and Int -> Int???
 		// // if we flip the order of definition we get the correct answer
 		// {
@@ -255,7 +309,9 @@ func TestTypeProgram(t *testing.T) {
 				t.Errorf("expected %d results, got %d", len(tC.typ), len(typ))
 			}
 			for expect, got := range fun.ZipIter(slices.Values(tC.typ), slices.Values(typ)) {
-				assert.True(types.StructuralEq(expect, got), "expected type", expect, ", got:", got)
+				if !types.StructuralEq(expect, got) {
+					t.Errorf("expected type %v got: %v", expect, got)
+				}
 			}
 		})
 	}
