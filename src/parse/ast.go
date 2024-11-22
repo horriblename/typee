@@ -149,6 +149,24 @@ type New struct {
 	Class string
 }
 
+type UnionDef struct {
+	id       int
+	Name     string
+	Variants []TypeRepr
+}
+
+type EnumDef struct {
+	id       int
+	Name     string
+	Variants []EnumVariant
+}
+
+type EnumVariant struct {
+	Name  string
+	Value opt.Option[int64]
+	// Payload TypeRepr
+}
+
 func (*Form) ast()         {}
 func (*Symbol) ast()       {}
 func (*FuncDef) ast()      {}
@@ -169,6 +187,8 @@ func (*InterfaceDef) ast() {}
 func (*RecordAccess) ast() {}
 func (*MethodAccess) ast() {}
 func (*New) ast()          {}
+func (*UnionDef) ast()     {}
+func (*EnumDef) ast()      {}
 
 func (self *Form) ID() int         { return self.id }
 func (self *Symbol) ID() int       { return self.id }
@@ -190,6 +210,8 @@ func (self *InterfaceDef) ID() int { return self.id }
 func (self *RecordAccess) ID() int { return self.id }
 func (self *MethodAccess) ID() int { return self.id }
 func (self *New) ID() int          { return self.id }
+func (self *UnionDef) ID() int     { return self.id }
+func (self *EnumDef) ID() int      { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
@@ -258,6 +280,20 @@ func (self *RecordField) String() string {
 }
 func (self *New) String() string {
 	return fmt.Sprintf("%s.new", self.Class)
+}
+func (self *UnionDef) String() string {
+	variants := fun.Map(self.Variants, func(t TypeRepr) string { return t.String() })
+	return fmt.Sprintf("#%d (enum %s {\n%s\n})", self.id, self.Name, strings.Join(variants, "\n"))
+}
+func (self *EnumDef) String() string {
+	variants := fun.Map(self.Variants, func(t EnumVariant) string { return t.String() })
+	return fmt.Sprintf("#%d (enum %s {\n%s\n})", self.id, self.Name, strings.Join(variants, "\n"))
+}
+func (self *EnumVariant) String() string {
+	if val, ok := self.Value.Unwrap(); ok {
+		return fmt.Sprintf("%s: %d", self.Name, val)
+	}
+	return self.Name
 }
 
 func prettySlice(xs []Expr) []string {
@@ -341,6 +377,14 @@ func (self *MethodAccess) Pretty() string {
 }
 func (self *New) Pretty() string {
 	return fmt.Sprintf("%s.new", self.Class)
+}
+func (self *UnionDef) Pretty() string {
+	variants := fun.Map(self.Variants, func(t TypeRepr) string { return t.String() })
+	return fmt.Sprintf("(union %s {\n%s\n})", self.Name, strings.Join(variants, "\n"))
+}
+func (self *EnumDef) Pretty() string {
+	variants := fun.Map(self.Variants, func(t EnumVariant) string { return t.String() })
+	return fmt.Sprintf("(enum %s {\n%s\n})", self.Name, strings.Join(variants, "\n"))
 }
 func (self *Record) Pretty() string {
 	if len(self.Fields) == 0 {

@@ -380,6 +380,19 @@ func TestParse(t *testing.T) {
 				}},
 			}},
 		},
+		{
+			desc:  "enum definition",
+			input: "(enum Foo {A B:34 C})",
+			output: []Expr{&EnumDef{
+				id:   1,
+				Name: "Foo",
+				Variants: []EnumVariant{
+					{"A", opt.None[int64]()},
+					{"B", opt.Some[int64](34)},
+					{"C", opt.None[int64]()},
+				},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

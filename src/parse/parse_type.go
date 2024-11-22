@@ -129,6 +129,7 @@ func interfaceDef(in []lex.Token) ([]lex.Token, Expr, error) {
 	}
 	return in, &t, nil
 }
+
 func memberVisibility(in []lex.Token) ([]lex.Token, types.AccessLvl, error) {
 	if len(in) == 0 {
 		return nil, 0, errAt(in)
@@ -144,6 +145,51 @@ func memberVisibility(in []lex.Token) ([]lex.Token, types.AccessLvl, error) {
 	default:
 		return nil, 0, fmt.Errorf("not visibility token: %s", in[0].String())
 	}
+}
+
+func enumDef(in []lex.Token) ([]lex.Token, Expr, error) {
+	in, e, err := combinator.Surround(lparen,
+		combinator.WithPrefix(
+			kwEnum,
+			combinator.Then(
+				symbolName,
+				combinator.Surround(
+					lbrace,
+					combinator.Many(enumVariant),
+					rbrace,
+				),
+			),
+		),
+		rparen)(in)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return in, &EnumDef{
+		id:       newId(),
+		Name:     e.One,
+		Variants: e.Two,
+	}, nil
+}
+
+func enumVariant(in []lex.Token) ([]lex.Token, EnumVariant, error) {
+	in, variant, err := combinator.Then(symbolName,
+		combinator.Maybe(
+			combinator.WithPrefix(
+				colon,
+				intNumber,
+			),
+		))(in)
+
+	if err != nil {
+		return nil, EnumVariant{}, err
+	}
+
+	return in, EnumVariant{
+		Name:  variant.One,
+		Value: variant.Two,
+	}, nil
 }
 
 func dbg[I, O any](tag string, p combinator.Parser[I, O]) combinator.Parser[I, O] {

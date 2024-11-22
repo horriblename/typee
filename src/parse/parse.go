@@ -76,6 +76,18 @@ func intLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
 	return nil, nil, errAt(in)
 }
 
+func intNumber(in []lex.Token) ([]lex.Token, int64, error) {
+	if len(in) == 0 {
+		return nil, 0, errAt(in)
+	}
+
+	if lit, ok := in[0].(*lex.IntLiteral); ok {
+		return in[1:], lit.Number, nil
+	}
+
+	return nil, 0, errAt(in)
+}
+
 func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	if len(in) == 0 {
 		return nil, nil, errAt(in)
@@ -114,6 +126,9 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 
 	case *lex.Interface:
 		return interfaceDef(in)
+
+	case *lex.Enum:
+		return enumDef(in)
 
 	case nil:
 		return nil, nil, errAt(in)
@@ -648,6 +663,12 @@ func kwNew(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func kwCase(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Case])(in)
+}
+func kwUnion(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Union])(in)
+}
+func kwEnum(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Enum])(in)
 }
 func kwSelf(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Self])(in)
