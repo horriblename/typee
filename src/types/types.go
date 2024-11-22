@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/horriblename/typee/src/fun"
+	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 )
 
 type AccessLvl uint8
@@ -52,6 +53,10 @@ type Bool struct{}
 type Record struct {
 	Fields map[string]Type
 }
+type Union struct {
+	Name     string
+	Variants *orderedset.OrderedSet[Type]
+}
 type Class struct {
 	Name    string
 	Supers  []*Class
@@ -86,6 +91,7 @@ func (*String) type_()     {}
 func (*Int) type_()        {}
 func (*Bool) type_()       {}
 func (*Record) type_()     {}
+func (*Union) type_()      {}
 func (*Class) type_()      {}
 func (*Func) type_()       {}
 func (*Generic) type_()    {}
@@ -98,6 +104,7 @@ func (*String) Simple() bool     { return true }
 func (*Int) Simple() bool        { return true }
 func (*Bool) Simple() bool       { return true }
 func (*Record) Simple() bool     { return false }
+func (*Union) Simple() bool      { return false }
 func (*Class) Simple() bool      { return false }
 func (*Func) Simple() bool       { return false }
 func (*Generic) Simple() bool    { return false }
@@ -135,6 +142,28 @@ func (f *Record) Eq(other Type) bool {
 		}
 
 		if !val.Eq(oval) {
+			return false
+		}
+	}
+
+	return true
+}
+func (f *Union) Eq(other Type) bool {
+	o, ok := other.(*Union)
+	if !ok {
+		return false
+	}
+
+	if f.Name != "" && f.Name == o.Name {
+		return true
+	}
+
+	if f.Variants.Len() != o.Variants.Len() {
+		return false
+	}
+
+	for _, val := range f.Variants.Slice() {
+		if !o.Variants.Has(val) {
 			return false
 		}
 	}
@@ -232,6 +261,19 @@ func (r *Record) String() string {
 		b.WriteString(": ")
 		b.WriteString(val.String())
 		b.WriteString(", ")
+	}
+	b.WriteString("}")
+
+	return b.String()
+}
+func (r *Union) String() string {
+	b := strings.Builder{}
+	b.WriteString(fmt.Sprintf("union %s{", r.Name))
+	for i, name := range r.Variants.Slice() {
+		if i != 0 {
+			b.WriteRune(' ')
+		}
+		b.WriteString(name.String())
 	}
 	b.WriteString("}")
 
@@ -436,6 +478,18 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 		}
 
 		return true
+	case *Union:
+		b, ok := b.(*Union)
+		if !ok {
+			return false
+		}
+		if a.Name != "" && a.Name == b.Name {
+			return true
+		}
+
+		// FIXME: structural typing + untagged unions is a nightmare
+		return false
+
 	case *Class:
 		b, ok := b.(*Class)
 		if !ok {
@@ -577,6 +631,17 @@ func (ctx *PrettyCtx) String(typ Type) string {
 			b.WriteString(": ")
 			b.WriteString(ctx.String(field))
 			b.WriteString(", ")
+		}
+		b.WriteString("}")
+		return b.String()
+	case *Union:
+		var b strings.Builder
+		b.WriteString("{")
+		for i, t := range t.Variants.Slice() {
+			if i != 0 {
+				b.WriteString(" ")
+			}
+			b.WriteString(ctx.String(t))
 		}
 		b.WriteString("}")
 		return b.String()
