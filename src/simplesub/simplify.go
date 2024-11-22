@@ -131,7 +131,7 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 			return ty.asTypeVar()
 		} else {
 			if polarity {
-				return &types.Union{Lhs: ty.asTypeVar(), Rhs: boundTy}
+				return &types.Join{Lhs: ty.asTypeVar(), Rhs: boundTy}
 			} else {
 				return &types.Inter{Lhs: ty.asTypeVar(), Rhs: boundTy}
 			}

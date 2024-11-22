@@ -73,7 +73,7 @@ type TypeScheme struct {
 	Body Type
 }
 type Top struct{}
-type Union struct {
+type Join struct {
 	Lhs Type
 	Rhs Type
 }
@@ -91,7 +91,7 @@ func (*Func) type_()       {}
 func (*Generic) type_()    {}
 func (*TypeScheme) type_() {}
 func (*Top) type_()        {}
-func (*Union) type_()      {}
+func (*Join) type_()       {}
 func (*Inter) type_()      {}
 
 func (*String) Simple() bool     { return true }
@@ -103,7 +103,7 @@ func (*Func) Simple() bool       { return false }
 func (*Generic) Simple() bool    { return false }
 func (*TypeScheme) Simple() bool { return false }
 func (*Top) Simple() bool        { return true }  // only used by biunification
-func (*Union) Simple() bool      { return false } // only used by biunification
+func (*Join) Simple() bool       { return false } // only used by biunification
 func (*Inter) Simple() bool      { return false } // only used by biunification
 
 func (*String) Eq(other Type) bool {
@@ -203,15 +203,15 @@ func (self *Top) Eq(other Type) bool {
 }
 
 // note: Eq not used in biunification (I think)
-func (self *Union) Eq(other Type) bool {
-	o, ok := other.(*Union)
+func (self *Join) Eq(other Type) bool {
+	o, ok := other.(*Join)
 	if !ok {
 		return false
 	}
 	return self.Lhs.Eq(o.Lhs) && self.Rhs.Eq(o.Rhs)
 }
 func (self *Inter) Eq(other Type) bool {
-	o, ok := other.(*Union)
+	o, ok := other.(*Join)
 	if !ok {
 		return false
 	}
@@ -310,7 +310,7 @@ func (ts *TypeScheme) String() string {
 	return b.String()
 }
 func (self *Top) String() string   { return "⊤" }
-func (self *Union) String() string { return fmt.Sprintf("(%s ∪ %s)", self.Lhs, self.Rhs) }
+func (self *Join) String() string  { return fmt.Sprintf("(%s ∪ %s)", self.Lhs, self.Rhs) }
 func (self *Inter) String() string { return fmt.Sprintf("(%s ∩ %s)", self.Lhs, self.Rhs) }
 
 var genericIDCounter TypeID = 0
@@ -368,8 +368,8 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 			return false
 		}
 		return structuralEq(ctx, a.Lhs, b.Lhs) && structuralEq(ctx, a.Rhs, b.Rhs)
-	case *Union:
-		b, ok := b.(*Union)
+	case *Join:
+		b, ok := b.(*Join)
 		if !ok {
 			return false
 		}
