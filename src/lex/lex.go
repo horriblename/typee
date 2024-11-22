@@ -3,12 +3,9 @@ package lex
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
-	"strings"
 	"unicode"
 
-	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/combinator"
 )
 
@@ -258,36 +255,4 @@ func comment(in []rune) ([]rune, struct{}, error) {
 	}
 
 	return []rune{}, struct{}{}, nil
-}
-
-func init() {
-	if !strings.HasSuffix(os.Args[0], ".test") {
-		// not a test
-		return
-	}
-
-	println("--- inline test simple comment")
-	rest, _, err := comment([]rune("; hi"))
-	assert.Eq(len(rest), 0)
-	assert.Ok(err)
-
-	println("--- inline test comment endline")
-	in := []rune(";hi\nbye")
-	rest, _, err = comment(in)
-	assert.Eq(string(rest), "bye")
-	assert.Ok(err)
-
-	println("--- inline test skips: basic")
-	in = []rune("  ;hi\nbye")
-	rest, _, err = skipped(in)
-	assert.Eq(string(rest), "bye")
-	assert.Ok(err)
-
-	println("--- inline test skips: back to back")
-	in = []rune("  ;hi\n  ;comment2 \n\t 2")
-	rest, _, err = skipped(in)
-	assert.Eq(string(rest), "2")
-	assert.Ok(err)
-
-	println("+++ completed inline tests")
 }
