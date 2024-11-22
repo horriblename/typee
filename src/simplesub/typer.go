@@ -32,9 +32,11 @@ var ErrInvalidTopLevel = errors.New("invalid top level construct: must be set or
 var ErrDefMustBeTopLevel = errors.New("function definitions only allowed in top level")
 var ErrClassDefMustBeTopLevel = errors.New("class and interface definitions must be top-level")
 var ErrEmptyFuncBody = errors.New("empty function body")
+var ErrUnionUnexpectedVariant = errors.New("union type has unexpected variant")
 var ErrIllegalTypeScheme = errors.New("type schemes not allowed here")
 var ErrIllegalSuperType = errors.New("super types must be class or interfaces")
 var ErrBadTypeSignature = errors.New("bad function type signature")
+var ErrPolymorphicUnion = errors.New("generics are disallowed from binding to unions")
 
 const scopeLevelTop int = 1
 
@@ -75,6 +77,9 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]Polymorphi
 			self.vars.Insert(e.Name, types[i])
 
 		case *parse.ClassDef:
+			types[i] = PolymorphicType{freshVar()}
+			self.vars.Insert(e.Name, types[i])
+		case *parse.UnionDef:
 			types[i] = PolymorphicType{freshVar()}
 			self.vars.Insert(e.Name, types[i])
 
@@ -119,6 +124,20 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]Polymorphi
 			self.types.Insert(e.Name, types[i])
 
 			t, err := self.defClass(ctx, e)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := constrain(t, types[i].Body); err != nil {
+				return nil, err
+			}
+
+			ctx.inferred[e.ID()] = PolymorphicType{t}
+
+		case *parse.UnionDef:
+			self.types.Insert(e.Name, types[i])
+
+			t, err := self.defUnion(ctx, e)
 			if err != nil {
 				return nil, err
 			}
@@ -520,6 +539,31 @@ func (self *Typer) defClass(ctx *context, classDef *parse.ClassDef) (SimpleType,
 	return t, nil
 }
 
+func (self *Typer) defUnion(ctx *context, unionDef *parse.UnionDef) (SimpleType, error) {
+	// TODO: check repeated variants?
+	variants := make([]ConcreteType, len(unionDef.Variants))
+	for i, v := range unionDef.Variants {
+		t, err := self.parseType(v)
+		if err != nil {
+			return nil, err
+		}
+
+		ct, ok := t.(ConcreteType)
+		if !ok {
+			return nil, fmt.Errorf("%w: in definition of %s", ErrPolymorphicUnion, unionDef.Name)
+		}
+
+		variants[i] = ct
+	}
+
+	t := Union{
+		Name:     unionDef.Name,
+		Variants: variants,
+	}
+	self.types.Insert(unionDef.Name, t)
+	return t, nil
+}
+
 func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 	switch t := tr.(type) {
 	case parse.TypeName:
@@ -604,6 +648,14 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		return ty.newUpperBound(bound)
 	} else if ty, bound, ok := matchPair[ConcreteType, *Variable](ty0, bound0); ok {
 		return bound.newLowerBound(ty)
+	} else if ty, bound, ok := matchPair[ConcreteType, Union](ty0, bound0); ok {
+		for _, variant := range bound.Variants {
+			if concreteEq(ty, variant) {
+				return nil
+			}
+		}
+
+		return fmt.Errorf("%w: %s is not a variant of union %s", ErrUnionUnexpectedVariant, ty.String(), bound.Name)
 	} else {
 		return fmt.Errorf("%w %v <: %v", ErrCannotConstrain, ty0, bound0)
 	}
@@ -700,7 +752,7 @@ func freshenConcrete(freshened map[*Variable]*Variable, ty ConcreteType) Concret
 			Fields:  fields,
 			Methods: methods,
 		}
-	case Bool, Bot, Str, Top: // terminals
+	case Bool, Bot, Str, Top, Union: // terminals and Union, because generics are banned in Union
 	default:
 		panic(fmt.Sprintf("unexpected simplesub.ConcreteType: %#v", t))
 	}

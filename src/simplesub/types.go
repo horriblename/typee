@@ -190,6 +190,16 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 			Fields:  []NamedMember{},
 			Methods: mapToNamedMembers(mergedMap),
 		}, nil
+	} else if lhs, rhs, ok := matchPair[Union, Union](lhs0, rhs0); ok {
+		lhsSet := sliceToSet(lhs.Variants)
+		intersection := map[ConcreteType]struct{}{}
+		for _, rhsKey := range rhs.Variants {
+			if _, ok := lhsSet[rhsKey]; ok {
+				intersection[rhsKey] = struct{}{}
+			}
+		}
+
+		return Union{"", setToSlice(intersection)}, nil
 	} else if _, _, ok := matchPair[Bool, Bool](lhs0, rhs0); ok {
 		return Bool{}, nil
 	} else if _, _, ok := matchPair[Int, Int](lhs0, rhs0); ok {
@@ -249,6 +259,18 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 			}
 		}
 		return Record{Fields: merged}, nil
+	} else if lhs, rhs, ok := matchPair[Union, Union](lhs0, rhs0); ok {
+		rhsSet := sliceToSet(rhs.Variants)
+		merged := make([]ConcreteType, len(rhs.Variants))
+		copy(rhs.Variants, merged)
+
+		for _, lhsVariant := range lhs.Variants {
+			if _, ok := rhsSet[lhsVariant]; !ok {
+				merged = append(merged, lhsVariant)
+			}
+		}
+
+		return Union{"", merged}, nil
 	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
 		rhsMap := namedMembersToMap(rhs.Methods)
 
@@ -359,6 +381,10 @@ type Record struct{ Fields []NamedType }
 type Bool struct{}
 type Int struct{}
 type Str struct{}
+type Union struct {
+	Name     string
+	Variants []ConcreteType
+}
 type ObjectType struct {
 	Name    string
 	Supers  []ObjectType
@@ -374,6 +400,7 @@ func (self ObjectType) instantiate() SimpleType { return self }
 func (self Bool) instantiate() SimpleType       { return self }
 func (self Int) instantiate() SimpleType        { return self }
 func (self Str) instantiate() SimpleType        { return self }
+func (self Union) instantiate() SimpleType      { return self }
 
 func (self Top) children() []SimpleType { return []SimpleType{} }
 func (self Bot) children() []SimpleType { return []SimpleType{} }
@@ -396,6 +423,9 @@ func (self ObjectType) children() []SimpleType {
 func (self Bool) children() []SimpleType { return []SimpleType{} }
 func (self Int) children() []SimpleType  { return []SimpleType{} }
 func (self Str) children() []SimpleType  { return []SimpleType{} }
+func (self Union) children() []SimpleType {
+	return fun.Map(self.Variants, func(c ConcreteType) SimpleType { return c })
+}
 
 func (self Top) concrete()        {}
 func (self Bot) concrete()        {}
@@ -405,6 +435,7 @@ func (self ObjectType) concrete() {}
 func (self Bool) concrete()       {}
 func (self Int) concrete()        {}
 func (self Str) concrete()        {}
+func (self Union) concrete()      {}
 
 func (self Top) String() string { return "⊤" }
 func (self Bot) String() string { return "⊥" }
@@ -437,6 +468,12 @@ func (self ObjectType) String() string {
 func (self Bool) String() string { return "Bool" }
 func (self Int) String() string  { return "Int" }
 func (self Str) String() string  { return "Str" }
+func (self Union) String() string {
+	variants := fun.Map(self.Variants, func(st ConcreteType) string {
+		return st.String()
+	})
+	return fmt.Sprintf("(union %s {%s})", self.Name, strings.Join(variants, " "))
+}
 
 func (self ObjectType) FindMethod(name string) (method Member, found bool) {
 	classes := []ObjectType{self}
@@ -511,6 +548,7 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 		return false
 	}
 
+	// TODO: object types?
 	if _, _, ok := matchPair[Top, Top](lhs, rhs); ok {
 		return true
 	} else if _, _, ok := matchPair[Bot, Bot](lhs, rhs); ok {
@@ -521,6 +559,8 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 		return true
 	} else if _, _, ok := matchPair[Str, Str](lhs, rhs); ok {
 		return true
+	} else if left, right, ok := matchPair[Union, Union](lhs, rhs); ok {
+		return left.Name != right.Name
 	} else if left, right, ok := matchPair[Record, Record](lhs, rhs); ok {
 		if len(left.Fields) != len(right.Fields) {
 			return false
@@ -610,6 +650,22 @@ func mergeMapWith[K comparable, V any](lhs map[K]V, rhs map[K]V, merge func(l V,
 		}
 	}
 	return merged
+}
+
+func sliceToSet[T comparable](xs []T) map[T]struct{} {
+	s := map[T]struct{}{}
+	for _, key := range xs {
+		s[key] = struct{}{}
+	}
+	return s
+}
+
+func setToSlice[T comparable, V any](xs map[T]V) []T {
+	s := make([]T, 0, len(xs))
+	for k := range xs {
+		s = append(s, k)
+	}
+	return s
 }
 
 func err2Func2ToResultFunc[I1, I2, O any](f func(I1, I2) (O, error)) func(I1, I2) fun.Result[O] {
