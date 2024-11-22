@@ -16,6 +16,7 @@ type RBracket struct{}
 type LBrace struct{}
 type RBrace struct{}
 type Colon struct{}
+type DoubleColon struct{}
 type Comma struct{}
 type Dot struct{}
 type Hash struct{}
@@ -61,6 +62,7 @@ func (*RBracket) token()     {}
 func (*LBrace) token()       {}
 func (*RBrace) token()       {}
 func (*Colon) token()        {}
+func (*DoubleColon) token()  {}
 func (*Comma) token()        {}
 func (*Dot) token()          {}
 func (*Hash) token()         {}
@@ -96,6 +98,7 @@ func (*RBracket) String() string        { return "RBracket" }
 func (*LBrace) String() string          { return "LBrace" }
 func (*RBrace) String() string          { return "RBrace" }
 func (*Colon) String() string           { return "Colon" }
+func (*DoubleColon) String() string     { return "DoubleColon" }
 func (*Comma) String() string           { return "Comma" }
 func (*Dot) String() string             { return "Dot" }
 func (*Hash) String() string            { return "Hash" }

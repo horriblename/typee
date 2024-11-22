@@ -26,11 +26,12 @@ func LexString(source string) ([]Token, error) {
 			rbracket,
 			lbrace,
 			rbrace,
-			colon,
 			comma,
 			dot,
 			hash,
 			strLiteral,
+			doubleColon,
+			colon,
 			tag,
 			keywordOrSymbol,
 			intLiteral,
@@ -67,6 +68,13 @@ func dot(in []rune) ([]rune, Token, error)      { return combinator.MatchOne(in,
 func hash(in []rune) ([]rune, Token, error)     { return combinator.MatchOne(in, '#', &Hash{}) }
 func doubleQuote(in []rune) ([]rune, struct{}, error) {
 	return combinator.MatchOne(in, '"', struct{}{})
+}
+
+func doubleColon(in []rune) ([]rune, Token, error) {
+	if len(in) < 2 || in[0] != ':' || in[1] != ':' {
+		return nil, nil, ErrLex
+	}
+	return in[2:], &DoubleColon{}, nil
 }
 
 func strLiteral(in []rune) ([]rune, Token, error) {
