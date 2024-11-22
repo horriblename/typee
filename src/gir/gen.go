@@ -197,7 +197,26 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	p("])\n")
 
 }
-func (self *Generator) processInterfaceInfo(*gi.InterfaceInfo) {}
+
+func (self *Generator) processInterfaceInfo(ii *gi.InterfaceInfo) {
+	p := printerTo(&self.goBindings)
+
+	name := ii.Name()
+	self.classInScope = append(self.classInScope, name)
+	fmt.Printf("%+s", self.classInScope)
+	defer func() { popDelete(&self.classInScope) }()
+
+	p("(interface %s {\n", name)
+
+	for i, n := 0, ii.NumMethod(); i < n; i++ {
+		if i != 0 {
+			p(", ")
+		}
+		meth := ii.Method(i)
+		self.processFunctionInfo(meth)
+	}
+}
+
 func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 	// TODO: are there nested class?
 	self.classInScope = append(self.classInScope, oi.Name())
