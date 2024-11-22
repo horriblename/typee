@@ -493,6 +493,7 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 			recordAccess(lhs),
 			methodAccess(lhs),
 			classConstructor(lhs.Name),
+			enumAccess(lhs.Name),
 		),
 	)(rest)
 
@@ -540,6 +541,19 @@ func classConstructor(class string) combinator.Parser[[]lex.Token, Expr] {
 			return &New{
 				id:    newId(),
 				Class: class,
+			}
+		},
+	)
+}
+
+func enumAccess(enum string) combinator.Parser[[]lex.Token, Expr] {
+	return combinator.Map(
+		combinator.WithPrefix(doubleColon, symbolName),
+		func(key string) Expr {
+			return &EnumAccess{
+				id:   newId(),
+				Enum: enum,
+				Key:  key,
 			}
 		},
 	)
@@ -621,6 +635,9 @@ func rbrace(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func colon(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Colon])(in)
+}
+func doubleColon(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.DoubleColon])(in)
 }
 func comma(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Comma])(in)

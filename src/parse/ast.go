@@ -167,6 +167,12 @@ type EnumVariant struct {
 	// Payload TypeRepr
 }
 
+type EnumAccess struct {
+	id   int
+	Enum string
+	Key  string
+}
+
 func (*Form) ast()         {}
 func (*Symbol) ast()       {}
 func (*FuncDef) ast()      {}
@@ -189,6 +195,7 @@ func (*MethodAccess) ast() {}
 func (*New) ast()          {}
 func (*UnionDef) ast()     {}
 func (*EnumDef) ast()      {}
+func (*EnumAccess) ast()   {}
 
 func (self *Form) ID() int         { return self.id }
 func (self *Symbol) ID() int       { return self.id }
@@ -212,6 +219,7 @@ func (self *MethodAccess) ID() int { return self.id }
 func (self *New) ID() int          { return self.id }
 func (self *UnionDef) ID() int     { return self.id }
 func (self *EnumDef) ID() int      { return self.id }
+func (self *EnumAccess) ID() int   { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
@@ -288,6 +296,9 @@ func (self *UnionDef) String() string {
 func (self *EnumDef) String() string {
 	variants := fun.Map(self.Variants, func(t EnumVariant) string { return t.String() })
 	return fmt.Sprintf("#%d (enum %s {\n%s\n})", self.id, self.Name, strings.Join(variants, "\n"))
+}
+func (self *EnumAccess) String() string {
+	return fmt.Sprintf("#%d%s::%s", self.id, self.Enum, self.Key)
 }
 func (self *EnumVariant) String() string {
 	if val, ok := self.Value.Unwrap(); ok {
@@ -385,6 +396,9 @@ func (self *UnionDef) Pretty() string {
 func (self *EnumDef) Pretty() string {
 	variants := fun.Map(self.Variants, func(t EnumVariant) string { return t.String() })
 	return fmt.Sprintf("(enum %s {\n%s\n})", self.Name, strings.Join(variants, "\n"))
+}
+func (self *EnumAccess) Pretty() string {
+	return fmt.Sprintf("%s::%s", self.Enum, self.Key)
 }
 func (self *Record) Pretty() string {
 	if len(self.Fields) == 0 {

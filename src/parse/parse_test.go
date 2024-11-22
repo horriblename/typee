@@ -393,6 +393,15 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			desc:  "enum access",
+			input: "Foo::A",
+			output: []Expr{&EnumAccess{
+				id:   2,
+				Enum: "Foo",
+				Key:  "A",
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
