@@ -49,7 +49,7 @@ func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[*Variable]
 			neg.Insert(ty)
 			analyze(ty.upperBound, pol, pos, neg)
 		}
-	case Bool, Int, Str, Top, Bot:
+	case Bool, Int, Str, Top, Bot, Union: // Union bans generics
 	}
 }
 
@@ -80,7 +80,7 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleTy
 		})
 
 		return Func{args, transform(ty.Ret, pol, mapping, pos, neg)}
-	case Bool, Int, Str, Top, Bot:
+	case Bool, Int, Str, Top, Bot, Union: // Union bans generics
 		return st
 	}
 	panic("unreachable")
@@ -153,6 +153,17 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 			fields[field.Name] = coalesceTypeInner(field.Type, polarity)
 		}
 		return &types.Record{Fields: fields}
+	case Union:
+		set := orderedset.NewOrderedSet[types.Type]()
+		for _, v := range ty.Variants {
+			t := coalesceTypeInner(v, polarity)
+			set.Insert(t)
+		}
+
+		return &types.Union{
+			Name:     ty.Name,
+			Variants: set,
+		}
 	case ObjectType:
 		fields := map[string]types.Member{}
 		for _, field := range ty.Fields {
