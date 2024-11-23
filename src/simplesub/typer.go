@@ -83,6 +83,10 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]Polymorphi
 			types[i] = PolymorphicType{freshVar()}
 			self.vars.Insert(e.Name, types[i])
 
+		case *parse.EnumDef:
+			types[i] = PolymorphicType{freshVar()}
+			self.vars.Insert(e.Name, types[i])
+
 		default:
 			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
 		}
@@ -138,6 +142,20 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]Polymorphi
 			self.types.Insert(e.Name, types[i])
 
 			t, err := self.defUnion(ctx, e)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := constrain(t, types[i].Body); err != nil {
+				return nil, err
+			}
+
+			ctx.inferred[e.ID()] = PolymorphicType{t}
+
+		case *parse.EnumDef:
+			self.types.Insert(e.Name, types[i])
+
+			t, err := self.defEnum(e)
 			if err != nil {
 				return nil, err
 			}
@@ -561,6 +579,28 @@ func (self *Typer) defUnion(ctx *context, unionDef *parse.UnionDef) (SimpleType,
 		Variants: variants,
 	}
 	self.types.Insert(unionDef.Name, t)
+	return t, nil
+}
+
+func (self *Typer) defEnum(enumDef *parse.EnumDef) (SimpleType, error) {
+	// TODO: check repeated variants?
+	variants := map[string]int64{}
+	var rollingValue int64
+	for _, v := range enumDef.Variants {
+		if val, ok := v.Value.Unwrap(); ok {
+			variants[v.Name] = val
+			rollingValue = val + 1
+		} else {
+			variants[v.Name] = rollingValue
+			rollingValue++
+		}
+	}
+
+	t := Enum{
+		Name:   enumDef.Name,
+		Values: variants,
+	}
+	self.types.Insert(enumDef.Name, t)
 	return t, nil
 }
 

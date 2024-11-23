@@ -6,6 +6,7 @@ import (
 	"maps"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/horriblename/typee/src/assert"
@@ -206,7 +207,13 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		return Int{}, nil
 	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
 		return Str{}, nil
+	} else if lhs, rhs, ok := matchPair[Enum, Enum](lhs0, rhs0); ok {
+		if lhs.Name != rhs.Name {
+			return nil, fmt.Errorf("different enum types: %s and %s", lhs.Name, rhs.Name)
+		}
+		return lhs, nil
 	} else {
+		// FIXME: pretty sure this is supposed error
 		return Bot{}, nil
 	}
 }
@@ -271,6 +278,12 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		}
 
 		return Union{"", merged}, nil
+	} else if lhs, rhs, ok := matchPair[Enum, Enum](lhs0, rhs0); ok {
+		if lhs.Name != rhs.Name {
+			return nil, fmt.Errorf("different enum types: %s and %s", lhs.Name, rhs.Name)
+		}
+
+		return lhs, nil
 	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
 		rhsMap := namedMembersToMap(rhs.Methods)
 
@@ -385,6 +398,10 @@ type Union struct {
 	Name     string
 	Variants []ConcreteType
 }
+type Enum struct {
+	Name   string
+	Values map[string]int64
+}
 type ObjectType struct {
 	Name    string
 	Supers  []ObjectType
@@ -401,6 +418,7 @@ func (self Bool) instantiate() SimpleType       { return self }
 func (self Int) instantiate() SimpleType        { return self }
 func (self Str) instantiate() SimpleType        { return self }
 func (self Union) instantiate() SimpleType      { return self }
+func (self Enum) instantiate() SimpleType       { return self }
 
 func (self Top) children() []SimpleType { return []SimpleType{} }
 func (self Bot) children() []SimpleType { return []SimpleType{} }
@@ -426,6 +444,7 @@ func (self Str) children() []SimpleType  { return []SimpleType{} }
 func (self Union) children() []SimpleType {
 	return fun.Map(self.Variants, func(c ConcreteType) SimpleType { return c })
 }
+func (self Enum) children() []SimpleType { return []SimpleType{} }
 
 func (self Top) concrete()        {}
 func (self Bot) concrete()        {}
@@ -436,6 +455,7 @@ func (self Bool) concrete()       {}
 func (self Int) concrete()        {}
 func (self Str) concrete()        {}
 func (self Union) concrete()      {}
+func (self Enum) concrete()       {}
 
 func (self Top) String() string { return "⊤" }
 func (self Bot) String() string { return "⊥" }
@@ -473,6 +493,20 @@ func (self Union) String() string {
 		return st.String()
 	})
 	return fmt.Sprintf("(union %s {%s})", self.Name, strings.Join(variants, " "))
+}
+func (self Enum) String() string {
+	var b strings.Builder
+	b.WriteString("(enum ")
+	b.WriteString(self.Name)
+	b.WriteString("{\n")
+	for name, val := range self.Values {
+		b.WriteString(name)
+		b.WriteRune(':')
+		b.WriteString(strconv.Itoa(int(val)))
+		b.WriteByte('\n')
+	}
+	b.WriteString("})")
+	return b.String()
 }
 
 func (self ObjectType) FindMethod(name string) (method Member, found bool) {
@@ -560,6 +594,8 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 	} else if _, _, ok := matchPair[Str, Str](lhs, rhs); ok {
 		return true
 	} else if left, right, ok := matchPair[Union, Union](lhs, rhs); ok {
+		return left.Name != right.Name
+	} else if left, right, ok := matchPair[Enum, Enum](lhs, rhs); ok {
 		return left.Name != right.Name
 	} else if left, right, ok := matchPair[Record, Record](lhs, rhs); ok {
 		if len(left.Fields) != len(right.Fields) {
