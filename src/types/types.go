@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
+	"strconv"
 	"strings"
 
 	"github.com/horriblename/typee/src/fun"
@@ -57,6 +58,10 @@ type Union struct {
 	Name     string
 	Variants *orderedset.OrderedSet[Type]
 }
+type Enum struct {
+	Name   string
+	Values map[string]int64
+}
 type Class struct {
 	Name    string
 	Supers  []*Class
@@ -92,6 +97,7 @@ func (*Int) type_()        {}
 func (*Bool) type_()       {}
 func (*Record) type_()     {}
 func (*Union) type_()      {}
+func (*Enum) type_()       {}
 func (*Class) type_()      {}
 func (*Func) type_()       {}
 func (*Generic) type_()    {}
@@ -105,6 +111,7 @@ func (*Int) Simple() bool        { return true }
 func (*Bool) Simple() bool       { return true }
 func (*Record) Simple() bool     { return false }
 func (*Union) Simple() bool      { return false }
+func (*Enum) Simple() bool       { return false }
 func (*Class) Simple() bool      { return false }
 func (*Func) Simple() bool       { return false }
 func (*Generic) Simple() bool    { return false }
@@ -169,6 +176,14 @@ func (f *Union) Eq(other Type) bool {
 	}
 
 	return true
+}
+func (f *Enum) Eq(other Type) bool {
+	o, ok := other.(*Enum)
+	if !ok {
+		return false
+	}
+
+	return f.Name == o.Name
 }
 func (f *Class) Eq(other Type) bool {
 	o, ok := other.(*Class)
@@ -277,6 +292,18 @@ func (r *Union) String() string {
 	}
 	b.WriteString("}")
 
+	return b.String()
+}
+func (self Enum) String() string {
+	b := strings.Builder{}
+	b.WriteString(fmt.Sprintf("enum %s{", self.Name))
+	for name, val := range self.Values {
+		b.WriteString(name)
+		b.WriteRune(':')
+		b.WriteString(strconv.FormatInt(val, 10))
+		b.WriteRune(' ')
+	}
+	b.WriteString("}")
 	return b.String()
 }
 func (r *Class) String() string {
@@ -490,6 +517,13 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 		// FIXME: structural typing + untagged unions is a nightmare
 		return false
 
+	case *Enum:
+		b, ok := b.(*Enum)
+		if !ok {
+			return false
+		}
+		return a.Name == b.Name
+
 	case *Class:
 		b, ok := b.(*Class)
 		if !ok {
@@ -642,6 +676,17 @@ func (ctx *PrettyCtx) String(typ Type) string {
 				b.WriteString(" ")
 			}
 			b.WriteString(ctx.String(t))
+		}
+		b.WriteString("}")
+		return b.String()
+	case *Enum:
+		var b strings.Builder
+		b.WriteString("{")
+		for name, val := range t.Values {
+			b.WriteString(name)
+			b.WriteString(":")
+			b.WriteString(strconv.FormatInt(val, 10))
+			b.WriteRune(' ')
 		}
 		b.WriteString("}")
 		return b.String()
