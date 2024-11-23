@@ -178,7 +178,9 @@ func SizeOf(defaultAlign int, t Type) (bits int, align int) {
 		default:
 			panic(fmt.Sprintf("unexpected BaseType: %#v", t))
 		}
+
 	case StructType:
+		// TODO: calculate size on init
 		bits := 0
 		align := 0
 		for _, field := range t.Fields {
@@ -188,6 +190,10 @@ func SizeOf(defaultAlign int, t Type) (bits int, align int) {
 			bits += fs
 		}
 		return bits, align
+
+	case UnionType:
+		return t.Size, t.Align
+
 	default:
 		panic(fmt.Sprintf("unexpected Type: %#v", t))
 	}
