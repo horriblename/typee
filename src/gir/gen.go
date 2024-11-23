@@ -215,6 +215,8 @@ func (self *Generator) processInterfaceInfo(ii *gi.InterfaceInfo) {
 		meth := ii.Method(i)
 		self.processFunctionInfo(meth)
 	}
+
+	p("})\n")
 }
 
 func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
