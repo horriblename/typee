@@ -32,7 +32,7 @@ type ctx struct {
 	simplified map[int]types.Type
 	statics    map[qbeil.Var]string
 	globals    map[string]int
-	userTypes  map[string]qbeil.StructType
+	userTypes  map[string]qbeil.AggregateType
 }
 
 func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
@@ -46,7 +46,7 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 		map[int]types.Type{},
 		map[qbeil.Var]string{},
 		globals(ast),
-		map[string]qbeil.StructType{},
+		map[string]qbeil.AggregateType{},
 	}
 
 	ctx.declareType("Str", qbeil.StructType{
@@ -87,6 +87,9 @@ func genTopLevel(ctx *ctx, expr parse.Expr) {
 	case *parse.ClassDef:
 		genClassDef(ctx, e)
 
+	case *parse.UnionDef:
+		genUnionDef(ctx, e)
+
 	case *parse.Set:
 		gen(ctx, expr)
 	case *parse.FuncDef:
@@ -115,7 +118,10 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		class := ty.(*types.Class)
 		assert.Neq(class.Name, "", "unnamed class not yet supported")
 
-		classTy := ctx.userTypes[class.Name]
+		ct := ctx.userTypes[class.Name]
+		classTy, ok := ct.(qbeil.StructType)
+		assert.True(ok, "record access on non-struct type")
+
 		fieldLayout, ok := classTy.Layouts[e.Field]
 		if !ok {
 			panic(fmt.Sprintf("typer bug: tried to use a non-existent class field %s.%s", class.Name, e.Field))
@@ -319,6 +325,16 @@ func genClassDef(ctx *ctx, e *parse.ClassDef) {
 	ctx.declareType(e.Name, ctx.classDefIL(classTy, e))
 }
 
+func genUnionDef(ctx *ctx, e *parse.UnionDef) {
+	st := ctx.simplify(e.ID())
+	unionTy, ok := st.(*types.Union)
+	if !ok {
+		panic(fmt.Sprintf("compiler bug: union definition yields non-class type %#v", st))
+	}
+
+	ctx.declareType(e.Name, ctx.unionDefIL(unionTy, e))
+}
+
 func (ctx *ctx) finish() {
 	ctx.il.OutFile.Write(ctx.typeDecl.Bytes())
 
@@ -344,7 +360,7 @@ func (ctx *ctx) finish() {
 }
 
 func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
-	switch typ.(type) {
+	switch t := typ.(type) {
 	case *types.Int:
 		return ctx.intType
 	case *types.Bool:
@@ -355,6 +371,14 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 		return ctx.ptrType
 	case *types.Record:
 		return ctx.ptrType
+	case *types.Union:
+		if t.Name == "" {
+			panic("unnamed union unsupported at code gen")
+		}
+
+		ut, ok := ctx.userTypes[t.Name]
+		assert.True(ok, "during codegen: undefined union", t.Name)
+		return ut
 
 	default:
 		panic("unimpl: conversion to QBE IL from type " + typ.String())
@@ -362,12 +386,13 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 }
 
 // like [ctx.toILType] but converts class type to a pointer instead of its full [qbeil.StructType]
-func (ctx *ctx) classDefIL(t *types.Class, e *parse.ClassDef) qbeil.StructType {
+func (ctx *ctx) classDefIL(t *types.Class, e *parse.ClassDef) qbeil.AggregateType {
 	if t.Name == "" {
 		// FIXME: generic support
 		panic("unnamed classes should be illegal at codegen")
 	}
 
+	// FIXME: why did I put this here?? there's no way a userType already exists during class definition right?
 	if ut, ok := ctx.userTypes[t.Name]; ok {
 		return ut
 	}
@@ -415,6 +440,20 @@ func (ctx *ctx) classDefIL(t *types.Class, e *parse.ClassDef) qbeil.StructType {
 	panic("unimpl: super types")
 }
 
+func (ctx *ctx) unionDefIL(t *types.Union, e *parse.UnionDef) qbeil.AggregateType {
+	if t.Name == "" {
+		panic("unnamed union currently unsupported at codegen")
+	}
+
+	variants := fun.Map(t.Variants.Slice(), func(t types.Type) qbeil.Type {
+		return ctx.toILType(t)
+	})
+
+	ut := qbeil.NewUnionType(e.Name, 0, ctx.defaultAlign, variants)
+	ctx.userTypes[e.Name] = ut
+	return ut
+}
+
 func (ctx *ctx) simplify(exprID int) types.Type {
 	// this cache probably isn't that helpful? but caching by simplesub.Type is
 	// probably too costly to hash
@@ -437,7 +476,7 @@ func (ctx *ctx) simplify(exprID int) types.Type {
 	return t2
 }
 
-func (ctx *ctx) declareType(name string, t qbeil.StructType) {
+func (ctx *ctx) declareType(name string, t qbeil.AggregateType) {
 	ctx.userTypes[name] = t
 	_, err := ctx.typeDecl.Write([]byte(t.Define()))
 	assert.Ok(err)
@@ -447,33 +486,7 @@ func (ctx *ctx) declareType(name string, t qbeil.StructType) {
 }
 
 func (self *ctx) sizeOf(t qbeil.Type) (bits int, align int) {
-	switch t := t.(type) {
-	case qbeil.BaseType:
-		switch t {
-		case qbeil.Word:
-			return 32, self.defaultAlign
-		case qbeil.Long:
-			return 64, self.defaultAlign
-		case qbeil.Single:
-			return 32, self.defaultAlign
-		case qbeil.Double:
-			return 64, self.defaultAlign
-		default:
-			panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", t))
-		}
-	case qbeil.StructType:
-		bits := 0
-		align := 0
-		for _, field := range t.Fields {
-			// TODO: actually handle align
-			fs, fa := self.sizeOf(field)
-			align = max(align, fa)
-			bits += fs
-		}
-		return bits, align
-	default:
-		panic(fmt.Sprintf("unexpected qbeil.Type: %#v", t))
-	}
+	return qbeil.SizeOf(self.defaultAlign, t)
 }
 
 func globals(program []parse.Expr) map[string]int {
