@@ -238,6 +238,30 @@ func TestTypeProgram(t *testing.T) {
 				}
 			}(),
 		},
+		{
+			desc: "enum",
+			input: `
+				(enum Foo {A:1 B C})
+				(def foo [] Foo::A)
+			`,
+			typ: func() []types.Type {
+				foo := types.Enum{
+					Name: "Foo",
+					Values: map[string]int64{
+						"A": 1,
+						"B": 2,
+						"C": 3,
+					},
+				}
+				return []types.Type{
+					&foo,
+					&types.Func{
+						Args: []types.Type{},
+						Ret:  &foo,
+					},
+				}
+			}(),
+		},
 		// {
 		// 	desc: "union return value",
 		// 	input: `
