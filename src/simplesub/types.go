@@ -63,12 +63,12 @@ func (self *Variable) asTypeVar() types.Type {
 
 func (self *Variable) String() string {
 	if self.representative != nil {
-		return fmt.Sprintf("t%d=t%d[%v, %v]", self.uid, self.representative.uid, self.lowerBound, self.upperBound)
+		return fmt.Sprintf("t%d=t%d[%v, %v]", self.uid, self.representative.uid, self.LowerBound(), self.UpperBound())
 	}
 	return fmt.Sprintf("t%d[%v, %v]", self.uid, self.lowerBound, self.upperBound)
 }
-func (self *Variable) LowerBound() ConcreteType { return self.lowerBound }
-func (self *Variable) UpperBound() ConcreteType { return self.upperBound }
+func (self *Variable) LowerBound() ConcreteType { return self.Representative().lowerBound }
+func (self *Variable) UpperBound() ConcreteType { return self.Representative().upperBound }
 func (self *Variable) newUpperBound(ub ConcreteType) error {
 	if err := self.occursCheck(ub, true); err != nil {
 		return err
