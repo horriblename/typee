@@ -70,9 +70,7 @@ func buildProgram(params buildParams) error {
 	}
 
 	if params.printTypeTable {
-		for id, typ := range treeType {
-			errorf("%d: %s", id, typ)
-		}
+		errorf(simplesub.DebugTypeTable(treeType))
 	}
 
 	if params.printTypes {
