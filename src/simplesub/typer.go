@@ -37,6 +37,7 @@ var ErrIllegalTypeScheme = errors.New("type schemes not allowed here")
 var ErrIllegalSuperType = errors.New("super types must be class or interfaces")
 var ErrBadTypeSignature = errors.New("bad function type signature")
 var ErrPolymorphicUnion = errors.New("generics are disallowed from binding to unions")
+var ErrNotEnum = errors.New("tried to use non-enum as enum")
 
 const scopeLevelTop int = 1
 
@@ -379,6 +380,21 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 		}
 
 		return ret, nil
+
+	case *parse.EnumAccess:
+		// FIXME: uh, actually type check this pls
+		ts, ok := self.types.Get(expr.Enum).Unwrap()
+		if !ok {
+			return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, expr.Enum)
+		}
+
+		// FIXME: shouldn't this be a PolymorphicType?
+		enum, ok := ts.(Enum)
+		if !ok {
+			return nil, fmt.Errorf("%w: %s is a %v", ErrNotEnum, expr.Enum, ts)
+		}
+
+		return enum, nil
 
 	case *parse.IfExpr:
 		condTy, err := self.TypeTerm(ctx, expr.Condition)
