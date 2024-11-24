@@ -105,6 +105,32 @@ function l $getX(l %foo) {
 }
 `,
 		},
+		{
+			desc: "enum",
+			input: `
+				(enum Foo {Ok:0 Failure:1 BadUsage:2})
+				(def main [] (exit Foo::BadUsage))
+			`,
+			output: `type :Str = {l, l, }
+type :GObject = {l, l, l, }
+function w $print(:Str %s) {
+@start
+	%str_data =l loadl %s
+	# 64-bit architecture only lul
+	%len_loc =l add %s, 8
+	%str_len =w loadw %len_loc
+	%stdout =l loadl $stdout
+	%res =w call $fwrite(l %str_data, w 1, w %str_len, l %stdout)
+	ret 0
+}
+
+export function w $main() {
+@start
+	call $exit (l 2)
+	ret 0
+}
+`,
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

@@ -94,6 +94,8 @@ func genTopLevel(ctx *ctx, expr parse.Expr) {
 		gen(ctx, expr)
 	case *parse.FuncDef:
 		gen(ctx, expr)
+	case *parse.EnumDef:
+
 	default:
 		panic(fmt.Sprintf("unexpected parse.Expr: %#v", e))
 	}
@@ -107,6 +109,16 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		return genFunc(ctx, "", e)
 	case *parse.Form:
 		return genCall(ctx, e)
+	case *parse.EnumAccess:
+		t := ctx.simplify(e.ID())
+		enum := assert.Cast[*types.Enum](t, "codegen: enum access has non-enum left-hand side")
+
+		val, ok := enum.Values[e.Key]
+		assert.True(ok, "codegen: enum ", e.Enum, "has no variant", e.Key)
+
+		return qbeil.IntLiteral{
+			Value: val,
+		}
 	case *parse.Symbol:
 		if _, ok := ctx.globals[e.Name]; ok {
 			return qbeil.Var{Global: true, Name: e.Name}
@@ -120,7 +132,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 
 		ct := ctx.userTypes[class.Name]
 		classTy, ok := ct.(qbeil.StructType)
-		assert.True(ok, "record access on non-struct type")
+		assert.True(ok, "codegen: record access on non-struct type (type checker bug?)")
 
 		fieldLayout, ok := classTy.Layouts[e.Field]
 		if !ok {
@@ -380,6 +392,9 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 		assert.True(ok, "during codegen: undefined union", t.Name)
 		return ut
 
+	case *types.Enum:
+		return ctx.intType
+
 	default:
 		panic("unimpl: conversion to QBE IL from type " + typ.String())
 	}
@@ -498,10 +513,6 @@ func globals(program []parse.Expr) map[string]int {
 			vars[et.Name] = et.ID()
 		case *parse.FuncDef:
 			vars[et.Name] = et.ID()
-		case *parse.ClassDef:
-
-		default:
-			panic(fmt.Sprintf("illegal global expression: %v", e.Pretty()))
 		}
 	}
 
