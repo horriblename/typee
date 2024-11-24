@@ -499,12 +499,12 @@ func (self Enum) String() string {
 	var b strings.Builder
 	b.WriteString("(enum ")
 	b.WriteString(self.Name)
-	b.WriteString("{\n")
+	b.WriteString("{ ")
 	for name, val := range self.Values {
 		b.WriteString(name)
 		b.WriteRune(':')
 		b.WriteString(strconv.Itoa(int(val)))
-		b.WriteByte('\n')
+		b.WriteByte(' ')
 	}
 	b.WriteString("})")
 	return b.String()
