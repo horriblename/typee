@@ -30,6 +30,7 @@ type buildParams struct {
 	printTypes     bool
 	printAst       bool
 	printTypeTable bool
+	traceTyper     bool
 }
 
 func buildProgram(params buildParams) error {
@@ -42,6 +43,10 @@ func buildProgram(params buildParams) error {
 		if err != nil {
 			return fmt.Errorf("build: %w", err)
 		}
+	}
+
+	if params.traceTyper {
+		simplesub.EnableTrace = true
 	}
 
 	data, err := io.ReadAll(file)

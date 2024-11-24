@@ -105,6 +105,7 @@ func cmdBuild() error {
 	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
 	printTypeTable := flag.Bool(flagPrintTypeTable, false, "Print a table of expr ID to type.")
 	printAst := flag.Bool(flagPrintAst, true, "Print the parse ast")
+	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
 
 	if *outPathLong != defaultOut {
 		*outPath = *outPathLong
@@ -118,6 +119,7 @@ func cmdBuild() error {
 		printTypes:     *printTypes,
 		printAst:       *printAst,
 		printTypeTable: *printTypeTable,
+		traceTyper:     *traceTyper,
 	}
 
 	return buildProgram(params)
