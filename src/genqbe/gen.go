@@ -309,7 +309,7 @@ func genCallWithFuncName(ctx *ctx, class string, fnName string, expr *parse.Form
 		fn := ctx.simplify(callee.ID())
 
 		funcSig, ok := fn.(*types.Func)
-		assert.True(ok, "tried to call non-function top-level:", fnFriendlyName)
+		assert.True(ok, "tried to call non-function top-level:", fnFriendlyName, "of type", fmt.Sprintf("%#v", fn))
 		assert.Eq(len(expr.Children), len(funcSig.Args)+1, fnFriendlyName, ": function argument count does not match signature")
 		target := ctx.il.TempVar(false)
 
