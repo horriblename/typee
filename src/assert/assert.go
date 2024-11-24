@@ -42,6 +42,14 @@ func True(b bool, msg ...any) {
 	}
 }
 
+func Cast[T any](x any, msg ...any) T {
+	if y, ok := x.(T); ok {
+		return y
+	} else {
+		panic(fmt.Sprintf("cast from %v to %T failed. %v", x, y, joinHint(msg)))
+	}
+}
+
 func joinHint(msg ...any) string {
 	if len(msg) == 0 {
 		return ""
