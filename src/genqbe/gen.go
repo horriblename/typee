@@ -268,7 +268,10 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 
 func genCallWithFuncName(ctx *ctx, class string, fnName string, expr *parse.Form) qbeil.Value {
 	mangled := mangleName(mangleOpts{class: class, name: fnName})
-	fnFriendlyName := fmt.Sprintf("%s.%s", class, fnName)
+	fnFriendlyName := fnName
+	if class != "" {
+		fnFriendlyName = fmt.Sprintf("%s.%s", class, fnName)
+	}
 	callee := expr.Children[0]
 
 	switch mangled {
