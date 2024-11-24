@@ -38,6 +38,7 @@ var ErrIllegalSuperType = errors.New("super types must be class or interfaces")
 var ErrBadTypeSignature = errors.New("bad function type signature")
 var ErrPolymorphicUnion = errors.New("generics are disallowed from binding to unions")
 var ErrNotEnum = errors.New("tried to use non-enum as enum")
+var ErrWrongEnumType = errors.New("enum types do not match")
 
 const scopeLevelTop int = 1
 
@@ -653,6 +654,13 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 	} else if _, _, ok := matchPair[Int, Int](ty0, bound0); ok {
 		return nil
 	} else if _, _, ok := matchPair[Str, Str](ty0, bound0); ok {
+		return nil
+	} else if _, _, ok := matchPair[Enum, Int](ty0, bound0); ok {
+		return nil
+	} else if lhs, rhs, ok := matchPair[Enum, Enum](ty0, bound0); ok {
+		if lhs.Name != rhs.Name {
+			return fmt.Errorf("%w: wanted %s got %s", ErrWrongEnumType, rhs.Name, lhs.Name)
+		}
 		return nil
 	}
 
