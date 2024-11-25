@@ -289,28 +289,27 @@ func TestTypeProgram(t *testing.T) {
 		// 	}(),
 		// },
 		//
-		// // why does this give Int -> Top and Int -> Int???
-		// // if we flip the order of definition we get the correct answer
-		// {
-		// 	desc: "let recursion",
-		// 	input: `
-		// 		(def foo [x] (bar (- x 2)))
-		// 		(def bar [x] (if [(< x 1)] 0 (foo (- x 1))))
-		// 	`,
-		// 	typ: []types.Type{
-		// 		&types.Func{
-		// 			Args: []types.Type{&types.Int{}},
-		// 			Ret:  &types.Int{},
-		// 		},
-		// 		&types.Func{
-		// 			Args: []types.Type{&types.Int{}},
-		// 			Ret:  &types.Int{},
-		// 		},
-		// 	},
-		// },
+		{
+			desc: "let recursion",
+			input: `
+				(def foo [x] (bar (- x 2)))
+				(def bar [x] (if [(< x 1)] 0 (foo (- x 1))))
+			`,
+			typ: []types.Type{
+				&types.Func{
+					Args: []types.Type{&types.Int{}},
+					Ret:  &types.Int{},
+				},
+				&types.Func{
+					Args: []types.Type{&types.Int{}},
+					Ret:  &types.Int{},
+				},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
+			EnableTrace = true
 			assert := assert.NewTestAsserts(t)
 			checker := NewTyper(true)
 
@@ -322,7 +321,13 @@ func TestTypeProgram(t *testing.T) {
 
 			t.Logf("pre-simplify: %v", ty)
 
-			tySimp := fun.Map(ty, func(ty PolymorphicType) SimpleType { return SimplifyType(ty.Body) })
+			tySimp := fun.Map(ty, func(ts TypeScheme) SimpleType {
+				if pt, ok := ts.(PolymorphicType); ok {
+					return SimplifyType(pt.instantiate())
+				} else {
+					return ts.(SimpleType)
+				}
+			})
 			t.Logf("simplified: %v", tySimp)
 
 			typ := fun.Map(tySimp, CoalesceType)

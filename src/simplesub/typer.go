@@ -39,6 +39,7 @@ var ErrBadTypeSignature = errors.New("bad function type signature")
 var ErrPolymorphicUnion = errors.New("generics are disallowed from binding to unions")
 var ErrNotEnum = errors.New("tried to use non-enum as enum")
 var ErrWrongEnumType = errors.New("enum types do not match")
+var ErrWrongUnionType = errors.New("union types do not match")
 
 const scopeLevelTop int = 1
 
@@ -60,33 +61,66 @@ type context struct {
 	inferred map[int]TypeScheme
 }
 
-func (self *Typer) TypeProgram(program []parse.Expr) ([]PolymorphicType, map[int]TypeScheme, error) {
+func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[int]TypeScheme, error) {
 	ctx := context{map[int]TypeScheme{}}
 	t, err := self.typeProgram(&ctx, program)
 	return t, ctx.inferred, err
 }
 
-func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]PolymorphicType, error) {
-	types := make([]PolymorphicType, len(program))
+func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme, error) {
+	types := make([]TypeScheme, len(program))
+
+	topLevels := map[string]parse.Expr{}
+
+	recursiveness := map[string]bool{}
+	groups, selfRecursives := groupRecursives(program)
+	// could be optimized but eh
+	for _, group := range groups {
+		if len(group) == 1 {
+			name := assert.Cast[string](group[0], "compiler invariant violated")
+			if _, ok := selfRecursives[name]; !ok {
+				recursiveness[name] = false
+				continue
+			}
+		}
+
+		for _, name := range group {
+			name := assert.Cast[string](name, "compiler invariant violated")
+			recursiveness[name] = true
+		}
+	}
+
 	for i, expr := range program {
 		switch e := expr.(type) {
 		case *parse.FuncDef:
-			types[i] = PolymorphicType{freshVar()}
+			// recursive (inluding mutual-recursive) functions are not generalized
+			if !recursiveness[e.Name] {
+				types[i] = PolymorphicType{freshVar()}
+			} else {
+				types[i] = freshVar()
+			}
 			self.vars.Insert(e.Name, types[i])
+			topLevels[e.Name] = e
 
 		case *parse.Set:
-			types[i] = PolymorphicType{freshVar()}
+			if !recursiveness[e.Name] {
+				types[i] = PolymorphicType{freshVar()}
+			} else {
+				types[i] = freshVar()
+			}
 			self.vars.Insert(e.Name, types[i])
+			topLevels[e.Name] = e
 
 		case *parse.ClassDef:
 			types[i] = PolymorphicType{freshVar()}
 			self.vars.Insert(e.Name, types[i])
+
 		case *parse.UnionDef:
-			types[i] = PolymorphicType{freshVar()}
+			types[i] = freshVar()
 			self.vars.Insert(e.Name, types[i])
 
 		case *parse.EnumDef:
-			types[i] = PolymorphicType{freshVar()}
+			types[i] = freshVar()
 			self.vars.Insert(e.Name, types[i])
 
 		default:
@@ -111,7 +145,12 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]Polymorphi
 				return nil, err
 			}
 
-			if err := constrain(typ, types[i].Body); err != nil {
+			fnTy, ok := types[i].(SimpleType)
+			if !ok {
+				pt := assert.Cast[PolymorphicType](types[i], "cannot fail")
+				fnTy = pt.Body
+			}
+			if err := constrain(typ, fnTy); err != nil {
 				return nil, err
 			}
 
@@ -121,7 +160,13 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]Polymorphi
 				return nil, err
 			}
 
-			if err := constrain(typ, types[i].Body); err != nil {
+			valTy, ok := types[i].(SimpleType)
+			if !ok {
+				pt := assert.Cast[PolymorphicType](types[i], "cannot fail")
+				valTy = pt.Body
+			}
+
+			if err := constrain(typ, valTy); err != nil {
 				return nil, err
 			}
 
@@ -134,7 +179,8 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]Polymorphi
 				return nil, err
 			}
 
-			if err := constrain(t, types[i].Body); err != nil {
+			pt := assert.Cast[PolymorphicType](types[i], "compiler invariant violated")
+			if err := constrain(t, pt.Body); err != nil {
 				return nil, err
 			}
 
@@ -148,7 +194,8 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]Polymorphi
 				return nil, err
 			}
 
-			if err := constrain(t, types[i].Body); err != nil {
+			st := assert.Cast[SimpleType](types[i], "compiler invariant violated")
+			if err := constrain(t, st); err != nil {
 				return nil, err
 			}
 
@@ -162,7 +209,8 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]Polymorphi
 				return nil, err
 			}
 
-			if err := constrain(t, types[i].Body); err != nil {
+			st := assert.Cast[SimpleType](types[i], "compiler invariant violated")
+			if err := constrain(t, st); err != nil {
 				return nil, err
 			}
 
@@ -662,6 +710,14 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 			return fmt.Errorf("%w: wanted %s got %s", ErrWrongEnumType, rhs.Name, lhs.Name)
 		}
 		return nil
+	} else if lhs, rhs, ok := matchPair[Union, Union](ty0, bound0); ok {
+		if lhs.Name != "" && lhs.Name == rhs.Name {
+			return nil
+		}
+
+		if lhs.Name != rhs.Name {
+			return fmt.Errorf("%w: wanted %s got %s", ErrWrongUnionType, rhs.Name, lhs.Name)
+		}
 	}
 
 	if _, _, ok := matchPair[Bot, SimpleType](ty0, bound0); ok {
