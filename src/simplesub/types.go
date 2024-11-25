@@ -25,6 +25,7 @@ var ErrIncompatibleTypes = errors.New("incompatible types")
 // can be instantiated to a given level
 type TypeScheme interface {
 	instantiate() SimpleType
+	String() string
 }
 
 // PolymorphicType is a type with universally quantified type variables
@@ -35,12 +36,14 @@ type PolymorphicType struct {
 func (self PolymorphicType) instantiate() SimpleType {
 	return freshenType(self.Body)
 }
+func (self PolymorphicType) String() string {
+	return fmt.Sprintf("polymorphic{%s}", self.Body.String())
+}
 
 // SimpleType is a type without universally quantified type variables
 type SimpleType interface {
 	TypeScheme
 	children() []SimpleType
-	String() string
 }
 
 type Variable struct {
