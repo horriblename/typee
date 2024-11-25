@@ -16,6 +16,7 @@ type Expr interface {
 	ID() int
 	String() string
 	Pretty() string
+	ChildNodes() []Expr
 }
 
 // Nodes
@@ -489,3 +490,63 @@ func (self ClassField) String() string {
 func (self ClassMethod) String() string {
 	return fmt.Sprintf("%s %s", self.Access(), self.Func.String())
 }
+
+func (self *Form) ChildNodes() []Expr {
+	return self.Children
+}
+func (self *Symbol) ChildNodes() []Expr  { return []Expr{} }
+func (self *FuncDef) ChildNodes() []Expr { return self.Body }
+func (self *Set) ChildNodes() []Expr     { return []Expr{self.Value} }
+func (self *VarDef) ChildNodes() []Expr  { return []Expr{self.Value} }
+func (self *IfExpr) ChildNodes() []Expr {
+	return []Expr{self.Condition, self.Consequence, self.Alternative}
+}
+func (self *StrLiteral) ChildNodes() []Expr  { return []Expr{} }
+func (self *IntLiteral) ChildNodes() []Expr  { return []Expr{} }
+func (self *BoolLiteral) ChildNodes() []Expr { return []Expr{} }
+func (self *SelfLiteral) ChildNodes() []Expr { return []Expr{} }
+func (self *LetExpr) ChildNodes() []Expr {
+	ass := fun.Map(self.Assignments, func(ass Assignment) Expr {
+		return ass.Value
+	})
+	return append(ass, self.Body)
+}
+func (self *TaggedExpr) ChildNodes() []Expr { return []Expr{self.Body} }
+func (self *Fn) ChildNodes() []Expr         { return []Expr{self.Body} }
+func (self *CaseExpr) ChildNodes() []Expr {
+	c := make([]Expr, 0, len(self.Branches)+1)
+	c = append(c, self.Match)
+	for _, branch := range self.Branches {
+		c = append(c, branch.Body)
+	}
+	return c
+}
+func (self *Record) ChildNodes() []Expr {
+	return fun.Map(self.Fields, func(f RecordField) Expr {
+		return f.Value
+	})
+}
+func (self *ClassDef) ChildNodes() []Expr {
+	c := []Expr{}
+	for _, member := range self.Fields {
+		if meth, ok := member.(ClassMethod); ok {
+			c = append(c, meth.Func)
+		}
+	}
+	return c
+}
+func (self *InterfaceDef) ChildNodes() []Expr {
+	c := []Expr{}
+	for _, member := range self.Fields {
+		if meth, ok := member.(ClassMethod); ok {
+			c = append(c, meth.Func)
+		}
+	}
+	return c
+}
+func (self *RecordAccess) ChildNodes() []Expr { return []Expr{self.Record} }
+func (self *MethodAccess) ChildNodes() []Expr { return []Expr{self.Var} }
+func (self *New) ChildNodes() []Expr          { return []Expr{} }
+func (self *UnionDef) ChildNodes() []Expr     { return []Expr{} }
+func (self *EnumDef) ChildNodes() []Expr      { return []Expr{} }
+func (self *EnumAccess) ChildNodes() []Expr   { return []Expr{} }
