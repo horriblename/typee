@@ -203,10 +203,14 @@ func cmdRepl() error {
 		}
 
 		if *rawType {
-			errorf("pre-simplify: (polymorphic) %s", ty[0].Body.String())
+			errorf("pre-simplify: (polymorphic) %s", ty[0].String())
 		}
 
-		simplified := simplesub.SimplifyType(ty[0].Body)
+		st, ok := ty[0].(simplesub.SimpleType)
+		if !ok {
+			st = ty[0].(simplesub.PolymorphicType).Body
+		}
+		simplified := simplesub.SimplifyType(st)
 
 		if *rawType {
 			errorf("pre-coalesce: (polymorphic) %v", simplified)

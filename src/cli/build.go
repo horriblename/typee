@@ -82,11 +82,11 @@ func buildProgram(params buildParams) error {
 		for i, expr := range ast {
 			switch e := expr.(type) {
 			case *parse.Set:
-				errorf("%s: %s", e.Name, t[i].Body.String())
+				errorf("%s: %s", e.Name, t[i].String())
 			case *parse.FuncDef:
-				errorf("%s: %s", e.Name, t[i].Body.String())
+				errorf("%s: %s", e.Name, t[i].String())
 			case *parse.ClassDef:
-				errorf("%s: %s", e.Name, t[i].Body.String())
+				errorf("%s: %s", e.Name, t[i].String())
 			}
 		}
 	}
