@@ -115,10 +115,11 @@ func horTypeForTag(tag gi.TypeTag, cfg typeConfig) string {
 		case gi.TYPE_TAG_DOUBLE:
 			p("float64")
 		case gi.TYPE_TAG_GTYPE:
-			// if config.namespace != "GObject" {
-			// 	p("gobject.Type")
-			// } else {
-			p("Type")
+			if cfg.namespace != "GObject" {
+				p("GObject.Type")
+			} else {
+				p("Type")
+			}
 		case gi.TYPE_TAG_UNICHAR:
 			p("U32")
 		default:
@@ -149,10 +150,11 @@ func horTypeForTag(tag gi.TypeTag, cfg typeConfig) string {
 		case gi.TYPE_TAG_DOUBLE:
 			p("F64")
 		case gi.TYPE_TAG_GTYPE:
-			// if config.namespace != "GObject" {
-			// 	p("gobject.Type")
-			// } else {
-			p("Type")
+			if cfg.namespace != "GObject" {
+				p("GObject.Type")
+			} else {
+				p("Type")
+			}
 		case gi.TYPE_TAG_UNICHAR:
 			p("U32")
 		default:
@@ -166,7 +168,7 @@ func horTypeForTag(tag gi.TypeTag, cfg typeConfig) string {
 func horTypeForInterface(bi *gi.BaseInfo, cfg typeConfig) string {
 	var out bytes.Buffer
 	p := printerTo(&out)
-	ns := snake_case_to_PascalCase(bi.Namespace())
+	ns := bi.Namespace()
 
 	if cfg.flags&typeListMember != 0 {
 		switch bi.Type() {
@@ -190,9 +192,10 @@ func horTypeForInterface(bi *gi.BaseInfo, cfg typeConfig) string {
 			// and a pointer most likely
 			p("*")
 		}
-		// TODO:  check namespace
-		// prepend foreign types with appropriate namespace
-		p("%s.", ns)
+
+		if cfg.namespace != bi.Namespace() {
+			p("%s.", ns)
+		}
 
 		p(bi.Name())
 
@@ -212,8 +215,10 @@ handle_default:
 	if cfg.flags&typePointer != 0 /* && !config.is_disguised(fullnm) */ {
 		p("*")
 	}
-	// TODO: check namespace
-	p("%s.", ns)
+
+	if cfg.namespace != bi.Namespace() {
+		p("%s.", ns)
+	}
 	p(bi.Name())
 	return out.String()
 }
