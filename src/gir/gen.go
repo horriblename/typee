@@ -32,7 +32,6 @@ func (self *Generator) Gen(lib string, version string) error {
 		return err
 	}
 
-	fmt.Printf("loaded ns: %+v\n", repo.LoadedNamespaces())
 	for i, n := 0, repo.NumInfo(self.namespace); i < n; i++ {
 		self.process_base_info(repo.Info(self.namespace, i))
 	}
@@ -220,7 +219,6 @@ func (self *Generator) processInterfaceInfo(ii *gi.InterfaceInfo) {
 
 	name := ii.Name()
 	self.classInScope = append(self.classInScope, name)
-	fmt.Printf("%+s", self.classInScope)
 	defer func() { popDelete(&self.classInScope) }()
 
 	p("(interface %s {\n", name)
