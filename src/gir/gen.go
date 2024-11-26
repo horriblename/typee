@@ -84,7 +84,7 @@ func (self *Generator) processEnumInfo(ei *gi.EnumInfo) {
 	p("(enum %s {\n", ei.Name())
 	for i, n := 0, ei.NumValue(); i < n; i++ {
 		val := ei.Value(i)
-		p("  %s:%d,\n", snake_case_to_PascalCase(val.Name()), val.Value())
+		p("  %s:%d\n", snake_case_to_PascalCase(val.Name()), val.Value())
 	}
 	p("})\n")
 }
