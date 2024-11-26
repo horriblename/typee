@@ -87,7 +87,7 @@ func horTypeForTag(tag gi.TypeTag, cfg typeConfig) string {
 	p := printerTo(&out)
 
 	if cfg.flags&typePointer != 0 {
-		p("*")
+		// p("*")
 	}
 
 	if cfg.flags&typeExact != 0 {
@@ -190,7 +190,7 @@ func horTypeForInterface(bi *gi.BaseInfo, cfg typeConfig) string {
 		if cfg.flags&(typeReturn|typeReceiver) != 0 && cfg.flags&typePointer != 0 {
 			// receivers and return values are actual types,
 			// and a pointer most likely
-			p("*")
+			// p("*")
 		}
 
 		if cfg.namespace != bi.Namespace() {
@@ -213,7 +213,7 @@ func horTypeForInterface(bi *gi.BaseInfo, cfg typeConfig) string {
 	return out.String()
 handle_default:
 	if cfg.flags&typePointer != 0 /* && !config.is_disguised(fullnm) */ {
-		p("*")
+		// p("*")
 	}
 
 	if cfg.namespace != bi.Namespace() {
