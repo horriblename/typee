@@ -9,9 +9,8 @@ import (
 func TestThing(t *testing.T) {
 	assert := assert.NewTestAsserts(t)
 
-	g := Generator{namespace: "GObject"}
-	_, err := g.Gen("GObject", "2.0")
+	bindings, err := Gen("GObject", "2.0")
 	assert.Ok(err)
 
-	t.Log(g.goBindings.String())
+	t.Log(string(bindings))
 }

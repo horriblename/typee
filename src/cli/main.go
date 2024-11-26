@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/chzyer/readline"
+	"github.com/horriblename/typee/src/gir"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
 )
@@ -23,6 +24,7 @@ cmd is one of:
 	run      Run a program
 	check    Type check a program
 	repl     Start a repl
+	glue-gir Generate bindings to GIR libraries
 `
 
 func main() {
@@ -44,6 +46,8 @@ func main() {
 		err = cmdCheck()
 	case "repl":
 		err = cmdRepl()
+	case "glue-gir":
+		err = cmdGlueGir()
 	default:
 		errorf("Unknown command: %s", cmd)
 		errorf(helpMain)
@@ -72,6 +76,7 @@ func errorf(format string, args ...any) {
 const flagOut = "o"
 const flagOutLong = "out"
 const defaultOut = "a.out"
+const helpOut = "Output file name"
 
 const flagPrintTypes = "print-types"
 const defaultPrintTypes = false
@@ -100,8 +105,8 @@ func cmdCheck() error {
 }
 
 func cmdBuild() error {
-	outPath := flag.String(flagOut, defaultOut, "")
-	outPathLong := flag.String(flagOutLong, defaultOut, "")
+	outPath := flag.String(flagOut, defaultOut, helpOut)
+	outPathLong := flag.String(flagOutLong, defaultOut, helpOut)
 	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
 	printTypeTable := flag.Bool(flagPrintTypeTable, false, "Print a table of expr ID to type.")
 	printAst := flag.Bool(flagPrintAst, true, "Print the parse ast")
@@ -126,8 +131,8 @@ func cmdBuild() error {
 }
 
 func cmdRun() error {
-	outPath := flag.String(flagOut, defaultOut, "")
-	outPathLong := flag.String(flagOutLong, defaultOut, "")
+	outPath := flag.String(flagOut, defaultOut, helpOut)
+	outPathLong := flag.String(flagOutLong, defaultOut, helpOut)
 
 	if *outPathLong != defaultOut {
 		*outPath = *outPathLong
@@ -219,6 +224,42 @@ func cmdRepl() error {
 		simpleTy := simplesub.CoalesceType(simplified)
 
 		errorf(": %s", simpleTy)
+	}
+
+	return nil
+}
+
+func cmdGlueGir() error {
+	out := flag.String(flagOut, "", helpOut)
+	outLong := flag.String(flagOutLong, "", helpOut)
+	flag.Parse()
+
+	if len(flag.Args()) != 1 {
+		errorf("wrong arg count")
+		flag.Usage()
+		os.Exit(2)
+	}
+
+	if *outLong != "" {
+		*out = *outLong
+	}
+	var outFile *os.File = os.Stdout
+	if *out != "" {
+		var err error
+		outFile, err = os.Create(*out)
+		if err != nil {
+			return err
+		}
+	}
+
+	o, err := gir.Gen(flag.Arg(0), "")
+	if err != nil {
+		return err
+	}
+
+	_, err = outFile.Write(o)
+	if err != nil {
+		return err
 	}
 
 	return nil

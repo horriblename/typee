@@ -6,7 +6,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/horriblename/typee/src/parse"
 	"github.com/linuxdeepin/go-gir/generator/gi"
 )
 
@@ -16,11 +15,21 @@ type Generator struct {
 	goBindings   bytes.Buffer
 }
 
-func (self *Generator) Gen(lib string, version string) (parse.Expr, error) {
+func Gen(lib string, version string) ([]byte, error) {
+	g := Generator{lib, []string{}, bytes.Buffer{}}
+	err := g.Gen(lib, version)
+	if err != nil {
+		return nil, err
+	}
+
+	return g.goBindings.Bytes(), nil
+}
+
+func (self *Generator) Gen(lib string, version string) error {
 	repo := gi.DefaultRepository()
 	_, err := repo.Require(lib, version, 0)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	fmt.Printf("loaded ns: %+v\n", repo.LoadedNamespaces())
@@ -28,7 +37,7 @@ func (self *Generator) Gen(lib string, version string) (parse.Expr, error) {
 		self.process_base_info(repo.Info(self.namespace, i))
 	}
 
-	return nil, nil
+	return nil
 }
 
 func (self *Generator) process_base_info(bi *gi.BaseInfo) {
@@ -182,6 +191,14 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		if flags&gi.FUNCTION_IS_CONSTRUCTOR != 0 {
 			p("%s", container.Name())
 		}
+		p("%s", horType(fb.rets[0].typeInfo, typeConfig{typeNone, self.namespace}))
+
+	default:
+		p("(Tuple")
+		for _, ret := range fb.rets {
+			p(" %s", horType(ret.typeInfo, typeConfig{typeNone, self.namespace}))
+		}
+		p(")")
 	}
 
 	p(") [")
