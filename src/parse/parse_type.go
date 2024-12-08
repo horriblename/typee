@@ -12,6 +12,7 @@ func type_(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 	return combinator.Any(
 		typeName,
 		selfType,
+		recordType,
 	)(in)
 }
 
@@ -28,6 +29,37 @@ func selfType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 	}
 
 	return in, SelfType{}, nil
+}
+
+func recordType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
+	in, res, err := combinator.Surround(
+		lbrace,
+		combinator.Delimited(
+			combinator.Then(
+				symbolName,
+				combinator.WithPrefix(
+					colon,
+					type_,
+				),
+			),
+			comma,
+		),
+		rbrace,
+	)(in)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ty := RecordType{[]RecordTypeField{}}
+	for _, field := range res {
+		ty.Fields = append(ty.Fields, RecordTypeField{
+			Name: field.One,
+			Type: field.Two,
+		})
+	}
+
+	return in, &ty, err
 }
 
 func classDef(in []lex.Token) ([]lex.Token, Expr, error) {

@@ -455,6 +455,20 @@ func TestParseType(t *testing.T) {
 			input:  "Self",
 			output: SelfType{},
 		},
+		{
+			desc:  "record",
+			input: "{a: Foo, b: {x: Int}}",
+			output: &RecordType{
+				Fields: []RecordTypeField{
+					{"a", TypeName{"Foo"}},
+					{"b", &RecordType{
+						Fields: []RecordTypeField{
+							{"x", TypeName{"Int"}},
+						},
+					}},
+				},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -467,7 +481,7 @@ func TestParseType(t *testing.T) {
 			assert.Eq(len(r1), 0)
 
 			if !reflect.DeepEqual(got, tC.output) {
-				t.Fatalf("expected output:\n  %+v\ngot:\n  %+v", tC.output, got)
+				t.Fatalf("expected output:\n  %#v\ngot:\n  %#v", tC.output, got)
 			}
 		})
 	}
