@@ -54,6 +54,7 @@ type SelfType struct{}
 type New struct{}
 type Union struct{}
 type Enum struct{}
+type Type struct{}
 
 func (*LParen) token()       {}
 func (*RParen) token()       {}
@@ -88,6 +89,7 @@ func (*SelfType) token()     {}
 func (*New) token()          {}
 func (*Union) token()        {}
 func (*Enum) token()         {}
+func (*Type) token()         {}
 func (*TrueLiteral) token()  {}
 func (*FalseLiteral) token() {}
 
@@ -124,5 +126,6 @@ func (*SelfType) String() string        { return "Self" }
 func (*New) String() string             { return "new" }
 func (*Union) String() string           { return "union" }
 func (*Enum) String() string            { return "enum" }
+func (*Type) String() string            { return "type" }
 func (*TrueLiteral) String() string     { return "true" }
 func (*FalseLiteral) String() string    { return "false" }

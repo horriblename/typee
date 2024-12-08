@@ -133,6 +133,9 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	case *lex.Union:
 		return unionDef(in)
 
+	case *lex.Type:
+		return typeAlias(in)
+
 	case nil:
 		return nil, nil, errAt(in)
 
@@ -692,6 +695,9 @@ func kwEnum(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func kwSelf(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Self])(in)
+}
+func kwType(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Type])(in)
 }
 func kwSelfType(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.SelfType])(in)

@@ -216,6 +216,32 @@ func unionDef(in []lex.Token) ([]lex.Token, Expr, error) {
 	}, nil
 }
 
+func typeAlias(in []lex.Token) ([]lex.Token, Expr, error) {
+	in, res, err := combinator.Surround(
+		lparen,
+		combinator.WithPrefix(
+			kwType,
+			combinator.Then(
+				symbolName,
+				type_,
+			),
+		),
+		rparen,
+	)(in)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	expr := TypeAlias{
+		id:   newId(),
+		Name: res.One,
+		Type: res.Two,
+	}
+
+	return in, &expr, nil
+}
+
 func dbg[I, O any](tag string, p combinator.Parser[I, O]) combinator.Parser[I, O] {
 	return func(i I) (I, O, error) {
 		r, o, e := p(i)

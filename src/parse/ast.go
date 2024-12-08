@@ -174,6 +174,12 @@ type EnumAccess struct {
 	Key  string
 }
 
+type TypeAlias struct {
+	id   int
+	Name string
+	Type TypeRepr
+}
+
 func (*Form) ast()         {}
 func (*Symbol) ast()       {}
 func (*FuncDef) ast()      {}
@@ -197,6 +203,7 @@ func (*New) ast()          {}
 func (*UnionDef) ast()     {}
 func (*EnumDef) ast()      {}
 func (*EnumAccess) ast()   {}
+func (*TypeAlias) ast()    {}
 
 func (self *Form) ID() int         { return self.id }
 func (self *Symbol) ID() int       { return self.id }
@@ -221,6 +228,7 @@ func (self *New) ID() int          { return self.id }
 func (self *UnionDef) ID() int     { return self.id }
 func (self *EnumDef) ID() int      { return self.id }
 func (self *EnumAccess) ID() int   { return self.id }
+func (self *TypeAlias) ID() int    { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
@@ -300,6 +308,9 @@ func (self *EnumDef) String() string {
 }
 func (self *EnumAccess) String() string {
 	return fmt.Sprintf("#%d%s::%s", self.id, self.Enum, self.Key)
+}
+func (self *TypeAlias) String() string {
+	return fmt.Sprintf("#%d(type %s %s)", self.id, self.Name, self.Type.String())
 }
 func (self *EnumVariant) String() string {
 	if val, ok := self.Value.Unwrap(); ok {
@@ -401,6 +412,9 @@ func (self *EnumDef) Pretty() string {
 func (self *EnumAccess) Pretty() string {
 	return fmt.Sprintf("%s::%s", self.Enum, self.Key)
 }
+func (self *TypeAlias) Pretty() string {
+	return fmt.Sprintf("(type %s %s)", self.Name, self.Type)
+}
 func (self *Record) Pretty() string {
 	if len(self.Fields) == 0 {
 		return "{}"
@@ -491,6 +505,7 @@ func (self ClassMethod) String() string {
 	return fmt.Sprintf("%s %s", self.Access(), self.Func.String())
 }
 
+// TODO: rename to Subexpressions
 func (self *Form) ChildNodes() []Expr {
 	return self.Children
 }
@@ -550,3 +565,4 @@ func (self *New) ChildNodes() []Expr          { return []Expr{} }
 func (self *UnionDef) ChildNodes() []Expr     { return []Expr{} }
 func (self *EnumDef) ChildNodes() []Expr      { return []Expr{} }
 func (self *EnumAccess) ChildNodes() []Expr   { return []Expr{} }
+func (self *TypeAlias) ChildNodes() []Expr    { return []Expr{} }

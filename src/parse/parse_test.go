@@ -414,6 +414,15 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			desc:  "type alias",
+			input: "(type Foo Str)",
+			output: []Expr{&TypeAlias{
+				id:   1,
+				Name: "Foo",
+				Type: TypeName{"Str"},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
