@@ -325,7 +325,7 @@ func TestTypeProgram(t *testing.T) {
 				if pt, ok := ts.(PolymorphicType); ok {
 					return SimplifyType(pt.instantiate())
 				} else {
-					return ts.(SimpleType)
+					return SimplifyType(ts.(SimpleType))
 				}
 			})
 			t.Logf("simplified: %v", tySimp)
