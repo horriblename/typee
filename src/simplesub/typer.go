@@ -872,7 +872,7 @@ func freshenConcrete(freshened map[*Variable]*Variable, ty ConcreteType) Concret
 			Fields:  fields,
 			Methods: methods,
 		}
-	case Bool, Bot, Str, Top, Union: // terminals and Union, because generics are banned in Union
+	case Bool, Bot, Str, Top, Union, Enum: // terminals and Union, because generics are banned in Union
 	default:
 		panic(fmt.Sprintf("unexpected simplesub.ConcreteType: %#v", t))
 	}
