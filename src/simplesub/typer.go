@@ -792,19 +792,19 @@ func unify(lhs *Variable, rhs *Variable) error /*FIXME: idk what type*/ {
 	if rep0 != rep1 {
 		// NOTE: these occursCheck calls (and the following ones from addXBound) are pretty
 		// inefficient as they will incur repeated computation of type variables through getVars
-		if err := lhs.occursCheck(rep1.LowerBound(), false); err != nil {
+		if err := lhs.occursCheck(rep1.lowerBound, false); err != nil {
 			return err
 		}
 
-		if err := lhs.occursCheck(rep1.UpperBound(), true); err != nil {
+		if err := lhs.occursCheck(rep1.upperBound, true); err != nil {
 			return err
 		}
 
-		if err := rep1.newLowerBound(rep0.LowerBound()); err != nil {
+		if err := rep1.newLowerBound(rep0.lowerBound); err != nil {
 			return err
 		}
 
-		if err := rep1.newUpperBound(rep0.UpperBound()); err != nil {
+		if err := rep1.newUpperBound(rep0.upperBound); err != nil {
 			return err
 		}
 

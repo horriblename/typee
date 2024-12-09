@@ -109,7 +109,11 @@ func (self *Variable) newLowerBound(lb ConcreteType) error {
 }
 func (self *Variable) Representative() *Variable {
 	if self.representative != nil {
-		return self.representative
+		rep := self.representative.Representative()
+		if rep != self {
+			self.representative = rep
+		}
+		return rep
 	} else {
 		return self
 	}
