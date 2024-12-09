@@ -156,8 +156,6 @@ const helpTraceTyper = "Print the type inference debug trace"
 
 func cmdRepl() error {
 	rawType := flag.Bool(flagRawType, false, helpRawType)
-	flag.Parse()
-
 	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
 	flag.Parse()
 
