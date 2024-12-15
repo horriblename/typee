@@ -131,6 +131,37 @@ export function w $main() {
 }
 `,
 		},
+		{
+			desc: "callExtern",
+			input: `
+				(def die ({}) [] (callExtern exit 3))
+				(def main [] (die))
+			`,
+			output: `type :Str = {l, l, }
+type :GObject = {l, l, l, }
+function w $print(:Str %s) {
+@start
+	%str_data =l loadl %s
+	# 64-bit architecture only lul
+	%len_loc =l add %s, 8
+	%str_len =w loadw %len_loc
+	%stdout =l loadl $stdout
+	%res =w call $fwrite(l %str_data, w 1, w %str_len, l %stdout)
+	ret 0
+}
+
+function l $die() {
+@start
+	%_tmp_1 =l call $exit (l 3)
+	ret %_tmp_1
+}
+export function w $main() {
+@start
+	%_tmp_2 =l call $die ()
+	ret %_tmp_2
+}
+`,
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

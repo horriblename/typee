@@ -125,6 +125,23 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		}
 		return qbeil.Var{Global: false, Name: e.Name}
 
+	case *parse.ExternCall:
+		target := ctx.il.TempVar(false)
+
+		argTypes := fun.Map(e.Args, func(arg parse.Expr) types.Type {
+			return ctx.simplify(arg.ID())
+		})
+		args := fun.ZipMap(e.Args, argTypes, func(arg parse.Expr, typ types.Type) qbeil.TypedValue {
+			return qbeil.TypedValue{Type: ctx.toILType(typ), Value: gen(ctx, arg)}
+		})
+		funcVar := qbeil.Var{Global: true, Name: e.Symbol.Name}
+
+		retTy := ctx.simplify(e.ID())
+
+		ctx.il.Call(&target, ctx.toILType(retTy), funcVar, args)
+
+		return target
+
 	case *parse.RecordAccess:
 		ty := ctx.simplify(e.Record.ID())
 		class := ty.(*types.Class)
