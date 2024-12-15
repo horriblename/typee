@@ -262,6 +262,16 @@ func TestTypeProgram(t *testing.T) {
 				}
 			}(),
 		},
+		{
+			desc:  "callExtern",
+			input: "(def foo ({}) [] (callExtern exit 0))",
+			typ: []types.Type{&types.Func{
+				Args: []types.Type{},
+				Ret: &types.Record{
+					Fields: map[string]types.Type{},
+				}},
+			},
+		},
 		// {
 		// 	desc: "union return value",
 		// 	input: `

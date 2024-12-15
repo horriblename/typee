@@ -533,6 +533,13 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 		return Record{[]NamedType{}}, err
 
 	case *parse.TaggedExpr:
+	case *parse.ExternCall:
+		for _, arg := range expr.Args {
+			self.TypeTerm(ctx, arg)
+		}
+
+		return freshVar(), nil
+
 	default:
 		panic(fmt.Sprintf("unexpected parse.Expr: %#v", expr))
 	}
