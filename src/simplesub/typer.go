@@ -290,11 +290,7 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 					return nil, err
 				}
 
-				p, ok := param.(SimpleType)
-				if !ok {
-					return nil, fmt.Errorf("%w: signature contains global quantifier: %v", ErrBadTypeSignature, arg)
-				}
-
+				p := param.instantiate()
 				params[i] = p
 				self.vars.Insert(expr.Args[i], p)
 			}
