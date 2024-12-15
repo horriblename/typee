@@ -179,8 +179,8 @@ func externCall(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
 	}, err
 }
 
-func defForm(in []lex.Token) (_ []lex.Token, _ *FuncDef, err error) {
-	defer func() { err = handleCheck(recover()) }()
+func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
+	defer func() { err = handleCheck(recover(), err) }()
 
 	in, _, err = lparen(in)
 	check(err)
@@ -233,7 +233,7 @@ func defForm(in []lex.Token) (_ []lex.Token, _ *FuncDef, err error) {
 }
 
 func setForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
-	defer func() { err = handleCheck(recover()) }()
+	defer func() { err = handleCheck(recover(), err) }()
 
 	in, _, err = lparen(in)
 	check(err)
@@ -286,7 +286,7 @@ func varForm(in []lex.Token) ([]lex.Token, Expr, error) {
 }
 
 func ifExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
-	defer func() { err = handleCheck(recover()) }()
+	defer func() { err = handleCheck(recover(), err) }()
 
 	in, _, err = lparen(in)
 	check(err)
@@ -319,7 +319,7 @@ func ifExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 }
 
 func letExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
-	defer func() { err = handleCheck(recover()) }()
+	defer func() { err = handleCheck(recover(), err) }()
 
 	in, _, err = lparen(in)
 	check(err)
@@ -350,7 +350,7 @@ func letExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 }
 
 func assignment(in []lex.Token) (_ []lex.Token, _ Assignment, err error) {
-	defer func() { err = handleCheck(recover()) }()
+	defer func() { err = handleCheck(recover(), err) }()
 
 	in, name, err := symbolName(in)
 	check(err)
@@ -362,7 +362,7 @@ func assignment(in []lex.Token) (_ []lex.Token, _ Assignment, err error) {
 }
 
 func fnExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
-	defer func() { err = handleCheck(recover()) }()
+	defer func() { err = handleCheck(recover(), err) }()
 
 	in, _, err = lparen(in)
 	check(err)
@@ -393,7 +393,7 @@ func fnExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 }
 
 func taggedExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
-	defer func() { err = handleCheck(recover()) }()
+	defer func() { err = handleCheck(recover(), err) }()
 
 	in, _, err = lparen(in)
 	check(err)
@@ -410,7 +410,7 @@ func taggedExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 }
 
 func caseExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
-	defer func() { err = handleCheck(recover()) }()
+	defer func() { err = handleCheck(recover(), err) }()
 
 	in, _, err = lparen(in)
 	check(err)
@@ -472,7 +472,7 @@ func caseBranch(in []lex.Token) (_ []lex.Token, _ CaseBranch, err error) {
 }
 
 func recordExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
-	defer func() { err = handleCheck(recover()) }()
+	defer func() { err = handleCheck(recover(), err) }()
 
 	in, _, err = lbrace(in)
 	check(err)
@@ -775,7 +775,7 @@ func check(err error) {
 	}
 }
 
-func handleCheck(err any) error {
+func handleCheck(err any, orig error) error {
 	if err != nil {
 		if err, ok := err.(*internalError); ok {
 			return err.error
@@ -784,7 +784,7 @@ func handleCheck(err any) error {
 		}
 	}
 
-	return nil
+	return orig
 }
 
 // Error Handling

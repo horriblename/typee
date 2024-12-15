@@ -127,7 +127,7 @@ func classMethod(in []lex.Token, visibility types.AccessLvl) ([]lex.Token, Class
 
 	return in, ClassMethod{
 		Access_: visibility,
-		Func:    res,
+		Func:    res.(*FuncDef),
 	}, nil
 }
 
