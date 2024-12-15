@@ -55,6 +55,7 @@ type New struct{}
 type Union struct{}
 type Enum struct{}
 type Type struct{}
+type CallExtern struct{}
 
 func (*LParen) token()       {}
 func (*RParen) token()       {}
@@ -90,6 +91,7 @@ func (*New) token()          {}
 func (*Union) token()        {}
 func (*Enum) token()         {}
 func (*Type) token()         {}
+func (*CallExtern) token()   {}
 func (*TrueLiteral) token()  {}
 func (*FalseLiteral) token() {}
 
@@ -127,5 +129,6 @@ func (*New) String() string             { return "new" }
 func (*Union) String() string           { return "union" }
 func (*Enum) String() string            { return "enum" }
 func (*Type) String() string            { return "type" }
+func (*CallExtern) String() string      { return "callExtern" }
 func (*TrueLiteral) String() string     { return "true" }
 func (*FalseLiteral) String() string    { return "false" }

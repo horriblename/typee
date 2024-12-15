@@ -136,6 +136,9 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	case *lex.Type:
 		return typeAlias(in)
 
+	case *lex.CallExtern:
+		return externCall(in)
+
 	case nil:
 		return nil, nil, errAt(in)
 
@@ -152,6 +155,28 @@ func form(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
 	)(in)
 
 	return rest, &Form{id: newId(), Children: out}, err
+}
+
+func externCall(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
+	rest, out, err := combinator.Surround(
+		lparen,
+		combinator.WithPrefix(
+			kwCallExtern,
+			combinator.Then(
+				symbolName,
+				combinator.Many(expr),
+			),
+		),
+		rparen,
+	)(in)
+
+	callee := Symbol{out.One, newId()}
+
+	return rest, &ExternCall{
+		id:     newId(),
+		Symbol: callee,
+		Args:   out.Two,
+	}, err
 }
 
 func defForm(in []lex.Token) (_ []lex.Token, _ *FuncDef, err error) {
@@ -701,6 +726,9 @@ func kwType(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func kwSelfType(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.SelfType])(in)
+}
+func kwCallExtern(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.CallExtern])(in)
 }
 func kwTrue(in []lex.Token) ([]lex.Token, Expr, error) {
 	rest, _, err := wrappedResult(matchOne[*lex.TrueLiteral])(in)

@@ -180,6 +180,12 @@ type TypeAlias struct {
 	Type TypeRepr
 }
 
+type ExternCall struct {
+	id     int
+	Symbol Symbol
+	Args   []Expr
+}
+
 func (*Form) ast()         {}
 func (*Symbol) ast()       {}
 func (*FuncDef) ast()      {}
@@ -204,6 +210,7 @@ func (*UnionDef) ast()     {}
 func (*EnumDef) ast()      {}
 func (*EnumAccess) ast()   {}
 func (*TypeAlias) ast()    {}
+func (*ExternCall) ast()   {}
 
 func (self *Form) ID() int         { return self.id }
 func (self *Symbol) ID() int       { return self.id }
@@ -229,6 +236,7 @@ func (self *UnionDef) ID() int     { return self.id }
 func (self *EnumDef) ID() int      { return self.id }
 func (self *EnumAccess) ID() int   { return self.id }
 func (self *TypeAlias) ID() int    { return self.id }
+func (self *ExternCall) ID() int   { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
@@ -311,6 +319,10 @@ func (self *EnumAccess) String() string {
 }
 func (self *TypeAlias) String() string {
 	return fmt.Sprintf("#%d(type %s %s)", self.id, self.Name, self.Type.String())
+}
+func (self *ExternCall) String() string {
+	args := fun.Map(self.Args, func(e Expr) string { return e.String() })
+	return fmt.Sprintf("#%d(callExtern %s %s)", self.id, self.Symbol.Name, strings.Join(args, " "))
 }
 func (self *EnumVariant) String() string {
 	if val, ok := self.Value.Unwrap(); ok {
@@ -414,6 +426,10 @@ func (self *EnumAccess) Pretty() string {
 }
 func (self *TypeAlias) Pretty() string {
 	return fmt.Sprintf("(type %s %s)", self.Name, self.Type)
+}
+func (self *ExternCall) Pretty() string {
+	args := fun.Map(self.Args, func(e Expr) string { return e.Pretty() })
+	return fmt.Sprintf("(callExtern %s %s)", self.Symbol.Name, strings.Join(args, " "))
 }
 func (self *Record) Pretty() string {
 	if len(self.Fields) == 0 {
@@ -566,3 +582,4 @@ func (self *UnionDef) ChildNodes() []Expr     { return []Expr{} }
 func (self *EnumDef) ChildNodes() []Expr      { return []Expr{} }
 func (self *EnumAccess) ChildNodes() []Expr   { return []Expr{} }
 func (self *TypeAlias) ChildNodes() []Expr    { return []Expr{} }
+func (self *ExternCall) ChildNodes() []Expr   { return append([]Expr{&self.Symbol}, self.Args...) }

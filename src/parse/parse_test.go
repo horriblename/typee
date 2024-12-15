@@ -423,6 +423,17 @@ func TestParse(t *testing.T) {
 				Type: TypeName{"Str"},
 			}},
 		},
+		{
+			desc:  "extern call",
+			input: "(callExtern exit 3)",
+			output: []Expr{&ExternCall{
+				id:     3,
+				Symbol: Symbol{"exit", 2},
+				Args: []Expr{
+					&IntLiteral{3, 1},
+				},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
