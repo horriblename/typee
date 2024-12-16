@@ -9,6 +9,9 @@ import (
 )
 
 func SimplifyType(ty SimpleType) SimpleType {
+	trace("simplifying: %s", ty)
+	indentLvl++
+	defer func() { indentLvl-- }()
 	// TODO: idk if ordered set is needed, instead of unordered one
 	pos := orderedset.NewOrderedSet[*Variable]()
 	neg := orderedset.NewOrderedSet[*Variable]()
@@ -87,6 +90,8 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleTy
 }
 
 func transform(st SimpleType, pol bool, mapping map[*Variable]SimpleType, pos, neg *orderedset.OrderedSet[*Variable]) SimpleType {
+	indentLvl++
+	defer func() { indentLvl-- }()
 	switch ty := st.(type) {
 	case *Variable:
 		if v, found := mapping[ty]; found {
@@ -94,14 +99,17 @@ func transform(st SimpleType, pol bool, mapping map[*Variable]SimpleType, pos, n
 		}
 
 		if concreteEq(ty.LowerBound(), ty.UpperBound()) {
+			trace("%s has same upper/lower bound, eliminating", ty)
 			mapping[ty] = (transformConcrete(ty.lowerBound, pol, mapping, pos, neg))
 			return mapping[ty]
 		} else if pol && !neg.Has(ty) {
+			trace("%s is only in positive positions, eliminating", ty)
 			// type variable only occurs on positive positions, we can eliminate it.
 			// (see co-occurrence analysis)
 			mapping[ty] = transformConcrete(ty.lowerBound, pol, mapping, pos, neg)
 			return mapping[ty]
 		} else if !pol && !pos.Has(ty) {
+			trace("%s is only in negative positions, eliminating", ty)
 			mapping[ty] = transformConcrete(ty.upperBound, pol, mapping, pos, neg)
 			return mapping[ty]
 		} else {
