@@ -77,7 +77,70 @@ func (self *Generator) processUnionInfo(ui *gi.UnionInfo) {
 	p("})\n")
 }
 
-func (self *Generator) processStructInfo(*gi.StructInfo) {}
+func (self *Generator) processStructInfo(si *gi.StructInfo) {
+	p := printerTo(&self.goBindings)
+
+	name := si.Name()
+	size := si.Size()
+
+	self.classInScope = append(self.classInScope, name)
+	defer popDelete(&self.classInScope)
+
+	if si.IsGTypeStruct() {
+		return
+	}
+	if strings.HasSuffix(name, "Private") {
+		return
+	}
+
+	// fullnm := si.Namespace() + "." + name
+	// if config.is_disguised(fullnm) {
+	// 	size = -1
+	// }
+
+	// if !config.is_blacklisted("structdefs", name) {
+	switch size {
+	case -1:
+		p("(type %s opaque)\n", name)
+	case 0:
+		p("type %s {})\n", name)
+	default:
+		p("(type %s {\n", name)
+		offset := 0
+		for i, n := 0, si.NumField(); i < n; i++ {
+			field := si.Field(i)
+			fo := field.Offset()
+			ft := field.Type()
+			nm := field.Name()
+			if fo != offset {
+				pad := fo - offset
+				p("\t_ [%d]byte\n", pad)
+				offset += pad
+			}
+			// if type_needs_wrapper(ft) {
+			// 	p("\t%s0 %s\n", nm, cgo_type(ft, type_exact))
+			// } else {
+			p("\t%s: %s\n", snake_case_to_camelCase(nm),
+				horType(ft, typeConfig{typeExact, field.Namespace()}))
+			// }
+			offset += typeSize(ft, typeExact)
+		}
+		if size != offset {
+			p("\t_: [%d]byte\n", size-offset)
+		}
+		p("})\n")
+		//printf("type %s struct { data [%d]byte }\n", name, size)
+	}
+
+	for i, n := 0, si.NumMethod(); i < n; i++ {
+		meth := si.Method(i)
+		// if config.is_method_blacklisted(name, meth.Name()) {
+		// 	continue
+		// }
+
+		self.processFunctionInfo(meth)
+	}
+}
 func (self *Generator) processEnumInfo(ei *gi.EnumInfo) {
 	p := printerTo(&self.goBindings)
 
