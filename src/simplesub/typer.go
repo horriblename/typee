@@ -123,6 +123,10 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 			types[i] = freshVar()
 			self.vars.Insert(e.Name, types[i])
 
+		case *parse.TypeAlias:
+			types[i] = freshVar()
+			self.vars.Insert(e.Name, types[i])
+
 		default:
 			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
 		}
@@ -215,6 +219,28 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 			}
 
 			ctx.inferred[e.ID()] = PolymorphicType{t}
+
+		case *parse.TypeAlias:
+			typ := types[i].(SimpleType)
+			self.types.Insert(e.Name, typ)
+
+			target, err := self.parseType(e.Type)
+			if err != nil {
+				return nil, err
+			}
+
+			// TODO: unbound type var is not possible in types, I can "concretize"
+			// the target by passing the required type var bindings instead of instantiate
+			simpleTarget := target.instantiate()
+			err = constrain(typ, simpleTarget)
+			if err != nil {
+				return nil, err
+			}
+
+			err = constrain(simpleTarget, typ)
+			if err != nil {
+				return nil, err
+			}
 
 		default:
 			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
