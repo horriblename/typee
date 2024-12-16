@@ -168,7 +168,7 @@ func externCall(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
 			kwCallExtern,
 			combinator.Then(
 				symbolName,
-				combinator.Many(expr),
+				combinator.Many0(expr),
 			),
 		),
 		rparen,
