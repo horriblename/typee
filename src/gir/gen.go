@@ -114,16 +114,20 @@ func (self *Generator) processStructInfo(si *gi.StructInfo) {
 			nm := field.Name()
 			if fo != offset {
 				pad := fo - offset
-				p("\t_ [%d]byte\n", pad)
+				p("\t_ [%d]byte", pad)
 				offset += pad
 			}
 			// if type_needs_wrapper(ft) {
 			// 	p("\t%s0 %s\n", nm, cgo_type(ft, type_exact))
 			// } else {
-			p("\t%s: %s\n", snake_case_to_camelCase(nm),
+			p("\t%s: %s", snake_case_to_camelCase(nm),
 				horType(ft, typeConfig{typeExact, field.Namespace()}))
 			// }
 			offset += typeSize(ft, typeExact)
+			if i != n {
+				p(",")
+			}
+			p("\n")
 		}
 		if size != offset {
 			p("\t_: [%d]byte\n", size-offset)
