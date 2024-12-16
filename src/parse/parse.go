@@ -212,20 +212,21 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	in, _, err = rparen(in)
 	check(err)
 
-	if sig, exist := sig.Unwrap(); exist && len(sig) != len(args.Two)+1 {
-		return nil, nil, errors.New("function signature does not match arguments")
-	}
-
+	realArgs := args.Two
 	if args.One.IsSome() {
 		// so bad
-		args.Two = append([]string{"self"}, args.Two...)
+		realArgs = append([]string{"self"}, realArgs...)
+	}
+
+	if sig, exist := sig.Unwrap(); exist && len(sig) != len(realArgs)+1 {
+		return nil, nil, errors.New("function signature does not match arguments")
 	}
 
 	def := FuncDef{
 		id:        newId(),
 		Name:      name,
 		Signature: sig,
-		Args:      args.Two,
+		Args:      realArgs,
 		Body:      body,
 	}
 
