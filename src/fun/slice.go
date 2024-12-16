@@ -13,6 +13,21 @@ func Map[T, U any](xs []T, f func(T) U) []U {
 	return ys
 }
 
+func MapIfOk[T, U any](xs []T, f func(T) (U, error)) ([]U, error) {
+	ys := make([]U, 0, len(xs))
+
+	for _, x := range xs {
+		y, err := f(x)
+		if err != nil {
+			return nil, err
+		}
+
+		ys = append(ys, y)
+	}
+
+	return ys, nil
+}
+
 func ZipMap[T, U, V any](xs []T, ys []U, f func(T, U) V) []V {
 	sz := min(len(xs), len(ys))
 	zs := make([]V, 0, sz)
