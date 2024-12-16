@@ -289,6 +289,46 @@ func TestTypeProgram(t *testing.T) {
 			},
 		},
 		{
+			desc: "record: mixed usage with object type",
+			input: `
+				(def checkX [foo] (if [(> foo.x 0)] foo foo))
+				(def bar [] (let [
+					foo (checkX {x: 3})
+				]
+					foo))
+			`,
+			typ: []types.Type{
+				&types.Func{
+					Args: []types.Type{
+						&types.Inter{
+							Lhs: &types.Generic{ID: 1},
+							Rhs: &types.Class{
+								Name:   "",
+								Supers: []*types.Class{},
+								Fields: map[string]types.Member{
+									"x": {
+										Access: types.AccessPublic,
+										Type:   &types.Int{},
+									},
+								},
+								Statics: map[string]types.Member{},
+								Methods: map[string]types.Member{},
+							},
+						},
+					},
+					Ret: &types.Generic{ID: 1},
+				},
+				&types.Func{
+					Args: []types.Type{},
+					Ret: &types.Record{
+						Fields: map[string]types.Type{
+							"x": &types.Int{},
+						},
+					},
+				},
+			},
+		},
+		{
 			desc:  "callExtern",
 			input: "(def foo ({}) [] (callExtern exit 0))",
 			typ: []types.Type{&types.Func{
@@ -375,7 +415,7 @@ func TestTypeProgram(t *testing.T) {
 			}
 			for expect, got := range fun.ZipIter(slices.Values(tC.typ), slices.Values(typ)) {
 				if !types.StructuralEq(expect, got) {
-					t.Errorf("expected type %v got: %v", expect, got)
+					t.Errorf("expected type\n  %v\ngot:\n  %v", expect, got)
 				}
 			}
 		})
