@@ -40,6 +40,8 @@ var ErrPolymorphicUnion = errors.New("generics are disallowed from binding to un
 var ErrNotEnum = errors.New("tried to use non-enum as enum")
 var ErrWrongEnumType = errors.New("enum types do not match")
 var ErrWrongUnionType = errors.New("union types do not match")
+var ErrUseRecordAsNamedObjectType = errors.New("cannot use a record as a named object type")
+var ErrUseNamedObjectTypeAsRecord = errors.New("cannot use a named object type as a record")
 
 const scopeLevelTop int = 1
 
@@ -716,6 +718,22 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 
 		panic(fmt.Sprintf("type checker bug: class scope '%s' exists but corresponding type not found", self.classScope))
 
+	case parse.RecordType:
+		fields, err := fun.MapIfOk(t.Fields, func(f parse.RecordTypeField) (NamedType, error) {
+			t, err := self.parseType(f.Type)
+			if err != nil {
+				return NamedType{}, err
+			}
+
+			// TODO: should substitute type vars not instantiate
+			return NamedType{Name: f.Name, Type: t.instantiate()}, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return Record{Fields: fields}, nil
+
 	default:
 		panic(fmt.Sprintf("unexpected parse.TypeRepr: %#v", t))
 	}
@@ -765,6 +783,27 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		}
 		return constrain(ty.Ret, bound.Ret)
 	} else if ty, bound, ok := matchPair[Record, Record](ty0, bound0); ok {
+		tyFields := namedTypesToMap(ty.Fields)
+		for _, boundField := range bound.Fields {
+			if tyField, ok := tyFields[boundField.Name]; ok {
+				if err := constrain(tyField, boundField.Type); err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("%w: missing field %s: %#v", ErrMissingField, boundField.Name, boundField.Type)
+			}
+		}
+
+		return nil
+	} else if ty, bound, ok := matchPair[Record, ObjectType](ty0, bound0); ok {
+		// TODO: should I impl ObjectType <: Record?
+		if bound.Name != "" {
+			return fmt.Errorf("%w: %s cannot be used as a %s", ErrUseRecordAsNamedObjectType, ty, bound)
+		}
+		if len(bound.Methods) != 0 {
+			return fmt.Errorf("record methods not supported: tried to use %s as a %s", ty, bound)
+		}
+
 		tyFields := namedTypesToMap(ty.Fields)
 		for _, boundField := range bound.Fields {
 			if tyField, ok := tyFields[boundField.Name]; ok {

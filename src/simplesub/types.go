@@ -173,6 +173,10 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 			}
 		}
 		return Record{mapToNamedTypes(mergedMap)}, nil
+	} else if lhs, rhs, ok := matchPair[Record, ObjectType](lhs0, rhs0); ok {
+		return glbCrossObject(lhs, rhs)
+	} else if lhs, rhs, ok := matchPair[ObjectType, Record](lhs0, rhs0); ok {
+		return glbCrossObject(rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
 		lhsMap := namedMembersToMap(lhs.Methods)
 		rhsMap := namedMembersToMap(rhs.Methods)
@@ -226,6 +230,23 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	}
 }
 
+func glbCrossObject(lhs Record, rhs ObjectType) (ConcreteType, error) {
+	var err error
+	lhsMap := namedTypesToMap(lhs.Fields)
+	rhsMap := namedMembersToMap(rhs.Fields)
+
+	mergedMap := maps.Clone(lhsMap)
+	for rhsKey, rhsVal := range rhsMap {
+		if lhsVal, ok := mergedMap[rhsKey]; ok {
+			mergedMap[rhsKey], err = glb(lhsVal, rhsVal.Type)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return Record{mapToNamedTypes(mergedMap)}, nil
+}
+
 func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	type C = ConcreteType
 	if _, rhs, ok := matchPair[Bot, C](lhs0, rhs0); ok {
@@ -274,6 +295,10 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 			}
 		}
 		return Record{Fields: merged}, nil
+	} else if lhs, rhs, ok := matchPair[Record, ObjectType](lhs0, rhs0); ok {
+		return lubCrossObject(lhs, rhs)
+	} else if lhs, rhs, ok := matchPair[ObjectType, Record](lhs0, rhs0); ok {
+		return lubCrossObject(rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[Union, Union](lhs0, rhs0); ok {
 		rhsSet := sliceToSet(rhs.Variants)
 		merged := make([]ConcreteType, len(rhs.Variants))
@@ -327,6 +352,28 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	} else {
 		return nil, fmt.Errorf("%w: %#v and %#v", ErrIncompatibleTypes, lhs0, rhs0)
 	}
+}
+
+func lubCrossObject(lhs Record, rhs ObjectType) (ConcreteType, error) {
+	// the "intersection" of both records
+	rhsMap := namedMembersToMap(rhs.Fields)
+
+	merged := []NamedType{}
+	for _, lhsField := range lhs.Fields {
+		if rhsField, ok := rhsMap[lhsField.Name]; ok {
+			// TODO: reject "union" types like int|string
+			ty, err := lub(lhsField.Type, rhsField.Type)
+			if err != nil {
+				return nil, err
+			}
+
+			merged = append(merged, NamedType{
+				Name: lhsField.Name,
+				Type: ty,
+			})
+		}
+	}
+	return Record{Fields: merged}, nil
 }
 
 func glb(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
