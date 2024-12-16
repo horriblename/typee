@@ -33,6 +33,10 @@ func ParseString(source string) ([]Expr, error) {
 	}
 
 	rest, prog, err := Program(tokens)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(rest) != 0 {
 		return nil, fmt.Errorf("%w: got token %s", ErrExpectEOF, rest[0:min(len(rest), 10)])
 	}
