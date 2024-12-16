@@ -277,7 +277,17 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		}
 		p("%s", snake_case_to_camelCase(arg.argInfo.Name()))
 	}
-	p("])\n")
+	p("] (callExtern %s", fi.Symbol())
+
+	// callExtern body
+
+	if isValidMethod {
+		p(" self")
+	}
+	for _, arg := range fb.args {
+		p(" %s", snake_case_to_camelCase(arg.argInfo.Name()))
+	}
+	p("))\n")
 
 }
 
