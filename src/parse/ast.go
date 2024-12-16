@@ -241,7 +241,11 @@ func (self *ExternCall) ID() int   { return self.id }
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
 func (self *FuncDef) String() string {
-	return fmt.Sprintf("#%d (def %s [%+v] %+v)", self.id, self.Name, self.Args, self.Body)
+	sigStr := ""
+	if sig, ok := self.Signature.Unwrap(); ok {
+		sigStr = " (" + strings.Join(fun.Map(sig, func(tr TypeRepr) string { return tr.String() }), " ") + ")"
+	}
+	return fmt.Sprintf("#%d (def %s%s [%+v] %+v)", self.id, self.Name, sigStr, self.Args, self.Body)
 }
 func (self *Set) String() string {
 	return fmt.Sprintf("#%d (set %s %+v)", self.id, self.Name, self.Value)
@@ -343,7 +347,11 @@ func prettySlice(xs []Expr) []string {
 func (self *Form) Pretty() string   { return fmt.Sprintf("(%v)", prettySlice(self.Children)) }
 func (self *Symbol) Pretty() string { return fmt.Sprintf("%s", self.Name) }
 func (self *FuncDef) Pretty() string {
-	return fmt.Sprintf("(def %s [%v] %v)", self.Name, self.Args, prettySlice(self.Body))
+	sigStr := ""
+	if sig, ok := self.Signature.Unwrap(); ok {
+		sigStr = " (" + strings.Join(fun.Map(sig, func(tr TypeRepr) string { return tr.String() }), " ") + ")"
+	}
+	return fmt.Sprintf("(def %s%s [%v] %v)", self.Name, sigStr, self.Args, prettySlice(self.Body))
 }
 func (self *Set) Pretty() string {
 	return fmt.Sprintf("(set %s %v)", self.Name, self.Value.Pretty())
