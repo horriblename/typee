@@ -263,6 +263,32 @@ func TestTypeProgram(t *testing.T) {
 			}(),
 		},
 		{
+			desc: "type alias",
+			input: `
+				(type Foo {x: Int})
+				(def x (Foo Foo) [foo] {x: (+ foo.x 1)})
+			`,
+			typ: []types.Type{
+				&types.Record{
+					Fields: map[string]types.Type{
+						"x": &types.Int{},
+					},
+				},
+				&types.Func{
+					Args: []types.Type{&types.Record{
+						Fields: map[string]types.Type{
+							"x": &types.Int{},
+						},
+					}},
+					Ret: &types.Record{
+						Fields: map[string]types.Type{
+							"x": &types.Int{},
+						},
+					},
+				},
+			},
+		},
+		{
 			desc:  "callExtern",
 			input: "(def foo ({}) [] (callExtern exit 0))",
 			typ: []types.Type{&types.Func{
