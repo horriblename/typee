@@ -893,6 +893,7 @@ func freshenType(ty SimpleType) SimpleType {
 func freshenInner(freshened map[*Variable]*Variable, ty SimpleType) SimpleType {
 	switch t := ty.(type) {
 	case *Variable:
+		t = t.Representative()
 		if match, ok := freshened[t]; ok {
 			return match
 		} else {
