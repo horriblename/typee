@@ -47,10 +47,10 @@ func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[*Variable]
 	case *Variable:
 		if pol {
 			pos.Insert(ty)
-			analyze(ty.lowerBound, pol, pos, neg)
+			analyze(ty.LowerBound(), pol, pos, neg)
 		} else {
 			neg.Insert(ty)
-			analyze(ty.upperBound, pol, pos, neg)
+			analyze(ty.UpperBound(), pol, pos, neg)
 		}
 	case Bool, Int, Str, Top, Bot, Enum, Union: // Union bans generics
 	}
@@ -100,22 +100,22 @@ func transform(st SimpleType, pol bool, mapping map[*Variable]SimpleType, pos, n
 
 		if concreteEq(ty.LowerBound(), ty.UpperBound()) {
 			trace("%s has same upper/lower bound, eliminating", ty)
-			mapping[ty] = (transformConcrete(ty.lowerBound, pol, mapping, pos, neg))
+			mapping[ty] = (transformConcrete(ty.LowerBound(), pol, mapping, pos, neg))
 			return mapping[ty]
 		} else if pol && !neg.Has(ty) {
 			trace("%s is only in positive positions, eliminating", ty)
 			// type variable only occurs on positive positions, we can eliminate it.
 			// (see co-occurrence analysis)
-			mapping[ty] = transformConcrete(ty.lowerBound, pol, mapping, pos, neg)
+			mapping[ty] = transformConcrete(ty.LowerBound(), pol, mapping, pos, neg)
 			return mapping[ty]
 		} else if !pol && !pos.Has(ty) {
 			trace("%s is only in negative positions, eliminating", ty)
-			mapping[ty] = transformConcrete(ty.upperBound, pol, mapping, pos, neg)
+			mapping[ty] = transformConcrete(ty.UpperBound(), pol, mapping, pos, neg)
 			return mapping[ty]
 		} else {
 			newVar := freshVar()
-			newVar.lowerBound = transformConcrete(ty.lowerBound, true, mapping, pos, neg)
-			newVar.upperBound = transformConcrete(ty.upperBound, false, mapping, pos, neg)
+			newVar.lowerBound = transformConcrete(ty.LowerBound(), true, mapping, pos, neg)
+			newVar.upperBound = transformConcrete(ty.UpperBound(), false, mapping, pos, neg)
 			mapping[ty] = newVar
 			return newVar
 		}
