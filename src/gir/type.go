@@ -3,6 +3,7 @@ package gir
 import (
 	"bytes"
 	"fmt"
+	"unsafe"
 
 	"github.com/linuxdeepin/go-gir/generator/gi"
 )
@@ -221,4 +222,96 @@ handle_default:
 	}
 	p(bi.Name())
 	return out.String()
+}
+
+// FIXME: I have not looked at typeSize* functions at ALL
+func typeSize(ti *gi.TypeInfo, flags typeFlags) int {
+	ptrsize := int(unsafe.Sizeof(unsafe.Pointer(nil)))
+	switch tag := ti.Tag(); tag {
+	case gi.TYPE_TAG_VOID:
+		if ti.IsPointer() {
+			return ptrsize
+		}
+		panic("Non-pointer void type is not supported")
+	case gi.TYPE_TAG_UTF8, gi.TYPE_TAG_FILENAME, gi.TYPE_TAG_GLIST,
+		gi.TYPE_TAG_GSLIST, gi.TYPE_TAG_GHASH:
+		return ptrsize
+	case gi.TYPE_TAG_ARRAY:
+		size := ti.ArrayFixedSize()
+		if size != -1 {
+			return size * typeSize(ti.ParamType(0), flags)
+		}
+		return ptrsize
+	case gi.TYPE_TAG_INTERFACE:
+		if ti.IsPointer() {
+			flags |= typePointer
+		}
+		return typeSizeForInterface(ti.Interface(), flags)
+	default:
+		if ti.IsPointer() {
+			flags |= typePointer
+		}
+		return typeSizeForTag(tag, flags)
+	}
+}
+
+func typeSizeForTag(tag gi.TypeTag, flags typeFlags) int {
+	ptrsize := int(unsafe.Sizeof(unsafe.Pointer(nil)))
+	if flags&typePointer != 0 {
+		return ptrsize
+	}
+
+	switch tag {
+	case gi.TYPE_TAG_BOOLEAN:
+		return 4
+	case gi.TYPE_TAG_INT8:
+		return 1
+	case gi.TYPE_TAG_UINT8:
+		return 1
+	case gi.TYPE_TAG_INT16:
+		return 2
+	case gi.TYPE_TAG_UINT16:
+		return 2
+	case gi.TYPE_TAG_INT32:
+		return 4
+	case gi.TYPE_TAG_UINT32:
+		return 4
+	case gi.TYPE_TAG_INT64:
+		return 8
+	case gi.TYPE_TAG_UINT64:
+		return 8
+	case gi.TYPE_TAG_FLOAT:
+		return 4
+	case gi.TYPE_TAG_DOUBLE:
+		return 8
+	case gi.TYPE_TAG_GTYPE:
+		return ptrsize
+	case gi.TYPE_TAG_UNICHAR:
+		return 4
+	}
+	panic("unreachable: " + tag.String())
+}
+
+func typeSizeForInterface(bi *gi.BaseInfo, flags typeFlags) int {
+	ptrsize := int(unsafe.Sizeof(unsafe.Pointer(nil)))
+	if flags&typePointer != 0 {
+		return ptrsize
+	}
+
+	switch t := bi.Type(); t {
+	case gi.INFO_TYPE_OBJECT, gi.INFO_TYPE_INTERFACE:
+		return ptrsize
+	case gi.INFO_TYPE_STRUCT:
+		si := gi.ToStructInfo(bi)
+		return si.Size()
+	case gi.INFO_TYPE_UNION:
+		ui := gi.ToUnionInfo(bi)
+		return ui.Size()
+	case gi.INFO_TYPE_ENUM, gi.INFO_TYPE_FLAGS:
+		ei := gi.ToEnumInfo(bi)
+		return typeSizeForTag(ei.StorageType(), flags)
+	case gi.INFO_TYPE_CALLBACK:
+		return ptrsize
+	}
+	panic("unreachable: " + bi.Type().String())
 }
