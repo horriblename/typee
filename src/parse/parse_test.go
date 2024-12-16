@@ -281,6 +281,17 @@ func TestParse(t *testing.T) {
 			}},
 		},
 		{
+			desc:  "type annotated method",
+			input: `(def meth (Self Int Int) [self n] n)`,
+			output: []Expr{&FuncDef{
+				id:        2,
+				Name:      "meth",
+				Signature: opt.Some([]TypeRepr{SelfType{}, TypeName{"Int"}, TypeName{"Int"}}),
+				Args:      []string{"self", "n"},
+				Body:      []Expr{&Symbol{"n", 1}},
+			}},
+		},
+		{
 			desc:  "class def",
 			input: `(class Foo(Bar Baz) {pub foo Int,})`,
 			output: []Expr{&ClassDef{
