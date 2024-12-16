@@ -356,11 +356,11 @@ func TestParse(t *testing.T) {
 		},
 		{
 			desc:  "self",
-			input: `(def meth (Self) [self] (self#meth self.x self))`,
+			input: `(def meth (Self {}) [self] (self#meth self.x self))`,
 			output: []Expr{&FuncDef{
 				id:        7,
 				Name:      "meth",
-				Signature: opt.Some([]TypeRepr{SelfType{}}),
+				Signature: opt.Some([]TypeRepr{SelfType{}, RecordType{Fields: []RecordTypeField{}}}),
 				Args:      []string{"self"},
 				Body: []Expr{&Form{
 					id: 6,
@@ -469,10 +469,10 @@ func TestParseType(t *testing.T) {
 		{
 			desc:  "record",
 			input: "{a: Foo, b: {x: Int}}",
-			output: &RecordType{
+			output: RecordType{
 				Fields: []RecordTypeField{
 					{"a", TypeName{"Foo"}},
-					{"b", &RecordType{
+					{"b", RecordType{
 						Fields: []RecordTypeField{
 							{"x", TypeName{"Int"}},
 						},

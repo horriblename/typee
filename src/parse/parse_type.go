@@ -59,7 +59,7 @@ func recordType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 		})
 	}
 
-	return in, &ty, err
+	return in, ty, err
 }
 
 func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
