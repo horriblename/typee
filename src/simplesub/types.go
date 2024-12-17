@@ -215,6 +215,24 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 			Fields:  []NamedMember{},
 			Methods: mapToNamedMembers(mergedMap),
 		}, nil
+	} else if lhs, rhs, ok := matchPair[ArrayType, ArrayType](lhs0, rhs0); ok {
+		lb, err := glb(lhs.ElType, rhs.ElType)
+		if err != nil {
+			return nil, err
+		}
+
+		if lhs.Size != rhs.Size {
+			return nil, fmt.Errorf("%w: cannot constrain %s <: %s", lhs, rhs)
+		}
+
+		return ArrayType{lb, lhs.Size}, nil
+	} else if lhs, rhs, ok := matchPair[SliceType, SliceType](lhs0, rhs0); ok {
+		lb, err := glb(lhs.ElType, rhs.ElType)
+		if err != nil {
+			return nil, err
+		}
+
+		return SliceType{lb}, nil
 	} else if lhs, rhs, ok := matchPair[Union, Union](lhs0, rhs0); ok {
 		lhsSet := sliceToSet(lhs.Variants)
 		intersection := map[ConcreteType]struct{}{}
@@ -312,6 +330,24 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		return lubCrossObject(lhs, rhs)
 	} else if lhs, rhs, ok := matchPair[ObjectType, Record](lhs0, rhs0); ok {
 		return lubCrossObject(rhs, lhs)
+	} else if lhs, rhs, ok := matchPair[ArrayType, ArrayType](lhs0, rhs0); ok {
+		el, err := lub(lhs.ElType, rhs.ElType)
+		if err != nil {
+			return nil, err
+		}
+
+		if lhs.Size != rhs.Size {
+			return nil, fmt.Errorf("%w: cannot constrain %s <: %s", lhs, rhs)
+		}
+
+		return ArrayType{el, lhs.Size}, nil
+	} else if lhs, rhs, ok := matchPair[SliceType, SliceType](lhs0, rhs0); ok {
+		el, err := lub(lhs.ElType, rhs.ElType)
+		if err != nil {
+			return nil, err
+		}
+
+		return SliceType{el}, nil
 	} else if lhs, rhs, ok := matchPair[Union, Union](lhs0, rhs0); ok {
 		rhsSet := sliceToSet(rhs.Variants)
 		merged := make([]ConcreteType, len(rhs.Variants))
@@ -476,12 +512,21 @@ type ObjectType struct {
 	Fields  []NamedMember
 	Methods []NamedMember
 }
+type ArrayType struct {
+	ElType SimpleType
+	Size   uint
+}
+type SliceType struct {
+	ElType SimpleType
+}
 
 func (self Top) instantiate() SimpleType        { return self }
 func (self Bot) instantiate() SimpleType        { return self }
 func (self Func) instantiate() SimpleType       { return self }
 func (self Record) instantiate() SimpleType     { return self }
 func (self ObjectType) instantiate() SimpleType { return self }
+func (self ArrayType) instantiate() SimpleType  { return self }
+func (self SliceType) instantiate() SimpleType  { return self }
 func (self Bool) instantiate() SimpleType       { return self }
 func (self Int) instantiate() SimpleType        { return self }
 func (self Str) instantiate() SimpleType        { return self }
@@ -506,9 +551,11 @@ func (self ObjectType) children() []SimpleType {
 	}
 	return c
 }
-func (self Bool) children() []SimpleType { return []SimpleType{} }
-func (self Int) children() []SimpleType  { return []SimpleType{} }
-func (self Str) children() []SimpleType  { return []SimpleType{} }
+func (self ArrayType) children() []SimpleType { return []SimpleType{self.ElType} }
+func (self SliceType) children() []SimpleType { return []SimpleType{self.ElType} }
+func (self Bool) children() []SimpleType      { return []SimpleType{} }
+func (self Int) children() []SimpleType       { return []SimpleType{} }
+func (self Str) children() []SimpleType       { return []SimpleType{} }
 func (self Union) children() []SimpleType {
 	return fun.Map(self.Variants, func(c ConcreteType) SimpleType { return c })
 }
@@ -519,6 +566,8 @@ func (self Bot) concrete()        {}
 func (self Func) concrete()       {}
 func (self Record) concrete()     {}
 func (self ObjectType) concrete() {}
+func (self ArrayType) concrete()  {}
+func (self SliceType) concrete()  {}
 func (self Bool) concrete()       {}
 func (self Int) concrete()        {}
 func (self Str) concrete()        {}
@@ -553,9 +602,11 @@ func (self ObjectType) String() string {
 		}), ", "),
 	)
 }
-func (self Bool) String() string { return "Bool" }
-func (self Int) String() string  { return "Int" }
-func (self Str) String() string  { return "Str" }
+func (self ArrayType) String() string { return fmt.Sprintf("[%s %d]", self.ElType, self.Size) }
+func (self SliceType) String() string { return fmt.Sprintf("[%s]", self.ElType) }
+func (self Bool) String() string      { return "Bool" }
+func (self Int) String() string       { return "Int" }
+func (self Str) String() string       { return "Str" }
 func (self Union) String() string {
 	variants := fun.Map(self.Variants, func(st ConcreteType) string {
 		return st.String()
