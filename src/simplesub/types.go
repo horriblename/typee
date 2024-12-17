@@ -20,6 +20,7 @@ import (
 
 var ErrInvalidCyclicConstraint = errors.New("invalid cyclic constraint")
 var ErrIncompatibleTypes = errors.New("incompatible types")
+var ErrWrongTypeParamCount = errors.New("wrong type parameter count")
 
 // TypeScheme is a type that potentially contains universally quantified type variables.
 // can be instantiated to a given level
@@ -30,11 +31,23 @@ type TypeScheme interface {
 
 // PolymorphicType is a type with universally quantified type variables
 type PolymorphicType struct {
-	Body SimpleType
+	Body       SimpleType
+	TypeParams opt.Option[[]uint] // list of quantified variable IDs
 }
 
 func (self PolymorphicType) instantiate() SimpleType {
 	return freshenType(self.Body)
+}
+func (self PolymorphicType) concretize(params []SimpleType) (SimpleType, error) {
+	mappings := map[uint]SimpleType{}
+	if len(params) != len(self.TypeParams.Or([]uint{})) {
+		return nil, fmt.Errorf("%w: expected %d, got %d",
+			ErrWrongTypeParamCount,
+			len(params),
+			len(self.TypeParams.Or([]uint{})),
+		)
+	}
+	return concretizeType(self.Body, mappings), nil
 }
 func (self PolymorphicType) String() string {
 	return fmt.Sprintf("polymorphic{%s}", self.Body.String())

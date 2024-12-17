@@ -885,54 +885,75 @@ func freshVar() *Variable {
 	return &Variable{uid: newId(), lowerBound: Bot{}, upperBound: Top{}}
 }
 
+// substitute all type variables in ty with fresh ones
 func freshenType(ty SimpleType) SimpleType {
-	freshened := map[*Variable]*Variable{}
+	freshened := map[uint]*Variable{}
 	return freshenInner(freshened, ty)
 }
 
-func freshenInner(freshened map[*Variable]*Variable, ty SimpleType) SimpleType {
+// substitute mapped type vars with their counterpart
+// does not touch type vars not present in mapping
+func concretizeType(ty SimpleType, mapping map[uint]SimpleType) SimpleType {
 	switch t := ty.(type) {
 	case *Variable:
-		t = t.Representative()
-		if match, ok := freshened[t]; ok {
+		if match, ok := mapping[t.Uid()]; ok {
 			return match
-		} else {
-			v := freshVar()
-			v.lowerBound = freshenConcrete(freshened, t.LowerBound())
-			v.upperBound = freshenConcrete(freshened, t.UpperBound())
-			freshened[t] = v
-			return v
 		}
+		return t
 	case ConcreteType:
-		return freshenConcrete(freshened, t)
+		return substituteVarsInConcrete(t, func(child SimpleType) SimpleType {
+			return concretizeType(child, mapping)
+		})
 	default:
 		panic(fmt.Sprintf("unexpected simplesub.SimpleType: %#v", t))
 	}
-
 }
 
-func freshenConcrete(freshened map[*Variable]*Variable, ty ConcreteType) ConcreteType {
+func freshenInner(freshened map[uint]*Variable, ty SimpleType) SimpleType {
+	substitute := func(child SimpleType) SimpleType {
+		return freshenInner(freshened, child)
+	}
+
+	switch t := ty.(type) {
+	case *Variable:
+		if match, ok := freshened[t.Uid()]; ok {
+			return match
+		} else {
+			v := freshVar()
+			v.lowerBound = substituteVarsInConcrete(t.LowerBound(), substitute)
+			v.upperBound = substituteVarsInConcrete(t.UpperBound(), substitute)
+			freshened[t.Uid()] = v
+			return v
+		}
+	case ConcreteType:
+		return substituteVarsInConcrete(t, substitute)
+	default:
+		panic(fmt.Sprintf("unexpected simplesub.SimpleType: %#v", t))
+	}
+}
+
+func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) SimpleType) ConcreteType {
 	switch t := ty.(type) {
 	case Func:
 		return Func{
 			fun.Map(t.Args, func(arg SimpleType) SimpleType {
-				return freshenInner(freshened, arg)
+				return substitute(arg)
 			}),
-			freshenInner(freshened, t.Ret),
+			substitute(t.Ret),
 		}
 	case Int:
 	case Record:
 		return Record{
 			fun.Map(t.Fields, func(arg NamedType) NamedType {
-				return NamedType{arg.Name, freshenInner(freshened, arg.Type)}
+				return NamedType{arg.Name, substitute(arg.Type)}
 			}),
 		}
 	case ObjectType:
 		fields := fun.Map(t.Fields, func(arg NamedMember) NamedMember {
-			return NamedMember{arg.Name, Member{freshenInner(freshened, arg.Type), arg.Access}}
+			return NamedMember{arg.Name, Member{substitute(arg.Type), arg.Access}}
 		})
 		methods := fun.Map(t.Methods, func(arg NamedMember) NamedMember {
-			return NamedMember{arg.Name, Member{freshenInner(freshened, arg.Type), arg.Access}}
+			return NamedMember{arg.Name, Member{substitute(arg.Type), arg.Access}}
 		})
 
 		return ObjectType{
