@@ -260,11 +260,11 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		p("%s", horType(fb.rets[0].typeInfo, typeConfig{typeNone, self.namespace}))
 
 	default:
-		p("(Tuple")
-		for _, ret := range fb.rets {
-			p(" %s", horType(ret.typeInfo, typeConfig{typeNone, self.namespace}))
+		p("{")
+		for i, ret := range fb.rets {
+			p("_%d: %s,", i, horType(ret.typeInfo, typeConfig{typeNone, self.namespace}))
 		}
-		p(")")
+		p("}")
 	}
 
 	p(") [")
