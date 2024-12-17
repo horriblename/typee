@@ -65,7 +65,7 @@ func (self *Generator) processUnionInfo(ui *gi.UnionInfo) {
 
 	name := ui.Name()
 	p("(union %s {\n", name)
-	p("  _data [%d]U8\n", ui.Size())
+	p("  [U8 %d]\n", ui.Size())
 	self.classInScope = append(self.classInScope, name)
 	defer func() { popDelete(&self.classInScope) }()
 
@@ -114,7 +114,7 @@ func (self *Generator) processStructInfo(si *gi.StructInfo) {
 			nm := field.Name()
 			if fo != offset {
 				pad := fo - offset
-				p("\t_ [%d]byte", pad)
+				p("\t_ [U8 %d]", pad)
 				offset += pad
 			}
 			// if type_needs_wrapper(ft) {
@@ -130,7 +130,7 @@ func (self *Generator) processStructInfo(si *gi.StructInfo) {
 			p("\n")
 		}
 		if size != offset {
-			p("\t_: [%d]byte\n", size-offset)
+			p("\t_: [U8 %d]\n", size-offset)
 		}
 		p("})\n")
 		//printf("type %s struct { data [%d]byte }\n", name, size)

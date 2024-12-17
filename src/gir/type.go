@@ -47,12 +47,14 @@ func horType(ti *gi.TypeInfo, cfg typeConfig) string {
 		}
 	case gi.TYPE_TAG_ARRAY:
 		size := ti.ArrayFixedSize()
+		out.WriteString("[")
+
 		out.WriteString(horType(ti.ParamType(0), cfg))
+
 		if size != -1 {
-			fmt.Fprintf(&out, "[%d]", size)
-		} else {
-			out.WriteString("[]")
+			fmt.Fprintf(&out, " %d", size)
 		}
+		out.WriteString("]")
 	case gi.TYPE_TAG_GLIST:
 		out.WriteString(horType(ti.ParamType(0), cfg))
 		out.WriteString("[]")
