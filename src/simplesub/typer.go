@@ -755,6 +755,19 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		return nil
 	} else if _, _, ok := matchPair[Enum, Int](ty0, bound0); ok {
 		return nil
+	} else if lhs, rhs, ok := matchPair[ArrayType, ArrayType](ty0, bound0); ok {
+		err := constrain(lhs.ElType, rhs.ElType)
+		if err != nil {
+			return err
+		}
+
+		if lhs.Size != rhs.Size {
+			return fmt.Errorf("%w %v <: %v", ErrCannotConstrain, ty0, bound0)
+		}
+
+		return nil
+	} else if lhs, rhs, ok := matchPair[SliceType, SliceType](ty0, bound0); ok {
+		return constrain(lhs.ElType, rhs.ElType)
 	} else if lhs, rhs, ok := matchPair[Enum, Enum](ty0, bound0); ok {
 		if lhs.Name != rhs.Name {
 			return fmt.Errorf("%w: wanted %s got %s", ErrWrongEnumType, rhs.Name, lhs.Name)
