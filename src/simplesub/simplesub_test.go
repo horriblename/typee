@@ -96,6 +96,14 @@ func TestTypeExpr(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc:  "array type",
+			input: "(let [x 12] [1 2 x])",
+			typ: &types.Array{
+				Type: &types.Int{},
+				Size: 3,
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
