@@ -42,6 +42,7 @@ var ErrWrongEnumType = errors.New("enum types do not match")
 var ErrWrongUnionType = errors.New("union types do not match")
 var ErrUseRecordAsNamedObjectType = errors.New("cannot use a record as a named object type")
 var ErrUseNamedObjectTypeAsRecord = errors.New("cannot use a named object type as a record")
+var ErrIllegalPolymorphicType = errors.New("illegal use of polymorphic type")
 
 const scopeLevelTop int = 1
 
@@ -736,6 +737,25 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 		}
 
 		return Record{Fields: fields}, nil
+
+	case parse.ArrayType:
+		el, err := self.parseType(t.Type)
+		if err != nil {
+			return nil, err
+		}
+		e, ok := el.(SimpleType)
+		if !ok {
+			return nil, fmt.Errorf("%w as array base type: %s", ErrIllegalPolymorphicType, t.String())
+		}
+
+		if size, ok := t.Size.Unwrap(); ok {
+			if size <= 0 {
+				return nil, fmt.Errorf("array size must be at least 1 (in %s)", t.String())
+			}
+			return ArrayType{e, uint(size)}, nil
+		} else {
+			return SliceType{e}, nil
+		}
 
 	default:
 		panic(fmt.Sprintf("unexpected parse.TypeRepr: %#v", t))
