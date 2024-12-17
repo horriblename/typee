@@ -499,7 +499,7 @@ func (self *InterfaceDef) Pretty() string {
 	}
 
 	var b strings.Builder
-	b.WriteString("class ")
+	b.WriteString("interface ")
 	b.WriteString(self.Name)
 	b.WriteString("(")
 	b.WriteString(strings.Join(self.Supers, ","))
