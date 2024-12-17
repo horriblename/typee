@@ -97,7 +97,7 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 		case *parse.FuncDef:
 			// recursive (inluding mutual-recursive) functions are not generalized
 			if !recursiveness[e.Name] {
-				types[i] = PolymorphicType{freshVar()}
+				types[i] = PolymorphicType{Body: freshVar()}
 			} else {
 				types[i] = freshVar()
 			}
@@ -106,7 +106,7 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 
 		case *parse.Set:
 			if !recursiveness[e.Name] {
-				types[i] = PolymorphicType{freshVar()}
+				types[i] = PolymorphicType{Body: freshVar()}
 			} else {
 				types[i] = freshVar()
 			}
@@ -114,7 +114,8 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 			topLevels[e.Name] = e
 
 		case *parse.ClassDef:
-			types[i] = PolymorphicType{freshVar()}
+			// TODO: handle generics (parameterize class)
+			types[i] = PolymorphicType{Body: freshVar()}
 			self.vars.Insert(e.Name, types[i])
 
 		case *parse.UnionDef:
@@ -267,7 +268,7 @@ func (self *Typer) typeLetRhs(ctx *context, name string, rhs parse.Expr) (Polymo
 		return PolymorphicType{}, err
 	}
 
-	return PolymorphicType{eTy}, nil
+	return PolymorphicType{Body: eTy}, nil
 }
 
 func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ error) {
