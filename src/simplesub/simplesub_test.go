@@ -80,10 +80,22 @@ func TestTypeExpr(t *testing.T) {
 			input: "(let [x 34 y 24] (if [true] x y))",
 			typ:   &types.Int{},
 		},
-		// {
-		// 	desc:  "local let expr does not generalize",
-		// 	input: "(let [f (fn [x] x)] (let [y (f 3)] {f: f, y: y}))",
-		// },
+		{
+			desc:  "local let expr does not generalize",
+			input: "(let [f (fn [x] x)] (let [y (f 3)] {f: f, y: y}))",
+			typ: &types.Record{
+				Fields: map[string]types.Type{
+					"f": &types.Func{
+						Args: []types.Type{&types.Generic{ID: 1}},
+						Ret: &types.Join{
+							Lhs: &types.Generic{ID: 1},
+							Rhs: &types.Int{},
+						},
+					},
+					"y": &types.Int{},
+				},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
