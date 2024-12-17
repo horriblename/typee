@@ -103,7 +103,7 @@ func (self *Generator) processStructInfo(si *gi.StructInfo) {
 	case -1:
 		p("(type %s opaque)\n", name)
 	case 0:
-		p("type %s {})\n", name)
+		p("(type %s {})\n", name)
 	default:
 		p("(type %s {\n", name)
 		offset := 0
