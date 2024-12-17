@@ -515,6 +515,17 @@ func TestParseType(t *testing.T) {
 				Size: opt.None[int64](),
 			},
 		},
+		{
+			desc:  "type instantiation",
+			input: "(Foo Int Str)",
+			output: TypeInstantiation{
+				Type: TypeName{"Foo"},
+				Params: []TypeRepr{
+					TypeName{"Int"},
+					TypeName{"Str"},
+				},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

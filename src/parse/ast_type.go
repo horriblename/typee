@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/opt"
 )
 
@@ -27,11 +28,16 @@ type ArrayType struct {
 	Type TypeRepr
 	Size opt.Option[int64]
 }
+type TypeInstantiation struct {
+	Type   TypeName
+	Params []TypeRepr
+}
 
-func (self TypeName) type_()   {}
-func (self SelfType) type_()   {}
-func (self RecordType) type_() {}
-func (self ArrayType) type_()  {}
+func (self TypeName) type_()          {}
+func (self SelfType) type_()          {}
+func (self RecordType) type_()        {}
+func (self ArrayType) type_()         {}
+func (self TypeInstantiation) type_() {}
 
 func (self TypeName) String() string { return self.Name }
 func (self SelfType) String() string { return "Self" }
@@ -55,4 +61,10 @@ func (self ArrayType) String() string {
 		size = fmt.Sprintf(" %d", sz)
 	}
 	return fmt.Sprintf("[%s%s]", self.Type.String(), size)
+}
+func (self TypeInstantiation) String() string {
+	params := fun.Map(self.Params, func(p TypeRepr) string {
+		return p.String()
+	})
+	return fmt.Sprintf("(%s %s)", self.Type.Name, strings.Join(params, " "))
 }
