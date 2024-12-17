@@ -5,6 +5,7 @@ import (
 
 	"github.com/horriblename/typee/src/combinator"
 	"github.com/horriblename/typee/src/lex"
+	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/types"
 )
 
@@ -19,8 +20,19 @@ func type_(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 }
 
 func typeName(in []lex.Token) ([]lex.Token, TypeRepr, error) {
-	return combinator.Map(symbolName, func(s string) TypeRepr {
-		return TypeName{s}
+	return combinator.Map(combinator.Then(
+		combinator.Maybe(
+			combinator.WithSuffix(
+				symbolName,
+				dot,
+			),
+		),
+		symbolName,
+	), func(s combinator.Pair[opt.Option[string], string]) TypeRepr {
+		if mod, ok := s.One.Unwrap(); ok {
+			return TypeName{Name: s.Two, Module: mod}
+		}
+		return TypeName{Name: s.Two}
 	})(in)
 }
 

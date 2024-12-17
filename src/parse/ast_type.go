@@ -15,7 +15,10 @@ type TypeRepr interface {
 	String() string
 }
 
-type TypeName struct{ Name string }
+type TypeName struct {
+	Name   string
+	Module string
+}
 type SelfType struct{}
 type RecordType struct {
 	Fields []RecordTypeField
@@ -39,7 +42,12 @@ func (self RecordType) type_()        {}
 func (self ArrayType) type_()         {}
 func (self TypeInstantiation) type_() {}
 
-func (self TypeName) String() string { return self.Name }
+func (self TypeName) String() string {
+	if self.Module != "" {
+		return fmt.Sprintf("%s.%s", self.Module, self.Name)
+	}
+	return self.Name
+}
 func (self SelfType) String() string { return "Self" }
 func (self RecordType) String() string {
 	var b strings.Builder
