@@ -13,6 +13,7 @@ func type_(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 		typeName,
 		selfType,
 		recordType,
+		arrayType,
 	)(in)
 }
 
@@ -60,6 +61,29 @@ func recordType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 	}
 
 	return in, ty, err
+}
+
+func arrayType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
+	in, out, err := combinator.Surround(
+		lbracket,
+		combinator.Then(
+			type_,
+			combinator.Maybe(
+				intNumber,
+			),
+		),
+		rbracket,
+	)(in)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	t := ArrayType{
+		Type: out.One,
+		Size: out.Two,
+	}
+
+	return in, t, nil
 }
 
 func classDef(in []lex.Token) ([]lex.Token, Expr, error) {

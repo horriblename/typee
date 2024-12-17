@@ -491,6 +491,17 @@ func TestParseType(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc:  "array type",
+			input: "[[Foo 5]]",
+			output: ArrayType{
+				Type: ArrayType{
+					Type: TypeName{"Foo"},
+					Size: opt.Some(int64(5)),
+				},
+				Size: opt.None[int64](),
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
