@@ -69,6 +69,13 @@ type Class struct {
 	Statics map[string]Member
 	Methods map[string]Member
 }
+type Array struct {
+	Type Type
+	Size uint
+}
+type Slice struct {
+	Type Type
+}
 type Func struct {
 	Args []Type
 	Ret  Type
@@ -99,6 +106,8 @@ func (*Record) type_()     {}
 func (*Union) type_()      {}
 func (*Enum) type_()       {}
 func (*Class) type_()      {}
+func (*Array) type_()      {}
+func (*Slice) type_()      {}
 func (*Func) type_()       {}
 func (*Generic) type_()    {}
 func (*TypeScheme) type_() {}
@@ -113,6 +122,8 @@ func (*Record) Simple() bool     { return false }
 func (*Union) Simple() bool      { return false }
 func (*Enum) Simple() bool       { return false }
 func (*Class) Simple() bool      { return false }
+func (*Array) Simple() bool      { return false }
+func (*Slice) Simple() bool      { return false }
 func (*Func) Simple() bool       { return false }
 func (*Generic) Simple() bool    { return false }
 func (*TypeScheme) Simple() bool { return false }
@@ -215,6 +226,14 @@ func (f *Class) Eq(other Type) bool {
 	}
 
 	return true
+}
+func (self *Array) Eq(other Type) bool {
+	o, ok := other.(*Array)
+	return ok && self.Type.Eq(o.Type) && self.Size == o.Size
+}
+func (self *Slice) Eq(other Type) bool {
+	o, ok := other.(*Array)
+	return ok && self.Type.Eq(o.Type)
 }
 func (f *Func) Eq(other Type) bool {
 	o, ok := other.(*Func)
@@ -340,6 +359,12 @@ func (r *Class) String() string {
 	b.WriteString("}")
 
 	return b.String()
+}
+func (self *Array) String() string {
+	return fmt.Sprintf("[%s %d]", self.Type.String(), self.Size)
+}
+func (self *Slice) String() string {
+	return fmt.Sprintf("[%s]", self.Type.String())
 }
 func (f *Func) String() string {
 	b := strings.Builder{}
@@ -568,6 +593,12 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 			}
 		}
 		return true
+	case *Array:
+		b, ok := b.(*Array)
+		return ok && a.Size == b.Size && structuralEq(ctx, a.Type, b.Type)
+	case *Slice:
+		b, ok := b.(*Slice)
+		return ok && structuralEq(ctx, a.Type, b.Type)
 	}
 
 	panic("unreachable")
