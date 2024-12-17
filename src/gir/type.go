@@ -56,11 +56,13 @@ func horType(ti *gi.TypeInfo, cfg typeConfig) string {
 		}
 		out.WriteString("]")
 	case gi.TYPE_TAG_GLIST:
+		out.WriteString("[")
 		out.WriteString(horType(ti.ParamType(0), cfg))
-		out.WriteString("[]")
+		out.WriteString("]")
 	case gi.TYPE_TAG_GSLIST:
+		out.WriteString("[")
 		out.WriteString(horType(ti.ParamType(0), cfg))
-		out.WriteString("[]")
+		out.WriteString("]")
 	case gi.TYPE_TAG_GHASH:
 		// out.WriteString("map[")
 		// out.WriteString(horType(ti.ParamType(0), cfg.flags))
