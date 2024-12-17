@@ -47,6 +47,7 @@ func expr(in []lex.Token) ([]lex.Token, Expr, error) {
 	return combinator.Any(
 		formLike,
 		recordExpr,
+		arrayLiteral,
 		symbol,
 		selfExpr,
 		strLiteral,
@@ -501,6 +502,20 @@ func recordExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 
 func recordField(in []lex.Token) (_ []lex.Token, _ combinator.Pair[string, Expr], err error) {
 	return combinator.SeperatedBy(symbolName, colon, expr)(in)
+}
+
+func arrayLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
+	in, out, err := combinator.Surround(
+		lbracket,
+		combinator.Many0(expr),
+		rbracket,
+	)(in)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return in, &ArrayLiteral{newId(), out}, nil
 }
 
 func selfLiteral(in []lex.Token) ([]lex.Token, Expr, error) {

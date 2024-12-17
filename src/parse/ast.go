@@ -125,6 +125,11 @@ type RecordField struct {
 	Value Expr
 }
 
+type ArrayLiteral struct {
+	id       int
+	Elements []Expr
+}
+
 type ClassDef struct {
 	id     int
 	Name   string
@@ -201,6 +206,7 @@ func (*TaggedExpr) ast()   {}
 func (*Fn) ast()           {}
 func (*CaseExpr) ast()     {}
 func (*Record) ast()       {}
+func (*ArrayLiteral) ast() {}
 func (*ClassDef) ast()     {}
 func (*InterfaceDef) ast() {}
 func (*RecordAccess) ast() {}
@@ -227,6 +233,7 @@ func (self *TaggedExpr) ID() int   { return self.id }
 func (self *Fn) ID() int           { return self.Id }
 func (self *CaseExpr) ID() int     { return self.id }
 func (self *Record) ID() int       { return self.id }
+func (self *ArrayLiteral) ID() int { return self.id }
 func (self *ClassDef) ID() int     { return self.id }
 func (self *InterfaceDef) ID() int { return self.id }
 func (self *RecordAccess) ID() int { return self.id }
@@ -291,6 +298,9 @@ func (self *CaseBranch) String() string {
 }
 func (self *Record) String() string {
 	return fmt.Sprintf("#%d %v", self.id, self.Fields)
+}
+func (self *ArrayLiteral) String() string {
+	return fmt.Sprintf("#%d %+v", self.id, self.Elements)
 }
 func (self *ClassDef) String() string {
 	return fmt.Sprintf("#%d (class %s %v %v)", self.id, self.Name, self.Supers, self.Fields)
@@ -459,6 +469,10 @@ func (self *Record) Pretty() string {
 	b.WriteString("}")
 	return b.String()
 }
+func (self *ArrayLiteral) Pretty() string {
+	el := fun.Map(self.Elements, func(e Expr) string { return e.Pretty() })
+	return fmt.Sprintf("%+s", el)
+}
 
 func (self *ClassDef) Pretty() string {
 	if len(self.Fields) == 0 {
@@ -564,6 +578,9 @@ func (self *Record) ChildNodes() []Expr {
 	return fun.Map(self.Fields, func(f RecordField) Expr {
 		return f.Value
 	})
+}
+func (self *ArrayLiteral) ChildNodes() []Expr {
+	return self.Elements
 }
 func (self *ClassDef) ChildNodes() []Expr {
 	c := []Expr{}

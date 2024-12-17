@@ -445,6 +445,19 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			desc:  "array literal",
+			input: "[1 2 b c]",
+			output: []Expr{&ArrayLiteral{
+				id: 5,
+				Elements: []Expr{
+					&IntLiteral{1, 1},
+					&IntLiteral{2, 2},
+					&Symbol{"b", 3},
+					&Symbol{"c", 4},
+				},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
