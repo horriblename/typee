@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/linuxdeepin/go-gir/generator/gi"
@@ -164,7 +165,22 @@ func (self *Generator) processConstantInfo(ci *gi.ConstantInfo) {
 		p("(const Key_%s %s)\n", name[4:], ci.Value())
 		return
 	}
-	p("(const %s %#v)\n", snake_case_to_PascalCase(name), ci.Value())
+	var val string
+	switch v := ci.Value().(type) {
+	case bool:
+		if v {
+			val = "true"
+		} else {
+			val = "false"
+		}
+	case int8, uint8, int16, uint16, int32, uint32, int64, uint64:
+		val = fmt.Sprintf("%d", v)
+	case float32, float64:
+		val = fmt.Sprintf("%f", v)
+	case string:
+		val = strconv.Quote(v)
+	}
+	p("(set %s %s)\n", sanitize(CONST_CASE_to_camelCase(name)), val)
 }
 func (self *Generator) processCallbackInfo(ci *gi.CallableInfo) {
 	// p := printerTo(&this.goBindings)

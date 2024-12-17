@@ -37,6 +37,10 @@ func camelCaseInner(name string, capitalizeFirst bool) string {
 	return b.String()
 }
 
+func CONST_CASE_to_camelCase(name string) string {
+	return snake_case_to_camelCase(strings.ToLower(name))
+}
+
 // prevent name clash with keywords
 func sanitize(name string) string {
 	return "r@" + name
