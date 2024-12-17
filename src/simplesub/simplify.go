@@ -83,6 +83,10 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleTy
 		})
 
 		return Func{args, transform(ty.Ret, pol, mapping, pos, neg)}
+	case ArrayType:
+		return ArrayType{transform(ty.ElType, pol, mapping, pos, neg), ty.Size}
+	case SliceType:
+		return SliceType{transform(ty.ElType, pol, mapping, pos, neg)}
 	case Bool, Int, Str, Top, Bot, Union, Enum: // Union bans generics
 		return st
 	}
@@ -155,6 +159,13 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 			Args: fun.Map(ty.Args, func(arg SimpleType) types.Type { return coalesceTypeInner(arg, !polarity) }),
 			Ret:  coalesceTypeInner(ty.Ret, polarity),
 		}
+	case ArrayType:
+		return &types.Array{
+			Type: coalesceTypeInner(ty.ElType, polarity),
+			Size: ty.Size,
+		}
+	case SliceType:
+		return &types.Slice{Type: coalesceTypeInner(ty.ElType, polarity)}
 	case Record:
 		fields := map[string]types.Type{}
 		for _, field := range ty.Fields {
