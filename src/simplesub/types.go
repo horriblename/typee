@@ -222,7 +222,7 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		}
 
 		if lhs.Size != rhs.Size {
-			return nil, fmt.Errorf("%w: cannot constrain %s <: %s", lhs, rhs)
+			return nil, fmt.Errorf("%w: size mismatch of arrays %s != %s", ErrIncompatibleTypes, lhs.String(), rhs.String())
 		}
 
 		return ArrayType{lb, lhs.Size}, nil
@@ -337,7 +337,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		}
 
 		if lhs.Size != rhs.Size {
-			return nil, fmt.Errorf("%w: cannot constrain %s <: %s", lhs, rhs)
+			return nil, fmt.Errorf("%w: size mismatch of arrays %s and %s", ErrIncompatibleTypes, lhs, rhs)
 		}
 
 		return ArrayType{el, lhs.Size}, nil
