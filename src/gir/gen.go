@@ -120,7 +120,7 @@ func (self *Generator) processStructInfo(si *gi.StructInfo) {
 			// if type_needs_wrapper(ft) {
 			// 	p("\t%s0 %s\n", nm, cgo_type(ft, type_exact))
 			// } else {
-			p("\t%s: %s", snake_case_to_camelCase(nm),
+			p("\t%s: %s", sanitize(snake_case_to_camelCase(nm)),
 				horType(ft, typeConfig{typeExact, field.Namespace()}))
 			// }
 			offset += typeSize(ft, typeExact)
@@ -229,9 +229,9 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	case flags&gi.FUNCTION_IS_CONSTRUCTOR != 0:
 		name = "init"
 	case isValidMethod:
-		name = snake_case_to_camelCase(name)
+		name = sanitize(snake_case_to_camelCase(name))
 	default:
-		name = snake_case_to_camelCase(name)
+		name = sanitize(snake_case_to_camelCase(name))
 	}
 	// fullName += name
 	p("%s (", name)
@@ -275,7 +275,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		if i != 0 || isValidMethod {
 			p(" ")
 		}
-		p("%s", snake_case_to_camelCase(arg.argInfo.Name()))
+		p("%s", sanitize(snake_case_to_camelCase(arg.argInfo.Name())))
 	}
 	p("] (callExtern %s", fi.Symbol())
 
@@ -285,7 +285,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		p(" self")
 	}
 	for _, arg := range fb.args {
-		p(" %s", snake_case_to_camelCase(arg.argInfo.Name()))
+		p(" %s", sanitize(snake_case_to_camelCase(arg.argInfo.Name())))
 	}
 	p("))\n")
 
