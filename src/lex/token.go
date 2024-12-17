@@ -22,6 +22,7 @@ type Dot struct{}
 type Hash struct{}
 type Symbol struct {
 	Name string
+	Raw  bool
 }
 type IntLiteral struct {
 	Number int64
@@ -95,18 +96,24 @@ func (*CallExtern) token()   {}
 func (*TrueLiteral) token()  {}
 func (*FalseLiteral) token() {}
 
-func (*LParen) String() string          { return "LParen" }
-func (*RParen) String() string          { return "RParen" }
-func (*LBracket) String() string        { return "LBracket" }
-func (*RBracket) String() string        { return "RBracket" }
-func (*LBrace) String() string          { return "LBrace" }
-func (*RBrace) String() string          { return "RBrace" }
-func (*Colon) String() string           { return "Colon" }
-func (*DoubleColon) String() string     { return "DoubleColon" }
-func (*Comma) String() string           { return "Comma" }
-func (*Dot) String() string             { return "Dot" }
-func (*Hash) String() string            { return "Hash" }
-func (self *Symbol) String() string     { return fmt.Sprintf("Symbol{\"%s\"}", self.Name) }
+func (*LParen) String() string      { return "LParen" }
+func (*RParen) String() string      { return "RParen" }
+func (*LBracket) String() string    { return "LBracket" }
+func (*RBracket) String() string    { return "RBracket" }
+func (*LBrace) String() string      { return "LBrace" }
+func (*RBrace) String() string      { return "RBrace" }
+func (*Colon) String() string       { return "Colon" }
+func (*DoubleColon) String() string { return "DoubleColon" }
+func (*Comma) String() string       { return "Comma" }
+func (*Dot) String() string         { return "Dot" }
+func (*Hash) String() string        { return "Hash" }
+func (self *Symbol) String() string {
+	raw := ""
+	if self.Raw {
+		raw = "raw"
+	}
+	return fmt.Sprintf("Symbol{%s\"%s\"}", raw, self.Name)
+}
 func (self *IntLiteral) String() string { return fmt.Sprintf("IntLiteral{%d}", self.Number) }
 func (self *StrLiteral) String() string { return fmt.Sprintf("StrLiteral{\"%s\"}", self.Content) }
 func (self *Tag) String() string        { return fmt.Sprintf("'%s", self.Label) }

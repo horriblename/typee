@@ -33,6 +33,7 @@ func LexString(source string) ([]Token, error) {
 			doubleColon,
 			colon,
 			tag,
+			rawIdent,
 			keywordOrSymbol,
 			intLiteral,
 		),
@@ -121,6 +122,23 @@ func intLiteral(in []rune) ([]rune, Token, error) {
 	}
 
 	return in[i:], &IntLiteral{Number: int64(num)}, nil
+}
+
+func rawIdent(in []rune) ([]rune, Token, error) {
+	if len(in) < 3 {
+		return nil, nil, ErrLex
+	}
+
+	if in[0] != 'r' || in[1] != '@' {
+		return nil, nil, ErrLex
+	}
+
+	rest, symName, err := symbolStr(in[2:])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return rest, &Symbol{Name: symName, Raw: true}, nil
 }
 
 func keywordOrSymbol(in []rune) ([]rune, Token, error) {
