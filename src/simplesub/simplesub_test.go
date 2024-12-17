@@ -104,6 +104,11 @@ func TestTypeExpr(t *testing.T) {
 				Size: 3,
 			},
 		},
+		{
+			desc:  "type instantiation: type is not parameterized",
+			input: "(fn ((Int Str) Str) [x] x)",
+			err:   ErrUnparameterizedTypePassedParams,
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

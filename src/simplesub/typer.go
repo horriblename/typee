@@ -43,6 +43,7 @@ var ErrWrongUnionType = errors.New("union types do not match")
 var ErrUseRecordAsNamedObjectType = errors.New("cannot use a record as a named object type")
 var ErrUseNamedObjectTypeAsRecord = errors.New("cannot use a named object type as a record")
 var ErrIllegalPolymorphicType = errors.New("illegal use of polymorphic type")
+var ErrUnparameterizedTypePassedParams = errors.New("an unparameterized type was passed type parameters")
 
 const scopeLevelTop int = 1
 
@@ -116,6 +117,10 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 
 		case *parse.ClassDef:
 			// TODO: handle generics (parameterize class)
+			types[i] = PolymorphicType{Body: freshVar()}
+			self.vars.Insert(e.Name, types[i])
+
+		case *parse.InterfaceDef:
 			types[i] = PolymorphicType{Body: freshVar()}
 			self.vars.Insert(e.Name, types[i])
 
@@ -777,6 +782,36 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 			return SliceType{e}, nil
 		}
 
+	case parse.TypeInstantiation:
+		base, err := self.parseType(t.Type)
+		if err != nil {
+			return nil, err
+		}
+
+		pbase, ok := base.(PolymorphicType)
+		if !ok {
+			return nil, fmt.Errorf("%w: type %s in %s", ErrUnparameterizedTypePassedParams, base, t)
+		}
+
+		params, err := fun.MapIfOk(t.Params, func(r parse.TypeRepr) (SimpleType, error) {
+			t, err := self.parseType(r)
+			if err != nil {
+				return nil, err
+			}
+
+			st, ok := t.(SimpleType)
+			if !ok {
+				return nil, fmt.Errorf("tried to pass a polymorphic type as a type parameter: %s", r)
+			}
+			return st, nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		return pbase.concretize(params)
+
 	default:
 		panic(fmt.Sprintf("unexpected parse.TypeRepr: %#v", t))
 	}
@@ -950,6 +985,8 @@ func freshenType(ty SimpleType) SimpleType {
 // substitute mapped type vars with their counterpart
 // does not touch type vars not present in mapping
 func concretizeType(ty SimpleType, mapping map[uint]SimpleType) SimpleType {
+	// TODO: I'm not sure if substituting the targeted uid is enough, what about representative?
+	// is it possible to get a t1 with representative t2 but we used t1 in the mappings?
 	switch t := ty.(type) {
 	case *Variable:
 		if match, ok := mapping[t.Uid()]; ok {
