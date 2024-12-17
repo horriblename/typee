@@ -392,6 +392,26 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 		return Int{}, nil
 	case *parse.StrLiteral:
 		return Str{}, nil
+	case *parse.ArrayLiteral:
+		elTyps := make([]SimpleType, len(expr.Elements))
+		for i, el := range expr.Elements {
+			elTy, err := self.TypeTerm(ctx, el)
+			if err != nil {
+				return nil, err
+			}
+
+			elTyps[i] = elTy
+		}
+
+		ty := freshVar()
+		for _, elTy := range elTyps {
+			if err := constrain(elTy, ty); err != nil {
+				return nil, fmt.Errorf("array element has incompatible type with other elements before it: %w", err)
+			}
+		}
+
+		return ArrayType{ty, uint(len(expr.Elements))}, nil
+
 	case *parse.Record:
 		fields := make([]NamedType, len(expr.Fields))
 		for i, field := range expr.Fields {
