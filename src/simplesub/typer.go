@@ -191,7 +191,8 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 				return nil, err
 			}
 
-			ctx.inferred[e.ID()] = PolymorphicType{t}
+			// TODO: handle generics
+			ctx.inferred[e.ID()] = t
 
 		case *parse.UnionDef:
 			self.types.Insert(e.Name, types[i])
@@ -206,7 +207,7 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 				return nil, err
 			}
 
-			ctx.inferred[e.ID()] = PolymorphicType{t}
+			ctx.inferred[e.ID()] = t
 
 		case *parse.EnumDef:
 			self.types.Insert(e.Name, types[i])
@@ -221,7 +222,8 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 				return nil, err
 			}
 
-			ctx.inferred[e.ID()] = PolymorphicType{t}
+			// TODO: handle generics
+			ctx.inferred[e.ID()] = t
 
 		case *parse.TypeAlias:
 			typ := types[i].(SimpleType)
