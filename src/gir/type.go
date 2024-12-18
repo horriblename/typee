@@ -35,13 +35,13 @@ func horType(ti *gi.TypeInfo, cfg typeConfig) string {
 	switch tag := ti.Tag(); tag {
 	case gi.TYPE_TAG_VOID:
 		if ti.IsPointer() {
-			out.WriteString("opaque")
+			out.WriteString("Opaque")
 			break
 		}
 		panic("Non-pointer void type is not supported")
 	case gi.TYPE_TAG_UTF8, gi.TYPE_TAG_FILENAME:
 		if cfg.flags&typeExact != 0 {
-			out.WriteString("opaque")
+			out.WriteString("Opaque")
 		} else {
 			out.WriteString("Str")
 		}
@@ -188,7 +188,7 @@ func horTypeForInterface(bi *gi.BaseInfo, cfg typeConfig) string {
 	case gi.INFO_TYPE_OBJECT, gi.INFO_TYPE_INTERFACE:
 		if cfg.flags&typeExact != 0 {
 			// exact type for object/interface is always an unsafe.Pointer
-			p("opaque")
+			p("Opaque")
 			break
 		}
 
@@ -206,7 +206,7 @@ func horTypeForInterface(bi *gi.BaseInfo, cfg typeConfig) string {
 
 	case gi.INFO_TYPE_CALLBACK:
 		if cfg.flags&typeExact != 0 {
-			p("opaque")
+			p("Opaque")
 			break
 		}
 		goto handle_default

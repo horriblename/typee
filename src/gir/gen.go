@@ -102,7 +102,7 @@ func (self *Generator) processStructInfo(si *gi.StructInfo) {
 	// if !config.is_blacklisted("structdefs", name) {
 	switch size {
 	case -1:
-		p("(type %s opaque)\n", name)
+		p("(type %s Opaque)\n", name)
 	case 0:
 		p("(type %s {})\n", name)
 	default:
