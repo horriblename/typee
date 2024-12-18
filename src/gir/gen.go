@@ -77,7 +77,10 @@ func (self *Generator) processUnionInfo(ui *gi.UnionInfo) {
 	p("(union %s {\n", name)
 	p("  [U8 %d]\n", ui.Size())
 	self.methodOwner = append(self.methodOwner, name)
+	self.inStruct = true
 	defer func() { popDelete(&self.methodOwner) }()
+	defer func() { self.inStruct = false }()
+	p("})\n")
 
 	for i, n := 0, ui.NumMethod(); i < n; i++ {
 		meth := ui.Method(i)
@@ -87,7 +90,6 @@ func (self *Generator) processUnionInfo(ui *gi.UnionInfo) {
 		self.processFunctionInfo(meth)
 	}
 
-	p("})\n")
 }
 
 func (self *Generator) processStructInfo(si *gi.StructInfo) {
