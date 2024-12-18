@@ -227,7 +227,11 @@ func cmdRepl() error {
 	return nil
 }
 
+const flagGlueConfig = "config"
+const helpGlueConfig = "path to config.json"
+
 func cmdGlueGir() error {
+	configFile := flag.String(flagGlueConfig, "config.json", helpGlueConfig)
 	out := flag.String(flagOut, "", helpOut)
 	outLong := flag.String(flagOutLong, "", helpOut)
 	flag.Parse()
@@ -250,7 +254,17 @@ func cmdGlueGir() error {
 		}
 	}
 
-	o, err := gir.Gen(flag.Arg(0), "")
+	file, err := os.Open(*configFile)
+	if err != nil {
+		return fmt.Errorf("opening glue config file: %w", err)
+	}
+
+	config, err := gir.ParseConfig(file)
+	if err != nil {
+		return fmt.Errorf("parsing glue config file: %w", err)
+	}
+
+	o, err := gir.New(flag.Arg(0), "", config)
 	if err != nil {
 		return err
 	}

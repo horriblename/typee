@@ -11,14 +11,15 @@ import (
 )
 
 type Generator struct {
+	config      Config
 	namespace   string
 	inStruct    bool
 	methodOwner []string
 	goBindings  bytes.Buffer
 }
 
-func Gen(lib string, version string) ([]byte, error) {
-	g := Generator{lib, false, []string{}, bytes.Buffer{}}
+func New(lib string, version string, config Config) ([]byte, error) {
+	g := Generator{config, lib, false, []string{}, bytes.Buffer{}}
 	err := g.Gen(lib, version)
 	if err != nil {
 		return nil, err
