@@ -98,27 +98,27 @@ func horTypeForTag(tag gi.TypeTag, cfg typeConfig) string {
 	if cfg.flags&typeExact != 0 {
 		switch tag {
 		case gi.TYPE_TAG_BOOLEAN:
-			p("int32") // sadly
+			p("I32") // sadly
 		case gi.TYPE_TAG_INT8:
-			p("int8")
+			p("I8")
 		case gi.TYPE_TAG_UINT8:
-			p("uint8")
+			p("U8")
 		case gi.TYPE_TAG_INT16:
-			p("int16")
+			p("I16")
 		case gi.TYPE_TAG_UINT16:
-			p("uint16")
+			p("U16")
 		case gi.TYPE_TAG_INT32:
-			p("int32")
+			p("I32")
 		case gi.TYPE_TAG_UINT32:
-			p("uint32")
+			p("U32")
 		case gi.TYPE_TAG_INT64:
-			p("int64")
+			p("I64")
 		case gi.TYPE_TAG_UINT64:
-			p("uint64")
+			p("U64")
 		case gi.TYPE_TAG_FLOAT:
-			p("float32")
+			p("F32")
 		case gi.TYPE_TAG_DOUBLE:
-			p("float64")
+			p("F64")
 		case gi.TYPE_TAG_GTYPE:
 			if cfg.namespace != "GObject" {
 				p("GObject.Type")
