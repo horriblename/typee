@@ -118,19 +118,19 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 		case *parse.ObjectTypeDef:
 			// TODO: handle generics (parameterize class)
 			types[i] = PolymorphicType{Body: freshVar()}
-			self.vars.Insert(e.Name, types[i])
+			self.types.Insert(e.Name, types[i])
 
 		case *parse.UnionDef:
 			types[i] = freshVar()
-			self.vars.Insert(e.Name, types[i])
+			self.types.Insert(e.Name, types[i])
 
 		case *parse.EnumDef:
 			types[i] = freshVar()
-			self.vars.Insert(e.Name, types[i])
+			self.types.Insert(e.Name, types[i])
 
 		case *parse.TypeAlias:
 			types[i] = freshVar()
-			self.vars.Insert(e.Name, types[i])
+			self.types.Insert(e.Name, types[i])
 
 		default:
 			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
