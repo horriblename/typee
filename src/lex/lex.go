@@ -34,8 +34,8 @@ func LexString(source string) ([]Token, error) {
 			colon,
 			tag,
 			rawIdent,
-			keywordOrSymbol,
 			number,
+			keywordOrSymbol,
 		),
 		skipped,
 	)
@@ -104,6 +104,11 @@ func notDoubleQuote(in []rune) ([]rune, string, error) {
 }
 
 func number(in []rune) ([]rune, Token, error) {
+	var sign int64 = 1
+	if len(in) > 0 && in[0] == '-' {
+		sign = -1
+		in = in[1:]
+	}
 	intPartLen := digitsLen(in)
 	if intPartLen == 0 {
 		return nil, nil, ErrLex
@@ -116,7 +121,7 @@ func number(in []rune) ([]rune, Token, error) {
 		if err != nil {
 			panic("failed assertion: " + err.Error())
 		}
-		return rest, &IntLiteral{Number: int64(num)}, nil
+		return rest, &IntLiteral{Number: int64(num) * sign}, nil
 	}
 
 	rest = rest[1:]
@@ -128,7 +133,7 @@ func number(in []rune) ([]rune, Token, error) {
 	if err != nil {
 		panic("failed assertion: " + err.Error())
 	}
-	return rest, &FloatLiteral{Number: num}, nil
+	return rest, &FloatLiteral{Number: num * float64(sign)}, nil
 }
 
 func digitsLen(in []rune) int {
