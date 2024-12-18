@@ -229,11 +229,14 @@ func cmdRepl() error {
 
 const flagGlueConfig = "config"
 const helpGlueConfig = "path to config.json"
+const flagDbgPrintConfig = "dbg-print-config"
+const helpDbgPrintConfig = "for debugging: print config"
 
 func cmdGlueGir() error {
 	configFile := flag.String(flagGlueConfig, "config.json", helpGlueConfig)
 	out := flag.String(flagOut, "", helpOut)
 	outLong := flag.String(flagOutLong, "", helpOut)
+	dbgConfig := flag.Bool(flagDbgPrintConfig, false, helpDbgPrintConfig)
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -262,6 +265,10 @@ func cmdGlueGir() error {
 	config, err := gir.ParseConfig(file)
 	if err != nil {
 		return fmt.Errorf("parsing glue config file: %w", err)
+	}
+
+	if *dbgConfig {
+		errorf("config: %#v", config)
 	}
 
 	o, err := gir.New(flag.Arg(0), "", config)
