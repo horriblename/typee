@@ -35,7 +35,7 @@ func LexString(source string) ([]Token, error) {
 			tag,
 			rawIdent,
 			keywordOrSymbol,
-			intLiteral,
+			number,
 		),
 		skipped,
 	)
@@ -103,7 +103,35 @@ func notDoubleQuote(in []rune) ([]rune, string, error) {
 	return nil, "", ErrLex
 }
 
-func intLiteral(in []rune) ([]rune, Token, error) {
+func number(in []rune) ([]rune, Token, error) {
+	intPartLen := digitsLen(in)
+	if intPartLen == 0 {
+		return nil, nil, ErrLex
+	}
+	intPart := in[:intPartLen]
+	rest := in[intPartLen:]
+	if len(rest) == 0 || rest[0] != '.' {
+		// FIXME: parse negatives as int64
+		num, err := strconv.ParseUint(string(intPart), 10, 64)
+		if err != nil {
+			panic("failed assertion: " + err.Error())
+		}
+		return rest, &IntLiteral{Number: int64(num)}, nil
+	}
+
+	rest = rest[1:]
+	fracPartLen := digitsLen(rest)
+	rest = rest[fracPartLen:]
+	floatPart := in[:intPartLen+1+fracPartLen]
+
+	num, err := strconv.ParseFloat(string(floatPart), 64)
+	if err != nil {
+		panic("failed assertion: " + err.Error())
+	}
+	return rest, &FloatLiteral{Number: num}, nil
+}
+
+func digitsLen(in []rune) int {
 	i := 0
 	for i = 0; i < len(in); i++ {
 		c := in[i]
@@ -112,16 +140,7 @@ func intLiteral(in []rune) ([]rune, Token, error) {
 		}
 	}
 
-	if i == 0 {
-		return nil, nil, ErrLex
-	}
-
-	num, err := strconv.Atoi(string(in[:i]))
-	if err != nil {
-		panic("failed assertion: " + err.Error())
-	}
-
-	return in[i:], &IntLiteral{Number: int64(num)}, nil
+	return i
 }
 
 func rawIdent(in []rune) ([]rune, Token, error) {

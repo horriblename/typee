@@ -27,6 +27,9 @@ type Symbol struct {
 type IntLiteral struct {
 	Number int64
 }
+type FloatLiteral struct {
+	Number float64
+}
 type StrLiteral struct {
 	Content string
 }
@@ -71,6 +74,7 @@ func (*Dot) token()          {}
 func (*Hash) token()         {}
 func (*Symbol) token()       {}
 func (*IntLiteral) token()   {}
+func (*FloatLiteral) token() {}
 func (*StrLiteral) token()   {}
 func (*Tag) token()          {}
 func (*Def) token()          {}
@@ -114,28 +118,29 @@ func (self *Symbol) String() string {
 	}
 	return fmt.Sprintf("Symbol{%s\"%s\"}", raw, self.Name)
 }
-func (self *IntLiteral) String() string { return fmt.Sprintf("IntLiteral{%d}", self.Number) }
-func (self *StrLiteral) String() string { return fmt.Sprintf("StrLiteral{\"%s\"}", self.Content) }
-func (self *Tag) String() string        { return fmt.Sprintf("'%s", self.Label) }
-func (*Def) String() string             { return "Def" }
-func (*Set) String() string             { return "Set" }
-func (*Var) String() string             { return "Var" }
-func (*If) String() string              { return "If" }
-func (*Let) String() string             { return "let" }
-func (*LetRec) String() string          { return "letrec" }
-func (*Fn) String() string              { return "fn" }
-func (*Case) String() string            { return "case" }
-func (*Class) String() string           { return "class" }
-func (*Interface) String() string       { return "interface" }
-func (*Pub) String() string             { return "pub" }
-func (*Protected) String() string       { return "protected" }
-func (*Priv) String() string            { return "priv" }
-func (*Self) String() string            { return "self" }
-func (*SelfType) String() string        { return "Self" }
-func (*New) String() string             { return "new" }
-func (*Union) String() string           { return "union" }
-func (*Enum) String() string            { return "enum" }
-func (*Type) String() string            { return "type" }
-func (*CallExtern) String() string      { return "callExtern" }
-func (*TrueLiteral) String() string     { return "true" }
-func (*FalseLiteral) String() string    { return "false" }
+func (self *IntLiteral) String() string   { return fmt.Sprintf("IntLiteral{%d}", self.Number) }
+func (self *FloatLiteral) String() string { return fmt.Sprintf("FloatLiteral{%f}", self.Number) }
+func (self *StrLiteral) String() string   { return fmt.Sprintf("StrLiteral{\"%s\"}", self.Content) }
+func (self *Tag) String() string          { return fmt.Sprintf("'%s", self.Label) }
+func (*Def) String() string               { return "Def" }
+func (*Set) String() string               { return "Set" }
+func (*Var) String() string               { return "Var" }
+func (*If) String() string                { return "If" }
+func (*Let) String() string               { return "let" }
+func (*LetRec) String() string            { return "letrec" }
+func (*Fn) String() string                { return "fn" }
+func (*Case) String() string              { return "case" }
+func (*Class) String() string             { return "class" }
+func (*Interface) String() string         { return "interface" }
+func (*Pub) String() string               { return "pub" }
+func (*Protected) String() string         { return "protected" }
+func (*Priv) String() string              { return "priv" }
+func (*Self) String() string              { return "self" }
+func (*SelfType) String() string          { return "Self" }
+func (*New) String() string               { return "new" }
+func (*Union) String() string             { return "union" }
+func (*Enum) String() string              { return "enum" }
+func (*Type) String() string              { return "type" }
+func (*CallExtern) String() string        { return "callExtern" }
+func (*TrueLiteral) String() string       { return "true" }
+func (*FalseLiteral) String() string      { return "false" }

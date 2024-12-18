@@ -25,11 +25,11 @@ func TestLex(t *testing.T) {
 	}{
 		{
 			desc:  "All",
-			input: `(foo)def[set, "str"]{123:.'label} var#::  r@if ;; this.is (a comment)`,
+			input: `(foo)def[set, "str"]{123:.'label} var#::  r@if 2.718282 ;; this.is (a comment)`,
 			output: []Token{&lParen, &Symbol{Name: "foo"}, &rParen, &tokDef,
 				&lBracket, &tokSet, &tokComma, &StrLiteral{Content: "str"}, &rBracket,
 				&lBrace, &IntLiteral{Number: 123}, &tokColon, &Dot{}, &Tag{Label: "label"}, &rBrace,
-				&Var{}, &Hash{}, &DoubleColon{}, &Symbol{Name: "if", Raw: true},
+				&Var{}, &Hash{}, &DoubleColon{}, &Symbol{Name: "if", Raw: true}, &FloatLiteral{2.718282},
 			},
 			err: nil,
 		},
