@@ -142,8 +142,9 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, err
 	}
 
-	t := ClassDef{
+	t := ObjectTypeDef{
 		id:     newId(),
+		Kind:   Class,
 		Name:   res.One,
 		Supers: res.Two.One.Or([]string{}),
 		Fields: res.Two.Two,
@@ -211,8 +212,9 @@ func interfaceDef(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, err
 	}
 
-	t := InterfaceDef{
+	t := ObjectTypeDef{
 		id:     newId(),
+		Kind:   Iface,
 		Name:   res.One,
 		Supers: res.Two.One.Or([]string{}),
 		Fields: res.Two.Two,

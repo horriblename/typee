@@ -85,7 +85,7 @@ func buildProgram(params buildParams) error {
 				errorf("%s: %s", e.Name, t[i].String())
 			case *parse.FuncDef:
 				errorf("%s: %s", e.Name, t[i].String())
-			case *parse.ClassDef:
+			case *parse.ObjectTypeDef:
 				errorf("%s: %s", e.Name, t[i].String())
 			}
 		}

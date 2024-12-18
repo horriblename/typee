@@ -11,6 +11,13 @@ import (
 	"github.com/horriblename/typee/src/types"
 )
 
+type ObjectKind int
+
+const (
+	Class ObjectKind = 0
+	Iface ObjectKind = 1
+)
+
 type Expr interface {
 	ast()
 	ID() int
@@ -130,15 +137,10 @@ type ArrayLiteral struct {
 	Elements []Expr
 }
 
-type ClassDef struct {
+// also can be interface
+type ObjectTypeDef struct {
 	id     int
-	Name   string
-	Supers []string
-	Fields []ClassMember
-}
-
-type InterfaceDef struct {
-	id     int
+	Kind   ObjectKind
 	Name   string
 	Supers []string
 	Fields []ClassMember
@@ -191,59 +193,57 @@ type ExternCall struct {
 	Args   []Expr
 }
 
-func (*Form) ast()         {}
-func (*Symbol) ast()       {}
-func (*FuncDef) ast()      {}
-func (*Set) ast()          {}
-func (*VarDef) ast()       {}
-func (*IfExpr) ast()       {}
-func (*StrLiteral) ast()   {}
-func (*IntLiteral) ast()   {}
-func (*BoolLiteral) ast()  {}
-func (*SelfLiteral) ast()  {}
-func (*LetExpr) ast()      {}
-func (*TaggedExpr) ast()   {}
-func (*Fn) ast()           {}
-func (*CaseExpr) ast()     {}
-func (*Record) ast()       {}
-func (*ArrayLiteral) ast() {}
-func (*ClassDef) ast()     {}
-func (*InterfaceDef) ast() {}
-func (*RecordAccess) ast() {}
-func (*MethodAccess) ast() {}
-func (*New) ast()          {}
-func (*UnionDef) ast()     {}
-func (*EnumDef) ast()      {}
-func (*EnumAccess) ast()   {}
-func (*TypeAlias) ast()    {}
-func (*ExternCall) ast()   {}
+func (*Form) ast()          {}
+func (*Symbol) ast()        {}
+func (*FuncDef) ast()       {}
+func (*Set) ast()           {}
+func (*VarDef) ast()        {}
+func (*IfExpr) ast()        {}
+func (*StrLiteral) ast()    {}
+func (*IntLiteral) ast()    {}
+func (*BoolLiteral) ast()   {}
+func (*SelfLiteral) ast()   {}
+func (*LetExpr) ast()       {}
+func (*TaggedExpr) ast()    {}
+func (*Fn) ast()            {}
+func (*CaseExpr) ast()      {}
+func (*Record) ast()        {}
+func (*ArrayLiteral) ast()  {}
+func (*ObjectTypeDef) ast() {}
+func (*RecordAccess) ast()  {}
+func (*MethodAccess) ast()  {}
+func (*New) ast()           {}
+func (*UnionDef) ast()      {}
+func (*EnumDef) ast()       {}
+func (*EnumAccess) ast()    {}
+func (*TypeAlias) ast()     {}
+func (*ExternCall) ast()    {}
 
-func (self *Form) ID() int         { return self.id }
-func (self *Symbol) ID() int       { return self.id }
-func (self *FuncDef) ID() int      { return self.id }
-func (self *Set) ID() int          { return self.id }
-func (self *VarDef) ID() int       { return self.id }
-func (self *IfExpr) ID() int       { return self.id }
-func (self *StrLiteral) ID() int   { return self.id }
-func (self *IntLiteral) ID() int   { return self.id }
-func (self *BoolLiteral) ID() int  { return self.id }
-func (self *SelfLiteral) ID() int  { return self.id }
-func (self *LetExpr) ID() int      { return self.id }
-func (self *TaggedExpr) ID() int   { return self.id }
-func (self *Fn) ID() int           { return self.Id }
-func (self *CaseExpr) ID() int     { return self.id }
-func (self *Record) ID() int       { return self.id }
-func (self *ArrayLiteral) ID() int { return self.id }
-func (self *ClassDef) ID() int     { return self.id }
-func (self *InterfaceDef) ID() int { return self.id }
-func (self *RecordAccess) ID() int { return self.id }
-func (self *MethodAccess) ID() int { return self.id }
-func (self *New) ID() int          { return self.id }
-func (self *UnionDef) ID() int     { return self.id }
-func (self *EnumDef) ID() int      { return self.id }
-func (self *EnumAccess) ID() int   { return self.id }
-func (self *TypeAlias) ID() int    { return self.id }
-func (self *ExternCall) ID() int   { return self.id }
+func (self *Form) ID() int          { return self.id }
+func (self *Symbol) ID() int        { return self.id }
+func (self *FuncDef) ID() int       { return self.id }
+func (self *Set) ID() int           { return self.id }
+func (self *VarDef) ID() int        { return self.id }
+func (self *IfExpr) ID() int        { return self.id }
+func (self *StrLiteral) ID() int    { return self.id }
+func (self *IntLiteral) ID() int    { return self.id }
+func (self *BoolLiteral) ID() int   { return self.id }
+func (self *SelfLiteral) ID() int   { return self.id }
+func (self *LetExpr) ID() int       { return self.id }
+func (self *TaggedExpr) ID() int    { return self.id }
+func (self *Fn) ID() int            { return self.Id }
+func (self *CaseExpr) ID() int      { return self.id }
+func (self *Record) ID() int        { return self.id }
+func (self *ArrayLiteral) ID() int  { return self.id }
+func (self *ObjectTypeDef) ID() int { return self.id }
+func (self *RecordAccess) ID() int  { return self.id }
+func (self *MethodAccess) ID() int  { return self.id }
+func (self *New) ID() int           { return self.id }
+func (self *UnionDef) ID() int      { return self.id }
+func (self *EnumDef) ID() int       { return self.id }
+func (self *EnumAccess) ID() int    { return self.id }
+func (self *TypeAlias) ID() int     { return self.id }
+func (self *ExternCall) ID() int    { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
@@ -302,11 +302,8 @@ func (self *Record) String() string {
 func (self *ArrayLiteral) String() string {
 	return fmt.Sprintf("#%d %+v", self.id, self.Elements)
 }
-func (self *ClassDef) String() string {
+func (self *ObjectTypeDef) String() string {
 	return fmt.Sprintf("#%d (class %s %v %v)", self.id, self.Name, self.Supers, self.Fields)
-}
-func (self *InterfaceDef) String() string {
-	return fmt.Sprintf("#%d (interface %s %v {%v})", self.id, self.Name, self.Supers, self.Fields)
 }
 func (self *RecordAccess) String() string {
 	return fmt.Sprintf("#%d %s.%s", self.id, self.Record.String(), self.Field)
@@ -474,33 +471,19 @@ func (self *ArrayLiteral) Pretty() string {
 	return fmt.Sprintf("%+s", el)
 }
 
-func (self *ClassDef) Pretty() string {
+func (self *ObjectTypeDef) Pretty() string {
 	if len(self.Fields) == 0 {
 		return "{}"
 	}
 
 	var b strings.Builder
-	b.WriteString("class ")
+	if self.Kind == Iface {
+		b.WriteString("class ")
+	} else {
+		b.WriteString("interface ")
+	}
 	b.WriteString(self.Name)
 	b.WriteString(" ")
-	b.WriteString("(")
-	b.WriteString(strings.Join(self.Supers, ","))
-	b.WriteString(") {")
-	b.WriteString(strings.Join(
-		fun.Map(self.Fields, func(m ClassMember) string { return m.String() }),
-		", "))
-	b.WriteString("}")
-	return b.String()
-}
-
-func (self *InterfaceDef) Pretty() string {
-	if len(self.Fields) == 0 {
-		return "{}"
-	}
-
-	var b strings.Builder
-	b.WriteString("interface ")
-	b.WriteString(self.Name)
 	b.WriteString("(")
 	b.WriteString(strings.Join(self.Supers, ","))
 	b.WriteString(") {")
@@ -582,16 +565,7 @@ func (self *Record) ChildNodes() []Expr {
 func (self *ArrayLiteral) ChildNodes() []Expr {
 	return self.Elements
 }
-func (self *ClassDef) ChildNodes() []Expr {
-	c := []Expr{}
-	for _, member := range self.Fields {
-		if meth, ok := member.(ClassMethod); ok {
-			c = append(c, meth.Func)
-		}
-	}
-	return c
-}
-func (self *InterfaceDef) ChildNodes() []Expr {
+func (self *ObjectTypeDef) ChildNodes() []Expr {
 	c := []Expr{}
 	for _, member := range self.Fields {
 		if meth, ok := member.(ClassMethod); ok {

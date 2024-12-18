@@ -115,12 +115,8 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 			self.vars.Insert(e.Name, types[i])
 			topLevels[e.Name] = e
 
-		case *parse.ClassDef:
+		case *parse.ObjectTypeDef:
 			// TODO: handle generics (parameterize class)
-			types[i] = PolymorphicType{Body: freshVar()}
-			self.vars.Insert(e.Name, types[i])
-
-		case *parse.InterfaceDef:
 			types[i] = PolymorphicType{Body: freshVar()}
 			self.vars.Insert(e.Name, types[i])
 
@@ -183,7 +179,7 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 				return nil, err
 			}
 
-		case *parse.ClassDef:
+		case *parse.ObjectTypeDef:
 			// TODO: idk if this is the best place to do this
 			self.types.Insert(e.Name, types[i])
 
@@ -305,9 +301,7 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 	case *parse.FuncDef:
 		return nil, fmt.Errorf("%w: %s", ErrDefMustBeTopLevel, expr.Name)
 
-	case *parse.ClassDef:
-		return nil, fmt.Errorf("%w: %s", ErrClassDefMustBeTopLevel, expr.Name)
-	case *parse.InterfaceDef:
+	case *parse.ObjectTypeDef:
 		return nil, fmt.Errorf("%w: %s", ErrClassDefMustBeTopLevel, expr.Name)
 
 	case *parse.Fn:
@@ -599,7 +593,7 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 	panic(fmt.Sprintf("unhandled: TypeTerm(%s)", term.Pretty()))
 }
 
-func (self *Typer) defClass(ctx *context, classDef *parse.ClassDef) (SimpleType, error) {
+func (self *Typer) defClass(ctx *context, classDef *parse.ObjectTypeDef) (SimpleType, error) {
 	self.classScope = classDef.Name
 	defer func() { self.classScope = "" }()
 	fields := []NamedMember{}

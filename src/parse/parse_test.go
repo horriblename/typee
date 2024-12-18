@@ -273,7 +273,7 @@ func TestParse(t *testing.T) {
 		{
 			desc:  "empty class def",
 			input: `(class Foo {})`,
-			output: []Expr{&ClassDef{
+			output: []Expr{&ObjectTypeDef{
 				id:     1,
 				Supers: []string{},
 				Name:   "Foo",
@@ -294,7 +294,7 @@ func TestParse(t *testing.T) {
 		{
 			desc:  "class def",
 			input: `(class Foo(Bar Baz) {pub foo Int,})`,
-			output: []Expr{&ClassDef{
+			output: []Expr{&ObjectTypeDef{
 				id:     1,
 				Name:   "Foo",
 				Supers: []string{"Bar", "Baz"},
@@ -310,8 +310,9 @@ func TestParse(t *testing.T) {
 		{
 			desc:  "interface def",
 			input: `(interface Foo {pub foo Int, protected (def foo [x] x)})`,
-			output: []Expr{&InterfaceDef{
+			output: []Expr{&ObjectTypeDef{
 				id:     3,
+				Kind:   Iface,
 				Name:   "Foo",
 				Supers: []string{},
 				Fields: []ClassMember{

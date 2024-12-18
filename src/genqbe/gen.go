@@ -84,7 +84,7 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 
 func genTopLevel(ctx *ctx, expr parse.Expr) {
 	switch e := expr.(type) {
-	case *parse.ClassDef:
+	case *parse.ObjectTypeDef:
 		genClassDef(ctx, e)
 
 	case *parse.UnionDef:
@@ -345,7 +345,7 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 	panic("unimpl: gen let")
 }
 
-func genClassDef(ctx *ctx, e *parse.ClassDef) {
+func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 
 	// TODO: support generics
 	ct := ctx.simplify(e.ID())
@@ -421,7 +421,7 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 }
 
 // like [ctx.toILType] but converts class type to a pointer instead of its full [qbeil.StructType]
-func (ctx *ctx) classDefIL(t *types.Class, e *parse.ClassDef) qbeil.AggregateType {
+func (ctx *ctx) classDefIL(t *types.Class, e *parse.ObjectTypeDef) qbeil.AggregateType {
 	if t.Name == "" {
 		// FIXME: generic support
 		panic("unnamed classes should be illegal at codegen")
