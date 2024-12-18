@@ -720,8 +720,8 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 		return true
 	} else if _, _, ok := matchPair[Bot, Bot](lhs, rhs); ok {
 		return true
-	} else if lhs, rhs, ok := matchPair[Primitive, Primitive](lhs, rhs); ok {
-		return lhs.Kind == rhs.Kind
+	} else if left, right, ok := matchPair[Primitive, Primitive](lhs, rhs); ok {
+		return left.Kind == right.Kind
 	} else if _, _, ok := matchPair[Int, Int](lhs, rhs); ok {
 		return true
 	} else if _, _, ok := matchPair[Str, Str](lhs, rhs); ok {
