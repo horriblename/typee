@@ -43,6 +43,13 @@ func (self *Generator) Gen(lib string, version string) error {
 }
 
 func (self *Generator) process_base_info(bi *gi.BaseInfo) {
+	p := printerTo(&self.goBindings)
+
+	if self.config.is_object_blacklisted(bi) {
+		p(";; blacklisted: %s (%s) \n", bi.Name(), bi.Type())
+		return
+	}
+
 	switch bi.Type() {
 	case gi.INFO_TYPE_UNION:
 		self.processUnionInfo(gi.ToUnionInfo(bi))
@@ -74,6 +81,9 @@ func (self *Generator) processUnionInfo(ui *gi.UnionInfo) {
 
 	for i, n := 0, ui.NumMethod(); i < n; i++ {
 		meth := ui.Method(i)
+		if self.config.is_method_blacklisted(name, meth.Name()) {
+			continue
+		}
 		self.processFunctionInfo(meth)
 	}
 
@@ -85,6 +95,12 @@ func (self *Generator) processStructInfo(si *gi.StructInfo) {
 
 	name := si.Name()
 	size := si.Size()
+
+	if self.config.is_blacklisted("structdefs", name) {
+		// FIXME: go-gir processes methods even if struct is blacklisted
+		p(";; blacklisted: %s (struct)", name)
+		return
+	}
 
 	self.inStruct = true
 	self.methodOwner = append(self.methodOwner, name)
@@ -143,9 +159,9 @@ func (self *Generator) processStructInfo(si *gi.StructInfo) {
 
 	for i, n := 0, si.NumMethod(); i < n; i++ {
 		meth := si.Method(i)
-		// if config.is_method_blacklisted(name, meth.Name()) {
-		// 	continue
-		// }
+		if self.config.is_method_blacklisted(name, meth.Name()) {
+			continue
+		}
 
 		self.processFunctionInfo(meth)
 	}
@@ -339,10 +355,14 @@ func (self *Generator) processInterfaceInfo(ii *gi.InterfaceInfo) {
 	p("(interface %s {\n", name)
 
 	for i, n := 0, ii.NumMethod(); i < n; i++ {
+		meth := ii.Method(i)
+		if self.config.is_method_blacklisted(name, meth.Name()) {
+			p(";; blacklisted: %s.%s (method)\n", name, meth.Name())
+			continue
+		}
 		if i != 0 {
 			p(", ")
 		}
-		meth := ii.Method(i)
 		self.processFunctionInfo(meth)
 	}
 
@@ -355,9 +375,10 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 	self.methodOwner = append(self.methodOwner, oi.Name())
 	defer func() { popDelete(&self.methodOwner) }()
 
+	name := oi.Name()
 	p := printerTo(&self.goBindings)
 
-	p("(class %s (", snake_case_to_PascalCase(oi.Name()))
+	p("(class %s (", snake_case_to_PascalCase(name))
 
 	for i, n := 0, oi.NumInterface(); i < n; i++ {
 		ii := oi.Interface(i)
@@ -375,10 +396,14 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 	p(") {\n")
 
 	for i, n := 0, oi.NumMethod(); i < n; i++ {
+		meth := oi.Method(i)
+		if self.config.is_method_blacklisted(name, meth.Name()) {
+			p(";; blacklisted: %s.%s (method\n)", name, meth.Name())
+			continue
+		}
 		if i != 0 {
 			p(", ")
 		}
-		meth := oi.Method(i)
 		self.processFunctionInfo(meth)
 	}
 	p("})\n")
