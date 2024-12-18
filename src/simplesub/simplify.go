@@ -52,7 +52,7 @@ func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[*Variable]
 			neg.Insert(ty)
 			analyze(ty.UpperBound(), pol, pos, neg)
 		}
-	case Bool, Int, Str, Top, Bot, Enum, Union: // Union bans generics
+	case Primitive, Int, Str, Top, Bot, Enum, Union: // Union bans generics
 	}
 }
 
@@ -87,7 +87,7 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleTy
 		return ArrayType{transform(ty.ElType, pol, mapping, pos, neg), ty.Size}
 	case SliceType:
 		return SliceType{transform(ty.ElType, pol, mapping, pos, neg)}
-	case Bool, Int, Str, Top, Bot, Union, Enum: // Union bans generics
+	case Primitive, Int, Str, Top, Bot, Union, Enum: // Union bans generics
 		return st
 	}
 	panic("unreachable")
@@ -148,8 +148,15 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 				return &types.Inter{Lhs: ty.asTypeVar(), Rhs: boundTy}
 			}
 		}
-	case Bool:
-		return &types.Bool{}
+	case Primitive:
+		switch ty.Kind {
+		case PrimitiveBool:
+			return &types.Bool{}
+		case PrimitiveOpaque:
+			return &types.Ptr{}
+		default:
+			panic(fmt.Sprintf("unexpected simplesub.PrimitiveKind: %#v", ty.Kind))
+		}
 	case Int:
 		return &types.Int{}
 	case Str:

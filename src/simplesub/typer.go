@@ -386,7 +386,7 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 		return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, expr.Class)
 
 	case *parse.BoolLiteral:
-		return Bool{}, nil
+		return Primitive{PrimitiveBool}, nil
 	case *parse.IntLiteral:
 		return Int{}, nil
 	case *parse.StrLiteral:
@@ -498,7 +498,7 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 			return nil, err
 		}
 
-		if err := constrain(condTy, Bool{}); err != nil {
+		if err := constrain(condTy, Primitive{PrimitiveBool}); err != nil {
 			return nil, err
 		}
 
@@ -816,8 +816,10 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 	indentLvl++
 	defer func() { indentLvl-- }()
 	// TODO: simpler-sub used type equality I think?
-	if _, _, ok := matchPair[Bool, Bool](ty0, bound0); ok {
-		return nil
+	if lhs, rhs, ok := matchPair[Primitive, Primitive](ty0, bound0); ok {
+		if lhs.Kind == rhs.Kind {
+			return nil
+		}
 	} else if _, _, ok := matchPair[Int, Int](ty0, bound0); ok {
 		return nil
 	} else if _, _, ok := matchPair[Str, Str](ty0, bound0); ok {
@@ -1049,7 +1051,7 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 			Fields:  fields,
 			Methods: methods,
 		}
-	case Bool, Bot, Str, Top, Union, Enum: // terminals and Union, because generics are banned in Union
+	case Primitive, Bot, Str, Top, Union, Enum: // terminals and Union, because generics are banned in Union
 	default:
 		panic(fmt.Sprintf("unexpected simplesub.ConcreteType: %#v", t))
 	}

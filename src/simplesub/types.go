@@ -18,6 +18,13 @@ import (
 
 //go-sumtype:decl TypeScheme SimpleType ConcreteType
 
+type PrimitiveKind string
+
+const (
+	PrimitiveBool   PrimitiveKind = "Bool"
+	PrimitiveOpaque PrimitiveKind = "Opaque"
+)
+
 var ErrInvalidCyclicConstraint = errors.New("invalid cyclic constraint")
 var ErrIncompatibleTypes = errors.New("incompatible types")
 var ErrWrongTypeParamCount = errors.New("wrong type parameter count")
@@ -243,8 +250,12 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		}
 
 		return Union{"", setToSlice(intersection)}, nil
-	} else if _, _, ok := matchPair[Bool, Bool](lhs0, rhs0); ok {
-		return Bool{}, nil
+	} else if lhs, rhs, ok := matchPair[Primitive, Primitive](lhs0, rhs0); ok {
+		if lhs.Kind == rhs.Kind {
+			return Primitive{lhs.Kind}, nil
+		}
+
+		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs, rhs)
 	} else if _, _, ok := matchPair[Int, Int](lhs0, rhs0); ok {
 		return Int{}, nil
 	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
@@ -392,8 +403,11 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 			Fields:  []NamedMember{}, // TODO
 			Methods: merged,
 		}, nil
-	} else if _, _, ok := matchPair[Bool, Bool](lhs0, rhs0); ok {
-		return Bool{}, nil
+	} else if lhs, rhs, ok := matchPair[Primitive, Primitive](lhs0, rhs0); ok {
+		if lhs.Kind == rhs.Kind {
+			return Primitive{lhs.Kind}, nil
+		}
+		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs, rhs)
 	} else if _, _, ok := matchPair[Int, Int](lhs0, rhs0); ok {
 		return Int{}, nil
 	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
@@ -495,7 +509,7 @@ type Func struct {
 	Ret  SimpleType
 }
 type Record struct{ Fields []NamedType }
-type Bool struct{}
+type Primitive struct{ Kind PrimitiveKind }
 type Int struct{}
 type Str struct{}
 type Union struct {
@@ -527,7 +541,7 @@ func (self Record) instantiate() SimpleType     { return self }
 func (self ObjectType) instantiate() SimpleType { return self }
 func (self ArrayType) instantiate() SimpleType  { return self }
 func (self SliceType) instantiate() SimpleType  { return self }
-func (self Bool) instantiate() SimpleType       { return self }
+func (self Primitive) instantiate() SimpleType  { return self }
 func (self Int) instantiate() SimpleType        { return self }
 func (self Str) instantiate() SimpleType        { return self }
 func (self Union) instantiate() SimpleType      { return self }
@@ -553,7 +567,7 @@ func (self ObjectType) children() []SimpleType {
 }
 func (self ArrayType) children() []SimpleType { return []SimpleType{self.ElType} }
 func (self SliceType) children() []SimpleType { return []SimpleType{self.ElType} }
-func (self Bool) children() []SimpleType      { return []SimpleType{} }
+func (self Primitive) children() []SimpleType { return []SimpleType{} }
 func (self Int) children() []SimpleType       { return []SimpleType{} }
 func (self Str) children() []SimpleType       { return []SimpleType{} }
 func (self Union) children() []SimpleType {
@@ -568,7 +582,7 @@ func (self Record) concrete()     {}
 func (self ObjectType) concrete() {}
 func (self ArrayType) concrete()  {}
 func (self SliceType) concrete()  {}
-func (self Bool) concrete()       {}
+func (self Primitive) concrete()  {}
 func (self Int) concrete()        {}
 func (self Str) concrete()        {}
 func (self Union) concrete()      {}
@@ -604,7 +618,7 @@ func (self ObjectType) String() string {
 }
 func (self ArrayType) String() string { return fmt.Sprintf("[%s %d]", self.ElType, self.Size) }
 func (self SliceType) String() string { return fmt.Sprintf("[%s]", self.ElType) }
-func (self Bool) String() string      { return "Bool" }
+func (self Primitive) String() string { return string(self.Kind) }
 func (self Int) String() string       { return "Int" }
 func (self Str) String() string       { return "Str" }
 func (self Union) String() string {
@@ -706,8 +720,8 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 		return true
 	} else if _, _, ok := matchPair[Bot, Bot](lhs, rhs); ok {
 		return true
-	} else if _, _, ok := matchPair[Bool, Bool](lhs, rhs); ok {
-		return true
+	} else if lhs, rhs, ok := matchPair[Primitive, Primitive](lhs, rhs); ok {
+		return lhs.Kind == rhs.Kind
 	} else if _, _, ok := matchPair[Int, Int](lhs, rhs); ok {
 		return true
 	} else if _, _, ok := matchPair[Str, Str](lhs, rhs); ok {

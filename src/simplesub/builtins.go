@@ -9,7 +9,7 @@ var intBinaryOptType = Func{
 
 var intComparatorType = Func{
 	Args: []SimpleType{Int{}, Int{}},
-	Ret:  Bool{},
+	Ret:  Primitive{PrimitiveBool},
 }
 
 func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
@@ -32,6 +32,8 @@ func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 
 func addBuiltinTypes(types *scope.ScopedMap[TypeScheme]) {
 	types.Insert("Int", Int{})
+	types.Insert("U32", Int{})
 	types.Insert("Str", Str{})
-	types.Insert("Bool", Bool{})
+	types.Insert("Bool", Primitive{PrimitiveBool})
+	types.Insert("Opaque", Primitive{PrimitiveOpaque})
 }
