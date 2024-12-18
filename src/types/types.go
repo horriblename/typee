@@ -50,6 +50,7 @@ type TypeID int
 
 type String struct{}
 type Int struct{}
+type Float struct{}
 type Bool struct{}
 type Ptr struct{}
 type Record struct {
@@ -102,6 +103,7 @@ type Inter struct {
 
 func (*String) type_()     {}
 func (*Int) type_()        {}
+func (*Float) type_()      {}
 func (*Bool) type_()       {}
 func (*Ptr) type_()        {}
 func (*Record) type_()     {}
@@ -119,6 +121,7 @@ func (*Inter) type_()      {}
 
 func (*String) Simple() bool     { return true }
 func (*Int) Simple() bool        { return true }
+func (*Float) Simple() bool      { return true }
 func (*Bool) Simple() bool       { return true }
 func (*Ptr) Simple() bool        { return true }
 func (*Record) Simple() bool     { return false }
@@ -140,6 +143,10 @@ func (*String) Eq(other Type) bool {
 }
 func (*Int) Eq(other Type) bool {
 	_, ok := other.(*Int)
+	return ok
+}
+func (*Float) Eq(other Type) bool {
+	_, ok := other.(*Float)
 	return ok
 }
 func (*Bool) Eq(other Type) bool {
@@ -290,6 +297,7 @@ func (self *Inter) Eq(other Type) bool {
 
 func (*String) String() string { return "String" }
 func (*Int) String() string    { return "Int" }
+func (*Float) String() string  { return "Float" }
 func (*Bool) String() string   { return "Bool" }
 func (*Ptr) String() string    { return "Ptr" }
 func (r *Record) String() string {
@@ -462,7 +470,7 @@ type structuralEqCtx struct {
 
 func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 	switch a := a.(type) {
-	case *Int, *String, *Bool, *Ptr, *Top:
+	case *Int, *Float, *String, *Bool, *Ptr, *Top:
 		return a.Eq(b)
 	case *Inter:
 		b, ok := b.(*Inter)
@@ -621,6 +629,9 @@ func Clone(typ Type) Type {
 	case *Int:
 		t2 := *t
 		return &t2
+	case *Float:
+		t2 := *t
+		return &t2
 	case *Bool:
 		t2 := *t
 		return &t2
@@ -676,7 +687,7 @@ func (ctx *PrettyCtx) String(typ Type) string {
 		ctx.mapping = map[TypeID]string{}
 	}
 	switch t := typ.(type) {
-	case *String, *Int, *Bool, *Ptr:
+	case *String, *Int, *Float, *Bool, *Ptr:
 		return t.String()
 	case *Func:
 		args := fun.Map(t.Args, ctx.String)
