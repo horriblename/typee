@@ -22,6 +22,7 @@ type PrimitiveKind string
 
 const (
 	PrimitiveBool   PrimitiveKind = "Bool"
+	PrimitiveFloat  PrimitiveKind = "Float"
 	PrimitiveOpaque PrimitiveKind = "Opaque"
 )
 

@@ -30,6 +30,11 @@ func TestTypeExpr(t *testing.T) {
 			typ:   &types.Int{},
 		},
 		{
+			desc:  "float literal",
+			input: "34.34",
+			typ:   &types.Float{},
+		},
+		{
 			desc:  "str literal",
 			input: `"hi"`,
 			typ:   &types.String{},

@@ -389,6 +389,8 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 		return Primitive{PrimitiveBool}, nil
 	case *parse.IntLiteral:
 		return Int{}, nil
+	case *parse.FloatLiteral:
+		return Primitive{PrimitiveFloat}, nil
 	case *parse.StrLiteral:
 		return Str{}, nil
 	case *parse.ArrayLiteral:

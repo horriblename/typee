@@ -41,6 +41,9 @@ func addBuiltinTypes(types *scope.ScopedMap[TypeScheme]) {
 	types.Insert("I32", Int{})
 	types.Insert("I64", Int{})
 	types.Insert("Str", Str{})
+	types.Insert("Float", Primitive{PrimitiveFloat})
+	types.Insert("F64", Primitive{PrimitiveFloat})
+	types.Insert("F32", Primitive{PrimitiveFloat})
 	types.Insert("Bool", Primitive{PrimitiveBool})
 	types.Insert("Opaque", Primitive{PrimitiveOpaque})
 }

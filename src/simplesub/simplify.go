@@ -152,6 +152,8 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 		switch ty.Kind {
 		case PrimitiveBool:
 			return &types.Bool{}
+		case PrimitiveFloat:
+			return &types.Float{}
 		case PrimitiveOpaque:
 			return &types.Ptr{}
 		default:
