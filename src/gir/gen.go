@@ -307,6 +307,15 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	default:
 		p("{")
 		for i, ret := range fb.rets {
+			if ret.index == -1 {
+				continue
+			}
+
+			if ret.index == -2 {
+				p("err: Error,")
+				continue
+			}
+
 			p("_%d: %s,", i, horType(ret.typeInfo, typeConfig{typeNone, self.namespace}))
 		}
 		p("}")
