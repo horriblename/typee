@@ -67,6 +67,10 @@ type IntLiteral struct {
 	Number int64
 	id     int
 }
+type FloatLiteral struct {
+	Number float64
+	id     int
+}
 
 type BoolLiteral struct {
 	id    int
@@ -201,6 +205,7 @@ func (*VarDef) ast()        {}
 func (*IfExpr) ast()        {}
 func (*StrLiteral) ast()    {}
 func (*IntLiteral) ast()    {}
+func (*FloatLiteral) ast()  {}
 func (*BoolLiteral) ast()   {}
 func (*SelfLiteral) ast()   {}
 func (*LetExpr) ast()       {}
@@ -227,6 +232,7 @@ func (self *VarDef) ID() int        { return self.id }
 func (self *IfExpr) ID() int        { return self.id }
 func (self *StrLiteral) ID() int    { return self.id }
 func (self *IntLiteral) ID() int    { return self.id }
+func (self *FloatLiteral) ID() int  { return self.id }
 func (self *BoolLiteral) ID() int   { return self.id }
 func (self *SelfLiteral) ID() int   { return self.id }
 func (self *LetExpr) ID() int       { return self.id }
@@ -268,6 +274,9 @@ func (self *StrLiteral) String() string {
 }
 func (self *IntLiteral) String() string {
 	return fmt.Sprintf("#%d IntLiteral %d", self.id, self.Number)
+}
+func (self *FloatLiteral) String() string {
+	return fmt.Sprintf("#%d FloatLiteral %f", self.id, self.Number)
 }
 func (self *BoolLiteral) String() string {
 	return fmt.Sprintf("#%d BoolLiteral %t", self.id, self.Value)
@@ -374,6 +383,9 @@ func (self *StrLiteral) Pretty() string {
 }
 func (self *IntLiteral) Pretty() string {
 	return fmt.Sprintf("%d", self.Number)
+}
+func (self *FloatLiteral) Pretty() string {
+	return fmt.Sprintf("%f", self.Number)
 }
 func (self *BoolLiteral) Pretty() string {
 	return fmt.Sprintf("%t", self.Value)
@@ -537,10 +549,11 @@ func (self *VarDef) ChildNodes() []Expr  { return []Expr{self.Value} }
 func (self *IfExpr) ChildNodes() []Expr {
 	return []Expr{self.Condition, self.Consequence, self.Alternative}
 }
-func (self *StrLiteral) ChildNodes() []Expr  { return []Expr{} }
-func (self *IntLiteral) ChildNodes() []Expr  { return []Expr{} }
-func (self *BoolLiteral) ChildNodes() []Expr { return []Expr{} }
-func (self *SelfLiteral) ChildNodes() []Expr { return []Expr{} }
+func (self *StrLiteral) ChildNodes() []Expr   { return []Expr{} }
+func (self *IntLiteral) ChildNodes() []Expr   { return []Expr{} }
+func (self *FloatLiteral) ChildNodes() []Expr { return []Expr{} }
+func (self *BoolLiteral) ChildNodes() []Expr  { return []Expr{} }
+func (self *SelfLiteral) ChildNodes() []Expr  { return []Expr{} }
 func (self *LetExpr) ChildNodes() []Expr {
 	ass := fun.Map(self.Assignments, func(ass Assignment) Expr {
 		return ass.Value

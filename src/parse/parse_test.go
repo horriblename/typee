@@ -123,6 +123,11 @@ func TestParse(t *testing.T) {
 			output: []Expr{&IntLiteral{id: 1, Number: 123}},
 		},
 		{
+			desc:   "float literal",
+			input:  "123.345",
+			output: []Expr{&FloatLiteral{id: 1, Number: 123.345}},
+		},
+		{
 			desc:  "if expr",
 			input: "(if [true] (foo 1) 2)",
 			output: []Expr{&IfExpr{

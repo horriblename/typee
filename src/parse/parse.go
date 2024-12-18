@@ -52,6 +52,7 @@ func expr(in []lex.Token) ([]lex.Token, Expr, error) {
 		selfExpr,
 		strLiteral,
 		intLiteral,
+		floatLiteral,
 		kwTrue,
 		kwFalse,
 	)(in)
@@ -76,6 +77,18 @@ func intLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
 
 	if lit, ok := in[0].(*lex.IntLiteral); ok {
 		return in[1:], &IntLiteral{id: newId(), Number: lit.Number}, nil
+	}
+
+	return nil, nil, errAt(in)
+}
+
+func floatLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
+	if len(in) == 0 {
+		return nil, nil, errAt(in)
+	}
+
+	if lit, ok := in[0].(*lex.FloatLiteral); ok {
+		return in[1:], &FloatLiteral{id: newId(), Number: lit.Number}, nil
 	}
 
 	return nil, nil, errAt(in)
