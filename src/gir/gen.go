@@ -11,13 +11,14 @@ import (
 )
 
 type Generator struct {
-	namespace    string
-	classInScope []string
-	goBindings   bytes.Buffer
+	namespace   string
+	inStruct    bool
+	methodOwner []string
+	goBindings  bytes.Buffer
 }
 
 func Gen(lib string, version string) ([]byte, error) {
-	g := Generator{lib, []string{}, bytes.Buffer{}}
+	g := Generator{lib, false, []string{}, bytes.Buffer{}}
 	err := g.Gen(lib, version)
 	if err != nil {
 		return nil, err
@@ -67,8 +68,8 @@ func (self *Generator) processUnionInfo(ui *gi.UnionInfo) {
 	name := ui.Name()
 	p("(union %s {\n", name)
 	p("  [U8 %d]\n", ui.Size())
-	self.classInScope = append(self.classInScope, name)
-	defer func() { popDelete(&self.classInScope) }()
+	self.methodOwner = append(self.methodOwner, name)
+	defer func() { popDelete(&self.methodOwner) }()
 
 	for i, n := 0, ui.NumMethod(); i < n; i++ {
 		meth := ui.Method(i)
@@ -84,8 +85,10 @@ func (self *Generator) processStructInfo(si *gi.StructInfo) {
 	name := si.Name()
 	size := si.Size()
 
-	self.classInScope = append(self.classInScope, name)
-	defer popDelete(&self.classInScope)
+	self.inStruct = true
+	self.methodOwner = append(self.methodOwner, name)
+	defer popDelete(&self.methodOwner)
+	defer func() { self.inStruct = false }()
 
 	if si.IsGTypeStruct() {
 		return
@@ -228,16 +231,21 @@ func (self *Generator) processCallbackInfo(ci *gi.CallableInfo) {
 func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	p := printerTo(&self.goBindings)
 
-	// var fullName string
+	var fullName string
 	flags := fi.Flags()
 	name := fi.Name()
 
-	if (flags&gi.FUNCTION_IS_METHOD != 0) && len(self.classInScope) == 0 {
+	if (flags&gi.FUNCTION_IS_METHOD != 0) && len(self.methodOwner) == 0 {
 		panic(fmt.Sprintf("tried processing a method %s but no current class", name))
 	}
 	container := fi.Container()
-	isValidMethod := flags&gi.FUNCTION_IS_METHOD != 0 && len(self.classInScope) != 0
+	isValidMethod := flags&gi.FUNCTION_IS_METHOD != 0 && len(self.methodOwner) != 0
 	fb := newFunctionBuilder(fi)
+
+	if self.inStruct {
+		owner := self.methodOwner[len(self.methodOwner)-1]
+		fullName = strings.ToLower(owner[:1]) + owner[1:] + "_"
+	}
 
 	p("(def ")
 
@@ -245,14 +253,18 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	case flags&gi.FUNCTION_IS_CONSTRUCTOR != 0:
 		name = "init"
 	case isValidMethod:
-		name = sanitize(snake_case_to_camelCase(name))
+		name = snake_case_to_camelCase(name)
 	default:
-		name = sanitize(snake_case_to_camelCase(name))
+		name = snake_case_to_camelCase(name)
 	}
-	// fullName += name
-	p("%s (", name)
+	fullName += name
+	p("%s (", fullName)
 	if isValidMethod {
-		p("Self")
+		if self.inStruct {
+			p(self.methodOwner[len(self.methodOwner)-1])
+		} else {
+			p("Self")
+		}
 	}
 	for i, arg := range fb.args {
 		if i != 0 || isValidMethod {
@@ -285,7 +297,11 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	p(") [")
 	if isValidMethod {
-		p("self")
+		if self.inStruct {
+			p("self_")
+		} else {
+			p("self")
+		}
 	}
 	for i, arg := range fb.args {
 		if i != 0 || isValidMethod {
@@ -298,7 +314,11 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	// callExtern body
 
 	if isValidMethod {
-		p(" self")
+		if self.inStruct {
+			p("self_")
+		} else {
+			p(" self")
+		}
 	}
 	for _, arg := range fb.args {
 		p(" %s", sanitize(snake_case_to_camelCase(arg.argInfo.Name())))
@@ -311,8 +331,9 @@ func (self *Generator) processInterfaceInfo(ii *gi.InterfaceInfo) {
 	p := printerTo(&self.goBindings)
 
 	name := ii.Name()
-	self.classInScope = append(self.classInScope, name)
-	defer func() { popDelete(&self.classInScope) }()
+	self.inStruct = false
+	self.methodOwner = append(self.methodOwner, name)
+	defer func() { popDelete(&self.methodOwner) }()
 
 	p("(interface %s {\n", name)
 
@@ -329,8 +350,9 @@ func (self *Generator) processInterfaceInfo(ii *gi.InterfaceInfo) {
 
 func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 	// TODO: are there nested class?
-	self.classInScope = append(self.classInScope, oi.Name())
-	defer func() { popDelete(&self.classInScope) }()
+	self.inStruct = false
+	self.methodOwner = append(self.methodOwner, oi.Name())
+	defer func() { popDelete(&self.methodOwner) }()
 
 	p := printerTo(&self.goBindings)
 
