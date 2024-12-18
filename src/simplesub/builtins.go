@@ -32,7 +32,14 @@ func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 
 func addBuiltinTypes(types *scope.ScopedMap[TypeScheme]) {
 	types.Insert("Int", Int{})
+	types.Insert("U8", Int{})
+	types.Insert("U16", Int{})
 	types.Insert("U32", Int{})
+	types.Insert("U64", Int{})
+	types.Insert("I8", Int{})
+	types.Insert("I16", Int{})
+	types.Insert("I32", Int{})
+	types.Insert("I64", Int{})
 	types.Insert("Str", Str{})
 	types.Insert("Bool", Primitive{PrimitiveBool})
 	types.Insert("Opaque", Primitive{PrimitiveOpaque})
