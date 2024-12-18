@@ -51,6 +51,7 @@ type TypeID int
 type String struct{}
 type Int struct{}
 type Bool struct{}
+type Ptr struct{}
 type Record struct {
 	Fields map[string]Type
 }
@@ -102,6 +103,7 @@ type Inter struct {
 func (*String) type_()     {}
 func (*Int) type_()        {}
 func (*Bool) type_()       {}
+func (*Ptr) type_()        {}
 func (*Record) type_()     {}
 func (*Union) type_()      {}
 func (*Enum) type_()       {}
@@ -118,6 +120,7 @@ func (*Inter) type_()      {}
 func (*String) Simple() bool     { return true }
 func (*Int) Simple() bool        { return true }
 func (*Bool) Simple() bool       { return true }
+func (*Ptr) Simple() bool        { return true }
 func (*Record) Simple() bool     { return false }
 func (*Union) Simple() bool      { return false }
 func (*Enum) Simple() bool       { return false }
@@ -141,6 +144,10 @@ func (*Int) Eq(other Type) bool {
 }
 func (*Bool) Eq(other Type) bool {
 	_, ok := other.(*Bool)
+	return ok
+}
+func (*Ptr) Eq(other Type) bool {
+	_, ok := other.(*Ptr)
 	return ok
 }
 func (f *Record) Eq(other Type) bool {
@@ -284,6 +291,7 @@ func (self *Inter) Eq(other Type) bool {
 func (*String) String() string { return "String" }
 func (*Int) String() string    { return "Int" }
 func (*Bool) String() string   { return "Bool" }
+func (*Ptr) String() string    { return "Ptr" }
 func (r *Record) String() string {
 	if len(r.Fields) == 0 {
 		return "{}"
@@ -454,7 +462,7 @@ type structuralEqCtx struct {
 
 func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 	switch a := a.(type) {
-	case *Int, *String, *Bool, *Top:
+	case *Int, *String, *Bool, *Ptr, *Top:
 		return a.Eq(b)
 	case *Inter:
 		b, ok := b.(*Inter)
@@ -616,6 +624,9 @@ func Clone(typ Type) Type {
 	case *Bool:
 		t2 := *t
 		return &t2
+	case *Ptr:
+		t2 := *t
+		return &t2
 	case *Func:
 		args := fun.Map(t.Args, Clone)
 		ret := Clone(t.Ret)
@@ -665,7 +676,7 @@ func (ctx *PrettyCtx) String(typ Type) string {
 		ctx.mapping = map[TypeID]string{}
 	}
 	switch t := typ.(type) {
-	case *String, *Int, *Bool:
+	case *String, *Int, *Bool, *Ptr:
 		return t.String()
 	case *Func:
 		args := fun.Map(t.Args, ctx.String)
