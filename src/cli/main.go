@@ -109,7 +109,7 @@ func cmdBuild() error {
 	outPathLong := flag.String(flagOutLong, defaultOut, helpOut)
 	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
 	printTypeTable := flag.Bool(flagPrintTypeTable, false, "Print a table of expr ID to type.")
-	printAst := flag.Bool(flagPrintAst, true, "Print the parse ast")
+	printAst := flag.Bool(flagPrintAst, false, "Print the parse ast")
 	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
 
 	if *outPathLong != defaultOut {
