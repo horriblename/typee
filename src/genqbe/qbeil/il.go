@@ -119,6 +119,53 @@ func (b *Builder) Arithmetic(target string, ret Type, op string, args ...Value) 
 	b.indented([]byte(fmt.Sprintf("%s %s %s %s\n", target, retStr, op, argStr)))
 }
 
+type DataDef struct {
+	Linkage Linkage
+	VarName string
+	Align   int // 0 for auto
+}
+
+// global data definition of an int variable
+func (b *Builder) IntData(def DataDef, typ BaseType, val int64) Var {
+	b.dataPrelude(def)
+
+	b.Buf.WriteString("{")
+	b.Buf.WriteString(typ.IL())
+	b.Buf.WriteString(" ")
+	b.Buf.WriteString(strconv.FormatInt(val, 10))
+	b.Buf.WriteString("}\n")
+
+	return Var{Global: true, Name: def.VarName}
+}
+
+func (b *Builder) StrData(def DataDef, val string) Var {
+	b.dataPrelude(def)
+
+	b.Buf.WriteString("{")
+	b.Buf.WriteString(Byte.IL())
+	b.Buf.WriteString(" ")
+	b.Buf.WriteString(strconv.Quote(val))
+	b.Buf.WriteString("}\n")
+
+	return Var{Global: true, Name: def.VarName}
+}
+
+func (b *Builder) dataPrelude(def DataDef) {
+	linkage := def.Linkage.String()
+	if linkage != "" {
+		linkage += " "
+	}
+
+	b.Buf.WriteString(linkage)
+	b.Buf.WriteString("data $")
+	b.Buf.WriteString(def.VarName)
+	b.Buf.WriteString(" = ")
+	if def.Align != 0 {
+		b.Buf.WriteString(" align ")
+		b.Buf.WriteString(strconv.Itoa(def.Align))
+	}
+}
+
 func (b *Builder) Command(op string, args ...Value) {
 	argStrs := fun.Map(args, func(arg Value) string { return arg.IL() })
 	argStr := strings.Join(argStrs, ", ")
