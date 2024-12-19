@@ -47,13 +47,18 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 		map[qbeil.Var]string{},
 		globals(ast),
 		map[string]qbeil.AggregateType{},
+		0,
+		map[types.Type]qbeil.AggregateType{},
 	}
 
 	ctx.declareType("Str", qbeil.StructType{
 		Align:   0,
 		Name:    "Str",
 		Layouts: map[string]qbeil.FieldLayout{},
-		Fields:  []qbeil.Type{ctx.ptrType, ctx.ptrType},
+		Fields: []qbeil.RepeatType{
+			qbeil.SingleType(ctx.ptrType),
+			qbeil.SingleType(ctx.ptrType),
+		},
 	})
 
 	// struct GObject {
@@ -68,10 +73,10 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 	ctx.declareType("GObject", qbeil.StructType{
 		Name:    "GObject",
 		Layouts: map[string]qbeil.FieldLayout{},
-		Fields: []qbeil.Type{
-			ctx.ptrType,
-			ctx.intType,
-			ctx.ptrType,
+		Fields: []qbeil.RepeatType{
+			qbeil.SingleType(ctx.ptrType),
+			qbeil.SingleType(ctx.intType),
+			qbeil.SingleType(ctx.ptrType),
 		},
 	})
 
@@ -455,9 +460,9 @@ func (ctx *ctx) classDefIL(t *types.Class, e *parse.ObjectTypeDef) qbeil.Aggrega
 	}
 
 	if len(t.Supers) == 0 {
-		fields := []qbeil.Type{
-			ctx.userTypes["GObject"], // parent
-			ctx.ptrType,              // private pointer
+		fields := []qbeil.RepeatType{
+			qbeil.SingleType(ctx.userTypes["GObject"]), // parent
+			qbeil.SingleType(ctx.ptrType),              // private pointer
 		}
 		bits, _ := ctx.sizeOf(ctx.userTypes["GObject"]) // TODO: align
 		pubOffset := bits / 8
@@ -467,7 +472,7 @@ func (ctx *ctx) classDefIL(t *types.Class, e *parse.ObjectTypeDef) qbeil.Aggrega
 			if field.Access == types.AccessPublic || field.Access == types.AccessProtected {
 				ilTy := ctx.toILType(field.Type)
 				bits, _ := ctx.sizeOf(ilTy) // TODO: align
-				fields = append(fields, ilTy)
+				fields = append(fields, qbeil.SingleType(ilTy))
 				layouts[name] = qbeil.FieldLayout{
 					Offset: pubOffset,
 					Type:   ilTy,

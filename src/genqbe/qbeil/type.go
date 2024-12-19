@@ -15,6 +15,13 @@ type Type interface {
 	IL() string
 }
 
+type RepeatType struct {
+	Type Type
+
+	// at least 1, 0 will be interpreted as 1
+	Count int
+}
+
 type AggregateType interface {
 	Type
 	Define() string
@@ -26,7 +33,7 @@ type StructType struct {
 	Align   int // 0 means default: maximum alignment of children
 	Name    string
 	Layouts map[string]FieldLayout
-	Fields  []Type
+	Fields  []RepeatType
 }
 type UnionType struct {
 	Name     string
@@ -105,8 +112,13 @@ func (t StructType) Define() string {
 	assert.Ok(err)
 
 	for _, typ := range t.Fields {
-		_, err = b.WriteString(typ.IL())
+		_, err = b.WriteString(typ.Type.IL())
 		assert.Ok(err)
+
+		if typ.Count > 1 {
+			b.WriteString(" ")
+			b.WriteString(strconv.Itoa(typ.Count))
+		}
 
 		_, err = b.WriteString(", ")
 		assert.Ok(err)
@@ -156,6 +168,10 @@ func (t UnionType) Define() string {
 	return b.String()
 }
 
+func SingleType(t Type) RepeatType {
+	return RepeatType{t, 1}
+}
+
 func NewUnionType(name string, align int, defaultAlign int, variants []Type) UnionType {
 	maxAlign := 0
 	maxBits := 0
@@ -199,7 +215,8 @@ func SizeOf(defaultAlign int, t Type) (bits int, align int) {
 		align := 0
 		for _, field := range t.Fields {
 			// TODO: actually handle align
-			fs, fa := SizeOf(defaultAlign, field)
+			fs, fa := SizeOf(defaultAlign, field.Type)
+			fs *= min(1, field.Count)
 			align = max(align, fa)
 			bits += fs
 		}
