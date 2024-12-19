@@ -21,6 +21,7 @@ type AggregateType interface {
 }
 
 type BaseType int
+type ExtType int
 type StructType struct {
 	Align   int // 0 means default: maximum alignment of children
 	Name    string
@@ -44,6 +45,9 @@ const (
 	Long                   // 64-bit int
 	Single                 // 32-bit float
 	Double                 // 64-bit float
+
+	Byte     ExtType = iota // 8-bit
+	HalfWord                // 16-bit
 )
 
 func (BaseType) typ()   {}
@@ -60,6 +64,16 @@ func (t BaseType) IL() string {
 		return "s"
 	case Double:
 		return "d"
+	}
+
+	panic("unreachable")
+}
+func (t ExtType) IL() string {
+	switch t {
+	case Byte:
+		return "b"
+	case HalfWord:
+		return "h"
 	}
 
 	panic("unreachable")
