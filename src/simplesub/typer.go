@@ -72,6 +72,10 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[int]Type
 }
 
 func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme, error) {
+	// top-level process
+	// 1. groupRecursives: walk the AST to mark (mutually-)recursive top-level functions.
+	// 2. iterate through top-level nodes generating fresh type vars for each top level item.
+	// 3. walk the AST, inferring types of all expressions
 	types := make([]TypeScheme, len(program))
 
 	topLevels := map[string]parse.Expr{}
@@ -94,6 +98,7 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 		}
 	}
 
+	// assign fresh type vars to each top level item
 	for i, expr := range program {
 		switch e := expr.(type) {
 		case *parse.FuncDef:
@@ -209,6 +214,10 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 				return nil, err
 			}
 
+			if err := constrain(st, t); err != nil {
+				return nil, err
+			}
+
 			ctx.inferred[e.ID()] = t
 
 		case *parse.EnumDef:
@@ -224,6 +233,10 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 				return nil, err
 			}
 
+			if err := constrain(st, t); err != nil {
+				return nil, err
+			}
+
 			// TODO: handle generics
 			ctx.inferred[e.ID()] = t
 
@@ -235,6 +248,9 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 			if err != nil {
 				return nil, err
 			}
+
+			// TODO: constraining twice is pretty expensive, can I add an "alias" function
+			// that skips checks and just sets lower and upper bound to target type?
 
 			// TODO: unbound type var is not possible in types, I can "concretize"
 			// the target by passing the required type var bindings instead of instantiate
