@@ -1053,6 +1053,10 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 			Fields:  fields,
 			Methods: methods,
 		}
+	case ArrayType:
+		return ArrayType{substitute(t.ElType), t.Size}
+	case SliceType:
+		return SliceType{substitute(t.ElType)}
 	case Primitive, Bot, Str, Top, Union, Enum: // terminals and Union, because generics are banned in Union
 	default:
 		panic(fmt.Sprintf("unexpected simplesub.ConcreteType: %#v", t))
