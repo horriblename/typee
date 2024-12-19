@@ -94,7 +94,7 @@ func genTopLevel(ctx *ctx, expr parse.Expr) {
 		genGlobalVar(ctx, e)
 	case *parse.FuncDef:
 		gen(ctx, expr)
-	case *parse.EnumDef:
+	case *parse.EnumDef, *parse.TypeAlias:
 
 	default:
 		panic(fmt.Sprintf("unexpected parse.Expr: %#v", e))
