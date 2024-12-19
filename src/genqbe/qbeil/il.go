@@ -126,13 +126,13 @@ type DataDef struct {
 }
 
 // global data definition of an int variable
-func (b *Builder) IntData(def DataDef, typ BaseType, val int64) Var {
+func (b *Builder) Data(def DataDef, typ Type, val Value) Var {
 	b.dataPrelude(def)
 
 	b.Buf.WriteString("{")
 	b.Buf.WriteString(typ.IL())
 	b.Buf.WriteString(" ")
-	b.Buf.WriteString(strconv.FormatInt(val, 10))
+	b.Buf.WriteString(val.IL())
 	b.Buf.WriteString("}\n")
 
 	return Var{Global: true, Name: def.VarName}
@@ -145,6 +145,7 @@ func (b *Builder) StrData(def DataDef, val string) Var {
 	b.Buf.WriteString(Byte.IL())
 	b.Buf.WriteString(" ")
 	b.Buf.WriteString(strconv.Quote(val))
+	b.Buf.WriteString(", b 0") // null terminate
 	b.Buf.WriteString("}\n")
 
 	return Var{Global: true, Name: def.VarName}
