@@ -91,7 +91,7 @@ func genTopLevel(ctx *ctx, expr parse.Expr) {
 		genUnionDef(ctx, e)
 
 	case *parse.Set:
-		gen(ctx, expr)
+		genGlobalVar(ctx, e)
 	case *parse.FuncDef:
 		gen(ctx, expr)
 	case *parse.EnumDef:
@@ -206,6 +206,26 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 	}
 
 	panic("unimpl gen " + expr.Pretty())
+}
+
+func genGlobalVar(ctx *ctx, expr *parse.Set) (val qbeil.Value) {
+	switch val := expr.Value.(type) {
+	case *parse.IntLiteral:
+		return ctx.il.IntData(qbeil.DataDef{
+			Linkage: qbeil.Linkage{},
+			VarName: expr.Name,
+			Align:   0,
+		}, ctx.intType, val.Number)
+
+	case *parse.StrLiteral:
+		return ctx.il.StrData(qbeil.DataDef{
+			Linkage: qbeil.Linkage{},
+			VarName: expr.Name,
+			Align:   0,
+		}, val.Content)
+	default:
+		panic(fmt.Sprintf("global variable of expression %s not supported", expr))
+	}
 }
 
 // class should be empty string for non-methods
