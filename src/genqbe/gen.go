@@ -415,6 +415,8 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	switch t := typ.(type) {
 	case *types.Int:
 		return ctx.intType
+	case *types.Float:
+		return qbeil.Double
 	case *types.Bool:
 		return ctx.intType
 	case *types.String:
