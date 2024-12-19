@@ -2,6 +2,8 @@ package qbeil
 
 import "fmt"
 
+//go-sumtype:decl Value
+
 type TypedValue struct {
 	Type  Type
 	Value Value
@@ -12,6 +14,7 @@ type Value interface {
 	IL() string
 }
 
+// global or local variable, $foo/%foo
 type Var struct {
 	Global bool
 	Name   string

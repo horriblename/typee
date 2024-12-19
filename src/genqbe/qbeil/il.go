@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/horriblename/typee/src/fun"
@@ -13,10 +14,16 @@ import (
 var indentSym = []byte{'\t'}
 
 type Builder struct {
-	Writer    bytes.Buffer
+	// where we write to most of the time
+	Buf bytes.Buffer
+
+	// not currently used. Allows user to add "prefix" code before writing
+	// our result IL from Buf
 	OutFile   io.Writer
 	indentLvl int
-	tempID    int
+
+	// ID generator
+	tempID int
 }
 
 type TypedVar struct {
@@ -33,12 +40,12 @@ func NewTypedVar(typ Type, name Var) TypedVar {
 }
 
 func (b *Builder) indented(l []byte) error {
-	_, err := b.Writer.Write(bytes.Repeat(indentSym, b.indentLvl))
+	_, err := b.Buf.Write(bytes.Repeat(indentSym, b.indentLvl))
 	if err != nil {
 		return err
 	}
 
-	_, err = b.Writer.Write(l)
+	_, err = b.Buf.Write(l)
 	if err != nil {
 		return err
 	}
@@ -63,25 +70,25 @@ func (b *Builder) Func(linkage Linkage, ret *Type, name string, args []TypedVar)
 	}
 
 	if len(args) > 0 {
-		_, err = b.Writer.Write([]byte(args[0].IL()))
+		_, err = b.Buf.Write([]byte(args[0].IL()))
 		if err != nil {
 			return err
 		}
 
 		for _, arg := range args[1:] {
-			_, err := b.Writer.Write([]byte(", "))
+			_, err := b.Buf.Write([]byte(", "))
 			if err != nil {
 				return err
 			}
 
-			_, err = b.Writer.Write([]byte(arg.IL()))
+			_, err = b.Buf.Write([]byte(arg.IL()))
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	b.Writer.Write([]byte(") {\n"))
+	b.Buf.Write([]byte(") {\n"))
 	b.Label("start")
 	b.indentLvl++
 

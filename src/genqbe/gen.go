@@ -388,7 +388,7 @@ func (ctx *ctx) finish() {
 	}
 
 	fmt.Fprint(ctx.il.OutFile, builtinsQbe)
-	io.Copy(ctx.il.OutFile, &ctx.il.Writer)
+	io.Copy(ctx.il.OutFile, &ctx.il.Buf)
 }
 
 func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
