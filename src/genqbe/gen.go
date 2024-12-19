@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
@@ -33,6 +34,9 @@ type ctx struct {
 	statics    map[qbeil.Var]string
 	globals    map[string]int
 	userTypes  map[string]qbeil.AggregateType
+
+	idGenerator          int64
+	generatedTranslation map[types.Type]qbeil.AggregateType
 }
 
 func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
@@ -442,6 +446,26 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	case *types.Enum:
 		return ctx.intType
 
+	case *types.Array:
+		if il, ok := ctx.generatedTranslation[t]; ok {
+			return il
+		}
+
+		elTy := ctx.toILType(t.Type)
+		name := ctx.newTempName(fmt.Sprintf("_array_%T", t.Type))
+		ilTyp := qbeil.StructType{
+			Align:   0,
+			Name:    name,
+			Layouts: map[string]qbeil.FieldLayout{},
+			Fields:  []qbeil.RepeatType{{Type: elTy, Count: int(t.Size)}},
+		}
+		ctx.declareType(name, ilTyp)
+		ctx.generatedTranslation[t] = ilTyp
+		return ilTyp
+
+	case *types.Slice:
+		// FIXME: should be a struct like this: {ptr: ptrType, size: int}
+		return ctx.ptrType
 	default:
 		panic("unimpl: conversion to QBE IL from type " + typ.String())
 	}
@@ -545,6 +569,14 @@ func (ctx *ctx) declareType(name string, t qbeil.AggregateType) {
 
 	_, err = ctx.typeDecl.Write([]byte{'\n'})
 	assert.Ok(err)
+}
+
+func (ctx *ctx) newTempName(name string) string {
+	if name == "" {
+		name = "_temp"
+	}
+	ctx.idGenerator++
+	return name + strconv.FormatInt(ctx.idGenerator, 10)
 }
 
 func (self *ctx) sizeOf(t qbeil.Type) (bits int, align int) {
