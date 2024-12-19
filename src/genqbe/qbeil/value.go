@@ -24,8 +24,11 @@ type IntLiteral struct {
 	Value int64
 }
 
-func (Var) val()        {}
-func (IntLiteral) val() {}
+type FloatLiteral struct{ Value float64 } // TODO: support f32
+
+func (Var) val()          {}
+func (IntLiteral) val()   {}
+func (FloatLiteral) val() {}
 
 func (v Var) IL() string {
 	if v.Global {
@@ -37,4 +40,7 @@ func (v Var) IL() string {
 
 func (i IntLiteral) IL() string {
 	return fmt.Sprintf("%d", i.Value)
+}
+func (i FloatLiteral) IL() string {
+	return fmt.Sprintf("d_%f", i.Value)
 }
