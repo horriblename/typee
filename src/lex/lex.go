@@ -216,6 +216,8 @@ func keywordOrSymbol(in []rune) ([]rune, Token, error) {
 		return rest, &Type{}, nil
 	case "callExtern":
 		return rest, &CallExtern{}, nil
+	case "import":
+		return rest, &Import{}, nil
 	}
 
 	return rest, &Symbol{Name: symName}, err

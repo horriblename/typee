@@ -60,6 +60,7 @@ type Union struct{}
 type Enum struct{}
 type Type struct{}
 type CallExtern struct{}
+type Import struct{}
 
 func (*LParen) token()       {}
 func (*RParen) token()       {}
@@ -97,6 +98,7 @@ func (*Union) token()        {}
 func (*Enum) token()         {}
 func (*Type) token()         {}
 func (*CallExtern) token()   {}
+func (*Import) token()       {}
 func (*TrueLiteral) token()  {}
 func (*FalseLiteral) token() {}
 
@@ -142,5 +144,6 @@ func (*Union) String() string             { return "union" }
 func (*Enum) String() string              { return "enum" }
 func (*Type) String() string              { return "type" }
 func (*CallExtern) String() string        { return "callExtern" }
+func (*Import) String() string            { return "import" }
 func (*TrueLiteral) String() string       { return "true" }
 func (*FalseLiteral) String() string      { return "false" }
