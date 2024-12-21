@@ -292,7 +292,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		p("%s", horType(arg.typeInfo, typeConfig{typeNone, self.namespace}))
 	}
 
-	if len(fb.args) > 0 || isValidMethod {
+	if len(fb.args) > 0 || isValidMethod || self.inStruct /* methods in structs aren't gi.FUNCTION_IS_METHOD */ {
 		p(" ")
 	}
 
@@ -303,8 +303,9 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	case 1:
 		if flags&gi.FUNCTION_IS_CONSTRUCTOR != 0 {
 			p("%s", container.Name())
+		} else {
+			p("%s", horType(fb.rets[0].typeInfo, typeConfig{typeNone, self.namespace}))
 		}
-		p("%s", horType(fb.rets[0].typeInfo, typeConfig{typeNone, self.namespace}))
 
 	default:
 		p("{")
