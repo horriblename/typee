@@ -69,8 +69,8 @@ func horType(ti *gi.TypeInfo, cfg typeConfig) string {
 		// out.WriteString("]")
 		// out.WriteString(horType(ti.ParamType(1), cfg.flags))
 	case gi.TYPE_TAG_ERROR:
-		// not used?
-		// out.WriteString("error")
+		// TODO: should be a GLib.Error
+		out.WriteString("Error")
 	case gi.TYPE_TAG_INTERFACE:
 		// TODO
 		if ti.IsPointer() {
