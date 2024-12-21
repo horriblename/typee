@@ -342,12 +342,23 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 				self.vars.Insert(expr.Args[i], p)
 			}
 
+			retHint, err := self.parseType(sig[len(sig)-1])
+			if err != nil {
+				return nil, err
+			}
+
 			bodyTy, err := self.TypeTerm(ctx, expr.Body)
 			if err != nil {
 				return nil, err
 			}
 
-			return Func{Args: params, Ret: bodyTy}, nil
+			// i don't think you can even write a polymorphic type as a return type
+			retInst := retHint.instantiate()
+			if err := constrain(retInst, bodyTy); err != nil {
+				return nil, err
+			}
+
+			return Func{Args: params, Ret: retInst}, nil
 		}
 
 		if len(expr.Args) > 0 && expr.Args[0] == "self" {
