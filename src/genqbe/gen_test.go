@@ -45,13 +45,14 @@ type :GObject = {l, l, l, }
 type :GObject = {l, l, l, }
 type :Foo = {:GObject, l, }
 data $_tmp_1 = {b "foo"}
+data $_stdout = { l $stdout }
 function w $print(:Str %s) {
 @start
 	%str_data =l loadl %s
 	# 64-bit architecture only lul
 	%len_loc =l add %s, 8
 	%str_len =w loadw %len_loc
-	%stdout =l loadl $stdout
+	%stdout =l loadl $_stdout
 	%res =w call $fwrite(l %str_data, w 1, w %str_len, l %stdout)
 	ret 0
 }
@@ -86,13 +87,14 @@ export function w $main() {
 			output: `type :Str = {l, l, }
 type :GObject = {l, l, l, }
 type :Foo = {:GObject, l, l, }
+data $_stdout = { l $stdout }
 function w $print(:Str %s) {
 @start
 	%str_data =l loadl %s
 	# 64-bit architecture only lul
 	%len_loc =l add %s, 8
 	%str_len =w loadw %len_loc
-	%stdout =l loadl $stdout
+	%stdout =l loadl $_stdout
 	%res =w call $fwrite(l %str_data, w 1, w %str_len, l %stdout)
 	ret 0
 }
@@ -113,13 +115,14 @@ function l $getX(l %foo) {
 			`,
 			output: `type :Str = {l, l, }
 type :GObject = {l, l, l, }
+data $_stdout = { l $stdout }
 function w $print(:Str %s) {
 @start
 	%str_data =l loadl %s
 	# 64-bit architecture only lul
 	%len_loc =l add %s, 8
 	%str_len =w loadw %len_loc
-	%stdout =l loadl $stdout
+	%stdout =l loadl $_stdout
 	%res =w call $fwrite(l %str_data, w 1, w %str_len, l %stdout)
 	ret 0
 }
@@ -139,13 +142,14 @@ export function w $main() {
 			`,
 			output: `type :Str = {l, l, }
 type :GObject = {l, l, l, }
+data $_stdout = { l $stdout }
 function w $print(:Str %s) {
 @start
 	%str_data =l loadl %s
 	# 64-bit architecture only lul
 	%len_loc =l add %s, 8
 	%str_len =w loadw %len_loc
-	%stdout =l loadl $stdout
+	%stdout =l loadl $_stdout
 	%res =w call $fwrite(l %str_data, w 1, w %str_len, l %stdout)
 	ret 0
 }
