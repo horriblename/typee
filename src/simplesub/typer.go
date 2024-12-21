@@ -7,6 +7,7 @@ import (
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/internal/scope"
+	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/types"
 )
@@ -44,6 +45,7 @@ var ErrUseRecordAsNamedObjectType = errors.New("cannot use a record as a named o
 var ErrUseNamedObjectTypeAsRecord = errors.New("cannot use a named object type as a record")
 var ErrIllegalPolymorphicType = errors.New("illegal use of polymorphic type")
 var ErrUnparameterizedTypePassedParams = errors.New("an unparameterized type was passed type parameters")
+var ErrEnumMissingKey = errors.New("enum type is missing a key")
 
 const scopeLevelTop int = 1
 
@@ -498,18 +500,22 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 
 	case *parse.EnumAccess:
 		// FIXME: uh, actually type check this pls
-		ts, ok := self.types.Get(expr.Enum).Unwrap()
+		enum, ok := self.types.Get(expr.Enum).Unwrap()
 		if !ok {
 			return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, expr.Enum)
 		}
+		enumTy := enum.instantiate()
 
-		// FIXME: shouldn't this be a PolymorphicType?
-		enum, ok := ts.(Enum)
-		if !ok {
-			return nil, fmt.Errorf("%w: %s is a %v", ErrNotEnum, expr.Enum, ts)
+		bound := Enum{
+			Name: "",
+			Values: map[string]opt.Option[int64]{
+				expr.Key: opt.None[int64](),
+			},
 		}
 
-		return enum, nil
+		constrain(enumTy, bound)
+
+		return enumTy, nil
 
 	case *parse.IfExpr:
 		condTy, err := self.TypeTerm(ctx, expr.Condition)
@@ -722,14 +728,14 @@ func (self *Typer) defUnion(ctx *context, unionDef *parse.UnionDef) (SimpleType,
 
 func (self *Typer) defEnum(enumDef *parse.EnumDef) (ConcreteType, error) {
 	// TODO: check repeated variants?
-	variants := map[string]int64{}
+	variants := map[string]opt.Option[int64]{}
 	var rollingValue int64
 	for _, v := range enumDef.Variants {
 		if val, ok := v.Value.Unwrap(); ok {
-			variants[v.Name] = val
+			variants[v.Name] = opt.Some(val)
 			rollingValue = val + 1
 		} else {
-			variants[v.Name] = rollingValue
+			variants[v.Name] = opt.Some(rollingValue)
 			rollingValue++
 		}
 	}
@@ -859,8 +865,15 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 	} else if lhs, rhs, ok := matchPair[SliceType, SliceType](ty0, bound0); ok {
 		return constrain(lhs.ElType, rhs.ElType)
 	} else if lhs, rhs, ok := matchPair[Enum, Enum](ty0, bound0); ok {
-		if lhs.Name != rhs.Name {
+		if lhs.Name != "" && rhs.Name != "" && lhs.Name != rhs.Name {
 			return fmt.Errorf("%w: wanted %s got %s", ErrWrongEnumType, rhs.Name, lhs.Name)
+		}
+		for key, _ := range rhs.Values {
+			if _, ok := lhs.Values[key]; !ok {
+				return fmt.Errorf("%w: %s does not have key %s", ErrEnumMissingKey, lhs, key)
+			}
+
+			// TODO: should I check the enum value as well?
 		}
 		return nil
 	} else if lhs, rhs, ok := matchPair[Union, Union](ty0, bound0); ok {

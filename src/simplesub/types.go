@@ -262,10 +262,25 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
 		return Str{}, nil
 	} else if lhs, rhs, ok := matchPair[Enum, Enum](lhs0, rhs0); ok {
-		if lhs.Name != rhs.Name {
+		// same non-empty name
+		if lhs.Name == rhs.Name && lhs.Name != "" {
+			return lhs, nil
+		}
+
+		// different non-empty name
+		if lhs.Name != "" && rhs.Name != "" {
 			return nil, fmt.Errorf("different enum types: %s and %s", lhs.Name, rhs.Name)
 		}
-		return lhs, nil
+
+		// FIXME: at least check that unnamed enum values are all present in named one
+		if lhs.Name != "" {
+			return lhs, nil
+		} else if rhs.Name != "" {
+			return rhs, nil
+		}
+
+		panic("TODO: glb of unnamed enums")
+
 		// TODO: lower bound of [Enum, Int]?
 	} else {
 		// FIXME: pretty sure this is supposed error
@@ -519,7 +534,7 @@ type Union struct {
 }
 type Enum struct {
 	Name   string
-	Values map[string]int64
+	Values map[string]opt.Option[int64]
 }
 type ObjectType struct {
 	Name    string
@@ -636,7 +651,11 @@ func (self Enum) String() string {
 	for name, val := range self.Values {
 		b.WriteString(name)
 		b.WriteRune(':')
-		b.WriteString(strconv.Itoa(int(val)))
+		valStr := "?"
+		if v, ok := val.Unwrap(); ok {
+			valStr = strconv.Itoa(int(v))
+		}
+		b.WriteString(valStr)
 		b.WriteByte(' ')
 	}
 	b.WriteString("})")

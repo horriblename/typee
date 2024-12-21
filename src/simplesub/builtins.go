@@ -1,6 +1,8 @@
 package simplesub
 
-import "github.com/horriblename/typee/src/internal/scope"
+import (
+	"github.com/horriblename/typee/src/internal/scope"
+)
 
 var intBinaryOptType = Func{
 	Args: []SimpleType{Int{}, Int{}},
@@ -27,6 +29,16 @@ func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 	scope.Insert("exit", Func{
 		Args: []SimpleType{Int{}},
 		Ret:  Bot{},
+	})
+	t := freshVar()
+	scope.Insert("at", PolymorphicType{
+		Body: Func{
+			Args: []SimpleType{
+				SliceType{t},
+				Int{},
+			},
+			Ret: t,
+		},
 	})
 }
 

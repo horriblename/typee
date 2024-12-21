@@ -5,6 +5,7 @@ import (
 
 	"github.com/horriblename/typee/src/fun"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
+	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/types"
 )
 
@@ -194,8 +195,13 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 		}
 	case Enum:
 		return &types.Enum{
-			Name:   ty.Name,
-			Values: ty.Values,
+			Name: ty.Name,
+			Values: fun.MapMap(ty.Values, func(v opt.Option[int64]) int64 {
+				if val, ok := v.Unwrap(); ok {
+					return val
+				}
+				panic("TODO: coalesce unknown enum")
+			}),
 		}
 	case ObjectType:
 		fields := map[string]types.Member{}
