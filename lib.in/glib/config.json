@@ -1,0 +1,60 @@
+{
+    "whitelist": {
+        "objects": [],
+        "structs": [
+            "Error",
+            "Bytes",
+            "TimeVal",
+            "DateTime",
+            "TimeZone",
+            "KeyFile",
+            "Variant",
+            "VariantType",
+            "PollFD"
+        ],
+        "functions": [
+            "get_user_cache_dir",
+            "get_user_config_dir",
+            "get_user_data_dir",
+            "get_user_runtime_dir",
+            "get_user_special_dir",
+
+            "get_system_data_dirs",
+            "get_system_config_dirs",
+
+            "get_current_dir",
+            "get_home_dir",
+
+            "get_tmp_dir"
+        ],
+        "callbacks": []
+    },
+    "_comment": "SpawnError.2big is a stupid name and I need to fix that",
+    "blacklist": {
+        "enums": [
+            "SpawnError"
+        ],
+        "constants": [
+            "CSET_A_2_Z",
+            "CSET_a_2_z"
+        ]
+    },
+    "method-blacklist": {
+        "Bytes": [
+            "unref_to_array"
+        ],
+        "Error": [
+            "domain_register",
+            "domain_register_static"
+        ],
+        "Variant": [
+            "parse_error_print_context",
+
+            "new_bytestring",
+            "new_from_bytes",
+            "get_data_as_bytes",
+
+            "new_from_data"
+        ]
+    }
+}
