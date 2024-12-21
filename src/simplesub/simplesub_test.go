@@ -76,6 +76,16 @@ func TestTypeExpr(t *testing.T) {
 			},
 		},
 		{
+			desc:  "type annotated function 2",
+			input: "(fn ([Str] Str) [x] (at x 2))",
+			typ: &types.Func{
+				Args: []types.Type{
+					&types.Slice{Type: &types.String{}},
+				},
+				Ret: &types.String{},
+			},
+		},
+		{
 			desc:  "application",
 			input: "((fn [x] x) 34)",
 			typ:   &types.Int{},
@@ -411,6 +421,54 @@ func TestTypeProgram(t *testing.T) {
 					Ret:  &types.Int{},
 				},
 			},
+		},
+		{
+			desc: "enum usage and type annotation",
+			input: `
+				(enum Grade {A B C})
+				(def id [x] x)
+				(def report (Grade Status {res: Int, grade: Grade, status: Status}) [grade status]
+					{ res: (callExtern foo grade status)
+					, grade: Grade::A
+					, status: (id Status::Good)
+					})
+				(enum Status {Bad Good})
+			`,
+			typ: func() []types.Type {
+				grade := &types.Enum{
+					Name: "Grade",
+					Values: map[string]int64{
+						"A": 0,
+						"B": 1,
+						"C": 2,
+					},
+				}
+				status := &types.Enum{
+					Name: "Status",
+					Values: map[string]int64{
+						"Bad":  0,
+						"Good": 1,
+					},
+				}
+				return []types.Type{
+					grade,
+					&types.Func{
+						Args: []types.Type{&types.Generic{ID: 2}},
+						Ret:  &types.Generic{ID: 2},
+					},
+					&types.Func{
+						Args: []types.Type{grade, status},
+						Ret: &types.Record{
+							Fields: map[string]types.Type{
+								"res":    &types.Int{},
+								"grade":  grade,
+								"status": status,
+							},
+						},
+					},
+					status,
+				}
+			}(),
 		},
 	}
 	for _, tC := range testCases {
