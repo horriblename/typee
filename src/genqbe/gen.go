@@ -468,6 +468,8 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 		return ctx.ptrType
 	case *types.Record:
 		return ctx.ptrType
+	case *types.Ptr:
+		return ctx.ptrType
 	case *types.Union:
 		if t.Name == "" {
 			panic("unnamed union unsupported at code gen")
