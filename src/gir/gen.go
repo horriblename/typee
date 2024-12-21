@@ -344,7 +344,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	if isValidMethod {
 		if self.inStruct {
-			p("self_")
+			p(" self_")
 		} else {
 			p(" self")
 		}
