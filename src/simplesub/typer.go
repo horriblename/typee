@@ -130,7 +130,14 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 			self.types.Insert(e.Name, types[i])
 
 		case *parse.EnumDef:
-			types[i] = freshVar()
+			// currently enums can't refer to other types so it's safe to build it's type now
+			// (and we need to do it now to workaround having type annotations treated as equal types)
+			typ, err := self.defEnum(e)
+			if err != nil {
+				return nil, err
+			}
+
+			types[i] = typ
 			self.types.Insert(e.Name, types[i])
 
 		case *parse.TypeAlias:
@@ -221,24 +228,7 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 			ctx.inferred[e.ID()] = t
 
 		case *parse.EnumDef:
-			self.types.Insert(e.Name, types[i])
-
-			t, err := self.defEnum(e)
-			if err != nil {
-				return nil, err
-			}
-
-			st := assert.Cast[SimpleType](types[i], "compiler invariant violated")
-			if err := constrain(t, st); err != nil {
-				return nil, err
-			}
-
-			if err := constrain(st, t); err != nil {
-				return nil, err
-			}
-
-			// TODO: handle generics
-			ctx.inferred[e.ID()] = t
+			// we already defined it in previous step
 
 		case *parse.TypeAlias:
 			typ := types[i].(SimpleType)
@@ -730,7 +720,7 @@ func (self *Typer) defUnion(ctx *context, unionDef *parse.UnionDef) (SimpleType,
 	return t, nil
 }
 
-func (self *Typer) defEnum(enumDef *parse.EnumDef) (SimpleType, error) {
+func (self *Typer) defEnum(enumDef *parse.EnumDef) (ConcreteType, error) {
 	// TODO: check repeated variants?
 	variants := map[string]int64{}
 	var rollingValue int64
