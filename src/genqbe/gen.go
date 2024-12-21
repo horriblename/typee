@@ -488,7 +488,7 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 		}
 
 		elTy := ctx.toILType(t.Type)
-		name := ctx.newTempName(fmt.Sprintf("_array_%T", t.Type))
+		name := ctx.newTempName(fmt.Sprintf("_array"))
 		ilTyp := qbeil.StructType{
 			Align:   0,
 			Name:    name,
