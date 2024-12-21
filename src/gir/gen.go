@@ -270,7 +270,6 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	switch {
 	case flags&gi.FUNCTION_IS_CONSTRUCTOR != 0:
-		name = "init"
 	case isValidMethod:
 		name = snake_case_to_camelCase(name)
 	default:
