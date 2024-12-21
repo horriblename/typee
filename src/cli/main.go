@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -104,9 +105,17 @@ func cmdCheck() error {
 	return buildProgram(params)
 }
 
+const flagAssemblerFlags = "assembler-flags"
+const helpAssemblerFlags = "Flags to pass to the assembler"
+
+const flagLogLevel = "log"
+const helpLogLevel = "Log level. Lower means more verbose. -4 for debug logs, 8 for errors only"
+
 func cmdBuild() error {
 	outPath := flag.String(flagOut, defaultOut, helpOut)
 	outPathLong := flag.String(flagOutLong, defaultOut, helpOut)
+	assemblerFlags := flag.String(flagAssemblerFlags, "", helpAssemblerFlags)
+	logLevel := flag.Int(flagLogLevel, int(slog.LevelInfo.Level()), helpLogLevel)
 	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
 	printTypeTable := flag.Bool(flagPrintTypeTable, false, "Print a table of expr ID to type.")
 	printAst := flag.Bool(flagPrintAst, false, "Print the parse ast")
@@ -117,6 +126,9 @@ func cmdBuild() error {
 	}
 
 	flag.Parse()
+
+	asmFlags := strings.Fields(*assemblerFlags)
+
 	params := buildParams{
 		targetStage:    build,
 		inFile:         flag.Arg(0),
@@ -124,7 +136,9 @@ func cmdBuild() error {
 		printTypes:     *printTypes,
 		printAst:       *printAst,
 		printTypeTable: *printTypeTable,
+		assemblerFlags: asmFlags,
 		traceTyper:     *traceTyper,
+		logLevel:       slog.Level(*logLevel),
 	}
 
 	return buildProgram(params)

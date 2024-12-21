@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -27,13 +28,19 @@ type buildParams struct {
 	targetStage    stage
 	inFile         string
 	outFile        string
+	assemblerFlags []string
 	printTypes     bool
 	printAst       bool
 	printTypeTable bool
 	traceTyper     bool
+	logLevel       slog.Level
 }
 
 func buildProgram(params buildParams) error {
+	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: params.logLevel,
+	}))
+
 	var file io.Reader
 	var err error
 	if params.inFile == "" {
@@ -118,7 +125,9 @@ func buildProgram(params buildParams) error {
 	}
 
 	// maybe I should use `as` and `ld` instead? idk
-	assembler := exec.Command("gcc", asmFName, "-o", params.outFile)
+	assemblerArgs := append(params.assemblerFlags, asmFName, "-o", params.outFile)
+	log.Debug("assembler", "args", assemblerArgs)
+	assembler := exec.Command("gcc", assemblerArgs...)
 	assembler.Stdout = os.Stdout
 	assembler.Stderr = os.Stderr
 	err = assembler.Run()
