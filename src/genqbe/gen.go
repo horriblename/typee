@@ -250,6 +250,22 @@ func genGlobalVar(ctx *ctx, expr *parse.Set) (val qbeil.Value) {
 				Value: val.Number,
 			})
 
+	case *parse.BoolLiteral:
+		var v int64 = 0
+		if val.Value {
+			v = 1
+		}
+		return ctx.il.Data(
+			qbeil.DataDef{
+				Linkage: qbeil.Linkage{},
+				VarName: expr.Name,
+				Align:   0,
+			},
+			ctx.toILType(ctx.simplify(val.ID())),
+			qbeil.IntLiteral{
+				Value: v,
+			})
+
 	default:
 		panic(fmt.Sprintf("global variable of expression %s not supported", expr))
 	}
