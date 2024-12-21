@@ -172,39 +172,40 @@ func SingleType(t Type) RepeatType {
 	return RepeatType{t, 1}
 }
 
-func NewUnionType(name string, align int, defaultAlign int, variants []Type) UnionType {
+func NewUnionType(name string, alignBits int, defaultAlign int, variants []Type) UnionType {
 	maxAlign := 0
 	maxBits := 0
 	for _, v := range variants {
-		bits, align := SizeOf(defaultAlign, v)
+		var bits int
+		bits, alignBits = SizeOf(defaultAlign, v)
 		maxBits = max(bits, maxBits)
-		maxAlign = max(align, maxAlign)
+		maxAlign = max(alignBits, maxAlign)
 	}
 
-	if align == 0 {
-		align = maxAlign
+	if alignBits == 0 {
+		alignBits = maxAlign
 	}
 
 	return UnionType{
 		Name:     name,
-		Align:    align,
+		Align:    alignBits / 8,
 		Size:     maxBits / 8,
 		Variants: variants,
 	}
 }
 
-func SizeOf(defaultAlign int, t Type) (bits int, align int) {
+func SizeOf(defaultAlignBits int, t Type) (bits int, alignBits int) {
 	switch t := t.(type) {
 	case BaseType:
 		switch t {
 		case Word:
-			return 32, defaultAlign
+			return 32, defaultAlignBits
 		case Long:
-			return 64, defaultAlign
+			return 64, defaultAlignBits
 		case Single:
-			return 32, defaultAlign
+			return 32, defaultAlignBits
 		case Double:
-			return 64, defaultAlign
+			return 64, defaultAlignBits
 		default:
 			panic(fmt.Sprintf("unexpected BaseType: %#v", t))
 		}
@@ -215,7 +216,7 @@ func SizeOf(defaultAlign int, t Type) (bits int, align int) {
 		align := 0
 		for _, field := range t.Fields {
 			// TODO: actually handle align
-			fs, fa := SizeOf(defaultAlign, field.Type)
+			fs, fa := SizeOf(defaultAlignBits, field.Type)
 			fs *= min(1, field.Count)
 			align = max(align, fa)
 			bits += fs
