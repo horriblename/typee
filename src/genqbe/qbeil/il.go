@@ -40,15 +40,8 @@ func NewTypedVar(typ Type, name Var) TypedVar {
 }
 
 func (b *Builder) indented(l []byte) error {
-	_, err := b.Buf.Write(bytes.Repeat(indentSym, b.indentLvl))
-	if err != nil {
-		return err
-	}
-
-	_, err = b.Buf.Write(l)
-	if err != nil {
-		return err
-	}
+	b.Buf.Write(bytes.Repeat(indentSym, b.indentLvl))
+	b.Buf.Write(l)
 
 	return nil
 }
@@ -70,21 +63,11 @@ func (b *Builder) Func(linkage Linkage, ret *Type, name string, args []TypedVar)
 	}
 
 	if len(args) > 0 {
-		_, err = b.Buf.Write([]byte(args[0].IL()))
-		if err != nil {
-			return err
-		}
+		b.Buf.Write([]byte(args[0].IL()))
 
 		for _, arg := range args[1:] {
-			_, err := b.Buf.Write([]byte(", "))
-			if err != nil {
-				return err
-			}
-
-			_, err = b.Buf.Write([]byte(arg.IL()))
-			if err != nil {
-				return err
-			}
+			b.Buf.Write([]byte(", "))
+			b.Buf.Write([]byte(arg.IL()))
 		}
 	}
 
