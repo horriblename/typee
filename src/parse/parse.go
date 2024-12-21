@@ -157,6 +157,9 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	case *lex.CallExtern:
 		return externCall(in)
 
+	case *lex.Import:
+		return importStmt(in)
+
 	case nil:
 		return nil, nil, errAt(in)
 
@@ -195,6 +198,25 @@ func externCall(in []lex.Token) (rest []lex.Token, exp Expr, err error) {
 		Symbol: callee,
 		Args:   out.Two,
 	}, err
+}
+
+func importStmt(in []lex.Token) ([]lex.Token, Expr, error) {
+	in, path, err := combinator.Surround(
+		lparen,
+		combinator.WithPrefix(
+			kwImport,
+			combinator.Delimited(symbolName, dot),
+		),
+		rparen)(in)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return in, &Import{
+		id:     newId(),
+		Module: path,
+	}, nil
 }
 
 func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
@@ -729,6 +751,9 @@ func kwLet(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func kwLetRec(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.LetRec])(in)
+}
+func kwImport(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Import])(in)
 }
 func kwClass(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Class])(in)

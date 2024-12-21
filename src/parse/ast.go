@@ -197,6 +197,11 @@ type ExternCall struct {
 	Args   []Expr
 }
 
+type Import struct {
+	id     int
+	Module []string
+}
+
 func (*Form) ast()          {}
 func (*Symbol) ast()        {}
 func (*FuncDef) ast()       {}
@@ -223,6 +228,7 @@ func (*EnumDef) ast()       {}
 func (*EnumAccess) ast()    {}
 func (*TypeAlias) ast()     {}
 func (*ExternCall) ast()    {}
+func (*Import) ast()        {}
 
 func (self *Form) ID() int          { return self.id }
 func (self *Symbol) ID() int        { return self.id }
@@ -250,6 +256,7 @@ func (self *EnumDef) ID() int       { return self.id }
 func (self *EnumAccess) ID() int    { return self.id }
 func (self *TypeAlias) ID() int     { return self.id }
 func (self *ExternCall) ID() int    { return self.id }
+func (self *Import) ID() int        { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
 func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
@@ -343,6 +350,9 @@ func (self *TypeAlias) String() string {
 func (self *ExternCall) String() string {
 	args := fun.Map(self.Args, func(e Expr) string { return e.String() })
 	return fmt.Sprintf("#%d(callExtern %s %s)", self.id, self.Symbol.Name, strings.Join(args, " "))
+}
+func (self *Import) String() string {
+	return fmt.Sprintf("#%d(import %s)", self.id, strings.Join(self.Module, "."))
 }
 func (self *EnumVariant) String() string {
 	if val, ok := self.Value.Unwrap(); ok {
@@ -457,6 +467,9 @@ func (self *TypeAlias) Pretty() string {
 func (self *ExternCall) Pretty() string {
 	args := fun.Map(self.Args, func(e Expr) string { return e.Pretty() })
 	return fmt.Sprintf("(callExtern %s %s)", self.Symbol.Name, strings.Join(args, " "))
+}
+func (self *Import) Pretty() string {
+	return fmt.Sprintf("(import %s)", strings.Join(self.Module, "."))
 }
 func (self *Record) Pretty() string {
 	if len(self.Fields) == 0 {
@@ -595,3 +608,4 @@ func (self *EnumDef) ChildNodes() []Expr      { return []Expr{} }
 func (self *EnumAccess) ChildNodes() []Expr   { return []Expr{} }
 func (self *TypeAlias) ChildNodes() []Expr    { return []Expr{} }
 func (self *ExternCall) ChildNodes() []Expr   { return append([]Expr{&self.Symbol}, self.Args...) }
+func (self *Import) ChildNodes() []Expr       { return []Expr{} }

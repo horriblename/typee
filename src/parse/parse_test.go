@@ -464,6 +464,14 @@ func TestParse(t *testing.T) {
 				},
 			}},
 		},
+		{
+			desc:  "import statement",
+			input: "(import Foo.Bar)",
+			output: []Expr{&Import{
+				id:     1,
+				Module: []string{"Foo", "Bar"},
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
