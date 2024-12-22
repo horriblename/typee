@@ -17,6 +17,8 @@ type Typer struct {
 	classScope string
 	vars       scope.ScopedMap[TypeScheme]
 	types      scope.ScopedMap[TypeScheme]
+
+	importedTypes map[string]moduleExports
 }
 
 var ErrUndefinedVariable = errors.New("undefined variable")
@@ -57,9 +59,10 @@ func NewTyper(debug bool) *Typer {
 	addBuiltinTypes(&types)
 	types.NewScope()
 	return &Typer{
-		debug: debug,
-		vars:  vars,
-		types: types,
+		debug:         debug,
+		vars:          vars,
+		types:         types,
+		importedTypes: map[string]moduleExports{},
 	}
 }
 
@@ -68,6 +71,10 @@ type context struct {
 }
 
 func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[int]TypeScheme, error) {
+	if err := self.typeDeps(program); err != nil {
+		return nil, nil, err
+	}
+
 	ctx := context{map[int]TypeScheme{}}
 	t, err := self.typeProgram(&ctx, program)
 	return t, ctx.inferred, err
@@ -75,9 +82,20 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[int]Type
 
 func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme, error) {
 	// top-level process
-	// 1. groupRecursives: walk the AST to mark (mutually-)recursive top-level functions.
-	// 2. iterate through top-level nodes generating fresh type vars for each top level item.
-	// 3. walk the AST, inferring types of all expressions
+	// 1. type check imported modules
+	// 2. groupRecursives: walk the AST to mark (mutually-)recursive top-level functions.
+	// 3. iterate through top-level nodes generating fresh type vars for each top level item.
+	// 4. walk the AST, inferring types of all expressions
+	importCount := 0
+	for i, expr := range program {
+		if _, ok := expr.(*parse.Import); !ok {
+			importCount = i
+			break
+		}
+	}
+
+	program = program[importCount:]
+
 	types := make([]TypeScheme, len(program))
 
 	topLevels := map[string]parse.Expr{}
@@ -868,7 +886,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		if lhs.Name != "" && rhs.Name != "" && lhs.Name != rhs.Name {
 			return fmt.Errorf("%w: wanted %s got %s", ErrWrongEnumType, rhs.Name, lhs.Name)
 		}
-		for key, _ := range rhs.Values {
+		for key := range rhs.Values {
 			if _, ok := lhs.Values[key]; !ok {
 				return fmt.Errorf("%w: %s does not have key %s", ErrEnumMissingKey, lhs, key)
 			}
