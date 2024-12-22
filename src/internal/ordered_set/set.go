@@ -2,13 +2,13 @@ package orderedset
 
 type OrderedSet[T comparable] struct {
 	list    []T
-	mapping map[T]struct{}
+	mapping map[T]int
 }
 
 func NewOrderedSet[T comparable](items ...T) *OrderedSet[T] {
-	m := map[T]struct{}{}
-	for _, v := range items {
-		m[v] = struct{}{}
+	m := map[T]int{}
+	for i, v := range items {
+		m[v] = i
 	}
 	return &OrderedSet[T]{
 		list:    items,
@@ -19,7 +19,7 @@ func NewOrderedSet[T comparable](items ...T) *OrderedSet[T] {
 func (set *OrderedSet[T]) Insert(x T) (existed bool) {
 	_, existed = set.mapping[x]
 	if !existed {
-		set.mapping[x] = struct{}{}
+		set.mapping[x] = len(set.list)
 		set.list = append(set.list, x)
 	}
 
@@ -37,4 +37,37 @@ func (set *OrderedSet[T]) Slice() []T {
 
 func (set *OrderedSet[T]) Len() int {
 	return len(set.list)
+}
+
+func (set *OrderedSet[T]) Pop() (t T, has bool) {
+	var zero T
+	if len(set.list) > 0 {
+		ret := set.list[len(set.list)-1]
+		set.list[len(set.list)-1] = zero
+		set.list = set.list[:len(set.list)-1]
+		delete(set.mapping, ret)
+		return ret, true
+	}
+
+	return zero, false
+}
+
+// swaps the position of t and the last element in the list, then delete t
+func (set *OrderedSet[T]) SwapDelete(t T) bool {
+	i, ok := set.mapping[t]
+	if !ok {
+		return false
+	}
+
+	if set.Len() == 1 {
+		set.Pop()
+		return true
+	}
+
+	oldLast := set.list[len(set.list)-1]
+	set.mapping[oldLast] = i
+	set.list[i], set.list[len(set.list)-1] = oldLast, set.list[i]
+	set.Pop()
+
+	return true
 }
