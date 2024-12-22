@@ -471,6 +471,19 @@ func TestTypeProgram(t *testing.T) {
 				}
 			}(),
 		},
+		{
+			desc: "import",
+			input: `
+				(import TestModule.Math)
+				(def foo [x] (Math.addOne x))
+			`,
+			typ: []types.Type{
+				&types.Func{
+					Args: []types.Type{&types.Int{}},
+					Ret:  &types.Int{},
+				},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
