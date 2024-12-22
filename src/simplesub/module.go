@@ -34,7 +34,7 @@ func (self *Typer) typeDeps(program []parse.Expr) error {
 
 		name := strings.Join(dep.Module, ".")
 
-		if _, ok := self.importedTypes[name]; ok {
+		if _, ok := self.moduleCache[name]; ok {
 			return nil
 		}
 
@@ -53,7 +53,7 @@ func (self *Typer) typeDeps(program []parse.Expr) error {
 			return fmt.Errorf("generating symbol table from type table: %w", err)
 		}
 
-		self.importedTypes[name] = symbols
+		self.moduleCache[name] = symbols
 	}
 
 	return nil

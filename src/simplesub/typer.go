@@ -3,6 +3,7 @@ package simplesub
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
@@ -18,7 +19,11 @@ type Typer struct {
 	vars       scope.ScopedMap[TypeScheme]
 	types      scope.ScopedMap[TypeScheme]
 
-	importedTypes map[string]moduleExports
+	// local to current module
+	moduleImports map[string]moduleExports
+
+	// shared across all modules
+	moduleCache map[string]moduleExports
 }
 
 var ErrUndefinedVariable = errors.New("undefined variable")
@@ -59,10 +64,10 @@ func NewTyper(debug bool) *Typer {
 	addBuiltinTypes(&types)
 	types.NewScope()
 	return &Typer{
-		debug:         debug,
-		vars:          vars,
-		types:         types,
-		importedTypes: map[string]moduleExports{},
+		debug:       debug,
+		vars:        vars,
+		types:       types,
+		moduleCache: map[string]moduleExports{},
 	}
 }
 
@@ -87,11 +92,17 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 	// 3. iterate through top-level nodes generating fresh type vars for each top level item.
 	// 4. walk the AST, inferring types of all expressions
 	importCount := 0
+	self.moduleImports = map[string]moduleExports{}
 	for i, expr := range program {
-		if _, ok := expr.(*parse.Import); !ok {
+		expr, ok := expr.(*parse.Import)
+		if !ok {
 			importCount = i
 			break
 		}
+
+		alias := expr.Module[len(expr.Module)-1]
+		fullPath := strings.Join(expr.Module, ".")
+		self.moduleImports[alias] = self.moduleCache[fullPath]
 	}
 
 	program = program[importCount:]
@@ -315,9 +326,15 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 	case *parse.Symbol:
 		if ty, ok := self.vars.Get(expr.Name).Unwrap(); ok {
 			return ty.instantiate(), nil
-		} else {
-			return nil, fmt.Errorf("%w: %s", ErrUndefinedVariable, expr.Name)
+		} else if mod, ok := self.moduleImports[expr.Name]; ok {
+			// FIXME: this is a terrible idea
+			fields := make([]NamedType, 0, len(mod.Globals))
+			for name, ty := range mod.Globals {
+				fields = append(fields, NamedType{name, ty.instantiate()})
+			}
+			return Record{fields}, nil
 		}
+		return nil, fmt.Errorf("%w: %s", ErrUndefinedVariable, expr.Name)
 	case *parse.SelfLiteral:
 		if ty, ok := self.vars.Get("self").Unwrap(); ok {
 			return ty.instantiate(), nil
