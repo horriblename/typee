@@ -62,3 +62,11 @@ func ZipIter[T, U any](i1 iter.Seq[T], i2 iter.Seq[U]) iter.Seq2[T, U] {
 		}
 	}
 }
+
+func Collect[T any](s iter.Seq[T]) []T {
+	out := []T{}
+	for x := range s {
+		out = append(out, x)
+	}
+	return out
+}
