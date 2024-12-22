@@ -567,19 +567,28 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, errAt(in)
 	}
 
-	rest, lhs, err := combinator.Map(symbolName, func(n string) *Symbol {
+	rest, lhs, err := combinator.Map(symbolName, func(n string) Expr {
 		return &Symbol{n, newId()}
 	})(in)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	rest, lhs, err = recordAccess(lhs)(rest)
+
+	if rest2, meth, err := methodAccess(lhs)(rest); err == nil {
+		return rest2, meth, nil
+	}
+
+	sym, ok := lhs.(*Symbol)
+	if !ok {
+		return rest, lhs, nil
+	}
+
 	rest2, accessor, err := combinator.Maybe(
 		combinator.Any(
-			recordAccess(lhs),
-			methodAccess(lhs),
-			classConstructor(lhs.Name),
-			enumAccess(lhs.Name),
+			classConstructor(sym.Name),
+			enumAccess(sym.Name),
 		),
 	)(rest)
 
@@ -595,16 +604,20 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 }
 
 func recordAccess(lhs Expr) combinator.Parser[[]lex.Token, Expr] {
-	return combinator.Map(
-		combinator.WithPrefix(dot, symbolName),
-		func(member string) Expr {
-			return &RecordAccess{
-				id:     newId(),
-				Record: lhs,
-				Field:  member,
-			}
-		},
-	)
+	return func(in []lex.Token) ([]lex.Token, Expr, error) {
+		rest, field, err := combinator.WithPrefix(dot, symbolName)(in)
+		if err != nil {
+			return in, lhs, nil
+		}
+
+		newLhs := &RecordAccess{
+			id:     newId(),
+			Record: lhs,
+			Field:  field,
+		}
+
+		return recordAccess(newLhs)(rest)
+	}
 }
 
 func methodAccess(lhs Expr) combinator.Parser[[]lex.Token, Expr] {
