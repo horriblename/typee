@@ -299,6 +299,7 @@ func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
 		))
 	}
 
+	// TODO: export symbols
 	linkage := qbeil.Linkage{}
 	retTyp := ctx.toILType(funcTyp.Ret)
 	if expr.Name == "main" && class == "" {
