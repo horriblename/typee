@@ -82,22 +82,22 @@ func typeTableToSymbolMap(program []parse.Expr, typTable map[int]TypeScheme) (mo
 	for _, expr := range program {
 		switch e := expr.(type) {
 		case *parse.FuncDef:
-			symbols.Globals[e.Name] = typTable[e.ID()]
+			symbols.Globals[e.Name] = assertType(typTable[e.ID()])
 
 		case *parse.Set:
-			symbols.Globals[e.Name] = typTable[e.ID()]
+			symbols.Globals[e.Name] = assertType(typTable[e.Value.ID()])
 
 		case *parse.ObjectTypeDef:
-			symbols.Types[e.Name] = typTable[e.ID()]
+			symbols.Types[e.Name] = assertType(typTable[e.ID()])
 
 		case *parse.UnionDef:
-			symbols.Types[e.Name] = typTable[e.ID()]
+			symbols.Types[e.Name] = assertType(typTable[e.ID()])
 
 		case *parse.EnumDef:
-			symbols.Types[e.Name] = typTable[e.ID()]
+			symbols.Types[e.Name] = assertType(typTable[e.ID()])
 
 		case *parse.TypeAlias:
-			symbols.Types[e.Name] = typTable[e.ID()]
+			symbols.Types[e.Name] = assertType(typTable[e.ID()])
 
 		case *parse.Import:
 		default:
@@ -106,4 +106,11 @@ func typeTableToSymbolMap(program []parse.Expr, typTable map[int]TypeScheme) (mo
 	}
 
 	return symbols, nil
+}
+
+func assertType(typ TypeScheme) TypeScheme {
+	if typ == nil {
+		panic("assertion failed: type should not be nil")
+	}
+	return typ
 }
