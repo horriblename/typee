@@ -562,6 +562,8 @@ func selfLiteral(in []lex.Token) ([]lex.Token, Expr, error) {
 	return in, &SelfLiteral{newId()}, err
 }
 
+// SymbolExpr ::= Ident ('.' Ident)* ('.' 'new' | ”#' Ident | '::' Ident)
+// dot accessor followed by other accessor is not currently implemented
 func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 	if len(in) == 0 {
 		return nil, nil, errAt(in)
@@ -574,40 +576,44 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, err
 	}
 
-	rest, lhs, err = recordAccess(lhs)(rest)
-
-	if rest2, meth, err := methodAccess(lhs)(rest); err == nil {
-		return rest2, meth, nil
+	in = rest
+	var acc Expr
+	if rest, acc, err = recordAccess(lhs)(in); err == nil {
+		lhs = acc
+		in = rest
 	}
 
 	sym, ok := lhs.(*Symbol)
 	if !ok {
+		// TODO: allow dot accessor followed by other accessors
 		return rest, lhs, nil
 	}
 
-	rest2, accessor, err := combinator.Maybe(
+	rest, accessor, err := combinator.Maybe(
 		combinator.Any(
+			methodAccess(lhs),
 			classConstructor(sym.Name),
 			enumAccess(sym.Name),
 		),
-	)(rest)
+	)(in)
 
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if a, ok := accessor.Unwrap(); ok {
-		return rest2, a, nil
+		return rest, a, nil
 	}
 
-	return rest, lhs, nil
+	return in, lhs, nil
 }
 
+// returns error if there is no record access found
 func recordAccess(lhs Expr) combinator.Parser[[]lex.Token, Expr] {
 	return func(in []lex.Token) ([]lex.Token, Expr, error) {
-		rest, field, err := combinator.WithPrefix(dot, symbolName)(in)
+		in, field, err := combinator.WithPrefix(dot, symbolName)(in)
 		if err != nil {
-			return in, lhs, nil
+			return nil, nil, err
 		}
 
 		newLhs := &RecordAccess{
@@ -616,7 +622,12 @@ func recordAccess(lhs Expr) combinator.Parser[[]lex.Token, Expr] {
 			Field:  field,
 		}
 
-		return recordAccess(newLhs)(rest)
+		rest, merged, err := recordAccess(newLhs)(in)
+		if err != nil {
+			// there is at least one record access, ignore error
+			return in, newLhs, nil
+		}
+		return rest, merged, err
 	}
 }
 
