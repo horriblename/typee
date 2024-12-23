@@ -43,13 +43,17 @@ func buildProgram(params buildParams) error {
 
 	var file io.Reader
 	var err error
+	var mainModule string
 	if params.inFile == "" {
 		file = os.Stdin
+		mainModule = "MainStdin"
 	} else {
 		file, err = os.Open(params.inFile)
 		if err != nil {
 			return fmt.Errorf("build: %w", err)
 		}
+		mainModule = path.Base(params.inFile)
+		mainModule = strings.Trim(mainModule, path.Ext(mainModule))
 	}
 
 	if params.traceTyper {
@@ -108,7 +112,7 @@ func buildProgram(params buildParams) error {
 	}
 	defer qbeFile.Close()
 
-	genqbe.Gen(qbeFile, treeType, ast)
+	genqbe.Gen(qbeFile, mainModule, treeType, ast)
 	qbeFile.Seek(0, 0)
 
 	asmFName := params.inFile + ".s"
