@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
@@ -23,6 +24,8 @@ var builtinsQbe string
 var ErrCannotCompilePolymorphicType = errors.New("tried to compile a polymorphic type")
 
 type ctx struct {
+	module string
+
 	ptrType      qbeil.BaseType
 	intType      qbeil.BaseType
 	defaultAlign int
@@ -39,8 +42,9 @@ type ctx struct {
 	generatedTranslation map[types.Type]qbeil.AggregateType
 }
 
-func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
+func Gen(w io.Writer, module string, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 	ctx := ctx{
+		module,
 		qbeil.Long, // TODO: infer ptr & int size + manual options
 		qbeil.Long,
 		64,
@@ -280,7 +284,10 @@ func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
 	assert.Eq(len(expr.Args), len(funcTyp.Args))
 	assert.GreaterThan(len(expr.Body), 0, "function", friendlyName, "has empty body")
 
-	mangled := mangleName(mangleOpts{class: class, name: expr.Name})
+	mangled := expr.Name
+	if expr.Name != "main" {
+		mangled = mangleName(mangleOpts{module: ctx.module, class: class, name: expr.Name})
+	}
 
 	thisFunc := qbeil.Var{Global: true, Name: mangled}
 	argTyps := make([]qbeil.TypedVar, 0, len(expr.Args))
@@ -337,7 +344,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		ty := ctx.simplify(callee.Var.ID())
 		class := ty.(*types.Class).Name
 		assert.Neq(class, "", "unnamed class not yet supported")
-		return genCallWithFuncName(ctx, "", class, callee.Method, expr)
+		return genCallWithFuncName(ctx, ctx.module, class, callee.Method, expr)
 
 	case *parse.RecordAccess:
 		// TODO: currently only module access supported
@@ -354,7 +361,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		return genCallWithFuncName(ctx, modulePath, "", callee.Field, expr)
 
 	case *parse.Symbol:
-		return genCallWithFuncName(ctx, "", "", callee.Name, expr)
+		return genCallWithFuncName(ctx, ctx.module, "", callee.Name, expr)
 
 	default:
 		panic("unimpl: genCall for callee of the form " + expr.Pretty())
@@ -369,7 +376,7 @@ func genCallWithFuncName(ctx *ctx, module string, class string, fnName string, e
 	}
 	callee := expr.Children[0]
 
-	switch mangled {
+	switch fnName {
 	case "+":
 		assert.Eq(len(expr.Children), 3, "wrong function arg count")
 

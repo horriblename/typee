@@ -24,7 +24,7 @@ func TestGen(t *testing.T) {
 			output: //
 			`type :Str = {l, l, }
 type :GObject = {l, l, l, }
-` + builtinsQbe + `function l $foo(l %x, l %y) {
+` + builtinsQbe + `function l $TestModule.foo(l %x, l %y) {
 @start
 	%_tmp_1 =l add %y, 1
 	%_tmp_2 =l add %x, %_tmp_1
@@ -57,7 +57,7 @@ function w $print(:Str %s) {
 	ret 0
 }
 
-function :Str $Foo_name() {
+function :Str $TestModule.Foo_name() {
 @start
 	%_tmp_2 =l alloc4 24
 	storel $_tmp_1, %_tmp_2
@@ -65,15 +65,15 @@ function :Str $Foo_name() {
 	storel 3, %_tmp_3
 	ret %_tmp_2
 }
-function :Str $bar(l %foo) {
+function :Str $TestModule.bar(l %foo) {
 @start
-	%_tmp_4 =:Str call $Foo_name ()
+	%_tmp_4 =:Str call $TestModule.Foo_name ()
 	ret %_tmp_4
 }
 export function w $main() {
 @start
 	%_tmp_6 =l call $malloc (l 32)
-	%_tmp_5 =:Str call $bar (l %_tmp_6)
+	%_tmp_5 =:Str call $TestModule.bar (l %_tmp_6)
 	%_tmp_7 =w call $print (:Str %_tmp_5)
 	ret %_tmp_7
 }
@@ -99,7 +99,7 @@ function w $print(:Str %s) {
 	ret 0
 }
 
-function l $getX(l %foo) {
+function l $TestModule.getX(l %foo) {
 @start
 	%_tmp_1 =l add %foo, 24
 	%_tmp_2 =l loadl %_tmp_1
@@ -154,14 +154,14 @@ function w $print(:Str %s) {
 	ret 0
 }
 
-function l $die() {
+function l $TestModule.die() {
 @start
 	%_tmp_1 =l call $exit (l 3)
 	ret %_tmp_1
 }
 export function w $main() {
 @start
-	%_tmp_2 =l call $die ()
+	%_tmp_2 =l call $TestModule.die ()
 	ret %_tmp_2
 }
 `,
@@ -178,7 +178,7 @@ export function w $main() {
 			assert.Ok(err)
 
 			var buf bytes.Buffer
-			Gen(&buf, types, program)
+			Gen(&buf, "TestModule", types, program)
 
 			got := buf.String()
 			if got != tC.output {
