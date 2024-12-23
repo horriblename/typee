@@ -169,10 +169,12 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 			}
 
 			types[i] = typ
+			ctx.inferred[e.ID()] = typ
 			self.types.Insert(e.Name, types[i])
 
 		case *parse.TypeAlias:
 			types[i] = freshVar()
+			ctx.inferred[e.ID()] = types[i]
 			self.types.Insert(e.Name, types[i])
 
 		default:
