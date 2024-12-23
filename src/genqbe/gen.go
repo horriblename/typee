@@ -93,6 +93,7 @@ func Gen(w io.Writer, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 
 func genTopLevel(ctx *ctx, expr parse.Expr) {
 	switch e := expr.(type) {
+	case *parse.Import:
 	case *parse.ObjectTypeDef:
 		genClassDef(ctx, e)
 
@@ -336,18 +337,32 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		ty := ctx.simplify(callee.Var.ID())
 		class := ty.(*types.Class).Name
 		assert.Neq(class, "", "unnamed class not yet supported")
-		return genCallWithFuncName(ctx, class, callee.Method, expr)
+		return genCallWithFuncName(ctx, "", class, callee.Method, expr)
+
+	case *parse.RecordAccess:
+		// TODO: currently only module access supported
+		var modulePath string
+		switch lhs := callee.Record.(type) {
+		case *parse.Symbol:
+			modulePath = lhs.Name
+		case *parse.RecordAccess:
+			modulePath = flattenRecordAccessPath(lhs)
+		default:
+			panic(fmt.Sprintf("unexpected lhs of record accessor %T in: %s", callee.Record, callee))
+		}
+
+		return genCallWithFuncName(ctx, modulePath, "", callee.Field, expr)
 
 	case *parse.Symbol:
-		return genCallWithFuncName(ctx, "", callee.Name, expr)
+		return genCallWithFuncName(ctx, "", "", callee.Name, expr)
 
 	default:
 		panic("unimpl: genCall for callee of the form " + expr.Pretty())
 	}
 }
 
-func genCallWithFuncName(ctx *ctx, class string, fnName string, expr *parse.Form) qbeil.Value {
-	mangled := mangleName(mangleOpts{class: class, name: fnName})
+func genCallWithFuncName(ctx *ctx, module string, class string, fnName string, expr *parse.Form) qbeil.Value {
+	mangled := mangleName(mangleOpts{module: module, class: class, name: fnName})
 	fnFriendlyName := fnName
 	if class != "" {
 		fnFriendlyName = fmt.Sprintf("%s.%s", class, fnName)
@@ -617,6 +632,28 @@ func (ctx *ctx) newTempName(name string) string {
 
 func (self *ctx) sizeOf(t qbeil.Type) (bits int, align int) {
 	return qbeil.SizeOf(self.defaultAlign, t)
+}
+
+func flattenRecordAccessPath(expr *parse.RecordAccess) string {
+	lhs := expr.Record
+	modulePath := []string{}
+	for {
+		newLhs, ok := lhs.(*parse.RecordAccess)
+		if !ok {
+			break
+		}
+		modulePath = append(modulePath, newLhs.Field)
+		lhs = newLhs
+	}
+
+	var b strings.Builder
+	for i := len(modulePath) - 1; i > 0; i-- {
+		b.WriteString(modulePath[i])
+		b.WriteString(".")
+	}
+	b.WriteString(modulePath[0])
+
+	return b.String()
 }
 
 func globals(program []parse.Expr) map[string]int {

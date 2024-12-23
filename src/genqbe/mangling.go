@@ -3,8 +3,9 @@ package genqbe
 import "strings"
 
 type mangleOpts struct {
-	class string
-	name  string
+	module string
+	class  string
+	name   string
 }
 
 func mangleName(m mangleOpts) string {
@@ -13,6 +14,10 @@ func mangleName(m mangleOpts) string {
 	}
 
 	var b strings.Builder
+	if m.module != "" {
+		b.WriteString(m.module)
+		b.WriteString(".")
+	}
 	if m.class != "" {
 		b.WriteString(strings.ReplaceAll(m.class, "_", "__"))
 		b.WriteRune('_')
