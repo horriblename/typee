@@ -176,7 +176,7 @@ func cmdRepl() error {
 	if *traceTyper {
 		simplesub.EnableTrace = true
 	}
-	typer := simplesub.NewTyper(true)
+	typer := simplesub.NewTyper("Repl", true)
 
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:       "> ",

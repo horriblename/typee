@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 
 	"github.com/horriblename/typee/src/fun"
@@ -37,9 +38,10 @@ type buildParams struct {
 }
 
 func buildProgram(params buildParams) error {
-	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: params.logLevel,
 	}))
+	slog.SetDefault(logger)
 
 	var file io.Reader
 	var err error
@@ -78,15 +80,15 @@ func buildProgram(params buildParams) error {
 		}), "\n"))
 	}
 
-	typer := simplesub.NewTyper(true)
-	t, treeType, err := typer.TypeProgram(ast)
+	typer := simplesub.NewTyper(mainModule, true)
+	t, modules, err := typer.TypeProgram(ast)
 	if err != nil {
 		errorf("during type inference: %s", err)
 		os.Exit(1)
 	}
 
 	if params.printTypeTable {
-		errorf(simplesub.DebugTypeTable(treeType))
+		errorf(simplesub.DebugTypeTable(modules[mainModule].TypeTree))
 	}
 
 	if params.printTypes {
@@ -106,37 +108,23 @@ func buildProgram(params buildParams) error {
 		return nil
 	}
 
-	qbeFile, err := os.OpenFile(params.inFile+".qbe", os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0o755)
-	if err != nil {
-		return fmt.Errorf("building qbe IL file: %w", err)
-	}
-	defer qbeFile.Close()
-
-	genqbe.Gen(qbeFile, mainModule, treeType, ast)
-	qbeFile.Seek(0, 0)
-
-	asmFName := params.inFile + ".s"
-	asmFile, err := os.OpenFile(asmFName, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o755)
-	if err != nil {
-		return fmt.Errorf("building asm file: %w", err)
-	}
-	defer asmFile.Close()
-
-	qbePath := params.inFile + ".qbe"
-	err = libqbe.Main("amd64_sysv", qbePath, qbeFile, asmFile, nil)
-	if err != nil {
-		return fmt.Errorf("qbe build: %w", err)
+	objFiles := make([]string, 0, len(modules))
+	for name, mod := range modules {
+		file, err := compileUnit(name, mod.Ast, mod.TypeTree, params.assemblerFlags)
+		if err != nil {
+			return fmt.Errorf("compiling module %s: %w", name, err)
+		}
+		objFiles = append(objFiles, file)
 	}
 
-	// maybe I should use `as` and `ld` instead? idk
-	assemblerArgs := append(params.assemblerFlags, asmFName, "-o", params.outFile)
-	log.Debug("assembler", "args", assemblerArgs)
-	assembler := exec.Command("gcc", assemblerArgs...)
-	assembler.Stdout = os.Stdout
-	assembler.Stderr = os.Stderr
-	err = assembler.Run()
+	linkerFlags := append(objFiles, "-o", params.outFile)
+	slog.Debug("linker", "args", linkerFlags)
+	linker := exec.Command("gcc", linkerFlags...)
+	linker.Stdout = os.Stdout
+	linker.Stderr = os.Stderr
+	err = linker.Run()
 	if err != nil {
-		return fmt.Errorf("assemble: %w", err)
+		return fmt.Errorf("link: %w", err)
 	}
 
 	if params.targetStage <= build {
@@ -152,4 +140,42 @@ func buildProgram(params buildParams) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func compileUnit(mod string, ast []parse.Expr, typeTree map[int]simplesub.TypeScheme, assemblerFlags []string) (outFile string, _ error) {
+	qbeFile, err := os.OpenFile(mod+".qbe", os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0o755)
+	if err != nil {
+		return "", fmt.Errorf("building qbe IL file: %w", err)
+	}
+	defer qbeFile.Close()
+
+	genqbe.Gen(qbeFile, mod, typeTree, ast)
+	qbeFile.Seek(0, 0)
+
+	asmFName := mod + ".s"
+	asmFile, err := os.OpenFile(asmFName, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o755)
+	if err != nil {
+		return "", fmt.Errorf("building asm file: %w", err)
+	}
+	defer asmFile.Close()
+
+	qbePath := mod + ".qbe"
+	err = libqbe.Main("amd64_sysv", qbePath, qbeFile, asmFile, nil)
+	if err != nil {
+		return "", fmt.Errorf("qbe build: %w", err)
+	}
+
+	// maybe I should use `as` and `ld` instead? idk
+	objFName := mod + ".o"
+	assemblerArgs := append(assemblerFlags, "-c", asmFName, "-o", objFName)
+	slog.Debug("assembler", "args", assemblerArgs)
+	assembler := exec.Command("gcc", assemblerArgs...)
+	assembler.Stdout = os.Stdout
+	assembler.Stderr = os.Stderr
+	err = assembler.Run()
+	if err != nil {
+		return "", fmt.Errorf("assemble: %w", err)
+	}
+
+	return objFName, nil
 }
