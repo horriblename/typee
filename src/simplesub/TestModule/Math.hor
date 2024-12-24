@@ -1,0 +1,3 @@
+(import TestModule.AddOne)
+
+(def addOne [x] (AddOne.addOne x))
