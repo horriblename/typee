@@ -1,5 +1,5 @@
 data $_stdout = { l $stdout }
-function w $print(:Str %s) {
+function l $print(:Str %s) {
 @start
 	%str_data =l loadl %s
 	# 64-bit architecture only lul
