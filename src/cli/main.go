@@ -108,6 +108,9 @@ func cmdCheck() error {
 const flagAssemblerFlags = "assembler-flags"
 const helpAssemblerFlags = "Flags to pass to the assembler"
 
+const flagLinkerFlags = "linker-flags"
+const helpLinkerFlags = "Flags to pass to the linker"
+
 const flagLogLevel = "log"
 const helpLogLevel = "Log level. Lower means more verbose. -4 for debug logs, 8 for errors only"
 
@@ -115,6 +118,7 @@ func cmdBuild() error {
 	outPath := flag.String(flagOut, defaultOut, helpOut)
 	outPathLong := flag.String(flagOutLong, defaultOut, helpOut)
 	assemblerFlags := flag.String(flagAssemblerFlags, "", helpAssemblerFlags)
+	linkerFlags := flag.String(flagLinkerFlags, "", helpLinkerFlags)
 	logLevel := flag.Int(flagLogLevel, int(slog.LevelInfo.Level()), helpLogLevel)
 	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
 	printTypeTable := flag.Bool(flagPrintTypeTable, false, "Print a table of expr ID to type.")
@@ -128,6 +132,7 @@ func cmdBuild() error {
 	flag.Parse()
 
 	asmFlags := strings.Fields(*assemblerFlags)
+	ldFlags := strings.Fields(*linkerFlags)
 
 	params := buildParams{
 		targetStage:    build,
@@ -137,6 +142,7 @@ func cmdBuild() error {
 		printAst:       *printAst,
 		printTypeTable: *printTypeTable,
 		assemblerFlags: asmFlags,
+		linkerFlags:    ldFlags,
 		traceTyper:     *traceTyper,
 		logLevel:       slog.Level(*logLevel),
 	}

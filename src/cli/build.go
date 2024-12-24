@@ -30,6 +30,7 @@ type buildParams struct {
 	inFile         string
 	outFile        string
 	assemblerFlags []string
+	linkerFlags    []string
 	printTypes     bool
 	printAst       bool
 	printTypeTable bool
@@ -118,6 +119,7 @@ func buildProgram(params buildParams) error {
 	}
 
 	linkerFlags := append(objFiles, "-o", params.outFile)
+	linkerFlags = append(linkerFlags, params.linkerFlags...)
 	slog.Debug("linker", "args", linkerFlags)
 	linker := exec.Command("gcc", linkerFlags...)
 	linker.Stdout = os.Stdout
