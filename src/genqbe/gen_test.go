@@ -24,7 +24,7 @@ func TestGen(t *testing.T) {
 			output: //
 			`type :Str = {l, l, }
 type :GObject = {l, l, l, }
-` + builtinsQbe + `function l $TestModule.foo(l %x, l %y) {
+` + builtinsQbe + `export function l $TestModule.foo(l %x, l %y) {
 @start
 	%_tmp_1 =l add %y, 1
 	%_tmp_2 =l add %x, %_tmp_1
@@ -46,7 +46,7 @@ type :GObject = {l, l, l, }
 type :Foo = {:GObject, l, }
 data $_tmp_1 = {b "foo"}
 data $_stdout = { l $stdout }
-function w $print(:Str %s) {
+function l $print(:Str %s) {
 @start
 	%str_data =l loadl %s
 	# 64-bit architecture only lul
@@ -57,7 +57,7 @@ function w $print(:Str %s) {
 	ret 0
 }
 
-function :Str $TestModule.Foo_name() {
+export function :Str $TestModule.Foo_name() {
 @start
 	%_tmp_2 =l alloc4 24
 	storel $_tmp_1, %_tmp_2
@@ -65,7 +65,7 @@ function :Str $TestModule.Foo_name() {
 	storel 3, %_tmp_3
 	ret %_tmp_2
 }
-function :Str $TestModule.bar(l %foo) {
+export function :Str $TestModule.bar(l %foo) {
 @start
 	%_tmp_4 =:Str call $TestModule.Foo_name ()
 	ret %_tmp_4
@@ -74,7 +74,7 @@ export function w $main() {
 @start
 	%_tmp_6 =l call $malloc (l 32)
 	%_tmp_5 =:Str call $TestModule.bar (l %_tmp_6)
-	%_tmp_7 =w call $print (:Str %_tmp_5)
+	%_tmp_7 =l call $print (:Str %_tmp_5)
 	ret %_tmp_7
 }
 `,
@@ -88,7 +88,7 @@ export function w $main() {
 type :GObject = {l, l, l, }
 type :Foo = {:GObject, l, l, }
 data $_stdout = { l $stdout }
-function w $print(:Str %s) {
+function l $print(:Str %s) {
 @start
 	%str_data =l loadl %s
 	# 64-bit architecture only lul
@@ -99,7 +99,7 @@ function w $print(:Str %s) {
 	ret 0
 }
 
-function l $TestModule.getX(l %foo) {
+export function l $TestModule.getX(l %foo) {
 @start
 	%_tmp_1 =l add %foo, 24
 	%_tmp_2 =l loadl %_tmp_1
@@ -116,7 +116,7 @@ function l $TestModule.getX(l %foo) {
 			output: `type :Str = {l, l, }
 type :GObject = {l, l, l, }
 data $_stdout = { l $stdout }
-function w $print(:Str %s) {
+function l $print(:Str %s) {
 @start
 	%str_data =l loadl %s
 	# 64-bit architecture only lul
@@ -143,7 +143,7 @@ export function w $main() {
 			output: `type :Str = {l, l, }
 type :GObject = {l, l, l, }
 data $_stdout = { l $stdout }
-function w $print(:Str %s) {
+function l $print(:Str %s) {
 @start
 	%str_data =l loadl %s
 	# 64-bit architecture only lul
@@ -154,7 +154,7 @@ function w $print(:Str %s) {
 	ret 0
 }
 
-function l $TestModule.die() {
+export function l $TestModule.die() {
 @start
 	%_tmp_1 =l call $exit (l 3)
 	ret %_tmp_1
