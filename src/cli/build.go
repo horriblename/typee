@@ -55,7 +55,7 @@ func buildProgram(params buildParams) error {
 			return fmt.Errorf("build: %w", err)
 		}
 		mainModule = path.Base(params.inFile)
-		mainModule = strings.Trim(mainModule, path.Ext(mainModule))
+		mainModule = strings.TrimRight(mainModule, path.Ext(mainModule))
 	}
 
 	if params.traceTyper {
