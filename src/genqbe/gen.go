@@ -157,47 +157,36 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		return target
 
 	case *parse.RecordAccess:
-		ty := ctx.simplify(e.Record.ID())
-		class := ty.(*types.Class)
-		assert.Neq(class.Name, "", "unnamed class not yet supported")
+		lhsTy := ctx.simplify(e.Record.ID())
+		if lhs, ok := e.Record.(*parse.RecordAccess); ok {
+			// TODO: right now we just assume a module path, but we need to handle records too
+			module := flattenRecordAccessPath(lhs)
+			mangled := mangleName(mangleOpts{
+				module: module,
+				class:  "",
+				name:   e.Field,
+			})
 
-		ct := ctx.userTypes[class.Name]
-		classTy, ok := ct.(qbeil.StructType)
-		assert.True(ok, "codegen: record access on non-struct type (type checker bug?)")
-
-		fieldLayout, ok := classTy.Layouts[e.Field]
-		if !ok {
-			panic(fmt.Sprintf("typer bug: tried to use a non-existent class field %s.%s", class.Name, e.Field))
+			return qbeil.Var{Global: true, Name: mangled}
 		}
 
-		// TODO: once we support structs, we can't just pass this around (can we?)
-		bt, ok := fieldLayout.Type.(qbeil.BaseType)
-		if !ok {
-			panic("unreachable: embedded struct types are currently invalid in classes")
-		}
-
-		// TODO: 32-bit system
-		addr := ctx.il.TempVar(false)
-		ctx.il.Arithmetic(addr.IL(), ctx.ptrType, "add",
-			gen(ctx, e.Record),
-			qbeil.IntLiteral{Value: int64(fieldLayout.Offset)},
-		)
-
-		val := ctx.il.TempVar(false)
-		switch bt {
-		case qbeil.Double:
-			ctx.il.Arithmetic(val.IL(), bt, "loadd", addr)
-		case qbeil.Long:
-			ctx.il.Arithmetic(val.IL(), bt, "loadl", addr)
-		case qbeil.Single:
-			ctx.il.Arithmetic(val.IL(), bt, "loads", addr)
-		case qbeil.Word:
-			ctx.il.Arithmetic(val.IL(), bt, "loadw", addr)
+		switch lhsTy := lhsTy.(type) {
+		case *types.Class:
+			return genClassAccess(ctx, lhsTy, e)
+		case *types.Record:
+			// TODO: right now we just assume a module path, but we need to handle records too
+			// should be unreachable currently
+			if lhs, ok := e.Record.(*parse.Symbol); ok {
+				mangled := mangleName(mangleOpts{
+					module: lhs.Name,
+					class:  "",
+					name:   e.Field,
+				})
+				return qbeil.Var{Global: true, Name: mangled}
+			}
 		default:
-			panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", bt))
+			panic(fmt.Sprintf("unexpected types.Type: %#v", lhsTy))
 		}
-
-		return val
 
 	case *parse.StrLiteral:
 		dataGlobal := ctx.il.TempVar(true)
@@ -223,12 +212,13 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 }
 
 func genGlobalVar(ctx *ctx, expr *parse.Set) (val qbeil.Value) {
+	name := mangleName(mangleOpts{module: ctx.module, name: expr.Name})
 	switch val := expr.Value.(type) {
 	case *parse.IntLiteral:
 		return ctx.il.Data(
 			qbeil.DataDef{
 				Linkage: qbeil.Linkage{},
-				VarName: expr.Name,
+				VarName: name,
 				Align:   0,
 			},
 			ctx.intType,
@@ -239,7 +229,7 @@ func genGlobalVar(ctx *ctx, expr *parse.Set) (val qbeil.Value) {
 	case *parse.StrLiteral:
 		return ctx.il.StrData(qbeil.DataDef{
 			Linkage: qbeil.Linkage{},
-			VarName: expr.Name,
+			VarName: name,
 			Align:   0,
 		}, val.Content)
 
@@ -247,7 +237,7 @@ func genGlobalVar(ctx *ctx, expr *parse.Set) (val qbeil.Value) {
 		return ctx.il.Data(
 			qbeil.DataDef{
 				Linkage: qbeil.Linkage{},
-				VarName: expr.Name,
+				VarName: name,
 				Align:   0,
 			},
 			qbeil.Double,
@@ -263,7 +253,7 @@ func genGlobalVar(ctx *ctx, expr *parse.Set) (val qbeil.Value) {
 		return ctx.il.Data(
 			qbeil.DataDef{
 				Linkage: qbeil.Linkage{},
-				VarName: expr.Name,
+				VarName: name,
 				Align:   0,
 			},
 			ctx.toILType(ctx.simplify(val.ID())),
@@ -399,7 +389,7 @@ func genCallWithFuncName(ctx *ctx, module string, class string, fnName string, e
 		assert.Eq(len(expr.Children), 2, `wrong arg count for "print"`)
 		arg := gen(ctx, expr.Children[1])
 		target := ctx.il.TempVar(false)
-		ctx.il.Call(&target, qbeil.Word,
+		ctx.il.Call(&target, ctx.ptrType,
 			qbeil.Var{Global: true, Name: "print"},
 			[]qbeil.TypedValue{{
 				Type:  ctx.toILType(&types.String{}),
@@ -451,6 +441,48 @@ func genUnionDef(ctx *ctx, e *parse.UnionDef) {
 	}
 
 	ctx.declareType(e.Name, ctx.unionDefIL(unionTy, e))
+}
+
+func genClassAccess(ctx *ctx, class *types.Class, expr *parse.RecordAccess) qbeil.Value {
+	assert.Neq(class.Name, "", "unnamed class not yet supported")
+
+	ct := ctx.userTypes[class.Name]
+	classTy, ok := ct.(qbeil.StructType)
+	assert.True(ok, "codegen: record access on non-struct type (type checker bug?)")
+
+	fieldLayout, ok := classTy.Layouts[expr.Field]
+	if !ok {
+		panic(fmt.Sprintf("typer bug: tried to use a non-existent class field %s.%s", class.Name, expr.Field))
+	}
+
+	// TODO: once we support structs, we can't just pass this around (can we?)
+	bt, ok := fieldLayout.Type.(qbeil.BaseType)
+	if !ok {
+		panic("unreachable: embedded struct types are currently invalid in classes")
+	}
+
+	// TODO: 32-bit system
+	addr := ctx.il.TempVar(false)
+	ctx.il.Arithmetic(addr.IL(), ctx.ptrType, "add",
+		gen(ctx, expr.Record),
+		qbeil.IntLiteral{Value: int64(fieldLayout.Offset)},
+	)
+
+	val := ctx.il.TempVar(false)
+	switch bt {
+	case qbeil.Double:
+		ctx.il.Arithmetic(val.IL(), bt, "loadd", addr)
+	case qbeil.Long:
+		ctx.il.Arithmetic(val.IL(), bt, "loadl", addr)
+	case qbeil.Single:
+		ctx.il.Arithmetic(val.IL(), bt, "loads", addr)
+	case qbeil.Word:
+		ctx.il.Arithmetic(val.IL(), bt, "loadw", addr)
+	default:
+		panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", bt))
+	}
+
+	return val
 }
 
 func (ctx *ctx) finish() {
