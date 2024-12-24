@@ -24,7 +24,7 @@ func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 	scope.Insert("=", intComparatorType)
 	scope.Insert("print", Func{
 		Args: []SimpleType{Str{}},
-		Ret:  Str{},
+		Ret:  Record{},
 	})
 	scope.Insert("exit", Func{
 		Args: []SimpleType{Int{}},
