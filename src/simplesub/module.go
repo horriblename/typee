@@ -10,15 +10,11 @@ import (
 	"github.com/horriblename/typee/src/parse"
 )
 
-type moduleExports struct {
-	Types   map[string]TypeScheme
-	Globals map[string]TypeScheme
-}
-
-type depModule struct {
-	name string
-	ast  []parse.Expr
-	deps []string
+type ModuleInfo struct {
+	Ast      []parse.Expr
+	Types    map[string]TypeScheme
+	Globals  map[string]TypeScheme
+	TypeTree map[int]TypeScheme
 }
 
 var (
@@ -43,12 +39,13 @@ func (self *Typer) typeDeps(program []parse.Expr) error {
 			return err
 		}
 
-		_, typTable, err := self.TypeProgram(ast)
+		ctx := &context{inferred: map[int]TypeScheme{}}
+		_, err = self.typeProgram(ctx, ast)
 		if err != nil {
 			return err
 		}
 
-		symbols, err := typeTableToSymbolMap(ast, typTable)
+		symbols, err := typeTableToSymbolMap(ast, ctx.inferred)
 		if err != nil {
 			return fmt.Errorf("generating symbol table from type table: %w", err)
 		}
@@ -74,10 +71,12 @@ func parseModule(name string) ([]parse.Expr, error) {
 // sorts a map[nodes]outgoingNodes
 // leaf nodes go first, root goes last
 
-func typeTableToSymbolMap(program []parse.Expr, typTable map[int]TypeScheme) (moduleExports, error) {
-	symbols := moduleExports{
-		Types:   map[string]TypeScheme{},
-		Globals: map[string]TypeScheme{},
+func typeTableToSymbolMap(program []parse.Expr, typTable map[int]TypeScheme) (ModuleInfo, error) {
+	symbols := ModuleInfo{
+		Ast:      program,
+		Types:    map[string]TypeScheme{},
+		Globals:  map[string]TypeScheme{},
+		TypeTree: typTable,
 	}
 	for _, expr := range program {
 		switch e := expr.(type) {
@@ -101,7 +100,7 @@ func typeTableToSymbolMap(program []parse.Expr, typTable map[int]TypeScheme) (mo
 
 		case *parse.Import:
 		default:
-			return moduleExports{}, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
+			return ModuleInfo{}, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
 		}
 	}
 

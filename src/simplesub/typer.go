@@ -15,15 +15,16 @@ import (
 
 type Typer struct {
 	debug      bool
+	mainModule string
 	classScope string
 	vars       scope.ScopedMap[TypeScheme]
 	types      scope.ScopedMap[TypeScheme]
 
 	// local to current module
-	moduleImports map[string]moduleExports
+	moduleImports map[string]ModuleInfo
 
 	// shared across all modules
-	moduleCache map[string]moduleExports
+	moduleCache map[string]ModuleInfo
 }
 
 var ErrUndefinedVariable = errors.New("undefined variable")
@@ -56,7 +57,7 @@ var ErrEnumMissingKey = errors.New("enum type is missing a key")
 
 const scopeLevelTop int = 1
 
-func NewTyper(debug bool) *Typer {
+func NewTyper(mainModule string, debug bool) *Typer {
 	vars := scope.NewScopedMap[TypeScheme]()
 	addBuiltins(&vars)
 	vars.NewScope()
@@ -64,10 +65,11 @@ func NewTyper(debug bool) *Typer {
 	addBuiltinTypes(&types)
 	types.NewScope()
 	return &Typer{
+		mainModule:  mainModule,
 		debug:       debug,
 		vars:        vars,
 		types:       types,
-		moduleCache: map[string]moduleExports{},
+		moduleCache: map[string]ModuleInfo{},
 	}
 }
 
@@ -75,14 +77,23 @@ type context struct {
 	inferred map[int]TypeScheme
 }
 
-func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[int]TypeScheme, error) {
+func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[string]ModuleInfo, error) {
 	if err := self.typeDeps(program); err != nil {
 		return nil, nil, err
 	}
 
 	ctx := context{map[int]TypeScheme{}}
 	t, err := self.typeProgram(&ctx, program)
-	return t, ctx.inferred, err
+	if err != nil {
+		return nil, nil, err
+	}
+
+	self.moduleCache[self.mainModule], err = typeTableToSymbolMap(program, ctx.inferred)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return t, self.moduleCache, err
 }
 
 func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme, error) {
@@ -92,7 +103,7 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 	// 3. iterate through top-level nodes generating fresh type vars for each top level item.
 	// 4. walk the AST, inferring types of all expressions
 	importCount := 0
-	self.moduleImports = map[string]moduleExports{}
+	self.moduleImports = map[string]ModuleInfo{}
 	for i, expr := range program {
 		expr, ok := expr.(*parse.Import)
 		if !ok {

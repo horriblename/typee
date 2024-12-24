@@ -128,7 +128,7 @@ func TestTypeExpr(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			assert := assert.NewTestAsserts(t)
-			checker := NewTyper(true)
+			checker := NewTyper("MainModule", true)
 
 			program, err := parse.ParseString(tC.input)
 			assert.Ok(err)
@@ -489,7 +489,7 @@ func TestTypeProgram(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			EnableTrace = true
 			assert := assert.NewTestAsserts(t)
-			checker := NewTyper(true)
+			checker := NewTyper("MainModule", true)
 
 			program, err := parse.ParseString(tC.input)
 			assert.Ok(err)

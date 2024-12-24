@@ -210,12 +210,13 @@ export function w $main() {
 			program, err := parse.ParseString(tC.input)
 			assert.Ok(err)
 
-			typer := simplesub.NewTyper(false)
+			mod := "MainModule"
+			typer := simplesub.NewTyper(mod, false)
 			_, types, err := typer.TypeProgram(program)
 			assert.Ok(err)
 
 			var buf bytes.Buffer
-			Gen(&buf, "TestModule", types, program)
+			Gen(&buf, mod, types[mod].TypeTree, program)
 
 			got := buf.String()
 			if got != tC.output {
