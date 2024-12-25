@@ -40,11 +40,7 @@ func horType(ti *gi.TypeInfo, cfg typeConfig) string {
 		}
 		panic("Non-pointer void type is not supported")
 	case gi.TYPE_TAG_UTF8, gi.TYPE_TAG_FILENAME:
-		if cfg.flags&typeExact != 0 {
-			out.WriteString("Opaque")
-		} else {
-			out.WriteString("Str")
-		}
+		out.WriteString("Opaque")
 	case gi.TYPE_TAG_ARRAY:
 		size := ti.ArrayFixedSize()
 		out.WriteString("[")
@@ -68,6 +64,7 @@ func horType(ti *gi.TypeInfo, cfg typeConfig) string {
 		// out.WriteString(horType(ti.ParamType(0), cfg.flags))
 		// out.WriteString("]")
 		// out.WriteString(horType(ti.ParamType(1), cfg.flags))
+		panic("GHash not supported yet")
 	case gi.TYPE_TAG_ERROR:
 		// TODO: should be a GLib.Error
 		out.WriteString("Error")
