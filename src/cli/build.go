@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	_ "embed"
 	"fmt"
 	"io"
 	"log/slog"
@@ -24,6 +26,9 @@ const (
 	build
 	run
 )
+
+//go:embed horstd/std.c
+var stdCSrc string
 
 type buildParams struct {
 	targetStage    stage
@@ -113,10 +118,21 @@ func buildProgram(params buildParams) error {
 	for name, mod := range modules {
 		file, err := compileUnit(name, mod.Ast, mod.TypeTree, params.assemblerFlags)
 		if err != nil {
-			return fmt.Errorf("compiling module %s: %w", name, err)
+			return fmt.Errorf("compiling module %s: %s", name, err)
 		}
 		objFiles = append(objFiles, file)
 	}
+
+	stdObj := "std.o"
+	stdCompiler := exec.Command("gcc", "-c", "-o", stdObj, "-x", "c", "-")
+	stdCompiler.Stdin = bytes.NewBufferString(stdCSrc)
+	stdCompiler.Stdout = os.Stdout
+	stdCompiler.Stderr = os.Stderr
+	if err := stdCompiler.Run(); err != nil {
+		return fmt.Errorf("compiling stdlib: %s", err)
+	}
+
+	objFiles = append(objFiles, stdObj)
 
 	linkerFlags := append(objFiles, "-o", params.outFile)
 	linkerFlags = append(linkerFlags, params.linkerFlags...)
@@ -126,7 +142,7 @@ func buildProgram(params buildParams) error {
 	linker.Stderr = os.Stderr
 	err = linker.Run()
 	if err != nil {
-		return fmt.Errorf("link: %w", err)
+		return fmt.Errorf("link: %s", err)
 	}
 
 	if params.targetStage <= build {

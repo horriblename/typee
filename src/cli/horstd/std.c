@@ -1,8 +1,8 @@
-#include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 typedef struct Str {
   char *data;
-  size_t size;
+  int64_t size;
 } Str;
 
 Str strFromCStr(char *data) {
