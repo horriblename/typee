@@ -40,6 +40,12 @@ func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 			Ret: t,
 		},
 	})
+	scope.Insert("strFromCStr", PolymorphicType{
+		Body: Func{
+			Args: []SimpleType{Primitive{PrimitiveOpaque}},
+			Ret:  Str{},
+		},
+	})
 }
 
 func addBuiltinTypes(types *scope.ScopedMap[TypeScheme]) {
