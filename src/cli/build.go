@@ -83,7 +83,7 @@ func buildProgram(params buildParams) error {
 	}
 
 	if params.printAst {
-		errorf(strings.Join(fun.Map(ast, func(e parse.Expr) string {
+		errorf("%s", strings.Join(fun.Map(ast, func(e parse.Expr) string {
 			return e.String()
 		}), "\n"))
 	}
@@ -96,7 +96,7 @@ func buildProgram(params buildParams) error {
 	}
 
 	if params.printTypeTable {
-		errorf(simplesub.DebugTypeTable(modules[mainModule].TypeTree))
+		errorf("%s", simplesub.DebugTypeTable(modules[mainModule].TypeTree))
 	}
 
 	if params.printTypes {
