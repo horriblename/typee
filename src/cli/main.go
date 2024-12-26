@@ -114,6 +114,9 @@ const helpLinkerFlags = "Flags to pass to the linker"
 const flagLogLevel = "log"
 const helpLogLevel = "Log level. Lower means more verbose. -4 for debug logs, 8 for errors only"
 
+const flagExternalQbe = "external-qbe"
+const helpExternalQbe = "Use qbe executable from PATH"
+
 func cmdBuild() error {
 	outPath := flag.String(flagOut, defaultOut, helpOut)
 	outPathLong := flag.String(flagOutLong, defaultOut, helpOut)
@@ -124,6 +127,7 @@ func cmdBuild() error {
 	printTypeTable := flag.Bool(flagPrintTypeTable, false, "Print a table of expr ID to type.")
 	printAst := flag.Bool(flagPrintAst, false, "Print the parse ast")
 	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
+	externalQbe := flag.Bool(flagExternalQbe, false, helpExternalQbe)
 
 	if *outPathLong != defaultOut {
 		*outPath = *outPathLong
@@ -144,6 +148,7 @@ func cmdBuild() error {
 		assemblerFlags: asmFlags,
 		linkerFlags:    ldFlags,
 		traceTyper:     *traceTyper,
+		externalQbe:    *externalQbe,
 		logLevel:       slog.Level(*logLevel),
 	}
 
