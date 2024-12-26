@@ -23,6 +23,7 @@ type stage int
 
 const (
 	check stage = iota
+	assemble
 	build
 	run
 )
@@ -130,6 +131,10 @@ func buildProgram(params buildParams) error {
 	stdCompiler.Stderr = os.Stderr
 	if err := stdCompiler.Run(); err != nil {
 		return fmt.Errorf("compiling stdlib: %s", err)
+	}
+
+	if params.targetStage <= assemble {
+		return nil
 	}
 
 	objFiles = append(objFiles, stdObj)
