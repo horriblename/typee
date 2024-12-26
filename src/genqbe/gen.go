@@ -30,13 +30,14 @@ type ctx struct {
 	intType      qbeil.BaseType
 	defaultAlign int
 
-	typeDecl   bytes.Buffer
-	il         qbeil.Builder
-	types      map[int]simplesub.TypeScheme
-	simplified map[int]types.Type
-	statics    map[qbeil.Var]string
-	globals    map[string]int
-	userTypes  map[string]qbeil.AggregateType
+	typeDecl    bytes.Buffer
+	il          qbeil.Builder
+	types       map[int]simplesub.TypeScheme
+	simplified  map[int]types.Type
+	statics     map[qbeil.Var]string
+	globals     map[string]int
+	userTypes   map[string]qbeil.AggregateType
+	recordTypes map[int]qbeil.AggregateType
 
 	idGenerator          int64
 	generatedTranslation map[types.Type]qbeil.AggregateType
@@ -55,6 +56,7 @@ func Gen(w io.Writer, module string, typs map[int]simplesub.TypeScheme, ast []pa
 		map[qbeil.Var]string{},
 		globals(ast),
 		map[string]qbeil.AggregateType{},
+		map[int]qbeil.AggregateType{},
 		0,
 		map[types.Type]qbeil.AggregateType{},
 	}
@@ -522,7 +524,39 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	case *types.Class:
 		return ctx.ptrType
 	case *types.Record:
-		return ctx.ptrType
+		if il, ok := ctx.generatedTranslation[t]; ok {
+			return il
+		}
+
+		// FIXME: unordered
+		fields := make([]qbeil.RepeatType, 0, len(t.Fields))
+		layouts := map[string]qbeil.FieldLayout{}
+		offset := 0
+		for field, fieldTy := range t.Fields {
+			// TODO: recursive types?
+			// TODO: align
+			ilTy := ctx.toILType(fieldTy)
+			fields = append(fields, qbeil.SingleType(ilTy))
+			sizeBits, _ := ctx.sizeOf(ilTy)
+			layouts[field] = qbeil.FieldLayout{
+				Type:   ilTy,
+				Offset: offset,
+			}
+
+			offset += sizeBits
+		}
+		name := ctx.newTempName("Record_")
+		ilTyp := qbeil.StructType{
+			Align:   0,
+			Name:    name,
+			Layouts: layouts,
+			Fields:  fields,
+		}
+
+		ctx.declareType(name, ilTyp)
+		ctx.generatedTranslation[t] = ilTyp
+		return ilTyp
+
 	case *types.Ptr:
 		return ctx.ptrType
 	case *types.Union:
