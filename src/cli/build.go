@@ -178,14 +178,14 @@ func compileUnit(mod string, ast []parse.Expr, typeTree map[int]simplesub.TypeSc
 	asmFName := mod + ".s"
 	asmFile, err := os.OpenFile(asmFName, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o755)
 	if err != nil {
-		return "", fmt.Errorf("building asm file: %w", err)
+		return "", fmt.Errorf("creating asm file: %w", err)
 	}
 	defer asmFile.Close()
 
 	qbePath := mod + ".qbe"
 	err = libqbe.Main("amd64_sysv", qbePath, qbeFile, asmFile, nil)
 	if err != nil {
-		return "", fmt.Errorf("qbe build: %w", err)
+		return "", fmt.Errorf("compiling qbe to asm file: %w", err)
 	}
 
 	// maybe I should use `as` and `ld` instead? idk
