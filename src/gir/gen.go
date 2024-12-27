@@ -16,15 +16,18 @@ type Generator struct {
 	inStruct    bool
 	methodOwner []string
 	goBindings  bytes.Buffer
+	externs     bytes.Buffer
 }
 
 func New(lib string, version string, config Config) ([]byte, error) {
-	g := Generator{config, lib, false, []string{}, bytes.Buffer{}}
+	g := Generator{config, lib, false, []string{}, bytes.Buffer{}, bytes.Buffer{}}
 	err := g.Gen(lib, version)
 	if err != nil {
 		return nil, err
 	}
 
+	g.goBindings.WriteString("\n;; extern declarations\n")
+	g.externs.WriteTo(&g.goBindings)
 	return g.goBindings.Bytes(), nil
 }
 
@@ -337,9 +340,8 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		}
 		p("%s", sanitize(snake_case_to_camelCase(arg.argInfo.Name())))
 	}
-	p("] (callExtern %s", fi.Symbol())
 
-	// callExtern body
+	p("] (%s", fi.Symbol())
 
 	if isValidMethod {
 		if self.inStruct {
@@ -353,6 +355,25 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	}
 	p("))\n")
 
+	extern := printerTo(&self.externs)
+	extern("(extern def %s (", fi.Symbol())
+	for _, arg := range fb.orig_args {
+		extern("%s ", horType(arg.Type(), typeConfig{typeNone, self.namespace}))
+	}
+	if fi.ReturnType().Tag() == gi.TYPE_TAG_VOID && !fi.ReturnType().IsPointer() {
+		// non-pointer void return
+		extern("{}) [")
+	} else {
+		extern("%s) [", horType(fi.ReturnType(), typeConfig{typeNone, self.namespace}))
+	}
+
+	for i, arg := range fb.orig_args {
+		if i != 0 {
+			extern(" ")
+		}
+		extern("%s", sanitize(snake_case_to_camelCase(arg.Name())))
+	}
+	extern("])\n")
 }
 
 func (self *Generator) processInterfaceInfo(ii *gi.InterfaceInfo) {
