@@ -22,6 +22,9 @@ var (
 )
 
 func (self *Typer) typeDeps(program []parse.Expr) error {
+	origModule := self.mainModule
+	defer func() { self.mainModule = origModule }()
+
 	for _, mod := range program {
 		dep, ok := mod.(*parse.Import)
 		if !ok {
@@ -39,18 +42,11 @@ func (self *Typer) typeDeps(program []parse.Expr) error {
 			return err
 		}
 
-		ctx := &moduleContext{inferred: map[int]TypeScheme{}}
-		_, err = self.typeProgram(ctx, ast)
+		self.mainModule = name
+		_, _, err = self.TypeProgram(ast)
 		if err != nil {
 			return err
 		}
-
-		symbols, err := typeTableToSymbolMap(ast, ctx.inferred)
-		if err != nil {
-			return fmt.Errorf("generating symbol table from type table: %w", err)
-		}
-
-		self.moduleCache[name] = symbols
 	}
 
 	return nil

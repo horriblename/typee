@@ -96,7 +96,7 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[string]M
 
 func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]TypeScheme, error) {
 	// top-level process
-	// 1. type check imported modules
+	// 1. type check imported modules (already done in [TypeProgram])
 	// 2. groupRecursives: walk the AST to mark (mutually-)recursive top-level functions.
 	// 3. iterate through top-level nodes generating fresh type vars for each top level item.
 	// 4. walk the AST, inferring types of all expressions
