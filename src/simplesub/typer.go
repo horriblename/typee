@@ -20,9 +20,6 @@ type Typer struct {
 	vars       scope.ScopedMap[TypeScheme]
 	types      scope.ScopedMap[TypeScheme]
 
-	// local to current module
-	moduleImports map[string]ModuleInfo
-
 	// shared across all modules
 	moduleCache map[string]ModuleInfo
 }
@@ -73,8 +70,9 @@ func NewTyper(mainModule string, debug bool) *Typer {
 	}
 }
 
-type context struct {
+type moduleContext struct {
 	inferred map[int]TypeScheme
+	imports  map[string]ModuleInfo
 }
 
 func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[string]ModuleInfo, error) {
@@ -82,7 +80,7 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[string]M
 		return nil, nil, err
 	}
 
-	ctx := context{map[int]TypeScheme{}}
+	ctx := moduleContext{map[int]TypeScheme{}, map[string]ModuleInfo{}}
 	t, err := self.typeProgram(&ctx, program)
 	if err != nil {
 		return nil, nil, err
@@ -96,14 +94,14 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[string]M
 	return t, self.moduleCache, err
 }
 
-func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme, error) {
+func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]TypeScheme, error) {
 	// top-level process
 	// 1. type check imported modules
 	// 2. groupRecursives: walk the AST to mark (mutually-)recursive top-level functions.
 	// 3. iterate through top-level nodes generating fresh type vars for each top level item.
 	// 4. walk the AST, inferring types of all expressions
 	importCount := 0
-	self.moduleImports = map[string]ModuleInfo{}
+	ctx.imports = map[string]ModuleInfo{}
 	for i, expr := range program {
 		expr, ok := expr.(*parse.Import)
 		if !ok {
@@ -113,7 +111,8 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 
 		alias := expr.Module[len(expr.Module)-1]
 		fullPath := strings.Join(expr.Module, ".")
-		self.moduleImports[alias] = self.moduleCache[fullPath]
+		ctx.imports[alias], ok = self.moduleCache[fullPath]
+		assert.True(ok, "typer bug: module %s missing from moduleImports", fullPath)
 	}
 
 	program = program[importCount:]
@@ -307,7 +306,7 @@ func (self *Typer) typeProgram(ctx *context, program []parse.Expr) ([]TypeScheme
 	return types, nil
 }
 
-func (self *Typer) typeLetRhs(ctx *context, name string, rhs parse.Expr) (PolymorphicType, error) {
+func (self *Typer) typeLetRhs(ctx *moduleContext, name string, rhs parse.Expr) (PolymorphicType, error) {
 	// NOTE: currently top level definitions are always recursive let,
 	// and passing FuncDef as rhs is a little hack so I can write (def foo ...)
 	// instead of (set foo (fn ...))
@@ -325,7 +324,7 @@ func (self *Typer) typeLetRhs(ctx *context, name string, rhs parse.Expr) (Polymo
 	return PolymorphicType{Body: eTy}, nil
 }
 
-func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ error) {
+func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, _ error) {
 	trace("typing: %v", term.Pretty())
 	indentLvl++
 	defer func() {
@@ -339,7 +338,7 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 	case *parse.Symbol:
 		if ty, ok := self.vars.Get(expr.Name).Unwrap(); ok {
 			return ty.instantiate(), nil
-		} else if mod, ok := self.moduleImports[expr.Name]; ok {
+		} else if mod, ok := ctx.imports[expr.Name]; ok {
 			// FIXME: this is a terrible idea
 			fields := make([]NamedType, 0, len(mod.Globals))
 			for name, ty := range mod.Globals {
@@ -666,7 +665,7 @@ func (self *Typer) TypeTerm(ctx *context, term parse.Expr) (a SimpleType, _ erro
 	panic(fmt.Sprintf("unhandled: TypeTerm(%s)", term.Pretty()))
 }
 
-func (self *Typer) defClass(ctx *context, classDef *parse.ObjectTypeDef) (SimpleType, error) {
+func (self *Typer) defClass(ctx *moduleContext, classDef *parse.ObjectTypeDef) (SimpleType, error) {
 	self.classScope = classDef.Name
 	defer func() { self.classScope = "" }()
 	fields := []NamedMember{}
@@ -749,7 +748,7 @@ func (self *Typer) defClass(ctx *context, classDef *parse.ObjectTypeDef) (Simple
 	return t, nil
 }
 
-func (self *Typer) defUnion(ctx *context, unionDef *parse.UnionDef) (SimpleType, error) {
+func (self *Typer) defUnion(ctx *moduleContext, unionDef *parse.UnionDef) (SimpleType, error) {
 	// TODO: check repeated variants?
 	variants := make([]ConcreteType, len(unionDef.Variants))
 	for i, v := range unionDef.Variants {

@@ -39,7 +39,7 @@ func (self *Typer) typeDeps(program []parse.Expr) error {
 			return err
 		}
 
-		ctx := &context{inferred: map[int]TypeScheme{}}
+		ctx := &moduleContext{inferred: map[int]TypeScheme{}}
 		_, err = self.typeProgram(ctx, ast)
 		if err != nil {
 			return err
