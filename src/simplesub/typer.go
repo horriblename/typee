@@ -112,7 +112,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 		alias := expr.Module[len(expr.Module)-1]
 		fullPath := strings.Join(expr.Module, ".")
 		ctx.imports[alias], ok = self.moduleCache[fullPath]
-		assert.True(ok, "typer bug: module %s missing from moduleImports", fullPath)
+		assert.True(ok, "typer bug: module %s missing from moduleCache", fullPath)
 	}
 
 	program = program[importCount:]
