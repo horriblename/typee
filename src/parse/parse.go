@@ -6,6 +6,7 @@ import (
 
 	"github.com/horriblename/typee/src/combinator"
 	"github.com/horriblename/typee/src/lex"
+	"github.com/horriblename/typee/src/opt"
 )
 
 var ErrParse = errors.New("parse error")
@@ -118,6 +119,9 @@ func formLike(in []lex.Token) ([]lex.Token, Expr, error) {
 	case *lex.Def:
 		return defForm(in)
 
+	case *lex.Extern:
+		return defExtern(in)
+
 	case *lex.Set:
 		return setForm(in)
 
@@ -225,6 +229,9 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	in, _, err = lparen(in)
 	check(err)
 
+	in, extern, err := combinator.Maybe(kwExtern)(in)
+	check(err)
+
 	in, _, err = kwDef(in)
 	check(err)
 
@@ -268,9 +275,52 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 		Signature: sig,
 		Args:      realArgs,
 		Body:      body,
+		Extern:    extern.IsSome(),
 	}
 
 	return in, &def, nil
+}
+
+func defExtern(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
+	in, out, err := combinator.Surround(
+		lparen,
+		combinator.Then(
+			kwExtern,
+			combinator.WithPrefix(
+				kwDef,
+				combinator.Then(
+					symbolName,
+					combinator.Then(
+						combinator.Surround(
+							lparen,
+							combinator.Many0(type_),
+							rparen,
+						),
+						combinator.Surround(
+							lbracket,
+							combinator.Many0(symbolName),
+							rbracket,
+						),
+					),
+				),
+			),
+		),
+		rparen,
+	)(in)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fn := FuncDef{
+		id:        newId(),
+		Name:      out.Two.One,
+		Signature: opt.Some(out.Two.Two.One),
+		Args:      out.Two.Two.Two,
+		Body:      []Expr{},
+		Extern:    true,
+	}
+
+	return in, &fn, nil
 }
 
 func setForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
@@ -811,6 +861,9 @@ func kwSelfType(in []lex.Token) ([]lex.Token, struct{}, error) {
 }
 func kwCallExtern(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.CallExtern])(in)
+}
+func kwExtern(in []lex.Token) ([]lex.Token, struct{}, error) {
+	return wrappedResult(matchOne[*lex.Extern])(in)
 }
 func kwTrue(in []lex.Token) ([]lex.Token, Expr, error) {
 	rest, _, err := wrappedResult(matchOne[*lex.TrueLiteral])(in)

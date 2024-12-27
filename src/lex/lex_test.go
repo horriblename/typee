@@ -42,13 +42,14 @@ func TestLex(t *testing.T) {
 			err: nil,
 		},
 		{
-			desc:  "keywords",
-			input: "def set defoo bar true false if let fn case letrec class priv pub protected self interface new union enum type callExtern import",
+			desc: "keywords",
+			input: `def set defoo bar true false if let fn case letrec class priv pub 
+				protected self interface new union enum type callExtern import extern`,
 			output: []Token{&tokDef, &tokSet, &Symbol{Name: "defoo"},
 				&Symbol{Name: "bar"}, &TrueLiteral{}, &FalseLiteral{}, &If{},
 				&Let{}, &Fn{}, &Case{}, &LetRec{}, &Class{}, &Priv{}, &Pub{},
 				&Protected{}, &Self{}, &Interface{}, &New{}, &Union{}, &Enum{},
-				&Type{}, &CallExtern{}, &Import{},
+				&Type{}, &CallExtern{}, &Import{}, &Extern{},
 			},
 		},
 		{

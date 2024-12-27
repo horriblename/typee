@@ -472,6 +472,21 @@ func TestParse(t *testing.T) {
 				Module: []string{"Foo", "Bar"},
 			}},
 		},
+		{
+			desc:  "extern declaration",
+			input: "(extern def thing (Foo Str) [foo])",
+			output: []Expr{&FuncDef{
+				id:   1,
+				Name: "thing",
+				Signature: opt.Some([]TypeRepr{
+					TypeName{"Foo", ""},
+					TypeName{"Str", ""},
+				}),
+				Args:   []string{"foo"},
+				Body:   []Expr{},
+				Extern: true,
+			}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

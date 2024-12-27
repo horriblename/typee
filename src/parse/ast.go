@@ -42,6 +42,7 @@ type FuncDef struct {
 	Signature opt.Option[[]TypeRepr]
 	Args      []string
 	Body      []Expr
+	Extern    bool
 }
 type Set struct {
 	id    int
