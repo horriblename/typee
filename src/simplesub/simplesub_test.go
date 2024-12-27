@@ -484,6 +484,18 @@ func TestTypeProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc:  "extern declaration",
+			input: "(extern def doThing (Int Str) [n])",
+			typ: []types.Type{
+				&types.Func{
+					Args: []types.Type{
+						&types.Int{},
+					},
+					Ret: &types.String{},
+				},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

@@ -195,9 +195,51 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 	for i, expr := range program {
 		switch e := expr.(type) {
 		case *parse.FuncDef:
+			if e.Extern {
+				sig, ok := e.Signature.Unwrap()
+				assert.True(ok, "got extern declaration with no signature")
+
+				params := make([]SimpleType, len(sig)-1)
+
+				if len(sig) != len(e.Args)+1 {
+					return nil, fmt.Errorf("%w: function has %d args but type signature only takes %d", ErrBadTypeSignature, len(e.Args), len(sig)-1)
+				}
+
+				for i, arg := range sig[:len(sig)-1] {
+					param, err := self.parseType(arg)
+					if err != nil {
+						return nil, err
+					}
+
+					p := param.instantiate()
+					params[i] = p
+					self.vars.Insert(e.Args[i], p)
+				}
+
+				retHint, err := self.parseType(sig[len(sig)-1])
+				if err != nil {
+					return nil, err
+				}
+
+				typ := Func{Args: params, Ret: retHint.instantiate()}
+
+				fnTy, ok := types[i].(SimpleType)
+				if !ok {
+					pt := assert.Cast[PolymorphicType](types[i], "cannot fail")
+					fnTy = pt.Body
+				}
+				if err := constrain(typ, fnTy); err != nil {
+					return nil, err
+				}
+
+				ctx.inferred[e.ID()] = fnTy
+				continue
+			}
+
 			if len(e.Body) == 0 {
 				return nil, fmt.Errorf("in function %s: %w", e.Name, ErrEmptyFuncBody)
 			}
+
 			fn := parse.Fn{
 				Id:        expr.ID(),
 				Signature: e.Signature,
@@ -391,7 +433,6 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 				return nil, err
 			}
 
-			// i don't think you can even write a polymorphic type as a return type
 			retInst := retHint.instantiate()
 			if err := constrain(retInst, bodyTy); err != nil {
 				return nil, err
