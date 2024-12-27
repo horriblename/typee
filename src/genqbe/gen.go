@@ -109,7 +109,9 @@ func genTopLevel(ctx *ctx, expr parse.Expr) {
 	case *parse.Set:
 		genGlobalVar(ctx, e)
 	case *parse.FuncDef:
-		gen(ctx, expr)
+		if !e.Extern {
+			gen(ctx, expr)
+		}
 	case *parse.EnumDef, *parse.TypeAlias:
 
 	default:
