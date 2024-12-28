@@ -63,9 +63,9 @@ func newFunctionBuilder(fi *gi.FunctionInfo) *funcBuilder {
 			fb.args = append(fb.args, funcBuilderArg{i, ai, ti})
 		case gi.DIRECTION_INOUT:
 			fb.args = append(fb.args, funcBuilderArg{i, ai, ti})
-			fb.rets = append(fb.rets, funcBuilderArg{i, ai, ti})
+			// fb.rets = append(fb.rets, funcBuilderArg{i, ai, ti})
 		case gi.DIRECTION_OUT:
-			fb.rets = append(fb.rets, funcBuilderArg{i, ai, ti})
+			// fb.rets = append(fb.rets, funcBuilderArg{i, ai, ti})
 		}
 	}
 
@@ -76,7 +76,7 @@ func newFunctionBuilder(fi *gi.FunctionInfo) *funcBuilder {
 
 	// add GError special argument (if any)
 	if fi.Flags()&gi.FUNCTION_THROWS != 0 {
-		fb.rets = append(fb.rets, funcBuilderArg{-2, nil, nil})
+		// fb.rets = append(fb.rets, funcBuilderArg{-2, nil, nil})
 	}
 
 	return fb
