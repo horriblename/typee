@@ -2,6 +2,7 @@ package simplesub
 
 import (
 	"github.com/horriblename/typee/src/internal/scope"
+	"github.com/horriblename/typee/src/opt"
 )
 
 var intBinaryOptType = Func{
@@ -40,6 +41,23 @@ func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 			Ret: t,
 		},
 	})
+
+	t = freshVar()
+	scope.Insert("stackAlloc", PolymorphicType{
+		Body: Func{
+			Args: []SimpleType{},
+			Ret:  Ref{t},
+		},
+	})
+
+	t = freshVar()
+	scope.Insert("deref", PolymorphicType{
+		Body: Func{
+			Args: []SimpleType{Ref{t}},
+			Ret:  t,
+		},
+	})
+
 	scope.Insert("strFromCStr", PolymorphicType{
 		Body: Func{
 			Args: []SimpleType{Primitive{PrimitiveOpaque}},
@@ -64,4 +82,12 @@ func addBuiltinTypes(types *scope.ScopedMap[TypeScheme]) {
 	types.Insert("F32", Primitive{PrimitiveFloat})
 	types.Insert("Bool", Primitive{PrimitiveBool})
 	types.Insert("Opaque", Primitive{PrimitiveOpaque})
+
+	a := freshVar()
+	types.Insert("Ref", PolymorphicType{
+		Body: Ref{
+			Content: a,
+		},
+		TypeParams: opt.Some([]uint{a.Uid()}),
+	})
 }
