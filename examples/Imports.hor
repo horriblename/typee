@@ -1,0 +1,4 @@
+(import Deps.AddOne)
+
+(def main []
+	(exit (AddOne.addOne 3)))
