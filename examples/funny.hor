@@ -1,0 +1,13 @@
+
+(def foo [x] (bar x))
+(def bar [x] (if [(< x 1)] 0 (foo x)))
+
+;; typed as 
+;;     t1 ∩ {cond: Bool} -> t1
+;;
+;; or, more readably:
+;;     t1 -> t1 where t1 <: {cond: Bool}
+;;
+;; since there is usage of the return value,
+;; we don't actually know what the return type is
+(def foo [x] if [x.cond] x x)
