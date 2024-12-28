@@ -86,7 +86,6 @@ func (ctx *depCtx) findDependencies(deps *orderedset.OrderedSet[any], nodes []pa
 			for _, arg := range n.Args {
 				ctx.vars.Insert(arg, localLevel)
 			}
-			groupRecursives(n.ChildNodes())
 			ctx.vars.PopScope()
 		case *parse.Symbol:
 			if loc, ok := ctx.vars.Get(n.Name).Unwrap(); ok && loc == topLevel {
