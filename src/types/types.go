@@ -11,6 +11,7 @@ import (
 
 	"github.com/horriblename/typee/src/fun"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
+	"github.com/horriblename/typee/src/opt"
 )
 
 type AccessLvl uint8
@@ -52,7 +53,9 @@ type String struct{}
 type Int struct{}
 type Float struct{}
 type Bool struct{}
-type Ptr struct{}
+type Ref struct {
+	Content opt.Option[Type] // None means opaque pointer
+}
 type Record struct {
 	Fields map[string]Type
 }
@@ -105,7 +108,7 @@ func (*String) type_()     {}
 func (*Int) type_()        {}
 func (*Float) type_()      {}
 func (*Bool) type_()       {}
-func (*Ptr) type_()        {}
+func (*Ref) type_()        {}
 func (*Record) type_()     {}
 func (*Union) type_()      {}
 func (*Enum) type_()       {}
@@ -123,7 +126,7 @@ func (*String) Simple() bool     { return true }
 func (*Int) Simple() bool        { return true }
 func (*Float) Simple() bool      { return true }
 func (*Bool) Simple() bool       { return true }
-func (*Ptr) Simple() bool        { return true }
+func (*Ref) Simple() bool        { return true }
 func (*Record) Simple() bool     { return false }
 func (*Union) Simple() bool      { return false }
 func (*Enum) Simple() bool       { return false }
@@ -153,9 +156,9 @@ func (*Bool) Eq(other Type) bool {
 	_, ok := other.(*Bool)
 	return ok
 }
-func (*Ptr) Eq(other Type) bool {
-	_, ok := other.(*Ptr)
-	return ok
+func (self *Ref) Eq(other Type) bool {
+	o, ok := other.(*Ref)
+	return ok && self.Content == o.Content
 }
 func (f *Record) Eq(other Type) bool {
 	o, ok := other.(*Record)
@@ -295,11 +298,11 @@ func (self *Inter) Eq(other Type) bool {
 	return self.Lhs.Eq(o.Lhs) && self.Rhs.Eq(o.Rhs)
 }
 
-func (*String) String() string { return "String" }
-func (*Int) String() string    { return "Int" }
-func (*Float) String() string  { return "Float" }
-func (*Bool) String() string   { return "Bool" }
-func (*Ptr) String() string    { return "Ptr" }
+func (*String) String() string   { return "String" }
+func (*Int) String() string      { return "Int" }
+func (*Float) String() string    { return "Float" }
+func (*Bool) String() string     { return "Bool" }
+func (self *Ref) String() string { return fmt.Sprintf("Ref %s", self.Content.Or(nil)) }
 func (r *Record) String() string {
 	if len(r.Fields) == 0 {
 		return "{}"
@@ -470,8 +473,21 @@ type structuralEqCtx struct {
 
 func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 	switch a := a.(type) {
-	case *Int, *Float, *String, *Bool, *Ptr, *Top:
+	case *Int, *Float, *String, *Bool, *Top:
 		return a.Eq(b)
+	case *Ref:
+		b, ok := b.(*Ref)
+		if !ok {
+			return false
+		}
+
+		at, ok1 := a.Content.Unwrap()
+		bt, ok2 := b.Content.Unwrap()
+		if ok1 != ok2 {
+			return false
+		}
+
+		return !ok1 || (ok1 && structuralEq(ctx, at, bt))
 	case *Inter:
 		b, ok := b.(*Inter)
 		if !ok {
@@ -635,7 +651,7 @@ func Clone(typ Type) Type {
 	case *Bool:
 		t2 := *t
 		return &t2
-	case *Ptr:
+	case *Ref:
 		t2 := *t
 		return &t2
 	case *Func:
@@ -687,7 +703,7 @@ func (ctx *PrettyCtx) String(typ Type) string {
 		ctx.mapping = map[TypeID]string{}
 	}
 	switch t := typ.(type) {
-	case *String, *Int, *Float, *Bool, *Ptr:
+	case *String, *Int, *Float, *Bool, *Ref:
 		return t.String()
 	case *Func:
 		args := fun.Map(t.Args, ctx.String)

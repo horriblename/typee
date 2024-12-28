@@ -571,7 +571,7 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 		ctx.generatedTranslation[t] = ilTyp
 		return ilTyp
 
-	case *types.Ptr:
+	case *types.Ref:
 		return ctx.ptrType
 	case *types.Union:
 		if t.Name == "" {

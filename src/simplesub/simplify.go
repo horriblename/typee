@@ -156,7 +156,7 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 		case PrimitiveFloat:
 			return &types.Float{}
 		case PrimitiveOpaque:
-			return &types.Ptr{}
+			return &types.Ref{}
 		default:
 			panic(fmt.Sprintf("unexpected simplesub.PrimitiveKind: %#v", ty.Kind))
 		}
