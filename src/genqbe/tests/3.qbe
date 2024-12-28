@@ -1,0 +1,21 @@
+type :Str = {l, l, }
+type :GObject = {l, l, l, }
+type :Foo = {:GObject, l, l, }
+data $_stdout = { l $stdout }
+function l $print(:Str %s) {
+@start
+	%str_data =l loadl %s
+	# 64-bit architecture only lul
+	%len_loc =l add %s, 8
+	%str_len =w loadw %len_loc
+	%stdout =l loadl $_stdout
+	%res =w call $fwrite(l %str_data, w 1, w %str_len, l %stdout)
+	ret 0
+}
+
+export function l $TestModule.getX(l %foo) {
+@start
+	%_tmp_1 =l add %foo, 24
+	%_tmp_2 =l loadl %_tmp_1
+	ret %_tmp_2
+}

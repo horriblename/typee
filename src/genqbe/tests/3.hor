@@ -1,0 +1,4 @@
+;; class field access
+(class Foo {pub x Int})
+(def getX (Foo Int) [foo] foo.x)
+

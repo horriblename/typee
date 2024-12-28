@@ -1,0 +1,6 @@
+;; class construction + type annotated method
+(class Foo {pub (def name (Str) [] "foo")})
+(def bar (Foo Str) [foo] (foo#name))
+(def main []
+	 (print (bar (Foo.new))))
+

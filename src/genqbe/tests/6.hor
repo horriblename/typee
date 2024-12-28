@@ -1,0 +1,9 @@
+;; module imports
+(import TestModule.AddOne)
+(import TestModule)
+
+(def inc [x] (AddOne.addOne x))
+
+(def main []
+	 (TestModule.hello))
+
