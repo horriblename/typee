@@ -38,6 +38,7 @@ type ctx struct {
 	globals     map[string]int
 	userTypes   map[string]qbeil.AggregateType
 	recordTypes map[int]qbeil.AggregateType
+	externs     map[string]struct{}
 
 	idGenerator          int64
 	generatedTranslation map[types.Type]qbeil.AggregateType
@@ -45,20 +46,21 @@ type ctx struct {
 
 func Gen(w io.Writer, module string, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
 	ctx := ctx{
-		module,
-		qbeil.Long, // TODO: infer ptr & int size + manual options
-		qbeil.Long,
-		64,
-		bytes.Buffer{},
-		qbeil.Builder{OutFile: w},
-		typs,
-		map[int]types.Type{},
-		map[qbeil.Var]string{},
-		globals(ast),
-		map[string]qbeil.AggregateType{},
-		map[int]qbeil.AggregateType{},
-		0,
-		map[types.Type]qbeil.AggregateType{},
+		module:               module,
+		ptrType:              qbeil.Long, // TODO: infer ptr & int size + manual options
+		intType:              qbeil.Long,
+		defaultAlign:         64,
+		typeDecl:             bytes.Buffer{},
+		il:                   qbeil.Builder{OutFile: w},
+		types:                typs,
+		simplified:           map[int]types.Type{},
+		statics:              map[qbeil.Var]string{},
+		globals:              globals(ast),
+		userTypes:            map[string]qbeil.AggregateType{},
+		recordTypes:          map[int]qbeil.AggregateType{},
+		externs:              map[string]struct{}{},
+		idGenerator:          0,
+		generatedTranslation: map[types.Type]qbeil.AggregateType{},
 	}
 
 	ctx.declareType("Str", qbeil.StructType{
@@ -89,6 +91,12 @@ func Gen(w io.Writer, module string, typs map[int]simplesub.TypeScheme, ast []pa
 			qbeil.SingleType(ctx.ptrType),
 		},
 	})
+
+	for _, expr := range ast {
+		if fn, ok := expr.(*parse.FuncDef); ok && fn.Extern {
+			ctx.externs[fn.Name] = struct{}{}
+		}
+	}
 
 	for _, expr := range ast {
 		genTopLevel(&ctx, expr)
@@ -364,7 +372,11 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 }
 
 func genCallWithFuncName(ctx *ctx, module string, class string, fnName string, expr *parse.Form) qbeil.Value {
-	mangled := mangleName(mangleOpts{module: module, class: class, name: fnName})
+	mangled := fnName
+	if class != "" || mapHas(ctx.externs, fnName) /* FIXME: might get shadowed */ {
+		mangled = mangleName(mangleOpts{module: module, class: class, name: fnName})
+	}
+
 	fnFriendlyName := fnName
 	if class != "" {
 		fnFriendlyName = fmt.Sprintf("%s.%s", class, fnName)
@@ -745,4 +757,9 @@ func globals(program []parse.Expr) map[string]int {
 	}
 
 	return vars
+}
+
+func mapHas[K comparable, V any](m map[K]V, key K) bool {
+	_, ok := m[key]
+	return ok
 }
