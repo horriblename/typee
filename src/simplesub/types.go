@@ -261,6 +261,13 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		return Int{}, nil
 	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
 		return Str{}, nil
+	} else if lhs, rhs, ok := matchPair[Ref, Ref](lhs0, rhs0); ok {
+		content, err := glb(lhs.Content, rhs.Content)
+		if err != nil {
+			return nil, err
+		}
+
+		return Ref{content}, nil
 	} else if lhs, rhs, ok := matchPair[Enum, Enum](lhs0, rhs0); ok {
 		// same non-empty name
 		if lhs.Name == rhs.Name && lhs.Name != "" {
@@ -428,6 +435,13 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		return Int{}, nil
 	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
 		return Str{}, nil
+	} else if lhs, rhs, ok := matchPair[Ref, Ref](lhs0, rhs0); ok {
+		content, err := lub(lhs.Content, rhs.Content)
+		if err != nil {
+			return nil, err
+		}
+
+		return Ref{content}, nil
 	} else {
 		return nil, fmt.Errorf("%w: %#v and %#v", ErrIncompatibleTypes, lhs0, rhs0)
 	}
@@ -528,6 +542,7 @@ type Record struct{ Fields []NamedType }
 type Primitive struct{ Kind PrimitiveKind }
 type Int struct{}
 type Str struct{}
+type Ref struct{ Content SimpleType }
 type Union struct {
 	Name     string
 	Variants []ConcreteType
@@ -560,6 +575,7 @@ func (self SliceType) instantiate() SimpleType  { return self }
 func (self Primitive) instantiate() SimpleType  { return self }
 func (self Int) instantiate() SimpleType        { return self }
 func (self Str) instantiate() SimpleType        { return self }
+func (self Ref) instantiate() SimpleType        { return self }
 func (self Union) instantiate() SimpleType      { return self }
 func (self Enum) instantiate() SimpleType       { return self }
 
@@ -586,6 +602,7 @@ func (self SliceType) children() []SimpleType { return []SimpleType{self.ElType}
 func (self Primitive) children() []SimpleType { return []SimpleType{} }
 func (self Int) children() []SimpleType       { return []SimpleType{} }
 func (self Str) children() []SimpleType       { return []SimpleType{} }
+func (self Ref) children() []SimpleType       { return []SimpleType{} }
 func (self Union) children() []SimpleType {
 	return fun.Map(self.Variants, func(c ConcreteType) SimpleType { return c })
 }
@@ -601,6 +618,7 @@ func (self SliceType) concrete()  {}
 func (self Primitive) concrete()  {}
 func (self Int) concrete()        {}
 func (self Str) concrete()        {}
+func (self Ref) concrete()        {}
 func (self Union) concrete()      {}
 func (self Enum) concrete()       {}
 
@@ -637,6 +655,7 @@ func (self SliceType) String() string { return fmt.Sprintf("[%s]", self.ElType) 
 func (self Primitive) String() string { return string(self.Kind) }
 func (self Int) String() string       { return "Int" }
 func (self Str) String() string       { return "Str" }
+func (self Ref) String() string       { return fmt.Sprintf("(Ref %s)", self.Content) }
 func (self Union) String() string {
 	variants := fun.Map(self.Variants, func(st ConcreteType) string {
 		return st.String()
@@ -746,6 +765,8 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 		return true
 	} else if _, _, ok := matchPair[Str, Str](lhs, rhs); ok {
 		return true
+	} else if left, right, ok := matchPair[Ref, Ref](lhs, rhs); ok {
+		return concreteEq_(left.Content, right.Content)
 	} else if left, right, ok := matchPair[Union, Union](lhs, rhs); ok {
 		return left.Name != right.Name
 	} else if left, right, ok := matchPair[Enum, Enum](lhs, rhs); ok {

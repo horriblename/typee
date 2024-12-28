@@ -945,6 +945,8 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		return nil
 	} else if _, _, ok := matchPair[Enum, Int](ty0, bound0); ok {
 		return nil
+	} else if lhs, rhs, ok := matchPair[Ref, Ref](ty0, bound0); ok {
+		return constrain(lhs.Content, rhs.Content)
 	} else if lhs, rhs, ok := matchPair[ArrayType, ArrayType](ty0, bound0); ok {
 		err := constrain(lhs.ElType, rhs.ElType)
 		if err != nil {
@@ -1181,6 +1183,8 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 		return ArrayType{substitute(t.ElType), t.Size}
 	case SliceType:
 		return SliceType{substitute(t.ElType)}
+	case Ref:
+		return Ref{substitute(t.Content)}
 	case Primitive, Bot, Str, Top, Union, Enum: // terminals and Union, because generics are banned in Union
 	default:
 		panic(fmt.Sprintf("unexpected simplesub.ConcreteType: %#v", t))
