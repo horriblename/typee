@@ -21,14 +21,14 @@ type Generator struct {
 
 func New(lib string, version string, config Config) ([]byte, error) {
 	g := Generator{config, lib, false, []string{}, bytes.Buffer{}, bytes.Buffer{}}
+	g.externs.WriteString("\n;; extern declarations\n")
 	err := g.Gen(lib, version)
 	if err != nil {
 		return nil, err
 	}
 
-	g.goBindings.WriteString("\n;; extern declarations\n")
-	g.externs.WriteTo(&g.goBindings)
-	return g.goBindings.Bytes(), nil
+	g.goBindings.WriteTo(&g.externs)
+	return g.externs.Bytes(), nil
 }
 
 func (self *Generator) Gen(lib string, version string) error {
