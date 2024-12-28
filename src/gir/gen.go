@@ -357,6 +357,17 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	extern := printerTo(&self.externs)
 	extern("(extern def %s (", fi.Symbol())
+
+	// type signature
+
+	if isValidMethod {
+		if self.inStruct {
+			extern("%s ", self.methodOwner[len(self.methodOwner)-1])
+		} else {
+			extern("Self ")
+		}
+	}
+
 	for _, arg := range fb.orig_args {
 		extern("%s ", horType(arg.Type(), typeConfig{typeNone, self.namespace}))
 	}
@@ -365,6 +376,16 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		extern("{}) [")
 	} else {
 		extern("%s) [", horType(fi.ReturnType(), typeConfig{typeNone, self.namespace}))
+	}
+
+	// arguments
+
+	if isValidMethod {
+		if self.inStruct {
+			extern("self_ ")
+		} else {
+			extern("self ")
+		}
 	}
 
 	for i, arg := range fb.orig_args {
