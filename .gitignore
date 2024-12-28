@@ -2,5 +2,6 @@
 
 Makefile
 
-*.qbe
+/*.qbe
 *.s
+*.o
