@@ -55,7 +55,14 @@ func (self PolymorphicType) concretize(params []SimpleType) (SimpleType, error) 
 			len(self.TypeParams.Or([]uint{})),
 		)
 	}
-	return concretizeType(self.Body, mappings), nil
+
+	if typeParams, ok := self.TypeParams.Unwrap(); ok {
+		for i, p := range params {
+			mappings[typeParams[i]] = p
+		}
+		return concretizeType(self.Body, mappings), nil
+	}
+	return self.Body, nil
 }
 func (self PolymorphicType) String() string {
 	return fmt.Sprintf("polymorphic{%s}", self.Body.String())
