@@ -226,7 +226,7 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 			Methods: methods,
 		}
 	case Bot:
-		return &types.Record{Fields: map[string]types.Type{}}
+		return &types.Enum{Name: "", Values: map[string]int64{}}
 	case Top:
 		return &types.Top{}
 	default:
