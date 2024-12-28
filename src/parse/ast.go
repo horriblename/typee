@@ -266,7 +266,11 @@ func (self *FuncDef) String() string {
 	if sig, ok := self.Signature.Unwrap(); ok {
 		sigStr = " (" + strings.Join(fun.Map(sig, func(tr TypeRepr) string { return tr.String() }), " ") + ")"
 	}
-	return fmt.Sprintf("#%d (def %s%s [%+v] %+v)", self.id, self.Name, sigStr, self.Args, self.Body)
+	extern := ""
+	if self.Extern {
+		extern = "extern "
+	}
+	return fmt.Sprintf("#%d (%sdef %s%s [%+v] %+v)", self.id, extern, self.Name, sigStr, self.Args, self.Body)
 }
 func (self *Set) String() string {
 	return fmt.Sprintf("#%d (set %s %+v)", self.id, self.Name, self.Value)
@@ -378,7 +382,11 @@ func (self *FuncDef) Pretty() string {
 	if sig, ok := self.Signature.Unwrap(); ok {
 		sigStr = " (" + strings.Join(fun.Map(sig, func(tr TypeRepr) string { return tr.String() }), " ") + ")"
 	}
-	return fmt.Sprintf("(def %s%s [%v] %v)", self.Name, sigStr, self.Args, prettySlice(self.Body))
+	extern := ""
+	if self.Extern {
+		extern = "extern "
+	}
+	return fmt.Sprintf("(%sdef %s%s [%v] %v)", extern, self.Name, sigStr, self.Args, prettySlice(self.Body))
 }
 func (self *Set) Pretty() string {
 	return fmt.Sprintf("(set %s %v)", self.Name, self.Value.Pretty())
