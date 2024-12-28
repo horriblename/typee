@@ -8,6 +8,7 @@ import (
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
+	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/types"
 )
@@ -493,6 +494,30 @@ func TestTypeProgram(t *testing.T) {
 						&types.Int{},
 					},
 					Ret: &types.String{},
+				},
+			},
+		},
+		{
+			desc:  "type instantiation",
+			input: "(def foo ((Ref Int)) [] (stackAlloc))",
+			typ: []types.Type{
+				&types.Func{
+					Args: []types.Type{},
+					Ret: &types.Ref{
+						Content: opt.Some[types.Type](&types.Int{}),
+					},
+				},
+			},
+		},
+		{
+			desc:  "ref types",
+			input: "(def foo ((Ref Int)) [] (let [ptr (stackAlloc)] (let [x (+ (deref ptr) 1)] ptr)))",
+			typ: []types.Type{
+				&types.Func{
+					Args: []types.Type{},
+					Ret: &types.Ref{
+						Content: opt.Some[types.Type](&types.Int{}),
+					},
 				},
 			},
 		},
