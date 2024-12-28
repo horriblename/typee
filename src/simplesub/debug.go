@@ -15,7 +15,7 @@ func trace(format string, args ...interface{}) {
 	if !EnableTrace {
 		return
 	}
-	fmt.Fprintf(os.Stderr, strings.Repeat("  ", indentLvl))
+	fmt.Fprintf(os.Stderr, "%s", strings.Repeat("  ", indentLvl))
 	fmt.Fprintf(os.Stderr, format, args...)
 	fmt.Fprintln(os.Stderr)
 }
