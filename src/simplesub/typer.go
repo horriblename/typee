@@ -202,13 +202,17 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 				params := make([]SimpleType, len(sig)-1)
 
 				if len(sig) != len(e.Args)+1 {
-					return nil, fmt.Errorf("%w: function has %d args but type signature only takes %d", ErrBadTypeSignature, len(e.Args), len(sig)-1)
+					return nil, fmt.Errorf(
+						"%w: function %s has %d args but type signature only takes %d",
+						ErrBadTypeSignature, e.Name, len(e.Args), len(sig)-1)
 				}
 
 				for i, arg := range sig[:len(sig)-1] {
 					param, err := self.parseType(arg)
 					if err != nil {
-						return nil, err
+						return nil, fmt.Errorf(
+							"reading type of argument '%s' of function %s: %w",
+							arg, e.Name, err)
 					}
 
 					p := param.instantiate()
@@ -218,7 +222,9 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 
 				retHint, err := self.parseType(sig[len(sig)-1])
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf(
+						"reading return type '%s' of function %s: %w",
+						sig[len(sig)-1], e.Name, err)
 				}
 
 				typ := Func{Args: params, Ret: retHint.instantiate()}
@@ -229,7 +235,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 					fnTy = pt.Body
 				}
 				if err := constrain(typ, fnTy); err != nil {
-					return nil, err
+					return nil, fmt.Errorf("typing function %s: %w", e.Name, err)
 				}
 
 				ctx.inferred[e.ID()] = fnTy
@@ -248,7 +254,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			}
 			typ, err := self.TypeTerm(ctx, &fn)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("in function %s: %w", e.Name, err)
 			}
 
 			fnTy, ok := types[i].(SimpleType)
@@ -257,7 +263,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 				fnTy = pt.Body
 			}
 			if err := constrain(typ, fnTy); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("verifying type signature of function %s: %w", e.Name, err)
 			}
 
 		case *parse.Set:
@@ -980,7 +986,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		return nil
 	} else if ty, bound, ok := matchPair[Func, Func](ty0, bound0); ok {
 		if len(ty.Args) != len(bound.Args) {
-			return fmt.Errorf("%w: %#v is not a subtype of %#v", ErrConstraintViolated, ty, bound)
+			return fmt.Errorf("%w: %v is not a subtype of %v", ErrConstraintViolated, ty, bound)
 		}
 
 		for i, tyArg := range ty.Args {
