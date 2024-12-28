@@ -32,12 +32,13 @@ func newFunctionBuilder(fi *gi.FunctionInfo) *funcBuilder {
 	// build skip list
 	var skiplist []int
 	for _, arg := range fb.orig_args {
-		ti := arg.Type()
-
-		len := ti.ArrayLength()
-		if len != -1 {
-			skiplist = append(skiplist, len)
-		}
+		// TODO: why skip dynamic array?
+		// ti := arg.Type()
+		//
+		// len := ti.ArrayLength()
+		// if len != -1 {
+		// 	skiplist = append(skiplist, len)
+		// }
 
 		clo := arg.Closure()
 		if clo != -1 {
