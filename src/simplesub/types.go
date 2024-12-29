@@ -450,7 +450,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		return Ref{content}, nil
 	} else {
-		return nil, fmt.Errorf("%w: %#v and %#v", ErrIncompatibleTypes, lhs0, rhs0)
+		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
 	}
 }
 
