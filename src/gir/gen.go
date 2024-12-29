@@ -269,17 +269,15 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		fullName = strings.ToLower(owner[:1]) + owner[1:] + "_"
 	}
 
+	// wrapper function
 	p("(def ")
 
-	switch {
-	case flags&gi.FUNCTION_IS_CONSTRUCTOR != 0:
-	case isValidMethod:
-		name = snake_case_to_camelCase(name)
-	default:
-		name = snake_case_to_camelCase(name)
-	}
+	name = snake_case_to_camelCase(name)
 	fullName += name
 	p("%s (", fullName)
+
+	// wrapper function type signature
+
 	if isValidMethod {
 		if self.inStruct {
 			p(self.methodOwner[len(self.methodOwner)-1])
@@ -291,12 +289,18 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		if i != 0 || isValidMethod {
 			p(" ")
 		}
-		p("%s", horType(arg.typeInfo, typeConfig{typeNone, self.namespace}))
+		flags := typeNone
+		if arg.index >= 0 {
+			flags |= typePointer
+		}
+		p("%s", horType(arg.typeInfo, typeConfig{flags, self.namespace}))
 	}
 
 	if len(fb.args) > 0 || isValidMethod || self.inStruct /* methods in structs aren't gi.FUNCTION_IS_METHOD */ {
 		p(" ")
 	}
+
+	// wrapper function return type
 
 	switch len(fb.rets) {
 	case 0:
@@ -304,7 +308,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	case 1:
 		if flags&gi.FUNCTION_IS_CONSTRUCTOR != 0 {
-			p("%s", container.Name())
+			p("(Ref %s)", container.Name())
 		} else {
 			p("%s", horType(fb.rets[0].typeInfo, typeConfig{typeNone, self.namespace}))
 		}
@@ -312,10 +316,6 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	default:
 		p("{")
 		for i, ret := range fb.rets {
-			if ret.index == -1 {
-				continue
-			}
-
 			if ret.index == -2 {
 				p("err: Error,")
 				continue
@@ -325,6 +325,8 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		}
 		p("}")
 	}
+
+	// wrapper function args
 
 	p(") [")
 	if isValidMethod {
@@ -341,7 +343,18 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		p("%s", sanitize(snake_case_to_camelCase(arg.argInfo.Name())))
 	}
 
-	p("] (%s", fi.Symbol())
+	// wrapper function body
+
+	p("] ")
+
+	p("(let [\n")
+	for _, arg := range fb.orig_args {
+		if arg.Direction() == gi.DIRECTION_OUT || arg.Direction() == gi.DIRECTION_INOUT {
+			p("    %s (stackAlloc)\n", sanitize(snake_case_to_camelCase(arg.Name())))
+		}
+	}
+	// call to extern function
+	p("    ret (%s", fi.Symbol())
 
 	if isValidMethod {
 		if self.inStruct {
@@ -350,10 +363,42 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 			p(" self")
 		}
 	}
-	for _, arg := range fb.args {
-		p(" %s", sanitize(snake_case_to_camelCase(arg.argInfo.Name())))
+	for _, arg := range fb.orig_args {
+		p(" %s", sanitize(snake_case_to_camelCase(arg.Name())))
 	}
+
+	p(")\n  ]\n    ")
+
+	retValue := func(ret funcBuilderArg) string {
+		if ret.index == -1 { // main return value
+			return "ret"
+		} else if ret.index == -2 {
+			// error value
+			panic("unimpl")
+		} else {
+			val := sanitize(snake_case_to_camelCase(ret.argInfo.Name()))
+			if ret.argInfo.Direction() != gi.DIRECTION_IN {
+				return fmt.Sprintf("(deref %s)", val)
+			}
+			return val
+		}
+	}
+
+	if len(fb.rets) == 0 {
+		p("{}")
+	} else if len(fb.rets) == 1 {
+		p("%s", retValue(fb.rets[0]))
+	} else {
+		p("{\n")
+		for i, ret := range fb.rets {
+			p("    _%d: %s,\n", i, retValue(ret))
+		}
+		p("}")
+	}
+
 	p("))\n")
+
+	// extern declaration
 
 	extern := printerTo(&self.externs)
 	extern("(extern def %s (", fi.Symbol())

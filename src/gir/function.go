@@ -64,9 +64,9 @@ func newFunctionBuilder(fi *gi.FunctionInfo) *funcBuilder {
 			fb.args = append(fb.args, funcBuilderArg{i, ai, ti})
 		case gi.DIRECTION_INOUT:
 			fb.args = append(fb.args, funcBuilderArg{i, ai, ti})
-			// fb.rets = append(fb.rets, funcBuilderArg{i, ai, ti})
+			fb.rets = append(fb.rets, funcBuilderArg{i, ai, ti})
 		case gi.DIRECTION_OUT:
-			// fb.rets = append(fb.rets, funcBuilderArg{i, ai, ti})
+			fb.rets = append(fb.rets, funcBuilderArg{i, ai, ti})
 		}
 	}
 

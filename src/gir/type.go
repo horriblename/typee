@@ -214,14 +214,15 @@ func horTypeForInterface(bi *gi.BaseInfo, cfg typeConfig) string {
 	}
 	return out.String()
 handle_default:
-	if cfg.flags&typePointer != 0 /* && !config.is_disguised(fullnm) */ {
-		// p("*")
-	}
-
 	if cfg.namespace != bi.Namespace() {
 		p("%s.", ns)
 	}
-	p(bi.Name())
+	p("%s", bi.Name())
+
+	if cfg.flags&typePointer != 0 /* && !config.is_disguised(fullnm) */ {
+		return fmt.Sprintf("(Ref %s)", out.String())
+	}
+
 	return out.String()
 }
 
