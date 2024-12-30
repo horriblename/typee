@@ -391,7 +391,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		return SliceType{el}, nil
 	} else if lhs, rhs, ok := matchPair[Union, Union](lhs0, rhs0); ok {
 		rhsSet := sliceToSet(rhs.Variants)
-		merged := make([]ConcreteType, len(rhs.Variants))
+		merged := make([]ConcreteType, 0, len(rhs.Variants))
 		copy(rhs.Variants, merged)
 
 		for _, lhsVariant := range lhs.Variants {
