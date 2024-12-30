@@ -773,6 +773,10 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 		return true
 	} else if left, right, ok := matchPair[Ref, Ref](lhs, rhs); ok {
 		return concreteEq_(left.Content, right.Content)
+	} else if left, right, ok := matchPair[ArrayType, ArrayType](lhs, rhs); ok {
+		return concreteEq_(left.ElType, right.ElType) && left.Size == right.Size
+	} else if left, right, ok := matchPair[SliceType, SliceType](lhs, rhs); ok {
+		return concreteEq_(left.ElType, right.ElType)
 	} else if left, right, ok := matchPair[Union, Union](lhs, rhs); ok {
 		return left.Name != right.Name
 	} else if left, right, ok := matchPair[Enum, Enum](lhs, rhs); ok {
