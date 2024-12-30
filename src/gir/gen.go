@@ -252,6 +252,10 @@ func (self *Generator) processCallbackInfo(ci *gi.CallableInfo) {
 }
 func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	p := printerTo(&self.goBindings)
+	if fi.IsDeprecated() {
+		p(";; skipped: %s (deprecated function)\n", fi.Name())
+		return
+	}
 
 	var fullName string
 	flags := fi.Flags()
