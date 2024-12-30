@@ -1,0 +1,6 @@
+;; simple let expr
+
+(def main []
+  (let [
+    x (+ 2 3)
+  ] (exit x)))
