@@ -12,6 +12,7 @@ import (
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/genqbe/qbeil"
+	"github.com/horriblename/typee/src/internal/scope"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
 	"github.com/horriblename/typee/src/types"
@@ -39,6 +40,7 @@ type ctx struct {
 	userTypes   map[string]qbeil.AggregateType
 	recordTypes map[int]qbeil.AggregateType
 	externs     map[string]struct{}
+	vars        scope.ScopedMap[qbeil.Value]
 
 	idGenerator          int64
 	generatedTranslation map[types.Type]qbeil.AggregateType
@@ -59,6 +61,7 @@ func Gen(w io.Writer, module string, typs map[int]simplesub.TypeScheme, ast []pa
 		userTypes:            map[string]qbeil.AggregateType{},
 		recordTypes:          map[int]qbeil.AggregateType{},
 		externs:              map[string]struct{}{},
+		vars:                 scope.NewScopedMap[qbeil.Value](),
 		idGenerator:          0,
 		generatedTranslation: map[types.Type]qbeil.AggregateType{},
 	}
@@ -146,7 +149,9 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 			Value: val,
 		}
 	case *parse.Symbol:
-		if _, ok := ctx.globals[e.Name]; ok {
+		if val, ok := ctx.vars.Get(e.Name).Unwrap(); ok {
+			return val
+		} else if _, ok := ctx.globals[e.Name]; ok {
 			return qbeil.Var{Global: true, Name: e.Name}
 		}
 		return qbeil.Var{Global: false, Name: e.Name}
@@ -434,7 +439,15 @@ func genCallWithFuncName(ctx *ctx, module string, class string, fnName string, e
 }
 
 func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
-	panic("unimpl: gen let")
+	ctx.vars.NewScope()
+	defer ctx.vars.PopScope()
+
+	for _, ass := range expr.Assignments {
+		rhsVal := gen(ctx, ass.Value)
+		ctx.vars.Insert(ass.Var, rhsVal)
+	}
+
+	return gen(ctx, expr.Body)
 }
 
 func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
