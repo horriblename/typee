@@ -607,7 +607,9 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 			},
 		}
 
-		constrain(enumTy, bound)
+		if err := constrain(enumTy, bound); err != nil {
+			return nil, err
+		}
 
 		return enumTy, nil
 
@@ -701,7 +703,9 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 	case *parse.TaggedExpr:
 	case *parse.ExternCall:
 		for _, arg := range expr.Args {
-			self.TypeTerm(ctx, arg)
+			if _, err := self.TypeTerm(ctx, arg); err != nil {
+				return nil, err
+			}
 		}
 
 		return freshVar(), nil
