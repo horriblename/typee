@@ -14,7 +14,11 @@ type funcBuilder struct {
 }
 
 type funcBuilderArg struct {
-	index    int
+	// -1 means the "main" return value (including ctor return value)
+	// -2 means error value
+	// >= 0 means an output argument
+	index int
+
 	argInfo  *gi.ArgInfo
 	typeInfo *gi.TypeInfo
 }
