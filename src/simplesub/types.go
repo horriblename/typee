@@ -148,6 +148,7 @@ func (self *Variable) Representative() *Variable {
 }
 
 func (self *Variable) occursCheck(ty ConcreteType, dir bool) error {
+	// TODO: fail early instead of search everything in getVars
 	if getVars(ty).Has(self.Representative()) {
 		relation := ":>"
 		if dir {
