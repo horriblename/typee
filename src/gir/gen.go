@@ -260,7 +260,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	if (flags&gi.FUNCTION_IS_METHOD != 0) && len(self.methodOwner) == 0 {
 		panic(fmt.Sprintf("tried processing a method %s but no current class", name))
 	}
-	container := fi.Container()
+	// container := fi.Container()
 	isValidMethod := flags&gi.FUNCTION_IS_METHOD != 0 && len(self.methodOwner) != 0
 	fb := newFunctionBuilder(fi)
 
@@ -290,9 +290,6 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 			p(" ")
 		}
 		flags := typeNone
-		if arg.index >= 0 {
-			flags |= typePointer
-		}
 		p("%s", horType(arg.typeInfo, typeConfig{flags, self.namespace}))
 	}
 
@@ -307,11 +304,12 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		p("{}")
 
 	case 1:
-		if flags&gi.FUNCTION_IS_CONSTRUCTOR != 0 {
-			p("(Ref %s)", container.Name())
-		} else {
-			p("%s", horType(fb.rets[0].typeInfo, typeConfig{typeNone, self.namespace}))
-		}
+		// // why tf did I use container???
+		// if flags&gi.FUNCTION_IS_CONSTRUCTOR != 0 {
+		// 	p("(Ref %s)", container.Name())
+		// } else {
+		p("%s", horType(fb.rets[0].typeInfo, typeConfig{typeNone, self.namespace}))
+		// }
 
 	default:
 		p("{")
@@ -369,6 +367,8 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	p(")\n  ]\n    ")
 
+	// wrapper return value
+
 	retValue := func(ret funcBuilderArg) string {
 		if ret.index == -1 { // main return value
 			return "ret"
@@ -403,7 +403,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	extern := printerTo(&self.externs)
 	extern("(extern def %s (", fi.Symbol())
 
-	// type signature
+	// extern type signature
 
 	if isValidMethod {
 		if self.inStruct {
@@ -420,10 +420,15 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		// non-pointer void return
 		extern("{}) [")
 	} else {
+		// // why tf was I using container name
+		// if flags&gi.FUNCTION_IS_CONSTRUCTOR != 0 {
+		// 	extern("(Ref %s)) [", container.Name())
+		// } else {
 		extern("%s) [", horType(fi.ReturnType(), typeConfig{typeNone, self.namespace}))
+		// }
 	}
 
-	// arguments
+	// extern arguments
 
 	if isValidMethod {
 		if self.inStruct {
