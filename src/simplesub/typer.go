@@ -1195,11 +1195,3 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 	}
 	return ty
 }
-
-func assertCast[O any](x any, msg any) O {
-	if o, ok := x.(O); ok {
-		return o
-	} else {
-		panic(fmt.Sprintf("cast from %v to %T failed. %v", x, o, msg))
-	}
-}

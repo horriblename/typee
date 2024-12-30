@@ -7,12 +7,6 @@ import (
 	"github.com/looplab/tarjan"
 )
 
-// Perform dependency analysis between top level symbols and
-// find groups of mutually recursive functions
-func (self *Typer) findRecursiveGroups(ast *[]parse.Expr) {
-
-}
-
 type locality bool
 
 const (

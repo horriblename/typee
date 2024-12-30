@@ -727,8 +727,6 @@ func getVars(ty SimpleType) *orderedset.OrderedSet[*Variable] {
 	return result
 }
 
-type SimpleTypeImpl struct{}
-
 // helpers
 
 type Member struct {
@@ -859,16 +857,6 @@ func mapToNamedMembers(fields map[string]Member) []NamedMember {
 	return s
 }
 
-func mergeMapWith[K comparable, V any](lhs map[K]V, rhs map[K]V, merge func(l V, r V) V) map[K]V {
-	merged := maps.Clone(lhs)
-	for rhsKey, rhsVal := range rhs {
-		if lhsVal, ok := merged[rhsKey]; ok {
-			merged[rhsKey] = merge(lhsVal, rhsVal)
-		}
-	}
-	return merged
-}
-
 func sliceToSet[T comparable](xs []T) map[T]struct{} {
 	s := map[T]struct{}{}
 	for _, key := range xs {
@@ -883,12 +871,6 @@ func setToSlice[T comparable, V any](xs map[T]V) []T {
 		s = append(s, k)
 	}
 	return s
-}
-
-func err2Func2ToResultFunc[I1, I2, O any](f func(I1, I2) (O, error)) func(I1, I2) fun.Result[O] {
-	return func(i1 I1, i2 I2) fun.Result[O] {
-		return fun.ResultFrom(f(i1, i2))
-	}
 }
 
 var gIdCounter uint = 0
