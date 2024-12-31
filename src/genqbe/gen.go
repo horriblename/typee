@@ -221,6 +221,33 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		ctx.il.Command("storel", qbeil.IntLiteral{Value: int64(len(e.Content))}, lenPtr)
 
 		return strPtr
+
+	case *parse.Record:
+		ilTy := ctx.toILType(ctx.simplify(e.ID()))
+		aggTy, ok := ilTy.(qbeil.StructType)
+		if !ok {
+			panic("Record literal has struct il type")
+		}
+		structBits, _ := ctx.sizeOf(ilTy)
+
+		rcdPtr := ctx.il.TempVar(false)
+
+		ctx.il.Arithmetic(rcdPtr.IL(), qbeil.Long, "alloc4", qbeil.IntLiteral{Value: int64(structBits / 8)})
+
+		for _, field := range e.Fields {
+			layout := aggTy.Layouts[field.Name]
+			offsetBits := layout.OffsetBits
+
+			fieldBits, _ := ctx.sizeOf(layout.Type)
+			fieldPtr := ctx.il.TempVar(false)
+			ctx.il.Arithmetic(fieldPtr.IL(), ctx.ptrType, "add", rcdPtr, qbeil.IntLiteral{Value: int64(offsetBits / 8)})
+
+			suffix := bitSizeToIntType(fieldBits).IL()
+			ctx.il.Command("store"+suffix, gen(ctx, field.Value), fieldPtr)
+		}
+
+		return rcdPtr
+
 	case *parse.LetExpr:
 		return genLet(ctx, e)
 	}
@@ -502,7 +529,7 @@ func genClassAccess(ctx *ctx, class *types.Class, expr *parse.RecordAccess) qbei
 	addr := ctx.il.TempVar(false)
 	ctx.il.Arithmetic(addr.IL(), ctx.ptrType, "add",
 		gen(ctx, expr.Record),
-		qbeil.IntLiteral{Value: int64(fieldLayout.Offset)},
+		qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits)},
 	)
 
 	val := ctx.il.TempVar(false)
@@ -574,8 +601,8 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 			fields = append(fields, qbeil.SingleType(ilTy))
 			sizeBits, _ := ctx.sizeOf(ilTy)
 			layouts[field] = qbeil.FieldLayout{
-				Type:   ilTy,
-				Offset: offset,
+				Type:       ilTy,
+				OffsetBits: offset,
 			}
 
 			offset += sizeBits
@@ -658,8 +685,8 @@ func (ctx *ctx) classDefIL(t *types.Class, e *parse.ObjectTypeDef) qbeil.Aggrega
 				bits, _ := ctx.sizeOf(ilTy) // TODO: align
 				fields = append(fields, qbeil.SingleType(ilTy))
 				layouts[name] = qbeil.FieldLayout{
-					Offset: pubOffset,
-					Type:   ilTy,
+					OffsetBits: pubOffset,
+					Type:       ilTy,
 				}
 				pubOffset += bits / 8
 			}
@@ -739,7 +766,7 @@ func (ctx *ctx) newTempName(name string) string {
 	return name + strconv.FormatInt(ctx.idGenerator, 10)
 }
 
-func (self *ctx) sizeOf(t qbeil.Type) (bits int, align int) {
+func (self *ctx) sizeOf(t qbeil.Type) (bits int, alignBits int) {
 	return qbeil.SizeOf(self.defaultAlign, t)
 }
 
@@ -778,6 +805,20 @@ func globals(program []parse.Expr) map[string]int {
 	}
 
 	return vars
+}
+
+func bitSizeToIntType(bits int) qbeil.Type {
+	switch bits {
+	case 8:
+		return qbeil.Byte
+	case 16:
+		return qbeil.HalfWord
+	case 32:
+		return qbeil.Word
+	case 64:
+		return qbeil.Long
+	}
+	panic(fmt.Sprintf("invalid bit size for int type: %d", bits))
 }
 
 func mapHas[K comparable, V any](m map[K]V, key K) bool {

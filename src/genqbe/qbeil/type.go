@@ -44,7 +44,7 @@ type UnionType struct {
 
 type FieldLayout struct {
 	Type
-	Offset int
+	OffsetBits int
 }
 
 const (
@@ -58,6 +58,7 @@ const (
 )
 
 func (BaseType) typ()   {}
+func (ExtType) typ()    {}
 func (StructType) typ() {}
 func (UnionType) typ()  {}
 
