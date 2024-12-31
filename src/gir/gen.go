@@ -77,8 +77,8 @@ func (self *Generator) processUnionInfo(ui *gi.UnionInfo) {
 	p := printerTo(&self.goBindings)
 
 	name := ui.Name()
-	p("(union %s {\n", name)
-	p("  [U8 %d]\n", ui.Size())
+	p("(type %s {\n", name)
+	p("  _data: [U8 %d]\n", ui.Size())
 	self.methodOwner = append(self.methodOwner, name)
 	self.inStruct = true
 	defer func() { popDelete(&self.methodOwner) }()
