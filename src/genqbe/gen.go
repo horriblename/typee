@@ -232,7 +232,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 
 		rcdPtr := ctx.il.TempVar(false)
 
-		ctx.il.Arithmetic(rcdPtr.IL(), qbeil.Long, "alloc4", qbeil.IntLiteral{Value: int64(structBits / 8)})
+		ctx.il.Arithmetic(rcdPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(structBits / 8)})
 
 		for _, field := range e.Fields {
 			layout := aggTy.Layouts[field.Name]
