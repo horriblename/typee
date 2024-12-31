@@ -453,6 +453,42 @@ func genCallWithFuncName(ctx *ctx, module string, class string, fnName string, e
 			}})
 
 		return target
+
+	case "stackAlloc":
+		assert.Eq(len(expr.Children), 1, `wrong arg count for "stackAlloc`)
+
+		ilTy := ctx.toILType(ctx.simplify(expr.ID()))
+		bits, _ := ctx.sizeOf(ilTy)
+
+		dataPtr := ctx.il.TempVar(false)
+		ctx.il.Arithmetic(dataPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(bits / 8)})
+		return dataPtr
+
+	case "deref":
+		assert.Eq(len(expr.Children), 2, `wrong arg count for "deref`)
+
+		ty := ctx.simplify(expr.Children[1].ID())
+		refTy, ok := ty.(*types.Ref)
+		if !ok {
+			panic(fmt.Sprintf("during codegen: deref expects a Ref type, got: %v", ty))
+		}
+
+		dataTy, ok := refTy.Content.Unwrap()
+		if !ok {
+			panic("during codegen: Opaque references cannot be deref'd")
+		}
+
+		ref := gen(ctx, expr.Children[1])
+		ilTy := ctx.toILType(dataTy)
+		bits, _ := ctx.sizeOf(ilTy)
+		stackPtr := ctx.il.TempVar(false)
+
+		ctx.il.Arithmetic(stackPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(bits / 8)})
+
+		ctx.il.Command("blit", ref, stackPtr, qbeil.IntLiteral{Value: int64(bits / 8)})
+
+		return stackPtr
+
 	default:
 		// TODO: local functions
 		fn := ctx.simplify(callee.ID())
