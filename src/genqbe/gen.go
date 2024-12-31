@@ -285,6 +285,14 @@ func genGlobalVar(ctx *ctx, expr *parse.Set) (val qbeil.Value) {
 
 // class should be empty string for non-methods
 func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
+	defer func() {
+		if e := recover(); e != nil {
+			if class != "" {
+				class = class + "."
+			}
+			panic(fmt.Sprintf("in function %s%s: %v", class, expr.Name, e))
+		}
+	}()
 	friendlyName := fmt.Sprintf("%s.%s", class, expr.Name)
 	funcTyp, ok := ctx.simplify(expr.ID()).(*types.Func)
 	assert.True(ok, "generate function code: type of ", friendlyName, " is not function")
