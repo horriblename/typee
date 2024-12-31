@@ -6,10 +6,15 @@ import (
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/horriblename/typee/src/parse"
 )
 
 var indentLvl = 0
 var EnableTrace = false
+
+const colorOrange = "\x1b[33m"
+const colorReset = "\x1b[0m"
 
 func trace(format string, args ...interface{}) {
 	if !EnableTrace {
@@ -46,4 +51,21 @@ func DebugTypeTable(typeTree map[int]TypeScheme) string {
 		b.WriteString(fmt.Sprintf("%d: %s\n", e.id, e.typ))
 	}
 	return b.String()
+}
+
+func DebugTypedTree(ast []parse.Expr, typeTree map[int]TypeScheme) string {
+	var b strings.Builder
+	for _, expr := range ast {
+		b.WriteString(fmt.Sprintf("%s\n", expr.String()))
+	}
+
+	replaces := make([]string, 0, len(typeTree)*2)
+	for id, typ := range typeTree {
+		from := fmt.Sprintf("#%d ", id)
+		to := fmt.Sprintf(colorOrange+"%s"+colorReset, typ)
+		replaces = append(replaces, from, to)
+	}
+
+	r := strings.NewReplacer(replaces...)
+	return r.Replace(b.String())
 }

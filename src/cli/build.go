@@ -11,7 +11,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/genqbe"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
@@ -38,8 +37,7 @@ type buildParams struct {
 	assemblerFlags []string
 	linkerFlags    []string
 	printTypes     bool
-	printAst       bool
-	printTypeTable bool
+	printTypedTree bool
 	traceTyper     bool
 	externalQbe    bool
 	logLevel       slog.Level
@@ -82,12 +80,6 @@ func buildProgram(params buildParams) error {
 		os.Exit(1)
 	}
 
-	if params.printAst {
-		errorf("%s", strings.Join(fun.Map(ast, func(e parse.Expr) string {
-			return e.String()
-		}), "\n"))
-	}
-
 	typer := simplesub.NewTyper(mainModule, true)
 	t, modules, err := typer.TypeProgram(ast)
 	if err != nil {
@@ -95,8 +87,8 @@ func buildProgram(params buildParams) error {
 		os.Exit(1)
 	}
 
-	if params.printTypeTable {
-		errorf("%s", simplesub.DebugTypeTable(modules[mainModule].TypeTree))
+	if params.printTypedTree {
+		errorf("%s", simplesub.DebugTypedTree(ast, modules[mainModule].TypeTree))
 	}
 
 	if params.printTypes {

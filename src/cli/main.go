@@ -83,12 +83,13 @@ const flagPrintTypes = "print-types"
 const defaultPrintTypes = false
 const helpPrintTypes = "Print top-level type info to stdout"
 
-const flagPrintTypeTable = "print-type-table"
-const flagPrintAst = "print-ast"
+const flagPrintTypedTree = "print-typed-tree"
+const helpPrintTypedTree = "Print typed-annotated AST"
 
 func cmdCheck() error {
 	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
 	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
+	printTypedTree := flag.Bool(flagPrintTypedTree, false, helpPrintTypedTree)
 	flag.Parse()
 
 	if *traceTyper {
@@ -96,10 +97,11 @@ func cmdCheck() error {
 	}
 
 	params := buildParams{
-		targetStage: check,
-		inFile:      flag.Arg(0),
-		outFile:     "",
-		printTypes:  *printTypes,
+		targetStage:    check,
+		inFile:         flag.Arg(0),
+		outFile:        "",
+		printTypes:     *printTypes,
+		printTypedTree: *printTypedTree,
 	}
 
 	return buildProgram(params)
@@ -124,8 +126,7 @@ func cmdBuild() error {
 	linkerFlags := flag.String(flagLinkerFlags, "", helpLinkerFlags)
 	logLevel := flag.Int(flagLogLevel, int(slog.LevelInfo.Level()), helpLogLevel)
 	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
-	printTypeTable := flag.Bool(flagPrintTypeTable, false, "Print a table of expr ID to type.")
-	printAst := flag.Bool(flagPrintAst, false, "Print the parse ast")
+	printTypedTree := flag.Bool(flagPrintTypedTree, false, helpPrintTypedTree)
 	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
 	externalQbe := flag.Bool(flagExternalQbe, false, helpExternalQbe)
 
@@ -143,8 +144,7 @@ func cmdBuild() error {
 		inFile:         flag.Arg(0),
 		outFile:        *outPath,
 		printTypes:     *printTypes,
-		printAst:       *printAst,
-		printTypeTable: *printTypeTable,
+		printTypedTree: *printTypedTree,
 		assemblerFlags: asmFlags,
 		linkerFlags:    ldFlags,
 		traceTyper:     *traceTyper,
