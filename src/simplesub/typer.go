@@ -944,7 +944,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 			return nil
 		}
 	} else if lhs, rhs, ok := matchPair[Int, Int](ty0, bound0); ok {
-		if lhs.Signed != rhs.Signed && lhs.BitSize != rhs.BitSize {
+		if lhs.Signed != rhs.Signed || lhs.BitSize != rhs.BitSize {
 			return fmt.Errorf("%w: int conversion not implemented", ErrIncompatibleTypes)
 		}
 		return nil
