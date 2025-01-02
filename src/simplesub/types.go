@@ -301,8 +301,7 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		// TODO: lower bound of [Enum, Int]?
 	} else {
-		// FIXME: pretty sure this is supposed error
-		return Bot{}, nil
+		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
 	}
 }
 
