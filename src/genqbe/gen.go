@@ -413,7 +413,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 
 func genCallWithFuncName(ctx *ctx, module string, class string, fnName string, expr *parse.Form) qbeil.Value {
 	mangled := fnName
-	if class != "" || mapHas(ctx.externs, fnName) /* FIXME: might get shadowed */ {
+	if !mapHas(ctx.externs, fnName) /* FIXME: might get shadowed */ {
 		mangled = mangleName(mangleOpts{module: module, class: class, name: fnName})
 	}
 
