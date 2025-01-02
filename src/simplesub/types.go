@@ -670,9 +670,15 @@ func (self ObjectType) String() string {
 func (self ArrayType) String() string { return fmt.Sprintf("[%s %d]", self.ElType, self.Size) }
 func (self SliceType) String() string { return fmt.Sprintf("[%s]", self.ElType) }
 func (self Primitive) String() string { return string(self.Kind) }
-func (self Int) String() string       { return "Int" }
-func (self Str) String() string       { return "Str" }
-func (self Ref) String() string       { return fmt.Sprintf("(Ref %s)", self.Content) }
+func (self Int) String() string {
+	if self.Signed {
+		return "I" + strconv.FormatInt(self.BitSize, 10)
+	} else {
+		return "U" + strconv.FormatInt(self.BitSize, 10)
+	}
+}
+func (self Str) String() string { return "Str" }
+func (self Ref) String() string { return fmt.Sprintf("(Ref %s)", self.Content) }
 func (self Union) String() string {
 	variants := fun.Map(self.Variants, func(st ConcreteType) string {
 		return st.String()
