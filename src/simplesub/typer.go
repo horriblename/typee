@@ -623,21 +623,27 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 				panic("TODO")
 			}
 		} else {
-			argValues := fun.Map(expr.Assignments, func(ass parse.Assignment) parse.Expr {
-				return ass.Value
-			})
-			argNames := fun.Map(expr.Assignments, func(ass parse.Assignment) string {
-				return ass.Var
-			})
-			return self.TypeTerm(ctx, &parse.Form{
-				Children: append([]parse.Expr{
-					&parse.Fn{
-						Id:   expr.ID(),
-						Args: argNames,
-						Body: expr.Body,
+			if len(expr.Assignments) == 0 {
+				return self.TypeTerm(ctx, expr.Body)
+			}
+
+			desugared := expr.Body
+			for i := len(expr.Assignments) - 1; i >= 0; i-- {
+				ass := expr.Assignments[i]
+
+				desugared = &parse.Form{
+					Children: []parse.Expr{
+						&parse.Fn{
+							Id:   expr.ID(),
+							Args: []string{ass.Var},
+							Body: desugared,
+						},
+						ass.Value,
 					},
-				}, argValues...),
-			})
+				}
+			}
+
+			return self.TypeTerm(ctx, desugared)
 		}
 	case *parse.CaseExpr:
 	case *parse.Set:

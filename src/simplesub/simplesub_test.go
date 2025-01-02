@@ -123,6 +123,11 @@ func TestTypeExpr(t *testing.T) {
 			},
 		},
 		{
+			desc:  "multi-assignment let expr",
+			input: "(let [x 12 y 23 z false] (if [z] (+ x y) x))",
+			typ:   &tI64,
+		},
+		{
 			desc:  "type instantiation: type is not parameterized",
 			input: "(fn ((Int Str) Str) [x] x)",
 			err:   ErrUnparameterizedTypePassedParams,
