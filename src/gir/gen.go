@@ -284,7 +284,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	if isValidMethod {
 		if self.inStruct {
-			p(self.methodOwner[len(self.methodOwner)-1])
+			p("(Ref %s)", (self.methodOwner[len(self.methodOwner)-1]))
 		} else {
 			p("Self")
 		}
@@ -419,7 +419,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	if isValidMethod {
 		if self.inStruct {
-			extern("%s ", self.methodOwner[len(self.methodOwner)-1])
+			extern("(Ref %s) ", self.methodOwner[len(self.methodOwner)-1])
 		} else {
 			extern("Self ")
 		}
