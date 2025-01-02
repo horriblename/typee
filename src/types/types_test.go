@@ -6,6 +6,8 @@ import (
 	"github.com/horriblename/typee/src/assert"
 )
 
+var tI64 = Int{Signed: true, BitSize: 64}
+
 func TestStructuralEq(t *testing.T) {
 	testCases := []struct {
 		desc   string
@@ -15,8 +17,8 @@ func TestStructuralEq(t *testing.T) {
 	}{
 		{
 			desc:   "simple types",
-			a:      &Int{},
-			b:      &Int{},
+			a:      &tI64,
+			b:      &tI64,
 			expect: true,
 		},
 		{
@@ -27,14 +29,14 @@ func TestStructuralEq(t *testing.T) {
 		},
 		{
 			desc:   "same func",
-			a:      &Func{Args: []Type{&Bool{}}, Ret: &Int{}},
-			b:      &Func{Args: []Type{&Bool{}}, Ret: &Int{}},
+			a:      &Func{Args: []Type{&Bool{}}, Ret: &tI64},
+			b:      &Func{Args: []Type{&Bool{}}, Ret: &tI64},
 			expect: true,
 		},
 		{
 			desc:   "different func",
-			a:      &Func{Args: []Type{&String{}}, Ret: &Int{}},
-			b:      &Func{Args: []Type{&Bool{}}, Ret: &Int{}},
+			a:      &Func{Args: []Type{&String{}}, Ret: &tI64},
+			b:      &Func{Args: []Type{&Bool{}}, Ret: &tI64},
 			expect: false,
 		},
 		{

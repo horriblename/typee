@@ -501,7 +501,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 	case *parse.BoolLiteral:
 		return Primitive{PrimitiveBool}, nil
 	case *parse.IntLiteral:
-		return Int{}, nil
+		return I64, nil
 	case *parse.FloatLiteral:
 		return Primitive{PrimitiveFloat}, nil
 	case *parse.StrLiteral:
@@ -943,7 +943,10 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		if lhs.Kind == rhs.Kind {
 			return nil
 		}
-	} else if _, _, ok := matchPair[Int, Int](ty0, bound0); ok {
+	} else if lhs, rhs, ok := matchPair[Int, Int](ty0, bound0); ok {
+		if lhs.Signed != rhs.Signed && lhs.BitSize != rhs.BitSize {
+			return fmt.Errorf("%w: int conversion not implemented", ErrIncompatibleTypes)
+		}
 		return nil
 	} else if _, _, ok := matchPair[Str, Str](ty0, bound0); ok {
 		return nil

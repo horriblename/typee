@@ -50,7 +50,10 @@ type Member struct {
 type TypeID int
 
 type String struct{}
-type Int struct{}
+type Int struct {
+	Signed  bool
+	BitSize int64
+}
 type Float struct{}
 type Bool struct{}
 type Ref struct {
@@ -144,9 +147,9 @@ func (*String) Eq(other Type) bool {
 	_, ok := other.(*String)
 	return ok
 }
-func (*Int) Eq(other Type) bool {
-	_, ok := other.(*Int)
-	return ok
+func (self *Int) Eq(other Type) bool {
+	o, ok := other.(*Int)
+	return ok && self.Signed == o.Signed && self.BitSize == o.BitSize
 }
 func (*Float) Eq(other Type) bool {
 	_, ok := other.(*Float)
@@ -298,8 +301,14 @@ func (self *Inter) Eq(other Type) bool {
 	return self.Lhs.Eq(o.Lhs) && self.Rhs.Eq(o.Rhs)
 }
 
-func (*String) String() string   { return "String" }
-func (*Int) String() string      { return "Int" }
+func (*String) String() string { return "String" }
+func (self *Int) String() string {
+	if self.Signed {
+		return "I" + strconv.FormatInt(self.BitSize, 10)
+	} else {
+		return "U" + strconv.FormatInt(self.BitSize, 10)
+	}
+}
 func (*Float) String() string    { return "Float" }
 func (*Bool) String() string     { return "Bool" }
 func (self *Ref) String() string { return fmt.Sprintf("Ref %s", self.Content.Or(nil)) }

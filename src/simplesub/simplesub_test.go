@@ -13,6 +13,8 @@ import (
 	"github.com/horriblename/typee/src/types"
 )
 
+var tI64 = types.Int{Signed: true, BitSize: 64}
+
 func TestTypeExpr(t *testing.T) {
 	testCases := []struct {
 		desc  string
@@ -28,7 +30,7 @@ func TestTypeExpr(t *testing.T) {
 		{
 			desc:  "int literal",
 			input: "34",
-			typ:   &types.Int{},
+			typ:   &tI64,
 		},
 		{
 			desc:  "float literal",
@@ -45,7 +47,7 @@ func TestTypeExpr(t *testing.T) {
 			input: `{x: 1, y: true}`,
 			typ: &types.Record{
 				Fields: map[string]types.Type{
-					"x": &types.Int{},
+					"x": &tI64,
 					"y": &types.Bool{},
 				},
 			},
@@ -53,7 +55,7 @@ func TestTypeExpr(t *testing.T) {
 		{
 			desc:  "if expr",
 			input: "(if [true] 32 5)",
-			typ:   &types.Int{},
+			typ:   &tI64,
 		},
 		{
 			desc:  "if expr: different kind in branches",
@@ -65,15 +67,15 @@ func TestTypeExpr(t *testing.T) {
 			input: "(fn [x] 12)",
 			typ: &types.Func{
 				Args: []types.Type{&types.Top{}},
-				Ret:  &types.Int{},
+				Ret:  &tI64,
 			},
 		},
 		{
 			desc:  "type annotated function",
 			input: "(fn (Int Int) [x] 12)",
 			typ: &types.Func{
-				Args: []types.Type{&types.Int{}},
-				Ret:  &types.Int{},
+				Args: []types.Type{&tI64},
+				Ret:  &tI64,
 			},
 		},
 		{
@@ -89,12 +91,12 @@ func TestTypeExpr(t *testing.T) {
 		{
 			desc:  "application",
 			input: "((fn [x] x) 34)",
-			typ:   &types.Int{},
+			typ:   &tI64,
 		},
 		{
 			desc:  "simple let expr",
 			input: "(let [x 34 y 24] (if [true] x y))",
-			typ:   &types.Int{},
+			typ:   &tI64,
 		},
 		{
 			desc:  "local let expr does not generalize",
@@ -105,10 +107,10 @@ func TestTypeExpr(t *testing.T) {
 						Args: []types.Type{&types.Generic{ID: 1}},
 						Ret: &types.Join{
 							Lhs: &types.Generic{ID: 1},
-							Rhs: &types.Int{},
+							Rhs: &tI64,
 						},
 					},
-					"y": &types.Int{},
+					"y": &tI64,
 				},
 			},
 		},
@@ -116,7 +118,7 @@ func TestTypeExpr(t *testing.T) {
 			desc:  "array type",
 			input: "(let [x 12] [1 2 x])",
 			typ: &types.Array{
-				Type: &types.Int{},
+				Type: &tI64,
 				Size: 3,
 			},
 		},
@@ -182,7 +184,7 @@ func TestTypeProgram(t *testing.T) {
 					Args: []types.Type{&types.Generic{ID: 1}},
 					Ret:  &types.Generic{ID: 1},
 				},
-				&types.Int{},
+				&tI64,
 				&types.String{},
 			},
 		},
@@ -201,7 +203,7 @@ func TestTypeProgram(t *testing.T) {
 					Fields: map[string]types.Member{
 						"x": {
 							Access: types.AccessPrivate,
-							Type:   &types.Int{},
+							Type:   &tI64,
 						},
 					},
 					Statics: map[string]types.Member{},
@@ -209,8 +211,8 @@ func TestTypeProgram(t *testing.T) {
 						"id": {
 							Access: types.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{&types.Int{}},
-								Ret:  &types.Int{},
+								Args: []types.Type{&tI64},
+								Ret:  &tI64,
 							},
 						},
 					},
@@ -234,7 +236,7 @@ func TestTypeProgram(t *testing.T) {
 				Fields: map[string]types.Member{
 					"x": {
 						Access: types.AccessPrivate,
-						Type:   &types.Int{},
+						Type:   &tI64,
 					},
 				},
 				Statics: map[string]types.Member{},
@@ -244,9 +246,9 @@ func TestTypeProgram(t *testing.T) {
 						Type: &types.Func{
 							Args: []types.Type{
 								&types.Class{Name: "Foo"},
-								&types.Int{},
+								&tI64,
 							},
-							Ret: &types.Int{},
+							Ret: &tI64,
 						},
 					},
 				},
@@ -270,11 +272,11 @@ func TestTypeProgram(t *testing.T) {
 					},
 					&types.Func{
 						Args: []types.Type{&fooUnion},
-						Ret:  &types.Int{},
+						Ret:  &tI64,
 					},
 					&types.Func{
 						Args: []types.Type{},
-						Ret:  &types.Int{},
+						Ret:  &tI64,
 					},
 				}
 			}(),
@@ -313,18 +315,18 @@ func TestTypeProgram(t *testing.T) {
 		// 	typ: []types.Type{
 		// 		&types.Record{
 		// 			Fields: map[string]types.Type{
-		// 				"x": &types.Int{},
+		// 				"x": &tI64,
 		// 			},
 		// 		},
 		// 		&types.Func{
 		// 			Args: []types.Type{&types.Record{
 		// 				Fields: map[string]types.Type{
-		// 					"x": &types.Int{},
+		// 					"x": &tI64,
 		// 				},
 		// 			}},
 		// 			Ret: &types.Record{
 		// 				Fields: map[string]types.Type{
-		// 					"x": &types.Int{},
+		// 					"x": &tI64,
 		// 				},
 		// 			},
 		// 		},
@@ -350,7 +352,7 @@ func TestTypeProgram(t *testing.T) {
 								Fields: map[string]types.Member{
 									"x": {
 										Access: types.AccessPublic,
-										Type:   &types.Int{},
+										Type:   &tI64,
 									},
 								},
 								Statics: map[string]types.Member{},
@@ -364,7 +366,7 @@ func TestTypeProgram(t *testing.T) {
 					Args: []types.Type{},
 					Ret: &types.Record{
 						Fields: map[string]types.Type{
-							"x": &types.Int{},
+							"x": &tI64,
 						},
 					},
 				},
@@ -415,12 +417,12 @@ func TestTypeProgram(t *testing.T) {
 			`,
 			typ: []types.Type{
 				&types.Func{
-					Args: []types.Type{&types.Int{}},
-					Ret:  &types.Int{},
+					Args: []types.Type{&tI64},
+					Ret:  &tI64,
 				},
 				&types.Func{
-					Args: []types.Type{&types.Int{}},
-					Ret:  &types.Int{},
+					Args: []types.Type{&tI64},
+					Ret:  &tI64,
 				},
 			},
 		},
@@ -462,7 +464,7 @@ func TestTypeProgram(t *testing.T) {
 						Args: []types.Type{grade, status},
 						Ret: &types.Record{
 							Fields: map[string]types.Type{
-								"res":    &types.Int{},
+								"res":    &tI64,
 								"grade":  grade,
 								"status": status,
 							},
@@ -480,8 +482,8 @@ func TestTypeProgram(t *testing.T) {
 			`,
 			typ: []types.Type{
 				&types.Func{
-					Args: []types.Type{&types.Int{}},
-					Ret:  &types.Int{},
+					Args: []types.Type{&tI64},
+					Ret:  &tI64,
 				},
 			},
 		},
@@ -491,7 +493,7 @@ func TestTypeProgram(t *testing.T) {
 			typ: []types.Type{
 				&types.Func{
 					Args: []types.Type{
-						&types.Int{},
+						&tI64,
 					},
 					Ret: &types.String{},
 				},
@@ -504,7 +506,7 @@ func TestTypeProgram(t *testing.T) {
 				&types.Func{
 					Args: []types.Type{},
 					Ret: &types.Ref{
-						Content: opt.Some[types.Type](&types.Int{}),
+						Content: opt.Some[types.Type](&tI64),
 					},
 				},
 			},
@@ -516,7 +518,7 @@ func TestTypeProgram(t *testing.T) {
 				&types.Func{
 					Args: []types.Type{},
 					Ret: &types.Ref{
-						Content: opt.Some[types.Type](&types.Int{}),
+						Content: opt.Some[types.Type](&tI64),
 					},
 				},
 			},

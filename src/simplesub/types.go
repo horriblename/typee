@@ -265,8 +265,11 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		}
 
 		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs, rhs)
-	} else if _, _, ok := matchPair[Int, Int](lhs0, rhs0); ok {
-		return Int{}, nil
+	} else if lhs, rhs, ok := matchPair[Int, Int](lhs0, rhs0); ok {
+		if lhs.Signed != rhs.Signed || lhs.BitSize != rhs.BitSize {
+			return nil, fmt.Errorf("%w: integer conversion not implemented yet", ErrIncompatibleTypes)
+		}
+		return lhs, nil
 	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
 		return Str{}, nil
 	} else if lhs, rhs, ok := matchPair[Ref, Ref](lhs0, rhs0); ok {
@@ -439,8 +442,11 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 			return Primitive{lhs.Kind}, nil
 		}
 		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs, rhs)
-	} else if _, _, ok := matchPair[Int, Int](lhs0, rhs0); ok {
-		return Int{}, nil
+	} else if lhs, rhs, ok := matchPair[Int, Int](lhs0, rhs0); ok {
+		if lhs.Signed != rhs.Signed || lhs.BitSize != rhs.BitSize {
+			return nil, fmt.Errorf("%w: integer conversion not implemented yet", ErrIncompatibleTypes)
+		}
+		return lhs, nil
 	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
 		return Str{}, nil
 	} else if lhs, rhs, ok := matchPair[Ref, Ref](lhs0, rhs0); ok {
@@ -548,7 +554,10 @@ type Func struct {
 }
 type Record struct{ Fields []NamedType }
 type Primitive struct{ Kind PrimitiveKind }
-type Int struct{}
+type Int struct {
+	Signed  bool
+	BitSize int64
+}
 type Str struct{}
 type Ref struct{ Content SimpleType }
 type Union struct {
@@ -767,8 +776,8 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 		return true
 	} else if left, right, ok := matchPair[Primitive, Primitive](lhs, rhs); ok {
 		return left.Kind == right.Kind
-	} else if _, _, ok := matchPair[Int, Int](lhs, rhs); ok {
-		return true
+	} else if left, right, ok := matchPair[Int, Int](lhs, rhs); ok {
+		return left.Signed == right.Signed && left.BitSize == right.BitSize
 	} else if _, _, ok := matchPair[Str, Str](lhs, rhs); ok {
 		return true
 	} else if left, right, ok := matchPair[Ref, Ref](lhs, rhs); ok {

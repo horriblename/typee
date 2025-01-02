@@ -165,7 +165,7 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 			panic(fmt.Sprintf("unexpected simplesub.PrimitiveKind: %#v", ty.Kind))
 		}
 	case Int:
-		return &types.Int{}
+		return &types.Int{Signed: ty.Signed, BitSize: ty.BitSize}
 	case Str:
 		return &types.String{}
 	case Ref:

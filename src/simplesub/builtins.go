@@ -5,13 +5,15 @@ import (
 	"github.com/horriblename/typee/src/opt"
 )
 
+var I64 = Int{true, 64}
+
 var intBinaryOptType = Func{
-	Args: []SimpleType{Int{}, Int{}},
-	Ret:  Int{},
+	Args: []SimpleType{I64, I64},
+	Ret:  I64,
 }
 
 var intComparatorType = Func{
-	Args: []SimpleType{Int{}, Int{}},
+	Args: []SimpleType{I64, I64},
 	Ret:  Primitive{PrimitiveBool},
 }
 
@@ -28,7 +30,7 @@ func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 		Ret:  Record{},
 	})
 	scope.Insert("exit", Func{
-		Args: []SimpleType{Int{}},
+		Args: []SimpleType{I64},
 		Ret:  Bot{},
 	})
 	t := freshVar()
@@ -36,7 +38,7 @@ func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 		Body: Func{
 			Args: []SimpleType{
 				SliceType{t},
-				Int{},
+				I64,
 			},
 			Ret: t,
 		},
@@ -67,15 +69,15 @@ func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 }
 
 func addBuiltinTypes(types *scope.ScopedMap[TypeScheme]) {
-	types.Insert("Int", Int{})
-	types.Insert("U8", Int{})
-	types.Insert("U16", Int{})
-	types.Insert("U32", Int{})
-	types.Insert("U64", Int{})
-	types.Insert("I8", Int{})
-	types.Insert("I16", Int{})
-	types.Insert("I32", Int{})
-	types.Insert("I64", Int{})
+	types.Insert("Int", I64)
+	types.Insert("U8", Int{false, 8})
+	types.Insert("U16", Int{false, 16})
+	types.Insert("U32", Int{false, 32})
+	types.Insert("U64", Int{false, 64})
+	types.Insert("I8", Int{true, 8})
+	types.Insert("I16", Int{true, 16})
+	types.Insert("I32", Int{true, 32})
+	types.Insert("I64", Int{true, 64})
 	types.Insert("Str", Str{})
 	types.Insert("Float", Primitive{PrimitiveFloat})
 	types.Insert("F64", Primitive{PrimitiveFloat})
