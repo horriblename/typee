@@ -426,11 +426,13 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	}
 
 	for _, arg := range fb.orig_args {
-		flags := typeNone
 		if arg.Direction() == gi.DIRECTION_OUT || arg.Direction() == gi.DIRECTION_INOUT {
-			flags |= typePointer
+			// note: wrap Ref outside of horType to allow potential (Ref Opaque), and
+			// maybe (Ref (Ref _)) types
+			extern("(Ref %s) ", horType(arg.Type(), typeConfig{typeNone, self.namespace}))
+		} else {
+			extern("%s ", horType(arg.Type(), typeConfig{typeNone, self.namespace}))
 		}
-		extern("%s ", horType(arg.Type(), typeConfig{flags, self.namespace}))
 	}
 	if fi.ReturnType().Tag() == gi.TYPE_TAG_VOID && !fi.ReturnType().IsPointer() {
 		// non-pointer void return
