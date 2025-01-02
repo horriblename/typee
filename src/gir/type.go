@@ -89,7 +89,7 @@ func horTypeForTag(tag gi.TypeTag, cfg typeConfig) string {
 	p := printerTo(&out)
 
 	if cfg.flags&typePointer != 0 {
-		// p("*")
+		p("(Ref ")
 	}
 
 	if cfg.flags&typeExact != 0 {
@@ -162,6 +162,10 @@ func horTypeForTag(tag gi.TypeTag, cfg typeConfig) string {
 		default:
 			panic("unreachable")
 		}
+	}
+
+	if cfg.flags&typePointer != 0 {
+		p(")")
 	}
 
 	return out.String()
