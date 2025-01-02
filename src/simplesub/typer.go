@@ -196,38 +196,10 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 		switch e := expr.(type) {
 		case *parse.FuncDef:
 			if e.Extern {
-				sig, ok := e.Signature.Unwrap()
-				assert.True(ok, "got extern declaration with no signature")
-
-				params := make([]SimpleType, len(sig)-1)
-
-				if len(sig) != len(e.Args)+1 {
-					return nil, fmt.Errorf(
-						"%w: function %s has %d args but type signature only takes %d",
-						ErrBadTypeSignature, e.Name, len(e.Args), len(sig)-1)
-				}
-
-				for i, arg := range sig[:len(sig)-1] {
-					param, err := self.parseType(arg)
-					if err != nil {
-						return nil, fmt.Errorf(
-							"reading type of argument '%s' of function %s: %w",
-							arg, e.Name, err)
-					}
-
-					p := param.instantiate()
-					params[i] = p
-					self.vars.Insert(e.Args[i], p)
-				}
-
-				retHint, err := self.parseType(sig[len(sig)-1])
+				typ, err := self.externDef(ctx, e)
 				if err != nil {
-					return nil, fmt.Errorf(
-						"reading return type '%s' of function %s: %w",
-						sig[len(sig)-1], e.Name, err)
+					return nil, err
 				}
-
-				typ := Func{Args: params, Ret: retHint.instantiate()}
 
 				fnTy, ok := types[i].(SimpleType)
 				if !ok {
@@ -239,6 +211,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 				}
 
 				ctx.inferred[e.ID()] = fnTy
+
 				continue
 			}
 
@@ -714,6 +687,44 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 		panic(fmt.Sprintf("unexpected parse.Expr: %#v", expr))
 	}
 	panic(fmt.Sprintf("unhandled: TypeTerm(%s)", term.Pretty()))
+}
+
+func (self *Typer) externDef(ctx *moduleContext, e *parse.FuncDef) (SimpleType, error) {
+	self.vars.NewScope()
+	defer self.vars.PopScope()
+
+	sig, ok := e.Signature.Unwrap()
+	assert.True(ok, "got extern declaration with no signature")
+
+	params := make([]SimpleType, len(sig)-1)
+
+	if len(sig) != len(e.Args)+1 {
+		return nil, fmt.Errorf(
+			"%w: function %s has %d args but type signature only takes %d",
+			ErrBadTypeSignature, e.Name, len(e.Args), len(sig)-1)
+	}
+
+	for i, arg := range sig[:len(sig)-1] {
+		param, err := self.parseType(arg)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"reading type of argument '%s' of function %s: %w",
+				arg, e.Name, err)
+		}
+
+		p := param.instantiate()
+		params[i] = p
+		self.vars.Insert(e.Args[i], p)
+	}
+
+	retHint, err := self.parseType(sig[len(sig)-1])
+	if err != nil {
+		return nil, fmt.Errorf(
+			"reading return type '%s' of function %s: %w",
+			sig[len(sig)-1], e.Name, err)
+	}
+
+	return Func{Args: params, Ret: retHint.instantiate()}, nil
 }
 
 func (self *Typer) defClass(ctx *moduleContext, classDef *parse.ObjectTypeDef) (SimpleType, error) {
