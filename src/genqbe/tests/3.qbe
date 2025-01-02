@@ -13,7 +13,7 @@ function l $print(:Str %s) {
 	ret 0
 }
 
-export function l $TestModule.getX(l %foo) {
+export function l $MainModule.getX(l %foo) {
 @start
 	%_tmp_1 =l add %foo, 24
 	%_tmp_2 =l loadl %_tmp_1

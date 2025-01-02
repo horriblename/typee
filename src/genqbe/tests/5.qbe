@@ -1,5 +1,9 @@
 type :Str = {l, l, }
 type :GObject = {l, l, l, }
+type :Record_1 = {}
+type :Record_2 = {}
+type :Record_3 = {}
+type :Record_4 = {}
 data $_stdout = { l $stdout }
 function l $print(:Str %s) {
 @start
@@ -12,13 +16,13 @@ function l $print(:Str %s) {
 	ret 0
 }
 
-export function l $TestModule.die() {
+export function :Record_1 $MainModule.die() {
 @start
-	%_tmp_1 =l call $exit (l 3)
+	%_tmp_1 =:Record_2 call $exit (l 3)
 	ret %_tmp_1
 }
 export function w $main() {
 @start
-	%_tmp_2 =l call $TestModule.die ()
+	%_tmp_2 =:Record_4 call $MainModule.die ()
 	ret %_tmp_2
 }
