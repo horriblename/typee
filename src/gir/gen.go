@@ -319,11 +319,15 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		p("{")
 		for i, ret := range fb.rets {
 			if ret.index == -2 {
-				p("err: Error,")
+				p("err: Error, ")
 				continue
 			}
 
-			p("_%d: %s,", i, horType(ret.typeInfo, typeConfig{typeNone, self.namespace}))
+			if ret.index >= 0 {
+				p("%s: %s, ", ret.argInfo.Name(), horType(ret.typeInfo, typeConfig{typeNone, self.namespace}))
+			} else {
+				p("_%d: %s, ", i, horType(ret.typeInfo, typeConfig{typeNone, self.namespace}))
+			}
 		}
 		p("}")
 	}
@@ -395,7 +399,11 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	} else {
 		p("{\n")
 		for i, ret := range fb.rets {
-			p("    _%d: %s,\n", i, retValue(ret))
+			if ret.index >= 0 {
+				p("    %s: %s,\n", ret.argInfo.Name(), retValue(ret))
+			} else {
+				p("    _%d: %s,\n", i, retValue(ret))
+			}
 		}
 		p("}")
 	}
