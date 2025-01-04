@@ -4,10 +4,6 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
     go-sumtype.url = "github:BurntSushi/go-sumtype";
     go-sumtype.flake = false;
-    go123 = {
-      url = "github:golang/go/go1.23.2";
-      flake = false;
-    };
   };
   outputs = {
     self,
@@ -52,8 +48,9 @@
     in {
       default = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [
-          go123
+          go_1_23
           go-sumtype
+          qbe
 
           pkg-config
           gobject-introspection
