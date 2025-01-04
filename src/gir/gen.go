@@ -519,7 +519,7 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 	for i, n := 0, oi.NumMethod(); i < n; i++ {
 		meth := oi.Method(i)
 		if self.config.is_method_blacklisted(name, meth.Name()) {
-			p(";; blacklisted: %s.%s (method\n)", name, meth.Name())
+			p(";; blacklisted: %s.%s (method)\n", name, meth.Name())
 			continue
 		}
 		if meth.IsDeprecated() {
