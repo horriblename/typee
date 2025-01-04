@@ -162,14 +162,14 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		argTypes := fun.Map(e.Args, func(arg parse.Expr) types.Type {
 			return ctx.simplify(arg.ID())
 		})
-		args := fun.ZipMap(e.Args, argTypes, func(arg parse.Expr, typ types.Type) qbeil.TypedValue {
-			return qbeil.TypedValue{Type: ctx.toILType(typ), Value: gen(ctx, arg)}
+		args := fun.ZipMap(e.Args, argTypes, func(arg parse.Expr, typ types.Type) qbeil.ABITypedValue {
+			return qbeil.ABITypedValue{Type: ctx.toABIType(typ), Value: gen(ctx, arg)}
 		})
 		funcVar := qbeil.Var{Global: true, Name: e.Symbol.Name}
 
 		retTy := ctx.simplify(e.ID())
 
-		ctx.il.Call(&target, ctx.toILType(retTy), funcVar, args)
+		ctx.il.Call(&target, ctx.toABIType(retTy), funcVar, args)
 
 		return target
 
@@ -336,14 +336,14 @@ func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
 
 	for i, argTyp := range funcTyp.Args {
 		argTyps = append(argTyps, qbeil.NewTypedVar(
-			ctx.toILType(argTyp),
+			ctx.toABIType(argTyp),
 			qbeil.Var{Global: false, Name: expr.Args[i]},
 		))
 	}
 
 	// TODO: don't export all symbols
 	linkage := qbeil.Linkage{Type: qbeil.Export}
-	retTyp := ctx.toILType(funcTyp.Ret)
+	retTyp := ctx.toABIType(funcTyp.Ret)
 	if expr.Name == "main" && class == "" {
 		linkage.Type = qbeil.Export
 		retTyp = qbeil.Word
@@ -375,7 +375,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 			&val,
 			ctx.ptrType,
 			qbeil.Var{Global: true, Name: "malloc"},
-			[]qbeil.TypedValue{{
+			[]qbeil.ABITypedValue{{
 				Type:  ctx.intType,
 				Value: qbeil.IntLiteral{Value: int64(bits / 8)}},
 			},
@@ -437,7 +437,7 @@ func genCallWithFuncName(ctx *ctx, module string, class string, fnName string, e
 		assert.Eq(len(expr.Children), 2, "wrong function arg count")
 
 		exitCode := gen(ctx, expr.Children[1])
-		ctx.il.Call(nil, qbeil.Long, qbeil.Var{Global: true, Name: "exit"}, []qbeil.TypedValue{
+		ctx.il.Call(nil, qbeil.Long, qbeil.Var{Global: true, Name: "exit"}, []qbeil.ABITypedValue{
 			{Type: ctx.intType, Value: exitCode},
 		})
 		return qbeil.IntLiteral{Value: 0} // TODO: there's probably a better way
@@ -447,8 +447,8 @@ func genCallWithFuncName(ctx *ctx, module string, class string, fnName string, e
 		target := ctx.il.TempVar(false)
 		ctx.il.Call(&target, ctx.ptrType,
 			qbeil.Var{Global: true, Name: "print"},
-			[]qbeil.TypedValue{{
-				Type:  ctx.toILType(&types.String{}),
+			[]qbeil.ABITypedValue{{
+				Type:  ctx.toABIType(&types.String{}),
 				Value: arg,
 			}})
 
@@ -498,12 +498,12 @@ func genCallWithFuncName(ctx *ctx, module string, class string, fnName string, e
 		assert.Eq(len(expr.Children), len(funcSig.Args)+1, fnFriendlyName, ": function argument count does not match signature")
 		target := ctx.il.TempVar(false)
 
-		args := fun.ZipMap(expr.Children[1:], funcSig.Args, func(arg parse.Expr, typ types.Type) qbeil.TypedValue {
-			return qbeil.TypedValue{Type: ctx.toILType(typ), Value: gen(ctx, arg)}
+		args := fun.ZipMap(expr.Children[1:], funcSig.Args, func(arg parse.Expr, typ types.Type) qbeil.ABITypedValue {
+			return qbeil.ABITypedValue{Type: ctx.toABIType(typ), Value: gen(ctx, arg)}
 		})
 		funcVar := qbeil.Var{Global: true, Name: mangled}
 
-		ctx.il.Call(&target, ctx.toILType(funcSig.Ret), funcVar, args)
+		ctx.il.Call(&target, ctx.toABIType(funcSig.Ret), funcVar, args)
 
 		return target
 	}
@@ -701,6 +701,35 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 		return ctx.ptrType
 	default:
 		panic("unimpl: conversion to QBE IL from type " + typ.String())
+	}
+}
+
+func (ctx *ctx) toABIType(typ types.Type) qbeil.ABIType {
+	switch t := typ.(type) {
+	case *types.Int:
+		switch t.BitSize {
+		case 8:
+			if t.Signed {
+				return qbeil.SignedByte
+			} else {
+				return qbeil.UnsignedByte
+			}
+		case 16:
+			if t.Signed {
+				return qbeil.SignedHalf
+			} else {
+				return qbeil.UnsignedByte
+			}
+		case 32:
+			return qbeil.Word
+		case 64:
+			return qbeil.Long
+		default:
+			panic(fmt.Sprintf("illegal bitsize in integer: %d", t.BitSize))
+		}
+	default:
+		// FIXME: fix qbeil types
+		return ctx.toILType(typ).(qbeil.ABIType)
 	}
 }
 
