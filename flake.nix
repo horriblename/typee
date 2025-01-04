@@ -56,6 +56,7 @@
           gobject-introspection
           glib
         ];
+        hardeningDisable = ["fortify" "fortify3"];
       };
     });
   };
