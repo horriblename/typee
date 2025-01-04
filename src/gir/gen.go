@@ -278,7 +278,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	name = snake_case_to_camelCase(name)
 	fullName += name
-	p("%s (", fullName)
+	p("%s (", sanitize(fullName))
 
 	// wrapper function type signature
 
