@@ -421,7 +421,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		if self.inStruct {
 			extern("(Ref %s) ", self.methodOwner[len(self.methodOwner)-1])
 		} else {
-			extern(self.methodOwner[len(self.methodOwner)-1])
+			extern("%s ", self.methodOwner[len(self.methodOwner)-1])
 		}
 	}
 
