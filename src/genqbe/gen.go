@@ -612,7 +612,17 @@ func (ctx *ctx) finish() {
 func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	switch t := typ.(type) {
 	case *types.Int:
-		return ctx.intType
+		switch t.BitSize {
+		case 8:
+			return qbeil.Byte
+		case 16:
+			return qbeil.HalfWord
+		case 32:
+			return qbeil.Word
+		case 64:
+			return qbeil.Long
+		}
+		panic(fmt.Sprint("illegal integer bit size:", t.BitSize))
 	case *types.Float:
 		return qbeil.Double
 	case *types.Bool:
