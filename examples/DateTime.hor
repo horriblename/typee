@@ -1,0 +1,11 @@
+(import GLib)
+
+(extern def strFromCStr (Opaque Str) [x])
+
+(def main []
+	(let [
+		tz (GLib.timeZone_newLocal)
+		now (GLib.dateTime_newNow tz)
+	]
+		(print (strFromCStr (GLib.dateTime_formatIso8601 now))))
+	)
