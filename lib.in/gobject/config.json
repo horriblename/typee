@@ -1,0 +1,16 @@
+{
+	"extra-types": {
+		"Type": "Opaque"
+	},
+	"blacklist": {
+		"functions": [
+			"signalOverrideClassHandler"
+		]
+	},
+	"method-blacklist": {
+		"SignalGroup": [
+			"connect_data",
+			"connect_swapped"
+		]
+	}
+}
