@@ -24,11 +24,19 @@ type RepeatType struct {
 
 type AggregateType interface {
 	Type
+	ABIType
 	Define() string
+}
+
+// used for function arg and return types
+type ABIType interface {
+	abi()
+	IL() string
 }
 
 type BaseType int
 type ExtType int
+type SubWordType int
 type StructType struct {
 	Align   int // 0 means default: maximum alignment of children
 	Name    string
@@ -55,12 +63,22 @@ const (
 
 	Byte     ExtType = iota // 8-bit
 	HalfWord                // 16-bit
+
+	SignedByte   SubWordType = iota // 8-bit
+	UnsignedByte                    // 8-bit
+	SignedHalf                      // 16-bit
+	UnsignedHalf                    // 16-bit
 )
 
 func (BaseType) typ()   {}
 func (ExtType) typ()    {}
 func (StructType) typ() {}
 func (UnionType) typ()  {}
+
+func (StructType) abi()  {}
+func (UnionType) abi()   {}
+func (SubWordType) abi() {}
+func (BaseType) abi()    {}
 
 func (t BaseType) IL() string {
 	switch t {
@@ -91,6 +109,21 @@ func (t StructType) IL() string {
 }
 func (t UnionType) IL() string {
 	return ":" + t.Name
+}
+
+func (t SubWordType) IL() string {
+	switch t {
+	case SignedByte:
+		return "sb"
+	case SignedHalf:
+		return "sh"
+	case UnsignedByte:
+		return "ub"
+	case UnsignedHalf:
+		return "uh"
+	default:
+		panic(fmt.Sprintf("unexpected qbeil.SubWordType: %#v", t))
+	}
 }
 
 func (t StructType) Define() string {

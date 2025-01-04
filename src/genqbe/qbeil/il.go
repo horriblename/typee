@@ -27,7 +27,7 @@ type Builder struct {
 }
 
 type TypedVar struct {
-	typ  Type
+	typ  ABIType
 	name Var
 }
 
@@ -35,7 +35,7 @@ func (v TypedVar) IL() string {
 	return fmt.Sprintf("%s %s", v.typ.IL(), v.name.IL())
 }
 
-func NewTypedVar(typ Type, name Var) TypedVar {
+func NewTypedVar(typ ABIType, name Var) TypedVar {
 	return TypedVar{typ: typ, name: name}
 }
 
@@ -46,7 +46,7 @@ func (b *Builder) indented(l []byte) error {
 	return nil
 }
 
-func (b *Builder) Func(linkage Linkage, ret *Type, name string, args []TypedVar) error {
+func (b *Builder) Func(linkage Linkage, ret *ABIType, name string, args []TypedVar) error {
 	linkageStr := linkage.String()
 	if linkageStr != "" {
 		linkageStr += " "
@@ -157,8 +157,8 @@ func (b *Builder) Command(op string, args ...Value) {
 	b.indented([]byte(fmt.Sprintf("%s %s\n", op, argStr)))
 }
 
-func (b *Builder) Call(target *Var, typ Type, name Var, args []TypedValue) {
-	argsStr := strings.Join(fun.Map(args, func(v TypedValue) string {
+func (b *Builder) Call(target *Var, typ ABIType, name Var, args []ABITypedValue) {
+	argsStr := strings.Join(fun.Map(args, func(v ABITypedValue) string {
 		return fmt.Sprint(v.Type.IL(), " ", v.Value.IL())
 	}), ", ")
 	if target != nil {

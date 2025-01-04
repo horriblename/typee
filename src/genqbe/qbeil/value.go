@@ -4,8 +4,8 @@ import "fmt"
 
 //go-sumtype:decl Value
 
-type TypedValue struct {
-	Type  Type
+type ABITypedValue struct {
+	Type  ABIType
 	Value Value
 }
 
