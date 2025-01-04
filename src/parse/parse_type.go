@@ -334,11 +334,11 @@ func typeAlias(in []lex.Token) ([]lex.Token, Expr, error) {
 	return in, &expr, nil
 }
 
-func dbg[I, O any](tag string, p combinator.Parser[I, O]) combinator.Parser[I, O] {
-	return func(i I) (I, O, error) {
+func dbg[I, O any](tag string, p combinator.Parser[[]I, O]) combinator.Parser[[]I, O] {
+	return func(i []I) ([]I, O, error) {
 		r, o, e := p(i)
 		if e != nil {
-			fmt.Printf("[dbg] %s: %s at %v\n", tag, e.Error(), i)
+			fmt.Printf("[dbg] %s: %s at %v\n", tag, e.Error(), i[:min(len(i), 10)])
 		} else {
 			fmt.Printf("[dbg] %s got %v\n", tag, o)
 		}
