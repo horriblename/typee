@@ -477,6 +477,10 @@ func (self *Generator) processInterfaceInfo(ii *gi.InterfaceInfo) {
 			p(";; blacklisted: %s.%s (method)\n", name, meth.Name())
 			continue
 		}
+		if meth.IsDeprecated() {
+			p(";; blacklisted: %s.%s (deprecated method)\n", name, meth.Name())
+			continue
+		}
 		if i != 0 {
 			p(", ")
 		}
@@ -516,6 +520,10 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 		meth := oi.Method(i)
 		if self.config.is_method_blacklisted(name, meth.Name()) {
 			p(";; blacklisted: %s.%s (method\n)", name, meth.Name())
+			continue
+		}
+		if meth.IsDeprecated() {
+			p(";; blacklisted: %s.%s (deprecated method)\n", name, meth.Name())
 			continue
 		}
 		if i != 0 {
