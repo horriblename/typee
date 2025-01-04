@@ -18,9 +18,6 @@ import (
 	"github.com/horriblename/typee/src/types"
 )
 
-//go:embed builtins.qbe
-var builtinsQbe string
-
 // compiler bugs
 var ErrCannotCompilePolymorphicType = errors.New("tried to compile a polymorphic type")
 
@@ -605,7 +602,6 @@ func (ctx *ctx) finish() {
 		assert.Ok(err)
 	}
 
-	fmt.Fprint(ctx.il.OutFile, builtinsQbe)
 	io.Copy(ctx.il.OutFile, &ctx.il.Buf)
 }
 
