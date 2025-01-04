@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 
 	"github.com/linuxdeepin/go-gir/generator/gi"
 )
@@ -13,6 +14,7 @@ type Config struct {
 	Whitelist       map[string]map[string]bool
 	MethodBlacklist map[string]map[string]bool
 	MethodWhitelist map[string]map[string]bool
+	ExtraTypes      map[string]string
 }
 
 func ParseConfig(in io.Reader) (Config, error) {
@@ -21,6 +23,7 @@ func ParseConfig(in io.Reader) (Config, error) {
 		Whitelist       map[string][]string `json:"whitelist"`
 		MethodBlacklist map[string][]string `json:"method-blacklist"`
 		MethodWhitelist map[string][]string `json:"method-whitelist"`
+		ExtraTypes      map[string]string   `json:"extra-types"`
 	}
 
 	t := tmp{}
@@ -34,6 +37,7 @@ func ParseConfig(in io.Reader) (Config, error) {
 		Whitelist:       mapMap(t.Whitelist, sliceToSet),
 		MethodBlacklist: mapMap(t.MethodBlacklist, sliceToSet),
 		MethodWhitelist: mapMap(t.MethodWhitelist, sliceToSet),
+		ExtraTypes:      t.ExtraTypes,
 	}, nil
 }
 
@@ -102,4 +106,36 @@ func (this *Config) is_method_blacklisted(class, method string) bool {
 	}
 
 	return false
+}
+
+func (this *Config) writeExtraTypes(w io.Writer) error {
+	type decl struct {
+		name string
+		typ  string
+	}
+
+	extras := make([]decl, 0, len(this.ExtraTypes))
+	for k, v := range this.ExtraTypes {
+		extras = append(extras, decl{
+			name: k,
+			typ:  v,
+		})
+	}
+
+	slices.SortFunc(extras, func(a, b decl) int {
+		if a.name == b.name {
+			return 0
+		} else if a.name < b.name {
+			return -1
+		}
+		return 1
+	})
+
+	for _, d := range extras {
+		if _, err := fmt.Fprintf(w, "(type %s %s)\n", d.name, d.typ); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

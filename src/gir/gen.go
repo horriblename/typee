@@ -27,6 +27,7 @@ func New(lib string, version string, config Config) ([]byte, error) {
 		return nil, err
 	}
 
+	config.writeExtraTypes(&g.externs)
 	g.goBindings.WriteTo(&g.externs)
 	return g.externs.Bytes(), nil
 }
