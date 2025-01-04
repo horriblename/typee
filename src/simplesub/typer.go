@@ -163,7 +163,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 
 		case *parse.ObjectTypeDef:
 			// TODO: handle generics (parameterize class)
-			types[i] = PolymorphicType{Body: freshVar()}
+			types[i] = PolymorphicType{Body: freshVar(), TypeParams: opt.Some([]uint{})}
 			self.types.Insert(e.Name, types[i])
 
 		case *parse.UnionDef:
@@ -904,7 +904,21 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 		}
 		e, ok := el.(SimpleType)
 		if !ok {
-			return nil, fmt.Errorf("%w as array base type: %s", ErrIllegalPolymorphicType, t.String())
+			// cannot fail (unless nil)
+			pt := el.(PolymorphicType)
+
+			// HACK: maybe I should just make class/interfaces without type params emit
+			// a simple type instead of this thing
+			if typParams, ok := pt.TypeParams.Unwrap(); ok {
+				if len(typParams) > 0 {
+					return nil, fmt.Errorf("%w as array base type: %s", ErrIllegalPolymorphicType, el.String())
+				}
+
+				// FIXME: is instantiate ok here?
+				e = pt.instantiate()
+			} else {
+				return nil, fmt.Errorf("%w as array base type: %s", ErrIllegalPolymorphicType, el.String())
+			}
 		}
 
 		if size, ok := t.Size.Unwrap(); ok {
