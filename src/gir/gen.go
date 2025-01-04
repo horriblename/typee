@@ -421,7 +421,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		if self.inStruct {
 			extern("(Ref %s) ", self.methodOwner[len(self.methodOwner)-1])
 		} else {
-			extern("Self ")
+			extern(self.methodOwner[len(self.methodOwner)-1])
 		}
 	}
 
@@ -449,11 +449,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	// extern arguments
 
 	if isValidMethod {
-		if self.inStruct {
-			extern("self_ ")
-		} else {
-			extern("self ")
-		}
+		extern("self_ ")
 	}
 
 	for i, arg := range fb.orig_args {
