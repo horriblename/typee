@@ -481,10 +481,8 @@ func (self *Generator) processInterfaceInfo(ii *gi.InterfaceInfo) {
 			p(";; blacklisted: %s.%s (deprecated method)\n", name, meth.Name())
 			continue
 		}
-		if i != 0 {
-			p(", ")
-		}
 		self.processFunctionInfo(meth)
+		p(", ")
 	}
 
 	p("})\n")
@@ -526,10 +524,8 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 			p(";; blacklisted: %s.%s (deprecated method)\n", name, meth.Name())
 			continue
 		}
-		if i != 0 {
-			p(", ")
-		}
 		self.processFunctionInfo(meth)
+		p(", ")
 	}
 	p("})\n")
 }
