@@ -2,6 +2,7 @@ package gir
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/linuxdeepin/go-gir/generator/gi"
@@ -59,7 +60,7 @@ func (this *Config) is_object_blacklisted(bi *gi.BaseInfo) bool {
 	case gi.INFO_TYPE_OBJECT:
 		return this.is_blacklisted("objects", bi.Name())
 	default:
-		println("TODO: %s (%s)\n", bi.Name(), bi.Type())
+		fmt.Printf("TODO: %s (%s)\n", bi.Name(), bi.Type())
 		return true
 	}
 }
