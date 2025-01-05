@@ -798,7 +798,8 @@ func (self *Typer) defClass(ctx *moduleContext, classDef *parse.ObjectTypeDef) (
 			return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, s)
 		}
 
-		sc, ok := sup.(ObjectType)
+		// TODO: should concretize instead
+		sc, ok := sup.instantiate().(ObjectType)
 		if !ok {
 			return nil, fmt.Errorf("%w: in %s: %s of type %s is not an object type", ErrIllegalSuperType, classDef.Name, s, sup)
 		}
