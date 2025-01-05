@@ -41,9 +41,9 @@ func Toposort(edges AdjacencyList) (_ []Node, err error) {
 			if cycle := visit(m); cycle != nil {
 				return append(cycle, node)
 			}
-			mark[node] = true
 		}
 
+		mark[node] = true
 		sorted = append(sorted, node)
 		return nil
 	}
