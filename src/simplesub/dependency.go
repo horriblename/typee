@@ -1,6 +1,12 @@
 package simplesub
 
 import (
+	"fmt"
+	"maps"
+
+	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/fun"
+	"github.com/horriblename/typee/src/graph"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/internal/scope"
 	"github.com/horriblename/typee/src/parse"
@@ -70,6 +76,67 @@ func groupRecursives(ast []parse.Expr) (groups [][]any, selfRecursive map[string
 	}
 
 	return tarjan.Connections(depGraph), selfRecursive
+}
+
+func sortTypeDefs(ast []parse.Expr) (order []string, astLookup map[string]parse.Expr, err error) {
+	allDeps := map[string]map[string]unit{}
+	typeDefAst := map[string]parse.Expr{}
+
+	for _, node := range ast {
+		switch n := node.(type) {
+		case *parse.EnumDef:
+			typeDefAst[n.Name] = n
+			allDeps[n.Name] = map[string]unit{}
+		case *parse.UnionDef:
+			typeDefAst[n.Name] = n
+			allDeps[n.Name] = map[string]unit{}
+
+		case *parse.ObjectTypeDef:
+			typeDefAst[n.Name] = n
+			deps := map[string]unit{}
+			for _, member := range n.Fields {
+				field, ok := member.(parse.ClassField)
+				if !ok {
+					continue
+				}
+
+				markTypeDeps(field.Type, deps)
+			}
+			allDeps[n.Name] = deps
+
+		case *parse.TypeAlias:
+			typeDefAst[n.Name] = n
+			deps := map[string]unit{}
+			markTypeDeps(n.Type, deps)
+			allDeps[n.Name] = deps
+		}
+	}
+
+	adjacencyList := fun.MapMap(allDeps, func(d map[string]unit) []string {
+		return fun.Collect(maps.Keys(d))
+	})
+
+	s, err := graph.Toposort(adjacencyList)
+	if err != nil {
+		return nil, nil, fmt.Errorf("sorting type definitions: %w", err)
+	}
+
+	return s, typeDefAst, nil
+}
+
+func markTypeDeps(x parse.TypeRepr, deps map[string]unit) {
+	work := []parse.TypeRepr{x}
+
+	for len(work) != 0 {
+		node, ok := popSlice(&work).Unwrap()
+		assert.True(ok, "len already checked")
+
+		if n, ok := node.(parse.TypeName); ok {
+			deps[n.Name] = unit{}
+		}
+
+		work = append(work, parse.ChildNodes(node)...)
+	}
 }
 
 func (ctx *depCtx) findDependencies(deps *orderedset.OrderedSet[any], nodes []parse.Expr) {

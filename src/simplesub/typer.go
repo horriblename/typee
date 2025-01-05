@@ -123,6 +123,65 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 
 	recursiveness := map[string]bool{}
 	groups, selfRecursives := groupRecursives(program)
+
+	typeDefOrder, typeDefAsts, err := sortTypeDefs(program)
+	if err != nil {
+		return nil, err
+	}
+
+	// assign types to type defs
+	for _, name := range typeDefOrder {
+		expr := typeDefAsts[name]
+		switch e := expr.(type) {
+		case *parse.EnumDef:
+			typ, err := self.defEnum(e)
+			if err != nil {
+				return nil, err
+			}
+
+			ctx.inferred[e.ID()] = typ
+			self.types.Insert(e.Name, typ)
+
+		case *parse.UnionDef:
+			t, err := self.defUnion(ctx, e)
+			if err != nil {
+				return nil, err
+			}
+
+			self.types.Insert(e.Name, t)
+			ctx.inferred[e.ID()] = t
+
+		case *parse.ObjectTypeDef:
+			temp := freshVar()
+			self.types.Insert(e.Name, temp)
+
+			t, err := self.defClass(ctx, e)
+			if err != nil {
+				return nil, err
+			}
+
+			if err := constrain(temp, t); err != nil {
+				return nil, fmt.Errorf("aliasing temp variable to inferred type of class %s: %w", e.Name, err)
+			}
+
+			if err := constrain(temp, t); err != nil {
+				return nil, fmt.Errorf("aliasing temp variable to inferred type of class %s: %w", e.Name, err)
+			}
+
+			// TODO: handle generics
+			ctx.inferred[e.ID()] = t
+
+		case *parse.TypeAlias:
+			target, err := self.parseType(e.Type)
+			if err != nil {
+				return nil, err
+			}
+
+			self.types.Insert(e.Name, target)
+			ctx.inferred[e.ID()] = target
+		}
+	}
+
 	// could be optimized but eh
 	for _, group := range groups {
 		if len(group) == 1 {
@@ -139,7 +198,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 		}
 	}
 
-	// assign fresh type vars to each top level item
+	// assign fresh type vars to each top level value
 	for i, expr := range program {
 		switch e := expr.(type) {
 		case *parse.FuncDef:
@@ -162,30 +221,13 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			topLevels[e.Name] = e
 
 		case *parse.ObjectTypeDef:
-			// TODO: handle generics (parameterize class)
-			types[i] = PolymorphicType{Body: freshVar(), TypeParams: opt.Some([]uint{})}
-			self.types.Insert(e.Name, types[i])
-
+			types[i] = ctx.inferred[e.ID()]
 		case *parse.UnionDef:
-			types[i] = freshVar()
-			self.types.Insert(e.Name, types[i])
-
+			types[i] = ctx.inferred[e.ID()]
 		case *parse.EnumDef:
-			// currently enums can't refer to other types so it's safe to build it's type now
-			// (and we need to do it now to workaround having type annotations treated as equal types)
-			typ, err := self.defEnum(e)
-			if err != nil {
-				return nil, err
-			}
-
-			types[i] = typ
-			ctx.inferred[e.ID()] = typ
-			self.types.Insert(e.Name, types[i])
-
+			types[i] = ctx.inferred[e.ID()]
 		case *parse.TypeAlias:
-			types[i] = freshVar()
-			ctx.inferred[e.ID()] = types[i]
-			self.types.Insert(e.Name, types[i])
+			types[i] = ctx.inferred[e.ID()]
 
 		default:
 			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
@@ -256,68 +298,9 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			}
 
 		case *parse.ObjectTypeDef:
-			// TODO: idk if this is the best place to do this
-			self.types.Insert(e.Name, types[i])
-
-			t, err := self.defClass(ctx, e)
-			if err != nil {
-				return nil, err
-			}
-
-			pt := assert.Cast[PolymorphicType](types[i], "compiler invariant violated")
-			if err := constrain(t, pt.Body); err != nil {
-				return nil, err
-			}
-
-			// TODO: handle generics
-			ctx.inferred[e.ID()] = t
-
 		case *parse.UnionDef:
-			self.types.Insert(e.Name, types[i])
-
-			t, err := self.defUnion(ctx, e)
-			if err != nil {
-				return nil, err
-			}
-
-			st := assert.Cast[SimpleType](types[i], "compiler invariant violated")
-			if err := constrain(t, st); err != nil {
-				return nil, err
-			}
-
-			if err := constrain(st, t); err != nil {
-				return nil, err
-			}
-
-			ctx.inferred[e.ID()] = t
-
 		case *parse.EnumDef:
-			// we already defined it in previous step
-
 		case *parse.TypeAlias:
-			typ := types[i].(SimpleType)
-			self.types.Insert(e.Name, typ)
-
-			target, err := self.parseType(e.Type)
-			if err != nil {
-				return nil, err
-			}
-
-			// TODO: constraining twice is pretty expensive, can I add an "alias" function
-			// that skips checks and just sets lower and upper bound to target type?
-
-			// TODO: unbound type var is not possible in types, I can "concretize"
-			// the target by passing the required type var bindings instead of instantiate
-			simpleTarget := target.instantiate()
-			err = constrain(typ, simpleTarget)
-			if err != nil {
-				return nil, err
-			}
-
-			err = constrain(simpleTarget, typ)
-			if err != nil {
-				return nil, err
-			}
 
 		default:
 			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())

@@ -76,3 +76,22 @@ func (self TypeInstantiation) String() string {
 	})
 	return fmt.Sprintf("(%s %s)", self.Type.Name, strings.Join(params, " "))
 }
+
+func ChildNodes(node TypeRepr) []TypeRepr {
+	switch n := node.(type) {
+	case ArrayType:
+		return []TypeRepr{n.Type}
+	case RecordType:
+		return fun.Map(n.Fields, func(field RecordTypeField) TypeRepr {
+			return field.Type
+		})
+	case SelfType:
+		return []TypeRepr{}
+	case TypeInstantiation:
+		return append([]TypeRepr{n.Type}, n.Params...)
+	case TypeName:
+		return []TypeRepr{}
+	default:
+		panic(fmt.Sprintf("unexpected parse.TypeRepr: %#v", node))
+	}
+}

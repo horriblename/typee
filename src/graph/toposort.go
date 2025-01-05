@@ -9,7 +9,7 @@ import (
 )
 
 // Alias so I can easily move off any once I replace tarjan lib
-type Node = any
+type Node = string
 
 type AdjacencyList = map[Node][]Node
 
