@@ -196,41 +196,58 @@ func TestTypeProgram(t *testing.T) {
 		{
 			desc: "class definition",
 			input: `
-				(class Foo {x Int, pub (def id (Int Int) [x] x)})
+				(class Foo (Bar) {x Int, pub (def id (Int Int) [x] x)})
+				(class Bar {y Str})
 				(def foo (Foo Foo) [f] f)
 				(def main []
 					(foo (Foo.new)))
 			`,
-			typ: []types.Type{
-				&types.Class{
-					Name:   "Foo",
+			typ: func() []types.Type {
+				bar := types.Class{
+					Name:   "Bar",
 					Supers: []*types.Class{},
 					Fields: map[string]types.Member{
-						"x": {
-							Access: types.AccessPrivate,
-							Type:   &tI64,
+						"y": {
+							Access: types.AccessPublic,
+							Type:   &types.String{},
 						},
 					},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"id": {
-							Access: types.AccessPublic,
-							Type: &types.Func{
-								Args: []types.Type{&tI64},
-								Ret:  &tI64,
+					Methods: map[string]types.Member{},
+				}
+
+				return []types.Type{
+					&types.Class{
+						Name:   "Foo",
+						Supers: []*types.Class{&bar},
+						Fields: map[string]types.Member{
+							"x": {
+								Access: types.AccessPrivate,
+								Type:   &tI64,
+							},
+						},
+						Statics: map[string]types.Member{},
+						Methods: map[string]types.Member{
+							"id": {
+								Access: types.AccessPublic,
+								Type: &types.Func{
+									Args: []types.Type{&tI64},
+									Ret:  &tI64,
+								},
 							},
 						},
 					},
-				},
-				&types.Func{
-					Args: []types.Type{&types.Class{Name: "Foo"}},
-					Ret:  &types.Class{Name: "Foo"},
-				},
-				&types.Func{
-					Args: []types.Type{},
-					Ret:  &types.Class{Name: "Foo"},
-				},
-			},
+					&bar,
+					&types.Func{
+						Args: []types.Type{&types.Class{Name: "Foo"}},
+						Ret:  &types.Class{Name: "Foo"},
+					},
+					&types.Func{
+						Args: []types.Type{},
+						Ret:  &types.Class{Name: "Foo"},
+					},
+				}
+			}(),
 		},
 		{
 			desc:  "self and Self alias",
