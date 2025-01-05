@@ -149,6 +149,7 @@ type ObjectTypeDef struct {
 	Name   string
 	Supers []string
 	Fields []ClassMember
+	Base   bool
 }
 
 type MethodAccess struct {
@@ -324,7 +325,11 @@ func (self *ArrayLiteral) String() string {
 	return fmt.Sprintf("#%d %+v", self.id, self.Elements)
 }
 func (self *ObjectTypeDef) String() string {
-	return fmt.Sprintf("#%d (class %s %v %v)", self.id, self.Name, self.Supers, self.Fields)
+	supers := "{}"
+	if !self.Base {
+		supers = strings.Join(self.Supers, ", ")
+	}
+	return fmt.Sprintf("#%d (class %s (%s) %v)", self.id, self.Name, supers, self.Fields)
 }
 func (self *RecordAccess) String() string {
 	return fmt.Sprintf("#%d %s.%s", self.id, self.Record.String(), self.Field)

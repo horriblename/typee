@@ -125,9 +125,18 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 		combinator.WithPrefix(
 			kwClass,
 			combinator.Then(
+				// class name
 				symbolName,
 				combinator.Then(
-					combinator.Maybe(combinator.Surround(lparen, combinator.Many0(symbolName), rparen)),
+					// super classes
+					combinator.Maybe(combinator.Surround(
+						lparen,
+						combinator.Or(
+							combinator.WithPrefix(lbrace, rbrace),
+							combinator.Many0(symbolName),
+						),
+						rparen),
+					),
 					combinator.Surround(
 						lbrace,
 						combinator.Delimited(classMember, comma),
@@ -142,12 +151,24 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, err
 	}
 
+	var sups []string
+	derived := true
+	if super, ok := res.Two.One.Unwrap(); ok {
+		sups, derived = super.Right()
+		if !derived {
+			sups = []string{}
+		}
+	} else {
+		sups = []string{}
+	}
+
 	t := ObjectTypeDef{
 		id:     newId(),
 		Kind:   Class,
 		Name:   res.One,
-		Supers: res.Two.One.Or([]string{}),
+		Supers: sups,
 		Fields: res.Two.Two,
+		Base:   !derived,
 	}
 	return in, &t, nil
 }

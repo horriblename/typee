@@ -313,6 +313,23 @@ func TestParse(t *testing.T) {
 			}},
 		},
 		{
+			desc:  "base class",
+			input: `(class Foo({}) {pub foo Int,})`,
+			output: []Expr{&ObjectTypeDef{
+				id:     1,
+				Name:   "Foo",
+				Supers: []string{},
+				Fields: []ClassMember{
+					ClassField{
+						Access_: types.AccessPublic,
+						Name_:   "foo",
+						Type:    TypeName{"Int", ""},
+					},
+				},
+				Base: true,
+			}},
+		},
+		{
 			desc:  "interface def",
 			input: `(interface Foo {pub foo Int, protected (def foo [x] x)})`,
 			output: []Expr{&ObjectTypeDef{
