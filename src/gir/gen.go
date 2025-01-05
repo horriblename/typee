@@ -39,6 +39,18 @@ func (self *Generator) Gen(lib string, version string) error {
 		return err
 	}
 
+	deps := repo.Dependencies(self.namespace)
+	for _, dep := range deps {
+		i := 0
+		for ; i < len(dep); i++ {
+			if dep[i] == '-' {
+				break
+			}
+		}
+
+		name := dep[:i]
+		fmt.Fprintf(&self.externs, "(import %s)\n", name)
+	}
 	for i, n := 0, repo.NumInfo(self.namespace); i < n; i++ {
 		self.process_base_info(repo.Info(self.namespace, i))
 	}
