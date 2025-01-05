@@ -800,7 +800,7 @@ func (self *Typer) defClass(ctx *moduleContext, classDef *parse.ObjectTypeDef) (
 
 		sc, ok := sup.(ObjectType)
 		if !ok {
-			return nil, fmt.Errorf("%w: %s", ErrIllegalSuperType, s)
+			return nil, fmt.Errorf("%w: in %s: %s of type %s is not an object type", ErrIllegalSuperType, classDef.Name, s, sup)
 		}
 
 		supers[i] = sc
