@@ -528,6 +528,34 @@ func TestTypeProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc: "out of order type definitions still work",
+			input: `
+				(def f (Foo Bar) [foo] {y: 3})
+				(type Foo {x: Bar})
+				(type Bar {y: Int})
+			`,
+			typ: func() []types.Type {
+				bar := types.Record{
+					Fields: map[string]types.Type{
+						"y": &tI64,
+					},
+				}
+				foo := types.Record{
+					Fields: map[string]types.Type{
+						"x": &bar,
+					},
+				}
+				return []types.Type{
+					&types.Func{
+						Args: []types.Type{&foo},
+						Ret:  &bar,
+					},
+					&foo,
+					&bar,
+				}
+			}(),
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
