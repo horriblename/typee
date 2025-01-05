@@ -94,6 +94,9 @@ func sortTypeDefs(ast []parse.Expr) (order []string, astLookup map[string]parse.
 		case *parse.ObjectTypeDef:
 			typeDefAst[n.Name] = n
 			deps := map[string]unit{}
+			for _, super := range n.Supers {
+				deps[super] = unit{}
+			}
 			for _, member := range n.Fields {
 				field, ok := member.(parse.ClassField)
 				if !ok {
