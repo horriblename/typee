@@ -178,6 +178,42 @@ func Maybe[I, O any](parser Parser[I, O]) Parser[I, opt.Option[O]] {
 	}
 }
 
+type Either[L, R any] struct {
+	isRight bool
+	left    L
+	right   R
+}
+
+func (self Either[L, R]) Left() (l0 L, _ bool) {
+	if self.isRight {
+		return l0, false
+	}
+	return self.left, true
+}
+
+func (self Either[L, R]) Right() (r0 R, _ bool) {
+	if !self.isRight {
+		return r0, false
+	}
+	return self.right, true
+}
+
+func Or[I, L, R any](left Parser[I, L], right Parser[I, R]) Parser[I, Either[L, R]] {
+	return func(i I) (i0 I, _ Either[L, R], _ error) {
+		rest, l, err := left(i)
+		if err == nil {
+			return rest, Either[L, R]{left: l}, nil
+		}
+
+		i, r, err := right(i)
+		if err != nil {
+			return i0, Either[L, R]{}, err
+		}
+
+		return i, Either[L, R]{isRight: true, right: r}, err
+	}
+}
+
 func Map[I, O1, O2 any](parser Parser[I, O1], f func(O1) O2) Parser[I, O2] {
 	return func(i I) (i0 I, o0 O2, _ error) {
 		if rest, o1, err := parser(i); err != nil {
