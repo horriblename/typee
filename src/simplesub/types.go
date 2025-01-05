@@ -572,6 +572,7 @@ type ObjectType struct {
 	Supers  []ObjectType
 	Fields  []NamedMember
 	Methods []NamedMember
+	Top     bool // top class is a class that does not have a parent class
 }
 type ArrayType struct {
 	ElType SimpleType

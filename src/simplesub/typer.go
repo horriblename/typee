@@ -795,6 +795,7 @@ func (self *Typer) defClass(ctx *moduleContext, classDef *parse.ObjectTypeDef) (
 		Supers:  supers,
 		Fields:  fields,
 		Methods: methods,
+		Top:     classDef.Base,
 	}
 	self.types.Insert(classDef.Name, t)
 	return t, nil

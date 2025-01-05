@@ -76,6 +76,7 @@ type Class struct {
 	Fields  map[string]Member
 	Statics map[string]Member
 	Methods map[string]Member
+	Top     bool
 }
 type Array struct {
 	Type Type

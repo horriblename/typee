@@ -225,11 +225,19 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 				Type:   coalesceTypeInner(meth.Type, polarity),
 			}
 		}
+
+		supers := fun.Map(ty.Supers, func(o ObjectType) *types.Class {
+			s := coalesceTypeInner(o, polarity)
+			return s.(*types.Class)
+		})
+
 		return &types.Class{
 			Name:    ty.Name,
+			Supers:  supers,
 			Fields:  fields,
 			Statics: map[string]types.Member{},
 			Methods: methods,
+			Top:     ty.Top,
 		}
 	case Bot:
 		return &types.Enum{Name: "", Values: map[string]int64{}}
