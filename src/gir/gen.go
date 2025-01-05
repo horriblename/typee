@@ -512,6 +512,10 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 
 	p("(class %s (", snake_case_to_PascalCase(name))
 
+	if self.namespace == "GObject" && oi.Name() == "Object" {
+		p("{}")
+	}
+
 	for i, n := 0, oi.NumInterface(); i < n; i++ {
 		ii := oi.Interface(i)
 		name := ii.Name()
