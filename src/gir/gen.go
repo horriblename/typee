@@ -153,7 +153,7 @@ func (self *Generator) processStructInfo(si *gi.StructInfo) {
 			nm := field.Name()
 			if fo != offset {
 				pad := fo - offset
-				p("\t_: [U8 %d],", pad)
+				p("\t_%s: [U8 %d],", nm, pad)
 				offset += pad
 			}
 			// if type_needs_wrapper(ft) {
