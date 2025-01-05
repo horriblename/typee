@@ -13,58 +13,46 @@ type Node = string
 
 type AdjacencyList = map[Node][]Node
 
-type ErrCycle struct {
-	node Node
-}
-
-func (self ErrCycle) Error() string {
-	return fmt.Sprintf("cycle detected, last node: %v", self.node)
-}
-
 // sorts a DAG
 // err is [ErrCycle] if cycle is detected
 // leaf nodes go first, root goes last
 func Toposort(edges AdjacencyList) (_ []Node, err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			if ce, ok := e.(ErrCycle); ok {
-				err = &ce
-			} else {
-				panic(e)
-			}
-		}
-	}()
-
 	sorted := []Node{}
 	unvisited := orderedset.NewOrderedSet(fun.Collect(maps.Keys(edges))...)
 	// false mark is a temporary mark, true is permanent
 	mark := map[Node]bool{}
 
-	var visit func(Node)
-	visit = func(node Node) {
+	// returns dependency cycle list, or nil
+	var visit func(Node) []Node
+	visit = func(node Node) []Node {
 		unvisited.SwapDelete(node)
 		perm, ok := mark[node]
 		if ok {
 			if perm {
-				return
+				return nil
 			} else {
-				panic(ErrCycle{node})
+				return []Node{node}
 			}
 		}
 
 		mark[node] = false
 
 		for _, m := range edges[node] {
-			visit(m)
+			if cycle := visit(m); cycle != nil {
+				return append(cycle, node)
+			}
 			mark[node] = true
 		}
 
 		sorted = append(sorted, node)
+		return nil
 	}
 
 	for {
 		if node, ok := unvisited.Pop(); ok {
-			visit(node)
+			if cycle := visit(node); cycle != nil {
+				return nil, fmt.Errorf("cycle detected: path unwind: %+s", cycle)
+			}
 		} else {
 			break
 		}
