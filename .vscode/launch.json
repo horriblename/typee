@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "description": "Only to server as an example",
+  "configurations": [
+    {
+      "name": "cli",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/src/cli",
+      "args": [
+		  "check", "-trace-typer", "GObject.hor"
+      ],
+      "stopOnEntry": true
+    },
+    {
+      "name": "test specific",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "./${relativeFileDirname}",
+      "args": ["-test.run=TestTypeProgram/ref_types"]
+    }
+  ]
+}
