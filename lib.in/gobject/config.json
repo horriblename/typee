@@ -2,9 +2,20 @@
 	"extra-types": {
 		"Type": "Opaque"
 	},
+	"whitelist": {
+		"callbacks": []
+	},
 	"blacklist": {
 		"functions": [
-			"signalOverrideClassHandler"
+			"signalOverrideClassHandler",
+			"__comment: mostly contains callbacks",
+			"boxed_type_register_static",
+			"signal_add_emission_hook",
+			"signal_newv",
+			"signal_override_class_handler",
+			"signal_set_va_marshaller",
+			"source_set_closure",
+			"source_set_dummy_callback"
 		]
 	},
 	"method-blacklist": {
