@@ -158,7 +158,10 @@ func cmdBuild() error {
 func cmdRun() error {
 	outPath := flag.String(flagOut, defaultOut, helpOut)
 	outPathLong := flag.String(flagOutLong, defaultOut, helpOut)
+	useExternalQbe := flag.Bool(flagExternalQbe, false, helpExternalQbe)
+	linkerFlags := flag.String(flagLinkerFlags, "", helpLinkerFlags)
 
+	ldFlags := strings.Fields(*linkerFlags)
 	if *outPathLong != defaultOut {
 		*outPath = *outPathLong
 	}
@@ -168,6 +171,8 @@ func cmdRun() error {
 		targetStage: run,
 		inFile:      flag.Arg(0),
 		outFile:     *outPath,
+		externalQbe: *useExternalQbe,
+		linkerFlags: ldFlags,
 	}
 
 	return buildProgram(params)
