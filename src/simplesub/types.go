@@ -657,14 +657,17 @@ func (self ObjectType) String() string {
 	if name == "" {
 		name = "_UnknownClass"
 	}
-	return fmt.Sprintf("%s { %s, %s }",
+	return fmt.Sprintf("%s {...}",
 		name,
-		strings.Join(fun.Map(self.Fields, func(field NamedMember) string {
-			return fmt.Sprintf("%s: %s", field.Name, field.Type.String())
-		}), ", "),
-		strings.Join(fun.Map(self.Methods, func(field NamedMember) string {
-			return fmt.Sprintf("%s: %s", field.Name, field.Type.String())
-		}), ", "),
+		// FIXME: this inf-recs on methods referring to Self (or only the explicit type?
+		// like (class Foo {(def foo (Foo) [_] )}))
+		//
+		// strings.Join(fun.Map(self.Fields, func(field NamedMember) string {
+		// 	return fmt.Sprintf("%s: %s", field.Name, field.Type.String())
+		// }), ", "),
+		// strings.Join(fun.Map(self.Methods, func(field NamedMember) string {
+		// 	return fmt.Sprintf("%s: %s", field.Name, field.Type.String())
+		// }), ", "),
 	)
 }
 func (self ArrayType) String() string { return fmt.Sprintf("[%s %d]", self.ElType, self.Size) }
