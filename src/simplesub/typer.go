@@ -98,8 +98,10 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 	// top-level process
 	// 1. type check imported modules (already done in [TypeProgram])
 	// 2. groupRecursives: walk the AST to mark (mutually-)recursive top-level functions.
-	// 3. iterate through top-level nodes generating fresh type vars for each top level item.
-	// 4. walk the AST, inferring types of all expressions
+	// 3. sort type definitions by dependency (cyclic types not currently supported)
+	// 4. process type definitions
+	// 5. iterate through top-level nodes generating fresh type vars for each top level non-type-def node.
+	// 6. walk the AST, inferring types of all expressions
 	importCount := 0
 	ctx.imports = map[string]ModuleInfo{}
 	for i, expr := range program {
@@ -155,7 +157,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			temp := freshVar()
 			self.types.Insert(e.Name, temp)
 
-			t, err := self.defClass(ctx, e)
+			t, err := self.defClassOutline(ctx, e)
 			if err != nil {
 				return nil, err
 			}
@@ -164,7 +166,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 				return nil, fmt.Errorf("aliasing temp variable to inferred type of class %s: %w", e.Name, err)
 			}
 
-			if err := constrain(temp, t); err != nil {
+			if err := constrain(t, temp); err != nil {
 				return nil, fmt.Errorf("aliasing temp variable to inferred type of class %s: %w", e.Name, err)
 			}
 
@@ -298,6 +300,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			}
 
 		case *parse.ObjectTypeDef:
+			self.defClassMethods(ctx, e)
 		case *parse.UnionDef:
 		case *parse.EnumDef:
 		case *parse.TypeAlias:
@@ -716,7 +719,8 @@ func (self *Typer) externDef(ctx *moduleContext, e *parse.FuncDef) (SimpleType, 
 	return Func{Args: params, Ret: retHint.instantiate()}, nil
 }
 
-func (self *Typer) defClass(ctx *moduleContext, classDef *parse.ObjectTypeDef) (SimpleType, error) {
+// type checks fields and assigns fresh variables to methods
+func (self *Typer) defClassOutline(ctx *moduleContext, classDef *parse.ObjectTypeDef) (SimpleType, error) {
 	self.classScope = classDef.Name
 	defer func() { self.classScope = "" }()
 	fields := []NamedMember{}
@@ -744,27 +748,11 @@ func (self *Typer) defClass(ctx *moduleContext, classDef *parse.ObjectTypeDef) (
 				},
 			})
 		case parse.ClassMethod:
-			// TODO: there might be a way to keep the "only top-levels can generalize" rule if
-			// we make methods "polymorphic except [a, b, c]", where a,b,c are explicitly written
-			// down generics at the class level
-			if len(f.Func.Body) == 0 {
-				return nil, fmt.Errorf("in function %s: %w", f.Func.Name, ErrEmptyFuncBody)
-			}
-			fn := parse.Fn{
-				Id:        f.Func.ID(),
-				Signature: f.Func.Signature,
-				Args:      f.Func.Args,
-				Body:      f.Func.Body[len(f.Func.Body)-1],
-			}
-			typ, err := self.typeLetRhs(ctx, f.Name(), &fn)
-			if err != nil {
-				return nil, err
-			}
-
 			methods = append(methods, NamedMember{
 				Name: f.Name(),
 				Member: Member{
-					Type:   typ.Body, // FIXME
+					// TODO: generalize methods
+					Type:   freshVar(),
 					Access: f.Access(),
 				},
 			})
@@ -799,6 +787,57 @@ func (self *Typer) defClass(ctx *moduleContext, classDef *parse.ObjectTypeDef) (
 	}
 	self.types.Insert(classDef.Name, t)
 	return t, nil
+}
+
+func (self *Typer) defClassMethods(ctx *moduleContext, classDef *parse.ObjectTypeDef) error {
+	// TODO: run the same SCC check in function dependency graph for methods
+
+	i_meth := 0
+	self.classScope = classDef.Name
+	classTy := assert.Cast[ObjectType](ctx.inferred[classDef.ID()], "typing class method: expected an ObjectType")
+
+	self.vars.NewScope()
+	defer self.vars.PopScope()
+
+	for _, field := range classDef.Fields {
+		f, ok := field.(parse.ClassMethod)
+		if !ok {
+			continue
+		}
+
+		placeholderTy := classTy.Methods[i_meth]
+
+		// TODO: there might be a way to keep the "only top-levels can generalize" rule if
+		// we make methods "polymorphic except [a, b, c]", where a,b,c are explicitly written
+		// down generics at the class level
+		if len(f.Func.Body) == 0 {
+			return fmt.Errorf("typing method %s.%s: %w", classDef.Name, f.Func.Name, ErrEmptyFuncBody)
+		}
+		fn := parse.Fn{
+			Id:        f.Func.ID(),
+			Signature: f.Func.Signature,
+			Args:      f.Func.Args,
+			Body:      f.Func.Body[len(f.Func.Body)-1],
+		}
+
+		typ, err := self.TypeTerm(ctx, &fn)
+		if err != nil {
+			return fmt.Errorf("typing method %s.%s: %w", classDef.Name, f.Func.Name, err)
+		}
+
+		// FIXME: this works cuz currently class and methods aren't generalized
+		if err := constrain(placeholderTy.Type, typ); err != nil {
+			return fmt.Errorf("typing method %s.%s: %w", classDef.Name, f.Func.Name, err)
+		}
+
+		// if err := constrain(typ, placeholderTy.Type); err != nil {
+		// 	return fmt.Errorf("typing method %s.%s: %w", classDef.Name, f.Func.Name, err)
+		// }
+
+		i_meth++
+	}
+
+	return nil
 }
 
 func (self *Typer) defUnion(ctx *moduleContext, unionDef *parse.UnionDef) (SimpleType, error) {
@@ -1189,19 +1228,9 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 			}),
 		}
 	case ObjectType:
-		fields := fun.Map(t.Fields, func(arg NamedMember) NamedMember {
-			return NamedMember{arg.Name, Member{substitute(arg.Type), arg.Access}}
-		})
-		methods := fun.Map(t.Methods, func(arg NamedMember) NamedMember {
-			return NamedMember{arg.Name, Member{substitute(arg.Type), arg.Access}}
-		})
-
-		return ObjectType{
-			Name:    t.Name,
-			Supers:  []ObjectType{},
-			Fields:  fields,
-			Methods: methods,
-		}
+		// FIXME: recurse into members once polymorhpic classes are sorted out.
+		// currently, doing so would inf-rec on methods that refer to itself
+		return t
 	case ArrayType:
 		return ArrayType{substitute(t.ElType), t.Size}
 	case SliceType:

@@ -573,6 +573,40 @@ func TestTypeProgram(t *testing.T) {
 				}
 			}(),
 		},
+		{
+			desc: "out of order class definition works",
+			input: `
+				(def testing (Foo Int) [foo] (foo.addOne 3))
+				(class Foo {
+					pub (def addOne [x] (+ x 1)),
+				})
+			`,
+			typ: func() []types.Type {
+				foo := types.Class{
+					Name:    "Foo",
+					Supers:  []*types.Class{},
+					Fields:  map[string]types.Member{},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{
+						"addOne": {
+							Access: types.AccessPublic,
+							Type: &types.Func{
+								Args: []types.Type{
+									&tI64,
+								},
+								Ret: &tI64,
+							},
+						},
+					},
+				}
+				return []types.Type{
+					&types.Func{
+						Args: []types.Type{&foo},
+						Ret:  &types.Int{},
+					},
+				}
+			}(),
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
