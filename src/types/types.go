@@ -223,8 +223,9 @@ func (f *Class) Eq(other Type) bool {
 		return false
 	}
 
-	if f.Name == o.Name { // probably something will go wrong but who cares
-		return true
+	// FIXME: infinite recursion?
+	if f.Name != o.Name {
+		return false
 	}
 
 	if len(f.Fields) != len(o.Fields) {
@@ -355,39 +356,12 @@ func (self Enum) String() string {
 	return b.String()
 }
 func (r *Class) String() string {
-	b := strings.Builder{}
 	if r.Name == "" {
-		b.WriteString("_UnknownObjectType")
+		return "_UnknownObjectType"
 	} else {
-		b.WriteString(r.Name)
-		b.WriteRune('(')
-		b.WriteString(strings.Join(fun.Map(r.Supers, func(c *Class) string {
-			return c.Name
-		}), ", "))
-		b.WriteString(")")
+		// HaCK
+		return fmt.Sprintf("%s{...}", r.Name)
 	}
-	b.WriteString("{")
-	b.WriteString("fields: ")
-	for name, val := range r.Fields {
-		b.WriteString(val.Access.String())
-		b.WriteRune(' ')
-		b.WriteString(name)
-		b.WriteString(": ")
-		b.WriteString(val.Type.String())
-		b.WriteString(", ")
-	}
-	b.WriteString("methods: ")
-	for name, val := range r.Methods {
-		b.WriteString(val.Access.String())
-		b.WriteRune(' ')
-		b.WriteString(name)
-		b.WriteString(": ")
-		b.WriteString(val.Type.String())
-		b.WriteString(", ")
-	}
-	b.WriteString("}")
-
-	return b.String()
 }
 func (self *Array) String() string {
 	return fmt.Sprintf("[%s %d]", self.Type.String(), self.Size)
@@ -436,6 +410,42 @@ func (self *Top) String() string   { return "⊤" }
 func (self *Join) String() string  { return fmt.Sprintf("(%s ∪ %s)", self.Lhs, self.Rhs) }
 func (self *Inter) String() string { return fmt.Sprintf("(%s ∩ %s)", self.Lhs, self.Rhs) }
 
+func (r *Class) DeepPrint() string {
+	b := strings.Builder{}
+	if r.Name == "" {
+		b.WriteString("_UnknownObjectType")
+	} else {
+		b.WriteString(r.Name)
+		b.WriteRune('(')
+		b.WriteString(strings.Join(fun.Map(r.Supers, func(c *Class) string {
+			return c.Name
+		}), ", "))
+		b.WriteString(")")
+	}
+	b.WriteString("{")
+	b.WriteString("fields: ")
+	for name, val := range r.Fields {
+		b.WriteString(val.Access.String())
+		b.WriteRune(' ')
+		b.WriteString(name)
+		b.WriteString(": ")
+		b.WriteString(val.Type.String())
+		b.WriteString(", ")
+	}
+	b.WriteString("methods: ")
+	for name, val := range r.Methods {
+		b.WriteString(val.Access.String())
+		b.WriteRune(' ')
+		b.WriteString(name)
+		b.WriteString(": ")
+		b.WriteString(val.Type.String())
+		b.WriteString(", ")
+	}
+	b.WriteString("}")
+
+	return b.String()
+}
+
 var genericIDCounter TypeID = 0
 
 func NewGeneric(name string, comment string) *Generic {
@@ -450,7 +460,11 @@ func NewGeneric(name string, comment string) *Generic {
 // like Eq, but the specific value of [Generic.ID] is not used for equality.
 // e.g. 'a -> 'a -> Int and 'b -> 'b -> Int are structurally equal
 func StructuralEq(a, b Type) bool {
-	return structuralEq(structuralEqCtx{make(map[TypeID]TypeID), make(map[TypeID]TypeID)},
+	return structuralEq(structuralEqCtx{
+		make(map[TypeID]TypeID),
+		make(map[TypeID]TypeID),
+		map[string]struct{}{},
+	},
 		a, b)
 }
 
@@ -466,6 +480,7 @@ func ListStructuralEq(a, b []Type) bool {
 	ctx := structuralEqCtx{
 		make(map[TypeID]TypeID),
 		make(map[TypeID]TypeID),
+		map[string]struct{}{},
 	}
 	for i := range a {
 		if !structuralEq(ctx, a[i], b[i]) {
@@ -479,6 +494,8 @@ func ListStructuralEq(a, b []Type) bool {
 type structuralEqCtx struct {
 	aToB map[TypeID]TypeID
 	bToA map[TypeID]TypeID
+
+	visitedClasses map[string]struct{}
 }
 
 func structuralEq(ctx structuralEqCtx, a, b Type) bool {
@@ -597,9 +614,16 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 			return false
 		}
 
-		if a.Name == b.Name {
+		// FIXME: infinite recursion?
+		if a.Name != b.Name {
+			return false
+		}
+
+		if _, ok := ctx.visitedClasses[a.Name]; ok {
+			// FIXME: doesn't handle generalized classes ughhhhhhhhhhhhh
 			return true
 		}
+		ctx.visitedClasses[a.Name] = struct{}{}
 
 		if len(a.Fields) != len(b.Fields) {
 			return false

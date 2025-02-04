@@ -640,9 +640,17 @@ func TestTypeProgram(t *testing.T) {
 			}
 			for expect, got := range fun.ZipIter(slices.Values(tC.typ), slices.Values(typ)) {
 				if !types.StructuralEq(expect, got) {
-					t.Errorf("expected type\n  %v\ngot:\n  %v", expect, got)
+					t.Errorf("expected type\n  %v\ngot:\n  %v", deepPrint(expect), deepPrint(got))
 				}
 			}
 		})
 	}
+}
+
+func deepPrint(t types.Type) string {
+	if t, ok := t.(interface{ DeepPrint() string }); ok {
+		return t.DeepPrint()
+	}
+
+	return t.String()
 }
