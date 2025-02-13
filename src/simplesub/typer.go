@@ -795,6 +795,7 @@ func (self *Typer) defClassMethods(ctx *moduleContext, classDef *parse.ObjectTyp
 
 	i_meth := 0
 	self.classScope = classDef.Name
+	defer func() { self.classScope = "" }()
 	classTy := assert.Cast[ObjectType](ctx.inferred[classDef.ID()], "typing class method: expected an ObjectType")
 
 	self.vars.NewScope()
