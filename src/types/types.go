@@ -410,6 +410,73 @@ func (self *Top) String() string   { return "⊤" }
 func (self *Join) String() string  { return fmt.Sprintf("(%s ∪ %s)", self.Lhs, self.Rhs) }
 func (self *Inter) String() string { return fmt.Sprintf("(%s ∩ %s)", self.Lhs, self.Rhs) }
 
+type deepPrintCtx struct {
+	visited map[string]Type
+	buf     strings.Builder
+}
+
+func DeepPrint(ty Type) string {
+	ctx := deepPrintCtx{visited: map[string]Type{}}
+	ctx.print(ty)
+	return ctx.buf.String()
+}
+
+func (self *deepPrintCtx) print(ty Type) {
+	switch t := ty.(type) {
+	case *Class:
+		self.printClass(t)
+	case *Func:
+		for i, arg := range t.Args {
+			if i != 0 {
+				self.buf.WriteString(", ")
+			}
+			self.print(arg)
+		}
+		self.buf.WriteString(" -> ")
+		self.print(t.Ret)
+	default:
+		self.buf.WriteString(ty.String())
+	}
+}
+
+func (self *deepPrintCtx) printClass(r *Class) {
+	b := &self.buf
+
+	if self.visited[r.Name] != nil {
+		fmt.Fprintf(b, "%s{...}", r.Name)
+		return
+	}
+
+	if r.Name == "" {
+		b.WriteString("_UnknownObjectType")
+	} else {
+		b.WriteString(r.Name)
+		b.WriteRune('(')
+		b.WriteString(strings.Join(fun.Map(r.Supers, func(c *Class) string {
+			return c.Name
+		}), ", "))
+		b.WriteString(")")
+	}
+	b.WriteString("{")
+	b.WriteString("fields: ")
+	for name, val := range r.Fields {
+		fmt.Fprintf(b, "%s %s: %s,",
+			val.Access.String(),
+			name,
+			val.Type.String(),
+		)
+	}
+	b.WriteString("methods: ")
+	for name, val := range r.Methods {
+		fmt.Fprintf(b, "%s %s: %s,",
+			val.Access.String(),
+			name,
+			val.Type.String(),
+		)
+	}
+	b.WriteString("}")
+}
+
 func (r *Class) DeepPrint() string {
 	b := strings.Builder{}
 	if r.Name == "" {
