@@ -1096,6 +1096,18 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 
 		return nil
 	} else if ty, bound, ok := matchPair[ObjectType, ObjectType](ty0, bound0); ok {
+		tyFields := namedMembersToMap(ty.Fields)
+		for _, boundField := range bound.Fields {
+			if tyField, ok := tyFields[boundField.Name]; ok {
+				//TODO: check visibility
+				if err := constrain(tyField.Type, boundField.Type); err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("%w %s: %v", ErrMissingField, boundField.Name, boundField.Type)
+			}
+		}
+
 		tyMembers := namedMembersToMap(ty.Methods)
 		for _, boundMember := range bound.Methods {
 			if tyMember, ok := tyMembers[boundMember.Name]; ok {
