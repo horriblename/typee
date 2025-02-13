@@ -355,10 +355,10 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 		}
 		return nil, fmt.Errorf("%w: %s", ErrUndefinedVariable, expr.Name)
 	case *parse.SelfLiteral:
-		if ty, ok := self.vars.Get("self").Unwrap(); ok {
+		if ty, err := self.parseType(parse.SelfType{}); err == nil {
 			return ty.instantiate(), nil
 		} else {
-			return nil, ErrSelfUnbound
+			return nil, err
 		}
 	case *parse.FuncDef:
 		return nil, fmt.Errorf("%w: %s", ErrDefMustBeTopLevel, expr.Name)
@@ -406,20 +406,21 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 			return Func{Args: params, Ret: retInst}, nil
 		}
 
-		if len(expr.Args) > 0 && expr.Args[0] == "self" {
-			ty, err := self.parseType(parse.SelfType{})
-			if err != nil {
-				return nil, err
-			}
-
-			self.vars.Insert("self", ty)
-		}
-
 		for i, arg := range expr.Args {
+			if i == 0 && arg == "self" {
+				ty, err := self.parseType(parse.SelfType{})
+				if err != nil {
+					return nil, err
+				}
+
+				params[i] = ty.instantiate()
+				continue
+			}
 			param := freshVar()
 			params[i] = param
 			self.vars.Insert(arg, param)
 		}
+
 		bodyTy, err := self.TypeTerm(ctx, expr.Body)
 		if err != nil {
 			return nil, err
