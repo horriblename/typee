@@ -208,43 +208,44 @@ func TestTypeProgram(t *testing.T) {
 					Supers: []*types.Class{},
 					Fields: map[string]types.Member{
 						"y": {
-							Access: types.AccessPublic,
+							Access: types.AccessPrivate,
 							Type:   &types.String{},
 						},
 					},
 					Statics: map[string]types.Member{},
 					Methods: map[string]types.Member{},
 				}
-
-				return []types.Type{
-					&types.Class{
-						Name:   "Foo",
-						Supers: []*types.Class{&bar},
-						Fields: map[string]types.Member{
-							"x": {
-								Access: types.AccessPrivate,
-								Type:   &tI64,
-							},
+				foo := types.Class{
+					Name:   "Foo",
+					Supers: []*types.Class{&bar},
+					Fields: map[string]types.Member{
+						"x": {
+							Access: types.AccessPrivate,
+							Type:   &tI64,
 						},
-						Statics: map[string]types.Member{},
-						Methods: map[string]types.Member{
-							"id": {
-								Access: types.AccessPublic,
-								Type: &types.Func{
-									Args: []types.Type{&tI64},
-									Ret:  &tI64,
-								},
+					},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{
+						"id": {
+							Access: types.AccessPublic,
+							Type: &types.Func{
+								Args: []types.Type{&tI64},
+								Ret:  &tI64,
 							},
 						},
 					},
+				}
+
+				return []types.Type{
+					&foo,
 					&bar,
 					&types.Func{
-						Args: []types.Type{&types.Class{Name: "Foo"}},
-						Ret:  &types.Class{Name: "Foo"},
+						Args: []types.Type{&foo},
+						Ret:  &foo,
 					},
 					&types.Func{
 						Args: []types.Type{},
-						Ret:  &types.Class{Name: "Foo"},
+						Ret:  &foo,
 					},
 				}
 			}(),
