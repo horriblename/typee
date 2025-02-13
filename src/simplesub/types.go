@@ -828,9 +828,7 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 			}
 		}
 
-		if !concreteEq_(left.Ret, right.Ret) {
-			return false
-		}
+		return concreteEq_(left.Ret, right.Ret)
 	}
 
 	panic(fmt.Sprintf("compiler bug: concreteEq not implemented for type %T == %T", lhs, rhs))
