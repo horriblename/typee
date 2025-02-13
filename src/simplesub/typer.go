@@ -300,7 +300,10 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			}
 
 		case *parse.ObjectTypeDef:
-			self.defClassMethods(ctx, e)
+			if err := self.defClassMethods(ctx, e); err != nil {
+				return nil, err
+			}
+
 		case *parse.UnionDef:
 		case *parse.EnumDef:
 		case *parse.TypeAlias:
