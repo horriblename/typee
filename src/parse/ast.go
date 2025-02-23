@@ -149,7 +149,7 @@ type ObjectTypeDef struct {
 	Name   string
 	Supers []string
 	Fields []ClassMember
-	Base   bool
+	Base   bool // base class: A class with no super type
 }
 
 type MethodAccess struct {
