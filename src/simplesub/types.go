@@ -207,18 +207,37 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	} else if lhs, rhs, ok := matchPair[ObjectType, Record](lhs0, rhs0); ok {
 		return glbCrossObject(rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
-		lhsMap := namedMembersToMap(lhs.Methods)
-		rhsMap := namedMembersToMap(rhs.Methods)
 
-		mergedMap := maps.Clone(lhsMap)
-		for rhsKey, rhsVal := range rhsMap {
-			if lhsVal, ok := mergedMap[rhsKey]; ok {
+		lhsFields := namedMembersToMap(lhs.Fields)
+		rhsFields := namedMembersToMap(rhs.Fields)
+
+		mergedFields := maps.Clone(lhsFields)
+		for rhsKey, rhsVal := range rhsFields {
+			if lhsVal, ok := mergedFields[rhsKey]; ok {
 				// TODO: visibility
 				ty, err := glb(lhsVal.Type, rhsVal.Type)
 				if err != nil {
 					return nil, err
 				}
-				mergedMap[rhsKey] = Member{
+				mergedFields[rhsKey] = Member{
+					Type:   ty,
+					Access: types.AccessPublic,
+				}
+			}
+		}
+
+		lhsMap := namedMembersToMap(lhs.Methods)
+		rhsMap := namedMembersToMap(rhs.Methods)
+
+		mergedMeths := maps.Clone(lhsMap)
+		for rhsKey, rhsVal := range rhsMap {
+			if lhsVal, ok := mergedMeths[rhsKey]; ok {
+				// TODO: visibility
+				ty, err := glb(lhsVal.Type, rhsVal.Type)
+				if err != nil {
+					return nil, err
+				}
+				mergedMeths[rhsKey] = Member{
 					Type:   ty,
 					Access: types.AccessPublic,
 				}
@@ -228,8 +247,8 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		return ObjectType{
 			Name:    "",
 			Supers:  []ObjectType{},
-			Fields:  []NamedMember{},
-			Methods: mapToNamedMembers(mergedMap),
+			Fields:  mapToNamedMembers(mergedFields),
+			Methods: mapToNamedMembers(mergedMeths),
 		}, nil
 	} else if lhs, rhs, ok := matchPair[ArrayType, ArrayType](lhs0, rhs0); ok {
 		lb, err := glb(lhs.ElType, rhs.ElType)
@@ -411,11 +430,30 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		return lhs, nil
 	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
-		rhsMap := namedMembersToMap(rhs.Methods)
+		rhsFieldMap := namedMembersToMap(rhs.Fields)
 
+		fields := []NamedMember{}
+		for _, lhsMember := range lhs.Fields {
+			if rhsMember, ok := rhsFieldMap[lhsMember.Name]; ok {
+				ty, err := lub(lhsMember.Type, rhsMember.Type)
+				if err != nil {
+					return nil, err
+				}
+
+				fields = append(fields, NamedMember{
+					Name: lhsMember.Name,
+					Member: Member{
+						Type:   ty,
+						Access: types.AccessPublic, // TODO
+					},
+				})
+			}
+		}
+
+		rhsMethMap := namedMembersToMap(rhs.Methods)
 		merged := []NamedMember{}
 		for _, lhsMember := range lhs.Methods {
-			if rhsMember, ok := rhsMap[lhsMember.Name]; ok {
+			if rhsMember, ok := rhsMethMap[lhsMember.Name]; ok {
 				ty, err := lub(lhsMember.Type, rhsMember.Type)
 				if err != nil {
 					return nil, err
@@ -432,8 +470,8 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		}
 		return ObjectType{
 			Name:    "",
-			Supers:  []ObjectType{},  // TODO
-			Fields:  []NamedMember{}, // TODO
+			Supers:  []ObjectType{}, // TODO
+			Fields:  fields,
 			Methods: merged,
 		}, nil
 	} else if lhs, rhs, ok := matchPair[Primitive, Primitive](lhs0, rhs0); ok {
