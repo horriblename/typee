@@ -741,22 +741,7 @@ func (self Record) String() string {
 	}), ", "))
 }
 func (self ObjectType) String() string {
-	name := self.Name
-	if name == "" {
-		name = "_UnknownClass"
-	}
-	return fmt.Sprintf("%s {...}",
-		name,
-		// FIXME: this inf-recs on methods referring to Self (or only the explicit type?
-		// like (class Foo {(def foo (Foo) [_] )}))
-		//
-		// strings.Join(fun.Map(self.Fields, func(field NamedMember) string {
-		// 	return fmt.Sprintf("%s: %s", field.Name, field.Type.String())
-		// }), ", "),
-		// strings.Join(fun.Map(self.Methods, func(field NamedMember) string {
-		// 	return fmt.Sprintf("%s: %s", field.Name, field.Type.String())
-		// }), ", "),
-	)
+	return DeepPrint(self)
 }
 func (self ArrayType) String() string { return fmt.Sprintf("[%s %d]", self.ElType, self.Size) }
 func (self SliceType) String() string { return fmt.Sprintf("[%s]", self.ElType) }
@@ -793,6 +778,90 @@ func (self Enum) String() string {
 	}
 	b.WriteString("})")
 	return b.String()
+}
+
+type deepPrintCtx struct {
+	visited map[string]bool
+	buf     strings.Builder
+}
+
+func DeepPrint(ty TypeScheme) string {
+	ctx := deepPrintCtx{visited: map[string]bool{}}
+	ctx.print(ty)
+	return ctx.buf.String()
+}
+
+func (self *deepPrintCtx) print(ty TypeScheme) {
+	switch t := ty.(type) {
+	case Func:
+		for i, arg := range t.Args {
+			if i != 0 {
+				self.buf.WriteString(", ")
+			}
+			self.print(arg)
+		}
+		self.buf.WriteString(" -> ")
+		self.print(t.Ret)
+	case ObjectType:
+		self.printObjectType(t)
+	case ArrayType:
+	case PolymorphicType:
+		self.buf.WriteString("polymorphic{")
+		self.print(t.Body)
+		self.buf.WriteString("}")
+	// case Record:
+	// case Ref:
+	// case SliceType:
+	// case Union:
+	case *Variable:
+		if t.representative != nil {
+			fmt.Fprintf(&self.buf, "t%d=t%d[", t.uid, t.Representative().uid)
+			self.print(t.UpperBound())
+			self.buf.WriteString(", ")
+			self.print(t.LowerBound())
+			self.buf.WriteString("]")
+			return
+		}
+
+		fmt.Fprintf(&self.buf, "t%d[", t.uid)
+		self.print(t.UpperBound())
+		self.buf.WriteString(", ")
+		self.print(t.LowerBound())
+		self.buf.WriteString("]")
+
+	default:
+		self.buf.WriteString(ty.String())
+	}
+}
+
+func (self *deepPrintCtx) printObjectType(t ObjectType) {
+	if t.Name == "" {
+		self.buf.WriteString("_UnknownClass")
+	} else {
+		self.buf.WriteString(t.Name)
+	}
+
+	if _, ok := self.visited[t.Name]; ok {
+		self.buf.WriteString("{...}")
+		return
+	}
+	self.visited[t.Name] = true
+
+	self.buf.WriteString("{")
+	for _, field := range t.Fields {
+		self.buf.WriteString(field.Name)
+		self.buf.WriteString(": ")
+		self.print(field.Type)
+		self.buf.WriteString(", ")
+	}
+
+	for _, meth := range t.Methods {
+		self.buf.WriteString(meth.Name)
+		self.buf.WriteString(": ")
+		self.print(meth.Type)
+		self.buf.WriteString(", ")
+	}
+	self.buf.WriteString("}")
 }
 
 func (self ObjectType) FindMethod(name string) (method Member, found bool) {
