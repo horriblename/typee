@@ -496,7 +496,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 					Name: lhsMember.Name,
 					Member: Member{
 						Type:   ty,
-						Access: types.AccessPublic, // TODO
+						Access: min(lhsMember.Access, rhsMember.Access),
 					},
 				})
 			}
@@ -515,7 +515,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 					Name: lhsMember.Name,
 					Member: Member{
 						Type:   ty,
-						Access: types.AccessPublic, // TODO
+						Access: min(lhsMember.Access, rhsMember.Access),
 					},
 				})
 			}
