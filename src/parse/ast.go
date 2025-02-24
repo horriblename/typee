@@ -154,7 +154,7 @@ type ObjectTypeDef struct {
 
 type MethodAccess struct {
 	id     int
-	Var    Expr
+	Obj    Expr
 	Method string
 }
 
@@ -335,7 +335,7 @@ func (self *RecordAccess) String() string {
 	return fmt.Sprintf("#%d %s.%s", self.id, self.Record.String(), self.Field)
 }
 func (self *MethodAccess) String() string {
-	return fmt.Sprintf("#%d %s.%s", self.id, self.Var.String(), self.Method)
+	return fmt.Sprintf("#%d %s.%s", self.id, self.Obj.String(), self.Method)
 }
 func (self *RecordField) String() string {
 	return fmt.Sprintf("%s: %s", self.Name, self.Value)
@@ -459,7 +459,7 @@ func (self *RecordAccess) Pretty() string {
 	return fmt.Sprintf("%s.%s", self.Record.Pretty(), self.Field)
 }
 func (self *MethodAccess) Pretty() string {
-	return fmt.Sprintf("%s#%s", self.Var.Pretty(), self.Method)
+	return fmt.Sprintf("%s#%s", self.Obj.Pretty(), self.Method)
 }
 func (self *New) Pretty() string {
 	return fmt.Sprintf("%s.new", self.Class)
@@ -615,7 +615,7 @@ func (self *ObjectTypeDef) ChildNodes() []Expr {
 	return c
 }
 func (self *RecordAccess) ChildNodes() []Expr { return []Expr{self.Record} }
-func (self *MethodAccess) ChildNodes() []Expr { return []Expr{self.Var} }
+func (self *MethodAccess) ChildNodes() []Expr { return []Expr{self.Obj} }
 func (self *New) ChildNodes() []Expr          { return []Expr{} }
 func (self *UnionDef) ChildNodes() []Expr     { return []Expr{} }
 func (self *EnumDef) ChildNodes() []Expr      { return []Expr{} }

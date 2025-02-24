@@ -687,7 +687,7 @@ func methodAccess(lhs Expr) combinator.Parser[[]lex.Token, Expr] {
 		func(member string) Expr {
 			return &MethodAccess{
 				id:     newId(),
-				Var:    lhs,
+				Obj:    lhs,
 				Method: member,
 			}
 		},

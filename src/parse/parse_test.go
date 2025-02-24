@@ -367,7 +367,7 @@ func TestParse(t *testing.T) {
 				Children: []Expr{
 					&MethodAccess{
 						id:     2,
-						Var:    &Symbol{"x", 1},
+						Obj:    &Symbol{"x", 1},
 						Method: "foo",
 					},
 					&RecordAccess{
@@ -401,7 +401,7 @@ func TestParse(t *testing.T) {
 					Children: []Expr{
 						&MethodAccess{
 							id:     2,
-							Var:    &SelfLiteral{1},
+							Obj:    &SelfLiteral{1},
 							Method: "meth",
 						},
 						&RecordAccess{

@@ -381,7 +381,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		return val
 
 	case *parse.MethodAccess:
-		ty := ctx.simplify(callee.Var.ID())
+		ty := ctx.simplify(callee.Obj.ID())
 		class := ty.(*types.Class).Name
 		assert.Neq(class, "", "unnamed class not yet supported")
 		return genCallWithFuncName(ctx, ctx.module, class, callee.Method, expr)
