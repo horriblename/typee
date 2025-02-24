@@ -240,14 +240,13 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		mergedFields := maps.Clone(lhsFields)
 		for rhsKey, rhsVal := range rhsFields {
 			if lhsVal, ok := mergedFields[rhsKey]; ok {
-				// TODO: visibility
 				ty, err := glb(lhsVal.Type, rhsVal.Type)
 				if err != nil {
 					return nil, err
 				}
 				mergedFields[rhsKey] = Member{
 					Type:   ty,
-					Access: types.AccessPublic,
+					Access: max(lhsVal.Access, rhsVal.Access),
 				}
 			}
 		}
@@ -258,14 +257,13 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		mergedMeths := maps.Clone(lhsMap)
 		for rhsKey, rhsVal := range rhsMap {
 			if lhsVal, ok := mergedMeths[rhsKey]; ok {
-				// TODO: visibility
 				ty, err := glb(lhsVal.Type, rhsVal.Type)
 				if err != nil {
 					return nil, err
 				}
 				mergedMeths[rhsKey] = Member{
 					Type:   ty,
-					Access: types.AccessPublic,
+					Access: max(lhsVal.Access, rhsVal.Access),
 				}
 			}
 		}
