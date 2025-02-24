@@ -131,7 +131,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 		return nil, err
 	}
 
-	// assign types to type defs
+	// process type definitions
 	for _, name := range typeDefOrder {
 		expr := typeDefAsts[name]
 		switch e := expr.(type) {
@@ -236,6 +236,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 		}
 	}
 
+	// actually type expressions
 	for i, expr := range program {
 		switch e := expr.(type) {
 		case *parse.FuncDef:
@@ -727,6 +728,24 @@ func (self *Typer) externDef(ctx *moduleContext, e *parse.FuncDef) (SimpleType, 
 func (self *Typer) defClassOutline(ctx *moduleContext, classDef *parse.ObjectTypeDef) (SimpleType, error) {
 	self.classScope = classDef.Name
 	defer func() { self.classScope = "" }()
+
+	supers := make([]ObjectType, len(classDef.Supers))
+	for i, s := range classDef.Supers {
+		sup, ok := self.types.Get(s).Unwrap()
+		if !ok {
+			return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, s)
+		}
+
+		// TODO: should concretize instead
+		sc, ok := sup.instantiate().(ObjectType)
+		if !ok {
+			return nil, fmt.Errorf("%w: in %s: %s of type %s is not an object type", ErrIllegalSuperType, classDef.Name, s, sup)
+		}
+
+		supers[i] = sc
+	}
+
+	dummySelf := freshVar()
 	fields := []NamedMember{}
 	methods := []NamedMember{}
 
@@ -752,11 +771,21 @@ func (self *Typer) defClassOutline(ctx *moduleContext, classDef *parse.ObjectTyp
 				},
 			})
 		case parse.ClassMethod:
+			nArgs := len(f.Func.Args)
+			args := make([]SimpleType, nArgs)
+			args[0] = dummySelf
+			for i := range f.Func.Args[1:] {
+				args[i+1] = freshVar()
+			}
+
 			methods = append(methods, NamedMember{
 				Name: f.Name(),
 				Member: Member{
 					// TODO: generalize methods
-					Type:   freshVar(),
+					Type: Func{
+						Args: args,
+						Ret:  freshVar(),
+					},
 					Access: f.Access(),
 				},
 			})
@@ -766,22 +795,6 @@ func (self *Typer) defClassOutline(ctx *moduleContext, classDef *parse.ObjectTyp
 		}
 	}
 
-	supers := make([]ObjectType, len(classDef.Supers))
-	for i, s := range classDef.Supers {
-		sup, ok := self.types.Get(s).Unwrap()
-		if !ok {
-			return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, s)
-		}
-
-		// TODO: should concretize instead
-		sc, ok := sup.instantiate().(ObjectType)
-		if !ok {
-			return nil, fmt.Errorf("%w: in %s: %s of type %s is not an object type", ErrIllegalSuperType, classDef.Name, s, sup)
-		}
-
-		supers[i] = sc
-	}
-
 	t := ObjectType{
 		Name:    classDef.Name,
 		Supers:  supers,
@@ -789,6 +802,19 @@ func (self *Typer) defClassOutline(ctx *moduleContext, classDef *parse.ObjectTyp
 		Methods: methods,
 		Top:     classDef.Base,
 	}
+
+	t.Signature = PolymorphicType{
+		Body: ObjectType{
+			Name:      classDef.Name,
+			Supers:    supers,
+			Fields:    fields,
+			Methods:   methods,
+			Signature: PolymorphicType{},
+			Top:       classDef.Base,
+		},
+		// TypeParams: opt.Some([]uint{dummySelf.Uid()}),
+	}
+
 	self.types.Insert(classDef.Name, t)
 	return t, nil
 }
@@ -804,13 +830,22 @@ func (self *Typer) defClassMethods(ctx *moduleContext, classDef *parse.ObjectTyp
 	self.vars.NewScope()
 	defer self.vars.PopScope()
 
+	self.types.NewScope()
+	defer self.types.PopScope()
+
 	for _, field := range classDef.Fields {
+		// idea from ocaml, though theirs are so complicated I can't be sure I copied it
+		// correctly, nor do I know if this is "safe"
+		// ocaml uses limited generalization whereas I generalize the whole thing.
+		// I think generalizing just the type var of the method we're check should be enough
+		self.types.Insert("Self", classTy.Signature.instantiate())
 		f, ok := field.(parse.ClassMethod)
 		if !ok {
 			continue
 		}
 
-		placeholderTy := classTy.Methods[i_meth]
+		// TODO: poly type
+		placeholderTy := classTy.Methods[i_meth].Type.(Func)
 
 		// TODO: there might be a way to keep the "only top-levels can generalize" rule if
 		// we make methods "polymorphic except [a, b, c]", where a,b,c are explicitly written
@@ -831,13 +866,13 @@ func (self *Typer) defClassMethods(ctx *moduleContext, classDef *parse.ObjectTyp
 		}
 
 		// FIXME: this works cuz currently class and methods aren't generalized
-		if err := constrain(placeholderTy.Type, typ); err != nil {
+		if err := constrain(placeholderTy, typ); err != nil {
 			return fmt.Errorf("typing method %s.%s: %w", classDef.Name, f.Func.Name, err)
 		}
 
-		// if err := constrain(typ, placeholderTy.Type); err != nil {
-		// 	return fmt.Errorf("typing method %s.%s: %w", classDef.Name, f.Func.Name, err)
-		// }
+		if err := constrain(typ, placeholderTy); err != nil {
+			return fmt.Errorf("typing method %s.%s: %w", classDef.Name, f.Func.Name, err)
+		}
 
 		i_meth++
 	}
@@ -904,7 +939,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 			return nil, ErrSelfTypeUnbound
 		}
 
-		if t, found := self.types.Get(self.classScope).Unwrap(); found {
+		if t, found := self.types.Get("Self").Unwrap(); found {
 			return t, nil
 		}
 

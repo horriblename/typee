@@ -659,11 +659,12 @@ type Enum struct {
 	Values map[string]opt.Option[int64]
 }
 type ObjectType struct {
-	Name    string
-	Supers  []ObjectType
-	Fields  []NamedMember
-	Methods []NamedMember
-	Top     bool // top class is a class that does not have a parent class
+	Name      string
+	Supers    []ObjectType
+	Fields    []NamedMember
+	Methods   []NamedMember
+	Signature PolymorphicType // used as self type in methods (with careful generalization)
+	Top       bool            // top class is a class that does not have a parent class
 }
 type ArrayType struct {
 	ElType SimpleType
