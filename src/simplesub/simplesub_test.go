@@ -577,9 +577,10 @@ func TestTypeProgram(t *testing.T) {
 		{
 			desc: "out of order class definition works",
 			input: `
-				(def testing (Foo Int) [foo] (foo.addOne 3))
+				(def testing (Foo Int) [foo] (foo#addOne))
 				(class Foo {
-					pub (def addOne [x] (+ x 1)),
+					x I64,
+					pub (def addOne [self] (+ self.x 1)),
 				})
 			`,
 			typ: func() []types.Type {
@@ -593,7 +594,7 @@ func TestTypeProgram(t *testing.T) {
 							Access: types.AccessPublic,
 							Type: &types.Func{
 								Args: []types.Type{
-									&tI64,
+									&types.String{},
 								},
 								Ret: &tI64,
 							},
@@ -603,8 +604,9 @@ func TestTypeProgram(t *testing.T) {
 				return []types.Type{
 					&types.Func{
 						Args: []types.Type{&foo},
-						Ret:  &types.Int{},
+						Ret:  &tI64,
 					},
+					&foo,
 				}
 			}(),
 		},
