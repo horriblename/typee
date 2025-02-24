@@ -207,6 +207,32 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	} else if lhs, rhs, ok := matchPair[ObjectType, Record](lhs0, rhs0); ok {
 		return glbCrossObject(rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
+		if lhs.Name != "" && rhs.Name != "" {
+			if lhs.Name == rhs.Name {
+				// TODO: will this cause problems in polymorphic classes?
+				return lhs, nil
+			}
+			return nil, fmt.Errorf("class glb of named classes unimplemented: %v and %v", lhs, rhs)
+		}
+
+		// return the named class if named :> unnamed
+		if lhs.Name != "" {
+			if err := constrain(rhs, lhs); err != nil {
+				// TODO: how should I handle this
+				return nil, fmt.Errorf("unimplemented: glb(named_class, unnamed_class): constrain result: %v", err)
+			}
+
+			return lhs, nil
+		}
+
+		// return the named class if named :> unnamed
+		if rhs.Name != "" {
+			if err := constrain(lhs, rhs); err != nil {
+				// TODO: how should I handle this
+				return nil, fmt.Errorf("unimplemented: glb(named_class, unnamed_class): constrain result: %v", err)
+			}
+			return rhs, nil
+		}
 
 		lhsFields := namedMembersToMap(lhs.Fields)
 		rhsFields := namedMembersToMap(rhs.Fields)
@@ -430,6 +456,32 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		return lhs, nil
 	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
+		if lhs.Name != "" && rhs.Name != "" {
+			if lhs.Name == rhs.Name {
+				// TODO: will this cause problems in polymorphic classes?
+				return lhs, nil
+			}
+			return nil, fmt.Errorf("class lub of named classes unimplemented: %v and %v", lhs, rhs)
+		}
+
+		// return the named class if named <: unnamed
+		if lhs.Name != "" {
+			if err := constrain(lhs, rhs); err != nil {
+				return nil, fmt.Errorf("unimplemented: lub(named_class, unnamed_class): constrain result: %v", err)
+			}
+
+			return lhs, nil
+		}
+
+		// return the named class if named <: unnamed
+		if rhs.Name != "" {
+			if err := constrain(rhs, lhs); err != nil {
+				return nil, fmt.Errorf("unimplemented: lub(named_class, unnamed_class): constrain result: %v", err)
+			}
+
+			return rhs, nil
+		}
+
 		rhsFieldMap := namedMembersToMap(rhs.Fields)
 
 		fields := []NamedMember{}
