@@ -1283,9 +1283,30 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 			}),
 		}
 	case ObjectType:
-		// FIXME: recurse into members once polymorhpic classes are sorted out.
-		// currently, doing so would inf-rec on methods that refer to itself
-		return t
+		return ObjectType{
+			Name:   t.Name,
+			Supers: t.Supers,
+			Fields: fun.Map(t.Fields, func(field NamedMember) NamedMember {
+				return NamedMember{
+					Name: field.Name,
+					Member: Member{
+						Type:   substitute(field.Type),
+						Access: field.Access,
+					},
+				}
+			}),
+			Methods: fun.Map(t.Methods, func(meth NamedMember) NamedMember {
+				return NamedMember{
+					Name: meth.Name,
+					Member: Member{
+						Type:   substitute(meth.Type),
+						Access: meth.Access,
+					},
+				}
+			}),
+			Signature: PolymorphicType{},
+			Top:       t.Top,
+		}
 	case ArrayType:
 		return ArrayType{substitute(t.ElType), t.Size}
 	case SliceType:
