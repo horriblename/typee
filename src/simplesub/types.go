@@ -46,6 +46,8 @@ type PolymorphicType struct {
 func (self PolymorphicType) instantiate() SimpleType {
 	return freshenType(self.Body)
 }
+
+// instantiate only type vars in [PolymorphicType.TypeParams]
 func (self PolymorphicType) concretize(params []SimpleType) (SimpleType, error) {
 	mappings := map[uint]SimpleType{}
 	if len(params) != len(self.TypeParams.Or([]uint{})) {
@@ -64,6 +66,7 @@ func (self PolymorphicType) concretize(params []SimpleType) (SimpleType, error) 
 	}
 	return self.Body, nil
 }
+
 func (self PolymorphicType) String() string {
 	return fmt.Sprintf("polymorphic{%s}", self.Body.String())
 }
