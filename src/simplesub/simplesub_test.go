@@ -196,7 +196,7 @@ func TestTypeProgram(t *testing.T) {
 		{
 			desc: "class definition",
 			input: `
-				(class Foo (Bar) {x Int, pub (def id (Int Int) [x] x)})
+				(class Foo (Bar) {x Int, pub (def getx (Self Int) [self] self.x)})
 				(class Bar {y Str})
 				(def foo (Foo Foo) [f] f)
 				(def main []
@@ -226,10 +226,10 @@ func TestTypeProgram(t *testing.T) {
 					},
 					Statics: map[string]types.Member{},
 					Methods: map[string]types.Member{
-						"id": {
+						"getx": {
 							Access: types.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{&tI64},
+								Args: []types.Type{&types.Class{Name: "Foo"}},
 								Ret:  &tI64,
 							},
 						},
@@ -253,30 +253,30 @@ func TestTypeProgram(t *testing.T) {
 		{
 			desc:  "self and Self alias",
 			input: "(class Foo {pub x Int, pub (def foo  [self] self.x)})",
-			typ: []types.Type{&types.Class{
-				Name:   "Foo",
-				Supers: []*types.Class{},
-				Fields: map[string]types.Member{
-					"x": {
-						Access: types.AccessPrivate,
-						Type:   &tI64,
-					},
-				},
-				Statics: map[string]types.Member{},
-				Methods: map[string]types.Member{
-					"id": {
-						Access: types.AccessPublic,
-						Type: &types.Func{
-							Args: []types.Type{
-								&types.Class{Name: "Foo"},
-								&tI64,
-							},
-							Ret: &tI64,
+			typ: func() []types.Type {
+				foo := types.Class{}
+				foo = types.Class{
+					Name:   "Foo",
+					Supers: []*types.Class{},
+					Fields: map[string]types.Member{
+						"x": {
+							Access: types.AccessPublic,
+							Type:   &tI64,
 						},
 					},
-				},
-			},
-			},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{
+						"foo": {
+							Access: types.AccessPublic,
+							Type: &types.Func{
+								Args: []types.Type{&foo},
+								Ret:  &tI64,
+							},
+						},
+					},
+				}
+				return []types.Type{&foo}
+			}(),
 		},
 		{
 			desc: "union",
