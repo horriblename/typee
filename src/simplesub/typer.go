@@ -1157,11 +1157,11 @@ func unify(lhs *Variable, rhs *Variable) error /*FIXME: idk what type*/ {
 
 	// NOTE: these occursCheck calls (and the following ones from addXBound) are pretty
 	// inefficient as they will incur repeated computation of type variables through getVars
-	if err := lhs.occursCheck(rep1.lowerBound, false); err != nil {
+	if err := rep0.occursCheck(rep1.lowerBound, false); err != nil {
 		return err
 	}
 
-	if err := lhs.occursCheck(rep1.upperBound, true); err != nil {
+	if err := rep0.occursCheck(rep1.upperBound, true); err != nil {
 		return err
 	}
 
