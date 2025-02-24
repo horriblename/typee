@@ -956,6 +956,34 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 		return left.Name != right.Name
 	} else if left, right, ok := matchPair[Enum, Enum](lhs, rhs); ok {
 		return left.Name != right.Name
+	} else if left, right, ok := matchPair[ObjectType, ObjectType](lhs, rhs); ok {
+		if left.Name != "" && left.Name == right.Name {
+			return true
+		}
+
+		rightFields := namedMembersToMap(right.Fields)
+		for _, field := range left.Fields {
+			rightField, ok := rightFields[field.Name]
+			if !ok {
+				return false
+			}
+
+			if !concreteEq_(field.Type, rightField.Type) {
+				return false
+			}
+		}
+
+		rightMethods := namedMembersToMap(right.Methods)
+		for _, meth := range left.Methods {
+			rightMeth, ok := rightMethods[meth.Name]
+			if !ok {
+				return false
+			}
+
+			if !concreteEq_(meth.Type, rightMeth.Type) {
+				return false
+			}
+		}
 	} else if left, right, ok := matchPair[Record, Record](lhs, rhs); ok {
 		if len(left.Fields) != len(right.Fields) {
 			return false
