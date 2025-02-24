@@ -608,6 +608,55 @@ func TestTypeProgram(t *testing.T) {
 				}
 			}(),
 		},
+		{
+			desc: "regression: infinite recursion when method calls function that takes Self",
+			input: `
+			(extern def g_binding_dup_source (Binding I32) [self_ ])
+			(extern def g_binding_dup_target (Binding I32) [self_ ])
+			(class Binding () {
+				(def r@dupSource (Self I32) [self] (let [
+					ret (g_binding_dup_source self)
+				]
+					ret)),
+				(def r@dupTarget (Self I32) [self] (let [
+					ret (g_binding_dup_target self)
+				]
+					ret))
+			})
+			`,
+			typ: func() []types.Type {
+				i32 := &types.Int{Signed: true, BitSize: 32}
+				binding := &types.Class{}
+				*binding = types.Class{
+					Name:    "Binding",
+					Supers:  []*types.Class{},
+					Fields:  map[string]types.Member{},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{
+						"dupSource": {
+							Access: 0,
+							Type: &types.Func{
+								Args: []types.Type{binding},
+								Ret:  i32,
+							},
+						},
+						"dupTarget": {
+							Access: 0,
+							Type: &types.Func{
+								Args: []types.Type{binding},
+								Ret:  i32,
+							},
+						},
+					},
+					Top: false,
+				}
+				return []types.Type{
+					&types.Func{Args: []types.Type{binding}, Ret: i32},
+					&types.Func{Args: []types.Type{binding}, Ret: i32},
+					binding,
+				}
+			}(),
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
