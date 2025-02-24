@@ -885,6 +885,9 @@ func getVars(ty SimpleType) *orderedset.OrderedSet[*Variable] {
 	work := []SimpleType{ty}
 
 	for len(work) > 0 {
+		if len(work) > 100000 {
+			panic("possible infinite loop")
+		}
 		ty, ok := popSlice(&work).Unwrap()
 		assert.True(ok, "pop returned empty despite len check")
 
