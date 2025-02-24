@@ -14,12 +14,14 @@ import (
 	"github.com/horriblename/typee/src/opt"
 )
 
+// AccessLvl are ordered in a way in order of subtype lattic,
+// i.e. public (largest in value) can be considered a supertype of private (smallest in value)
 type AccessLvl uint8
 
 const (
-	AccessPublic AccessLvl = iota
+	AccessPrivate AccessLvl = iota
 	AccessProtected
-	AccessPrivate
+	AccessPublic
 )
 
 func (self AccessLvl) String() string {
