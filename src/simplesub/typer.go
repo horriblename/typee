@@ -804,18 +804,6 @@ func (self *Typer) defClassOutline(ctx *moduleContext, classDef *parse.ObjectTyp
 		Top:     classDef.Base,
 	}
 
-	t.Signature = PolymorphicType{
-		Body: ObjectType{
-			Name:      classDef.Name,
-			Supers:    supers,
-			Fields:    fields,
-			Methods:   methods,
-			Signature: PolymorphicType{},
-			Top:       classDef.Base,
-		},
-		// TypeParams: opt.Some([]uint{dummySelf.Uid()}),
-	}
-
 	self.types.Insert(classDef.Name, t)
 	return t, nil
 }
@@ -1306,8 +1294,7 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 					},
 				}
 			}),
-			Signature: PolymorphicType{},
-			Top:       t.Top,
+			Top: t.Top,
 		}
 	case ArrayType:
 		return ArrayType{substitute(t.ElType), t.Size}
