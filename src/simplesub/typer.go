@@ -275,12 +275,12 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 				return nil, fmt.Errorf("in function %s: %w", e.Name, err)
 			}
 
-			fnTy, ok := types[i].(SimpleType)
+			placeholderTy, ok := types[i].(SimpleType)
 			if !ok {
 				pt := assert.Cast[PolymorphicType](types[i], "cannot fail")
-				fnTy = pt.Body
+				placeholderTy = pt.Body
 			}
-			if err := constrain(typ, fnTy); err != nil {
+			if err := constrain(typ, placeholderTy); err != nil {
 				return nil, fmt.Errorf("verifying type signature of function %s: %w", e.Name, err)
 			}
 
