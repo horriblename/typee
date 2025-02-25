@@ -659,12 +659,11 @@ type Enum struct {
 	Values map[string]opt.Option[int64]
 }
 type ObjectType struct {
-	Name      string
-	Supers    []ObjectType
-	Fields    []NamedMember
-	Methods   []NamedMember
-	Signature PolymorphicType // used as self type in methods (with careful generalization)
-	Top       bool            // top class is a class that does not have a parent class
+	Name    string
+	Supers  []ObjectType
+	Fields  []NamedMember
+	Methods []NamedMember
+	Top     bool // top class is a class that does not have a parent class
 }
 type ArrayType struct {
 	ElType SimpleType
@@ -820,17 +819,17 @@ func (self *deepPrintCtx) print(ty TypeScheme) {
 	case *Variable:
 		if t.representative != nil {
 			fmt.Fprintf(&self.buf, "t%d=t%d[", t.uid, t.Representative().uid)
-			self.print(t.UpperBound())
-			self.buf.WriteString(", ")
 			self.print(t.LowerBound())
+			self.buf.WriteString(", ")
+			self.print(t.UpperBound())
 			self.buf.WriteString("]")
 			return
 		}
 
 		fmt.Fprintf(&self.buf, "t%d[", t.uid)
-		self.print(t.UpperBound())
-		self.buf.WriteString(", ")
 		self.print(t.LowerBound())
+		self.buf.WriteString(", ")
+		self.print(t.UpperBound())
 		self.buf.WriteString("]")
 
 	default:
