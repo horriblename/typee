@@ -412,6 +412,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 
 		for i, arg := range expr.Args {
 			if i == 0 && arg == "self" {
+				// TODO: don't think I need this
 				ty, err := self.parseType(parse.SelfType{})
 				if err != nil {
 					return nil, err
