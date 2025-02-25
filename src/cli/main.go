@@ -12,6 +12,7 @@ import (
 	"github.com/horriblename/typee/src/gir"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
+	"github.com/horriblename/typee/src/types"
 )
 
 const helpMain string = `
@@ -251,7 +252,7 @@ func cmdRepl() error {
 
 		simpleTy := simplesub.CoalesceType(simplified)
 
-		errorf(": %s", simpleTy)
+		errorf(": %s", types.DeepPrint(simpleTy))
 	}
 
 	return nil
