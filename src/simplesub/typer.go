@@ -435,6 +435,9 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 
 	case *parse.Form:
 		assert.GreaterThan(len(expr.Children), 0, "unhandled: empty form")
+		if meth, ok := expr.Children[0].(*parse.MethodAccess); ok {
+			return self.typeMethodCall(ctx, meth, expr)
+		}
 
 		funcTy, err := self.TypeTerm(ctx, expr.Children[0])
 		if err != nil {
@@ -533,29 +536,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 		return ret, nil
 
 	case *parse.MethodAccess:
-		objTy, err := self.TypeTerm(ctx, expr.Obj)
-		if err != nil {
-			return nil, err
-		}
-
-		ret := freshVar()
-		err = constrain(objTy, ObjectType{
-			Name:   "",
-			Supers: []ObjectType{},
-			Fields: []NamedMember{},
-			Methods: []NamedMember{{
-				Name: expr.Method,
-				Member: Member{
-					Type:   ret,
-					Access: types.AccessPublic, // TODO
-				},
-			}},
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		return ret, nil
+		panic("illegal use of method access, methods must be called: " + expr.Pretty())
 
 	case *parse.EnumAccess:
 		// FIXME: uh, actually type check this pls
@@ -893,6 +874,51 @@ func (self *Typer) defUnion(ctx *moduleContext, unionDef *parse.UnionDef) (Simpl
 	}
 	self.types.Insert(unionDef.Name, t)
 	return t, nil
+}
+
+func (self *Typer) typeMethodCall(ctx *moduleContext, methAccess *parse.MethodAccess, form *parse.Form) (SimpleType, error) {
+	// goal:
+	// 1. (class Foo {x I64, (def getx[self] self.x)})
+	// 2. typing (foo#getx)
+	// 3. TypeTerm(foo) -> Foo{.., getx: t1 -> t2} t1
+	// 4. selectively instantiate type var of Foo::getx
+	assert.GreaterThan(len(form.Children), 0, "unhandled: empty form")
+
+	oTy, err := self.TypeTerm(ctx, methAccess.Obj)
+	if err != nil {
+		return nil, fmt.Errorf("typing method call on %s: %w", methAccess.Pretty(), err)
+	}
+	objTy := assert.Cast[ObjectType](oTy, "method access with non-object lhs?", methAccess.Pretty())
+
+	argTys := make([]SimpleType, 0, len(form.Children))
+	argTys = append(argTys, objTy.NewSignature())
+	for _, arg := range form.Children[1:] {
+		ty, err := self.TypeTerm(ctx, arg)
+		if err != nil {
+			return nil, err
+		}
+		argTys = append(argTys, ty)
+	}
+	ret := freshVar()
+
+	err = constrain(objTy, ObjectType{
+		Name:   "",
+		Supers: []ObjectType{},
+		Fields: []NamedMember{},
+		Methods: []NamedMember{{
+			Name: methAccess.Method,
+			Member: Member{
+				Type:   Func{argTys, ret},
+				Access: types.AccessPublic, // TODO
+			},
+		}},
+		Top: false,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("typing method call %s: %w", form.Pretty(), err)
+	}
+
+	return ret, nil
 }
 
 func (self *Typer) defEnum(enumDef *parse.EnumDef) (ConcreteType, error) {
