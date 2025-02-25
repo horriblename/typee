@@ -690,7 +690,7 @@ func TestTypeProgram(t *testing.T) {
 
 			typ := fun.Map(tySimp, CoalesceType)
 
-			t.Logf("coalesced type: %v\n", typ)
+			t.Logf("coalesced type: %v\n", fun.Map(typ, types.DeepPrint))
 			assert.NEq(tC.typ, nil, "bad test case")
 			if len(tC.typ) != len(typ) {
 				t.Errorf("expected %d results, got %d", len(tC.typ), len(typ))
