@@ -839,7 +839,8 @@ func (self *Typer) defClassMethods(ctx *moduleContext, classDef *parse.ObjectTyp
 		// correctly, nor do I know if this is "safe"
 		// ocaml uses limited generalization whereas I generalize the whole thing.
 		// I think generalizing just the type var of the method we're check should be enough
-		self.types.Insert("Self", classTy.Signature.instantiate())
+		// TODO: pretty sure I should concretize instead?
+		self.types.Insert("Self", classTy.NewSignature())
 		f, ok := field.(parse.ClassMethod)
 		if !ok {
 			continue
