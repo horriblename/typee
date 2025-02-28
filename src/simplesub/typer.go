@@ -51,6 +51,8 @@ var ErrUseNamedObjectTypeAsRecord = errors.New("cannot use a named object type a
 var ErrIllegalPolymorphicType = errors.New("illegal use of polymorphic type")
 var ErrUnparameterizedTypePassedParams = errors.New("an unparameterized type was passed type parameters")
 var ErrEnumMissingKey = errors.New("enum type is missing a key")
+var ErrMethodMissingSignature = errors.New("method must have signature")
+var ErrPolymorphicInSignature = errors.New("illegal polymorphic type in function signature")
 
 const scopeLevelTop int = 1
 
@@ -158,6 +160,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			self.types.Insert(e.Name, temp)
 
 			t, err := self.defClassOutline(ctx, e)
+			trace("[tmp2] %v", t)
 			if err != nil {
 				return nil, err
 			}
@@ -753,11 +756,58 @@ func (self *Typer) defClassOutline(ctx *moduleContext, classDef *parse.ObjectTyp
 				},
 			})
 		case parse.ClassMethod:
-			nArgs := len(f.Func.Args)
-			args := make([]SimpleType, nArgs)
-			args[0] = dummySelf
-			for i := range f.Func.Args[1:] {
-				args[i+1] = freshVar()
+			sig, ok := f.Func.Signature.Unwrap()
+			if !ok {
+				return nil, fmt.Errorf("typing %s.%s: %w",
+					classDef.Name,
+					f.Func.Name,
+					ErrMethodMissingSignature,
+				)
+			}
+
+			args := make([]SimpleType, len(sig)-1)
+			for i, arg := range sig[:len(sig)-1] {
+				if i == 0 && (arg == parse.SelfType{}) {
+					args[i] = dummySelf
+					continue
+				}
+				ty, err := self.parseType(arg)
+				if err != nil {
+					return nil, fmt.Errorf("in %s.%s, reading type signature [%d] of %d: %w",
+						classDef.Name,
+						f.Func.Name,
+						i,
+						len(sig)-1,
+						err,
+					)
+				}
+
+				sty, ok := ty.(SimpleType)
+				if !ok {
+					return nil, fmt.Errorf("in %s.%s, reading type signature [%d] of %d: %w",
+						classDef.Name,
+						f.Func.Name,
+						i,
+						len(sig)-1,
+						ErrPolymorphicInSignature,
+					)
+				}
+
+				args[i] = sty
+			}
+
+			ret, err := self.parseType(sig[len(sig)-1])
+			if err != nil {
+				return nil, fmt.Errorf("in %s.%s, reading return type: %w", classDef.Name, f.Func.Name, err)
+			}
+
+			simpleRet, ok := ret.(SimpleType)
+			if !ok {
+				return nil, fmt.Errorf("in %s.%s, reading return type: %w",
+					classDef.Name,
+					f.Func.Name,
+					ErrPolymorphicInSignature,
+				)
 			}
 
 			methods = append(methods, NamedMember{
@@ -766,7 +816,7 @@ func (self *Typer) defClassOutline(ctx *moduleContext, classDef *parse.ObjectTyp
 					// TODO: generalize methods
 					Type: Func{
 						Args: args,
-						Ret:  freshVar(),
+						Ret:  simpleRet,
 					},
 					Access: f.Access(),
 				},

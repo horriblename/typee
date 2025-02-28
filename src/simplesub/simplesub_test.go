@@ -252,7 +252,7 @@ func TestTypeProgram(t *testing.T) {
 		},
 		{
 			desc:  "self and Self alias",
-			input: "(class Foo {pub x Int, pub (def foo  [self] self.x)})",
+			input: "(class Foo {pub x Int, pub (def foo (Self Int) [self] self.x)})",
 			typ: func() []types.Type {
 				foo := types.Class{}
 				foo = types.Class{
