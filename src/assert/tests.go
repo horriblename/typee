@@ -1,6 +1,7 @@
 package assert
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -21,6 +22,14 @@ func (t *TestAsserts) Eq(a any, b any, msg ...any) {
 	t.t.Helper()
 	if a != b {
 		t.t.Fatalf("failed assertion a == b: \n  left: %v\n  right: %v\n%s", a, b,
+			joinHint(msg))
+	}
+}
+
+func (t *TestAsserts) DeepEq(a, b any, msg ...any) {
+	t.t.Helper()
+	if !reflect.DeepEqual(a, b) {
+		t.t.Fatalf("failed assertion DeepEq(a, b):\n  left:  %v\n  right: %v\n%s", a, b,
 			joinHint(msg))
 	}
 }
