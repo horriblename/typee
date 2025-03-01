@@ -7,10 +7,10 @@ import (
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/graph"
+	"github.com/horriblename/typee/src/graph/tarjan"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/internal/scope"
 	"github.com/horriblename/typee/src/parse"
-	"github.com/looplab/tarjan"
 )
 
 type locality bool
@@ -25,10 +25,9 @@ type depCtx struct {
 	toplevelIndex map[string]int
 }
 
-// returns [][]string but library is from pre-generic era so it's a [][]any :(
-// also returns a set of selfRecursive symbols because tarjan lib doesn't
+// returns groups and a set of selfRecursive symbols because tarjan lib doesn't
 // differentiate between self-recursive and no-recursion
-func groupRecursives(ast []parse.Expr) (groups [][]any, selfRecursive map[string]struct{}) {
+func groupRecursives(ast []parse.Expr) (groups [][]string, selfRecursive map[string]struct{}) {
 	ctx := depCtx{
 		scope.NewScopedMap[locality](),
 		map[string]int{},
@@ -36,7 +35,7 @@ func groupRecursives(ast []parse.Expr) (groups [][]any, selfRecursive map[string
 
 	// build dependency graph
 
-	depGraph := map[any][]any{}
+	depGraph := map[string][]string{}
 	selfRecursive = map[string]struct{}{}
 
 	for i, node := range ast {
@@ -54,7 +53,7 @@ func groupRecursives(ast []parse.Expr) (groups [][]any, selfRecursive map[string
 	for i, node := range ast {
 		switch n := node.(type) {
 		case *parse.FuncDef:
-			deps := orderedset.NewOrderedSet[any]()
+			deps := orderedset.NewOrderedSet[string]()
 			ctx.findDependencies(deps, []parse.Expr{n})
 
 			depGraph[n.Name] = deps.Slice()
@@ -63,7 +62,7 @@ func groupRecursives(ast []parse.Expr) (groups [][]any, selfRecursive map[string
 			}
 
 		case *parse.Set:
-			deps := orderedset.NewOrderedSet[any]()
+			deps := orderedset.NewOrderedSet[string]()
 			ctx.toplevelIndex[n.Name] = i
 
 			depGraph[n.Name] = deps.Slice()
@@ -148,7 +147,7 @@ func markTypeDeps(x parse.TypeRepr, deps map[string]unit, skip string) {
 	}
 }
 
-func (ctx *depCtx) findDependencies(deps *orderedset.OrderedSet[any], nodes []parse.Expr) {
+func (ctx *depCtx) findDependencies(deps *orderedset.OrderedSet[string], nodes []parse.Expr) {
 	for _, node := range nodes {
 		switch n := node.(type) {
 		case *parse.Fn:
