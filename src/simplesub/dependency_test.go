@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/parse"
 )
 
@@ -11,19 +12,19 @@ func TestRecursiveGrouping(t *testing.T) {
 	testCases := []struct {
 		desc           string
 		input          string
-		groups         [][]any
+		groups         [][]string
 		selfRecursives map[string]unit
 	}{
 		{
 			desc:           "non-recursive",
 			input:          "(def foo [x] (+ x 1))",
-			groups:         [][]any{{"foo"}},
+			groups:         [][]string{{"foo"}},
 			selfRecursives: map[string]unit{},
 		},
 		{
 			desc:           "self recursive",
 			input:          "(def foo [x] (if [(= x 0)] 1 (foo (- x 1))))",
-			groups:         [][]any{{"foo"}},
+			groups:         [][]string{{"foo"}},
 			selfRecursives: map[string]unit{"foo": {}},
 		},
 		{
@@ -32,35 +33,47 @@ func TestRecursiveGrouping(t *testing.T) {
 				(def foo [x] (if [(= x 0)] 1 (bar (- x 1))))
 				(def bar [x] (if [(= x 0)] 2 (foo x)))
 			`,
-			groups:         [][]any{{"foo", "bar"}},
+			groups:         [][]string{{"foo", "bar"}},
 			selfRecursives: map[string]unit{},
 		},
 		{
-			desc: "mixed",
+			desc: "is ordered by dependency",
 			input: `
-				(def id [x] x)
-				(def srec [x] (if [(> x 1)] 1 (srec (id (- x 1)))))
-				(def foo [x] (if [(id (= x 0))] (id 1) (bar (- x 1))))
+				(def id2 [x] (if [false] (id2 x) (id x)))
+				(def foo [x] (if [(id2 (= x 0))] (id 1) (bar (- x 1))))
 				(def bar [x] (if [(= x 0)] 2 (foo x)))
+				;; these calls are named and ordered messily to ensure there is
+				;; no correlation between name/definition location and scc groups
+				;; order dependency chain is as follows: id2 -> c -> d -> a -> b -> id
+				(def d [x] (a x))
+				(def c [x] (d x))
+				(def b [x] (id x))
+				(def a [x] (b x))
+				(def id [x] x)
 			`,
-			groups:         [][]any{{"id"}, {"srec"}, {"foo", "bar"}},
-			selfRecursives: map[string]unit{"srec": {}},
+			groups:         [][]string{{"id"}, {"b"}, {"a"}, {"d"}, {"c"}, {"id2"}, {"foo", "bar"}},
+			selfRecursives: map[string]unit{"id2": {}},
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			tassert := assert.NewTestAsserts(t)
+			assert := assert.NewTestAsserts(t)
 
 			ast, err := parse.ParseString(tC.input)
-			tassert.Ok(err)
+			assert.Ok(err)
 
 			groups, selfRecursives := groupRecursives(ast)
 
-			// FIXME:turns out equality between [][]any is very fucking annoying so I'm skipping this for now
-			t.Logf("expected groups:\n  %v", tC.groups)
-			t.Logf("got:\n  %v", groups)
-			t.Logf("\nexpected selfRecursives:\n  %v", tC.selfRecursives)
-			t.Logf("got:\n  %v", selfRecursives)
+			// NOTE: scc group ordering is non-deterministic for functions that have no
+			// dependency relation between each other, so avoid writing tests with such
+			// functions e.g. (foo [x] (+ x 1)) and (bar [x] x) have no relation to each
+			// other, there's no guarantee which will appear first.
+			assert.DeepEq(
+				fun.Map(tC.groups, sliceToSet),
+				fun.Map(groups, sliceToSet),
+				"different groups?",
+			)
+			assert.DeepEq(tC.selfRecursives, selfRecursives, "different self recursives")
 		})
 	}
 }

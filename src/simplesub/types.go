@@ -931,7 +931,7 @@ type NamedType struct {
 	Type SimpleType
 }
 
-type unit struct{}
+type unit = struct{}
 
 // same as concreteEq but takes SimpleType as input and rejects non-ConcreteType
 func concreteEq_(lhs, rhs SimpleType) bool {
