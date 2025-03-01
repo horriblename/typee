@@ -98,19 +98,25 @@ func sortTypeDefs(ast []parse.Expr) (order []string, astLookup map[string]parse.
 				deps[super] = unit{}
 			}
 			for _, member := range n.Fields {
-				field, ok := member.(parse.ClassField)
-				if !ok {
-					continue
+				switch m := member.(type) {
+				case parse.ClassField:
+					markTypeDeps(m.Type, deps, n.Name)
+				case parse.ClassMethod:
+					sig, ok := m.Func.Signature.Unwrap()
+					if !ok {
+						panic(fmt.Errorf("in %s.%s: class method signature is required", n.Name, m.Name()))
+					}
+					for _, t := range sig {
+						markTypeDeps(t, deps, n.Name)
+					}
 				}
-
-				markTypeDeps(field.Type, deps)
 			}
 			allDeps[n.Name] = deps
 
 		case *parse.TypeAlias:
 			typeDefAst[n.Name] = n
 			deps := map[string]unit{}
-			markTypeDeps(n.Type, deps)
+			markTypeDeps(n.Type, deps, "")
 			allDeps[n.Name] = deps
 		}
 	}
@@ -127,14 +133,14 @@ func sortTypeDefs(ast []parse.Expr) (order []string, astLookup map[string]parse.
 	return s, typeDefAst, nil
 }
 
-func markTypeDeps(x parse.TypeRepr, deps map[string]unit) {
+func markTypeDeps(x parse.TypeRepr, deps map[string]unit, skip string) {
 	work := []parse.TypeRepr{x}
 
 	for len(work) != 0 {
 		node, ok := popSlice(&work).Unwrap()
 		assert.True(ok, "len already checked")
 
-		if n, ok := node.(parse.TypeName); ok {
+		if n, ok := node.(parse.TypeName); ok && n.Name != skip {
 			deps[n.Name] = unit{}
 		}
 
