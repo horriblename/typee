@@ -6,7 +6,6 @@ import (
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
-	"github.com/horriblename/typee/src/graph"
 	"github.com/horriblename/typee/src/graph/tarjan"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/internal/scope"
@@ -77,43 +76,48 @@ func groupRecursives(ast []parse.Expr) (groups [][]string, selfRecursive map[str
 	return tarjan.Connections(depGraph), selfRecursive
 }
 
-func sortTypeDefs(ast []parse.Expr) (order []string, astLookup map[string]parse.Expr, err error) {
+func sortTypeDefs(ast []parse.Expr) (order [][]string, astLookup map[string]parse.Expr, selfRecs map[string]struct{}) {
 	allDeps := map[string]map[string]unit{}
-	typeDefAst := map[string]parse.Expr{}
+	astLookup = map[string]parse.Expr{}
+	selfRecs = map[string]struct{}{}
 
 	for _, node := range ast {
 		switch n := node.(type) {
 		case *parse.EnumDef:
-			typeDefAst[n.Name] = n
+			astLookup[n.Name] = n
 			allDeps[n.Name] = map[string]unit{}
 		case *parse.UnionDef:
-			typeDefAst[n.Name] = n
+			astLookup[n.Name] = n
 			allDeps[n.Name] = map[string]unit{}
 
 		case *parse.ObjectTypeDef:
-			typeDefAst[n.Name] = n
+			astLookup[n.Name] = n
 			deps := map[string]unit{}
 			for _, super := range n.Supers {
 				deps[super] = unit{}
 			}
+			selfRecursive := false
 			for _, member := range n.Fields {
 				switch m := member.(type) {
 				case parse.ClassField:
-					markTypeDeps(m.Type, deps, n.Name)
+					selfRecursive = selfRecursive || markTypeDeps(m.Type, deps, n.Name)
 				case parse.ClassMethod:
 					sig, ok := m.Func.Signature.Unwrap()
 					if !ok {
 						panic(fmt.Errorf("in %s.%s: class method signature is required", n.Name, m.Name()))
 					}
 					for _, t := range sig {
-						markTypeDeps(t, deps, n.Name)
+						selfRecursive = selfRecursive || markTypeDeps(t, deps, n.Name)
 					}
 				}
+			}
+			if selfRecursive {
+				selfRecs[n.Name] = struct{}{}
 			}
 			allDeps[n.Name] = deps
 
 		case *parse.TypeAlias:
-			typeDefAst[n.Name] = n
+			astLookup[n.Name] = n
 			deps := map[string]unit{}
 			markTypeDeps(n.Type, deps, "")
 			allDeps[n.Name] = deps
@@ -124,27 +128,27 @@ func sortTypeDefs(ast []parse.Expr) (order []string, astLookup map[string]parse.
 		return fun.Collect(maps.Keys(d))
 	})
 
-	s, err := graph.Toposort(adjacencyList)
-	if err != nil {
-		return nil, nil, fmt.Errorf("sorting type definitions: %w", err)
-	}
-
-	return s, typeDefAst, nil
+	return tarjan.Connections(adjacencyList), astLookup, selfRecs
 }
 
-func markTypeDeps(x parse.TypeRepr, deps map[string]unit, skip string) {
+func markTypeDeps(x parse.TypeRepr, deps map[string]unit, self string) (selfRecursive bool) {
 	work := []parse.TypeRepr{x}
 
 	for len(work) != 0 {
 		node, ok := popSlice(&work).Unwrap()
 		assert.True(ok, "len already checked")
 
-		if n, ok := node.(parse.TypeName); ok && n.Name != skip {
+		if n, ok := node.(parse.TypeName); ok {
+			if n.Name == self {
+				selfRecursive = true
+			}
 			deps[n.Name] = unit{}
 		}
 
 		work = append(work, parse.ChildNodes(node)...)
 	}
+
+	return selfRecursive
 }
 
 func (ctx *depCtx) findDependencies(deps *orderedset.OrderedSet[string], nodes []parse.Expr) {
