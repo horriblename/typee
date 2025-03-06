@@ -128,62 +128,44 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 	recursiveness := map[string]bool{}
 	groups, selfRecursives := groupRecursives(program)
 
-	typeDefOrder, typeDefAsts, err := sortTypeDefs(program)
-	if err != nil {
-		return nil, err
-	}
+	typeDefOrder, typeDefAsts, _ := sortTypeDefs(program)
 
 	// process type definitions
-	for _, name := range typeDefOrder {
-		expr := typeDefAsts[name]
-		switch e := expr.(type) {
-		case *parse.EnumDef:
-			typ, err := self.defEnum(e)
+	for _, group := range typeDefOrder {
+		if len(group) == 1 {
+			if _, ok := typeDefAsts[group[0]]; !ok {
+				// skip external (?) type defs
+				continue
+			}
+		}
+		for _, name := range group {
+			self.types.Insert(name, freshVar())
+		}
+
+		for _, name := range group {
+			ast, ok := typeDefAsts[name]
+			if !ok {
+				panic("compiler bug: ast lookup failed: " + name)
+			}
+			t, err := self.defType(ctx, ast)
 			if err != nil {
 				return nil, err
 			}
 
-			ctx.inferred[e.ID()] = typ
-			self.types.Insert(e.Name, typ)
+			p, ok := self.types.Get(name).Unwrap()
+			assert.True(ok, "placeholder type dissappeared??")
 
-		case *parse.UnionDef:
-			t, err := self.defUnion(ctx, e)
-			if err != nil {
+			placeholder := assert.Cast[*Variable](p, "placeholder not a type var??")
+
+			// FIXME: this _probably_ destroys generalization with mutual recursive usage
+			// but I'm not too sure
+			if err := constrain(placeholder, t); err != nil {
 				return nil, err
 			}
 
-			self.types.Insert(e.Name, t)
-			ctx.inferred[e.ID()] = t
-
-		case *parse.ObjectTypeDef:
-			temp := freshVar()
-			self.types.Insert(e.Name, temp)
-
-			t, err := self.defClassOutline(ctx, e)
-			trace("[tmp2] %v", t)
-			if err != nil {
+			if err := constrain(t, placeholder); err != nil {
 				return nil, err
 			}
-
-			if err := constrain(temp, t); err != nil {
-				return nil, fmt.Errorf("aliasing temp variable to inferred type of class %s: %w", e.Name, err)
-			}
-
-			if err := constrain(t, temp); err != nil {
-				return nil, fmt.Errorf("aliasing temp variable to inferred type of class %s: %w", e.Name, err)
-			}
-
-			// TODO: handle generics
-			ctx.inferred[e.ID()] = t
-
-		case *parse.TypeAlias:
-			target, err := self.parseType(e.Type)
-			if err != nil {
-				return nil, err
-			}
-
-			self.types.Insert(e.Name, target)
-			ctx.inferred[e.ID()] = target
 		}
 	}
 
@@ -709,8 +691,54 @@ func (self *Typer) externDef(ctx *moduleContext, e *parse.FuncDef) (SimpleType, 
 	return Func{Args: params, Ret: retHint.instantiate()}, nil
 }
 
+func (self *Typer) defType(ctx *moduleContext, def parse.Expr) (SimpleType, error) {
+	switch d := def.(type) {
+	case *parse.EnumDef:
+		typ, err := self.parseEnumDef(d)
+		if err != nil {
+			return nil, err
+		}
+
+		ctx.inferred[d.ID()] = typ
+		return typ, nil
+
+	case *parse.UnionDef:
+		t, err := self.parseUnionDef(d)
+		if err != nil {
+			return nil, err
+		}
+
+		ctx.inferred[d.ID()] = t
+		return t, nil
+
+	case *parse.ObjectTypeDef:
+		t, err := self.parseClassOutline(d)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: handle generics
+		ctx.inferred[d.ID()] = t
+		return t, nil
+
+	case *parse.TypeAlias:
+		target, err := self.parseType(d.Type)
+		if err != nil {
+			return nil, err
+		}
+
+		ctx.inferred[d.ID()] = target
+
+		// FIXME: should not instantiate!
+		// this works cuz we don't have generalized type alias currenlty
+		return target.instantiate(), nil
+	default:
+		panic(fmt.Sprintf("compiler bug: defType called with not type definition %#v", def))
+	}
+}
+
 // type checks fields and assigns fresh variables to methods
-func (self *Typer) defClassOutline(ctx *moduleContext, classDef *parse.ObjectTypeDef) (SimpleType, error) {
+func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType, error) {
 	self.classScope = classDef.Name
 	defer func() { self.classScope = "" }()
 
@@ -835,7 +863,6 @@ func (self *Typer) defClassOutline(ctx *moduleContext, classDef *parse.ObjectTyp
 		Top:     classDef.Base,
 	}
 
-	self.types.Insert(classDef.Name, t)
 	return t, nil
 }
 
@@ -901,7 +928,7 @@ func (self *Typer) defClassMethods(ctx *moduleContext, classDef *parse.ObjectTyp
 	return nil
 }
 
-func (self *Typer) defUnion(ctx *moduleContext, unionDef *parse.UnionDef) (SimpleType, error) {
+func (self *Typer) parseUnionDef(unionDef *parse.UnionDef) (SimpleType, error) {
 	// TODO: check repeated variants?
 	variants := make([]ConcreteType, len(unionDef.Variants))
 	for i, v := range unionDef.Variants {
@@ -922,7 +949,6 @@ func (self *Typer) defUnion(ctx *moduleContext, unionDef *parse.UnionDef) (Simpl
 		Name:     unionDef.Name,
 		Variants: variants,
 	}
-	self.types.Insert(unionDef.Name, t)
 	return t, nil
 }
 
@@ -971,7 +997,7 @@ func (self *Typer) typeMethodCall(ctx *moduleContext, methAccess *parse.MethodAc
 	return ret, nil
 }
 
-func (self *Typer) defEnum(enumDef *parse.EnumDef) (ConcreteType, error) {
+func (self *Typer) parseEnumDef(enumDef *parse.EnumDef) (ConcreteType, error) {
 	// TODO: check repeated variants?
 	variants := map[string]opt.Option[int64]{}
 	var rollingValue int64
@@ -989,7 +1015,6 @@ func (self *Typer) defEnum(enumDef *parse.EnumDef) (ConcreteType, error) {
 		Name:   enumDef.Name,
 		Values: variants,
 	}
-	self.types.Insert(enumDef.Name, t)
 	return t, nil
 }
 
