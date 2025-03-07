@@ -305,6 +305,24 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		}
 
 		return Union{"", setToSlice(intersection)}, nil
+	} else if lhs, rhs, ok := matchPair[ConcreteType, Union](lhs0, rhs0); ok {
+		for _, variant := range rhs.Variants {
+			// TODO: should probably be a constrain to represent lhs <: variant
+			if concreteEq(lhs, variant) {
+				return rhs, nil
+			}
+		}
+
+		return nil, fmt.Errorf("%w: %s cannot be used as a %s and vice versa", ErrIncompatibleTypes, lhs, rhs)
+	} else if lhs, rhs, ok := matchPair[Union, ConcreteType](lhs0, rhs0); ok {
+		for _, variant := range lhs.Variants {
+			// TODO: should probably be a constrain to represent rhs <: variant
+			if concreteEq(rhs, variant) {
+				return lhs, nil
+			}
+		}
+
+		return nil, fmt.Errorf("%w: %s cannot be used as a %s and vice versa", ErrIncompatibleTypes, rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[Primitive, Primitive](lhs0, rhs0); ok {
 		if lhs.Kind == rhs.Kind {
 			return Primitive{lhs.Kind}, nil
@@ -450,6 +468,24 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		}
 
 		return Union{"", merged}, nil
+	} else if lhs, rhs, ok := matchPair[ConcreteType, Union](lhs0, rhs0); ok {
+		for _, variant := range rhs.Variants {
+			// TODO: should probably use constrain to represent lhs <: variant
+			if concreteEq(lhs, variant) {
+				return lhs, nil
+			}
+		}
+
+		return nil, fmt.Errorf("%w: %s cannot be used as %s and vice versa", ErrIncompatibleTypes, lhs, rhs)
+	} else if lhs, rhs, ok := matchPair[Union, ConcreteType](lhs0, rhs0); ok {
+		for _, variant := range lhs.Variants {
+			// TODO: should probably use constrain to represent rhs <: variant
+			if concreteEq(rhs, variant) {
+				return rhs, nil
+			}
+		}
+
+		return nil, fmt.Errorf("%w: %s cannot be used as %s and vice versa", ErrIncompatibleTypes, rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[Enum, Enum](lhs0, rhs0); ok {
 		if lhs.Name != rhs.Name {
 			return nil, fmt.Errorf("different enum types: %s and %s", lhs.Name, rhs.Name)
