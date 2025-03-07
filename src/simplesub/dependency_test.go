@@ -39,12 +39,16 @@ func TestRecursiveGrouping(t *testing.T) {
 		{
 			desc: "is ordered by dependency",
 			input: `
-				(def id2 [x] (if [false] (id2 x) (id x)))
+				(def id2 [x] (if [false] (id2 x) (c x)))
 				(def foo [x] (if [(id2 (= x 0))] (id 1) (bar (- x 1))))
 				(def bar [x] (if [(= x 0)] 2 (foo x)))
 				;; these calls are named and ordered messily to ensure there is
 				;; no correlation between name/definition location and scc groups
-				;; order dependency chain is as follows: id2 -> c -> d -> a -> b -> id
+				;; order dependency chain is as follows:
+				;;
+				;; bar <-> foo -> id2(<->self) -> c -> d -> a -> b
+				;;            \                                /
+				;;             --> id <------------------------
 				(def d [x] (a x))
 				(def c [x] (d x))
 				(def b [x] (id x))
