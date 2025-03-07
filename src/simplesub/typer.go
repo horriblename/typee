@@ -128,13 +128,24 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 	recursiveness := map[string]bool{}
 	groups, selfRecursives := groupRecursives(program)
 
-	typeDefOrder, typeDefAsts, _ := sortTypeDefs(program)
+	typeDefOrder, typeDefAsts, selfRecTypes := sortTypeDefs(program)
 
 	// process type definitions
 	for _, group := range typeDefOrder {
 		if len(group) == 1 {
 			if _, ok := typeDefAsts[group[0]]; !ok {
 				// skip external (?) type defs
+				continue
+			}
+
+			if _, ok := selfRecTypes[group[0]]; !ok {
+				ast, ok := typeDefAsts[group[0]]
+				assert.True(ok, "compiler bug: failed ast lookup: ", group[0])
+				t, err := self.defType(ctx, ast)
+				if err != nil {
+					return nil, err
+				}
+				self.types.Insert(group[0], t)
 				continue
 			}
 		}
@@ -144,9 +155,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 
 		for _, name := range group {
 			ast, ok := typeDefAsts[name]
-			if !ok {
-				panic("compiler bug: ast lookup failed: " + name)
-			}
+			assert.True(ok, "compiler bug: ast lookup failed: ", name)
 			t, err := self.defType(ctx, ast)
 			if err != nil {
 				return nil, err
