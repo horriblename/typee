@@ -759,9 +759,19 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 		}
 
 		// TODO: should concretize instead
-		sc, ok := sup.instantiate().(ObjectType)
+		si := sup.instantiate()
+		sc, ok := si.(ObjectType)
 		if !ok {
-			return nil, fmt.Errorf("%w: in %s: %s of type %s is not an object type", ErrIllegalSuperType, classDef.Name, s, sup)
+			if svar, ok := si.(*Variable); ok {
+				// HACK: this works cuz currently the type vars constrained both ways
+				if svclass, ok := svar.LowerBound().(ObjectType); ok {
+					sc = svclass
+				} else {
+					return nil, fmt.Errorf("%w: in %s: %s of type %s is not an object type", ErrIllegalSuperType, classDef.Name, s, svar)
+				}
+			} else {
+				return nil, fmt.Errorf("%w: in %s: %s of type %s is not an object type", ErrIllegalSuperType, classDef.Name, s, svar)
+			}
 		}
 
 		supers[i] = sc
