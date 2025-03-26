@@ -181,7 +181,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 	// could be optimized but eh
 	for _, group := range groups {
 		if len(group) == 1 {
-			name := assert.Cast[string](group[0], "compiler invariant violated")
+			name := group[0]
 			if _, ok := selfRecursives[name]; !ok {
 				recursiveness[name] = false
 				continue
@@ -189,7 +189,6 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 		}
 
 		for _, name := range group {
-			name := assert.Cast[string](name, "compiler invariant violated")
 			recursiveness[name] = true
 		}
 	}
