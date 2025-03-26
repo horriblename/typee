@@ -24,7 +24,7 @@ type AliasType struct {
 	//? Params []struct{Name string, Type}
 }
 
-type NamedType struct {
+type TypeApplication struct {
 	Module ModuleID
 	Name   string
 	Params []Type
@@ -69,15 +69,15 @@ type UnionType struct {
 	Variants []Type
 }
 
-func (AliasType) typ()  {}
-func (NamedType) typ()  {}
-func (RecordType) typ() {}
-func (ArrayType) typ()  {}
-func (SliceType) typ()  {}
-func (FnType) typ()     {}
-func (EnumType) typ()   {}
-func (ClassType) typ()  {}
-func (UnionType) typ()  {}
+func (AliasType) typ()       {}
+func (TypeApplication) typ() {}
+func (RecordType) typ()      {}
+func (ArrayType) typ()       {}
+func (SliceType) typ()       {}
+func (FnType) typ()          {}
+func (EnumType) typ()        {}
+func (ClassType) typ()       {}
+func (UnionType) typ()       {}
 
 //
 // Module

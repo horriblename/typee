@@ -20,7 +20,7 @@ var ErrMissingMethodSignature = errors.New("class methods must have signature")
 func Canonicalize(module string, ast []parse.Expr) (Module, error) {
 	env := env{
 		Home:  ModuleID(module),
-		Types: map[string]namedType{},
+		Types: map[string]Type{},
 	}
 	return env.canonicalize(ast)
 }
@@ -55,17 +55,15 @@ func (env *env) addTypes(ast []parse.Expr) error {
 }
 
 func (env *env) addEnum(def *parse.EnumDef) {
-	env.Types[def.Name] = namedType{
-		declaredEnum,
-		EnumType{
-			Variants: fun.Map(def.Variants, func(v parse.EnumVariant) EnumVariant {
-				return EnumVariant{
-					Name:  TypeName(v.Name),
-					Value: v.Value,
-				}
-			}),
-		},
+	env.Types[def.Name] = EnumType{
+		Variants: fun.Map(def.Variants, func(v parse.EnumVariant) EnumVariant {
+			return EnumVariant{
+				Name:  TypeName(v.Name),
+				Value: v.Value,
+			}
+		}),
 	}
+
 }
 
 func (env *env) addClass(def *parse.ObjectTypeDef) error {
@@ -99,43 +97,34 @@ func (env *env) addClass(def *parse.ObjectTypeDef) error {
 		}
 	}
 
-	env.Types[def.Name] = namedType{
-		kind: declaredClass,
-		Type: ClassType{
-			Fields:  fields,
-			Methods: meths,
-		},
+	env.Types[def.Name] = ClassType{
+		Fields:  fields,
+		Methods: meths,
 	}
 
 	return nil
 }
 
 func (env *env) addAlias(def *parse.TypeAlias) {
-	env.Types[def.Name] = namedType{
-		kind: declaredAlias,
-		Type: AliasType{
-			Module: env.Home,
-			Name:   def.Name,
-			Type:   env.canonicalizeType(def.Type),
-		},
+	env.Types[def.Name] = AliasType{
+		Module: env.Home,
+		Name:   def.Name,
+		Type:   env.canonicalizeType(def.Type),
 	}
 }
 
 func (env *env) addUnion(def *parse.UnionDef) {
-	env.Types[def.Name] = namedType{
-		kind: declaredUnion,
-		Type: UnionType{
-			Variants: fun.Map(def.Variants, func(v parse.TypeRepr) Type {
-				return env.canonicalizeType(v)
-			}),
-		},
+	env.Types[def.Name] = UnionType{
+		Variants: fun.Map(def.Variants, func(v parse.TypeRepr) Type {
+			return env.canonicalizeType(v)
+		}),
 	}
 }
 
 func (env *env) canonicalizeType(tyRepr parse.TypeRepr) Type {
 	switch ty := tyRepr.(type) {
 	case parse.SelfType:
-		return NamedType{Module: env.Home, Name: "Self"}
+		return TypeApplication{Module: env.Home, Name: "Self"}
 
 	case parse.RecordType:
 		fields := map[string]Type{}
@@ -153,7 +142,7 @@ func (env *env) canonicalizeType(tyRepr parse.TypeRepr) Type {
 		return SliceType{Type: env.canonicalizeType(ty.Type)}
 
 	case parse.TypeInstantiation:
-		return NamedType{
+		return TypeApplication{
 			Module: ModuleID(ty.Type.Module),
 			Name:   ty.Type.Name,
 			Params: fun.Map(ty.Params, func(param parse.TypeRepr) Type {
@@ -162,7 +151,7 @@ func (env *env) canonicalizeType(tyRepr parse.TypeRepr) Type {
 		}
 
 	case parse.TypeName:
-		return NamedType{
+		return TypeApplication{
 			Module: ModuleID(ty.Module),
 			Name:   ty.Name,
 			Params: []Type{},
