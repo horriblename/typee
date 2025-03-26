@@ -158,7 +158,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			assert.True(ok, "compiler bug: ast lookup failed: ", name)
 			t, err := self.defType(ctx, ast)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("defining type %s: %w", name, err)
 			}
 
 			p, ok := self.types.Get(name).Unwrap()
@@ -169,11 +169,11 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			// FIXME: this _probably_ destroys generalization with mutual recursive usage
 			// but I'm not too sure
 			if err := constrain(placeholder, t); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("unifying placeholder to defined type %s: %w", name, err)
 			}
 
 			if err := constrain(t, placeholder); err != nil {
-				return nil, err
+				return nil, fmt.Errorf("unifying placeholder to defined type %s: %w", name, err)
 			}
 		}
 	}
