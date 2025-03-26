@@ -13,21 +13,29 @@ import (
 
 type TypeName string
 
+// defined types
+type TypeDef interface {
+	typDef()
+}
+
+func (TypeAlias) typDef() {}
+func (ClassType) typDef() {}
+func (EnumType) typDef()  {}
+func (UnionType) typDef() {}
+
+// types that are actually "used"
+// i.e. not just a definition but a usage
 type Type interface {
 	typ()
 }
 
-func (AliasType) typ()       {}
 func (TypeApplication) typ() {}
 func (RecordType) typ()      {}
 func (ArrayType) typ()       {}
 func (SliceType) typ()       {}
 func (FnType) typ()          {}
-func (EnumType) typ()        {}
-func (ClassType) typ()       {}
-func (UnionType) typ()       {}
 
-type AliasType struct {
+type TypeAlias struct {
 	Module ModuleID
 	Name   string
 	Type   Type
@@ -84,12 +92,6 @@ type UnionType struct {
 //
 
 type Module struct {
-	Name    ModuleID
-	Aliases map[string]Alias
-}
-
-type Alias struct {
-	Name string
-	Type
-	// Params []Type
+	Name ModuleID
+	Defs map[string]TypeDef
 }
