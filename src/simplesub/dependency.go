@@ -100,14 +100,18 @@ func sortTypeDefs(ast []parse.Expr) (order [][]string, astLookup map[string]pars
 			for _, member := range n.Fields {
 				switch m := member.(type) {
 				case parse.ClassField:
-					selfRecursive = selfRecursive || markTypeDeps(m.Type, deps, n.Name)
+					if markTypeDeps(m.Type, deps, n.Name) {
+						selfRecursive = true
+					}
 				case parse.ClassMethod:
 					sig, ok := m.Func.Signature.Unwrap()
 					if !ok {
 						panic(fmt.Errorf("in %s.%s: class method signature is required", n.Name, m.Name()))
 					}
 					for _, t := range sig {
-						selfRecursive = selfRecursive || markTypeDeps(t, deps, n.Name)
+						if markTypeDeps(t, deps, n.Name) {
+							selfRecursive = true
+						}
 					}
 				}
 			}
