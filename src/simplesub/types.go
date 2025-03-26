@@ -726,7 +726,7 @@ func (self Enum) instantiate() SimpleType       { return self }
 func (self Top) children() []SimpleType { return []SimpleType{} }
 func (self Bot) children() []SimpleType { return []SimpleType{} }
 func (self Func) children() []SimpleType {
-	return append(append([]SimpleType{}, self.Args...), self.Ret)
+	return append(slices.Clone(self.Args), self.Ret)
 }
 func (self Record) children() []SimpleType {
 	return fun.Map(self.Fields, func(field NamedType) SimpleType { return field.Type })
