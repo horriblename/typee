@@ -100,6 +100,11 @@ type TypeScheme struct {
 	Over []Generic
 	Body Type
 }
+type Application struct {
+	Module string
+	Name   string
+	Params []Type
+}
 type Top struct{}
 type Join struct {
 	Lhs Type
@@ -110,41 +115,43 @@ type Inter struct {
 	Rhs Type
 }
 
-func (*String) type_()     {}
-func (*Int) type_()        {}
-func (*Float) type_()      {}
-func (*Bool) type_()       {}
-func (*Ref) type_()        {}
-func (*Record) type_()     {}
-func (*Union) type_()      {}
-func (*Enum) type_()       {}
-func (*Class) type_()      {}
-func (*Array) type_()      {}
-func (*Slice) type_()      {}
-func (*Func) type_()       {}
-func (*Generic) type_()    {}
-func (*TypeScheme) type_() {}
-func (*Top) type_()        {}
-func (*Join) type_()       {}
-func (*Inter) type_()      {}
+func (*String) type_()      {}
+func (*Int) type_()         {}
+func (*Float) type_()       {}
+func (*Bool) type_()        {}
+func (*Ref) type_()         {}
+func (*Record) type_()      {}
+func (*Union) type_()       {}
+func (*Enum) type_()        {}
+func (*Class) type_()       {}
+func (*Array) type_()       {}
+func (*Slice) type_()       {}
+func (*Func) type_()        {}
+func (*Generic) type_()     {}
+func (*TypeScheme) type_()  {}
+func (*Application) type_() {}
+func (*Top) type_()         {}
+func (*Join) type_()        {}
+func (*Inter) type_()       {}
 
-func (*String) Simple() bool     { return true }
-func (*Int) Simple() bool        { return true }
-func (*Float) Simple() bool      { return true }
-func (*Bool) Simple() bool       { return true }
-func (*Ref) Simple() bool        { return true }
-func (*Record) Simple() bool     { return false }
-func (*Union) Simple() bool      { return false }
-func (*Enum) Simple() bool       { return false }
-func (*Class) Simple() bool      { return false }
-func (*Array) Simple() bool      { return false }
-func (*Slice) Simple() bool      { return false }
-func (*Func) Simple() bool       { return false }
-func (*Generic) Simple() bool    { return false }
-func (*TypeScheme) Simple() bool { return false }
-func (*Top) Simple() bool        { return true }  // only used by biunification
-func (*Join) Simple() bool       { return false } // only used by biunification
-func (*Inter) Simple() bool      { return false } // only used by biunification
+func (*String) Simple() bool      { return true }
+func (*Int) Simple() bool         { return true }
+func (*Float) Simple() bool       { return true }
+func (*Bool) Simple() bool        { return true }
+func (*Ref) Simple() bool         { return true }
+func (*Record) Simple() bool      { return false }
+func (*Union) Simple() bool       { return false }
+func (*Enum) Simple() bool        { return false }
+func (*Class) Simple() bool       { return false }
+func (*Array) Simple() bool       { return false }
+func (*Slice) Simple() bool       { return false }
+func (*Func) Simple() bool        { return false }
+func (*Generic) Simple() bool     { return false }
+func (*TypeScheme) Simple() bool  { return false }
+func (*Application) Simple() bool { return false }
+func (*Top) Simple() bool         { return true }  // only used by biunification
+func (*Join) Simple() bool        { return false } // only used by biunification
+func (*Inter) Simple() bool       { return false } // only used by biunification
 
 func (*String) Eq(other Type) bool {
 	_, ok := other.(*String)
@@ -284,6 +291,20 @@ func (g *Generic) Eq(other Type) bool {
 func (ts *TypeScheme) Eq(other Type) bool {
 	panic("todo")
 }
+func (self *Application) Eq(other Type) bool {
+	o, ok := other.(*Application)
+	if !(ok && self.Module == o.Module && self.Name == o.Name) {
+		return false
+	}
+
+	for a, b := range fun.ZipSlices(self.Params, o.Params) {
+		if !a.Eq(b) {
+			return false
+		}
+	}
+
+	return true
+}
 func (self *Top) Eq(other Type) bool {
 	_, ok := other.(*Top)
 	return ok
@@ -406,6 +427,23 @@ func (ts *TypeScheme) String() string {
 		b.WriteString(". ")
 	}
 	b.WriteString(ts.Body.String())
+	return b.String()
+}
+func (self *Application) String() string {
+	var b strings.Builder
+	b.WriteString("(")
+	if self.Module != "" {
+		b.WriteString(self.Module)
+		b.WriteString(".")
+	}
+	b.WriteString(self.Name)
+
+	for _, param := range self.Params {
+		b.WriteString(" ")
+		b.WriteString(param.String())
+	}
+
+	b.WriteString(")")
 	return b.String()
 }
 func (self *Top) String() string   { return "⊤" }
