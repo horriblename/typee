@@ -573,6 +573,20 @@ func TestParseType(t *testing.T) {
 			},
 		},
 		{
+			desc:  "fn type",
+			input: "(fn [Int (Foo Int)] Bool)",
+			output: FnType{
+				Args: []TypeRepr{
+					TypeName{"Int", ""},
+					TypeInstantiation{
+						Type:   TypeName{"Foo", ""},
+						Params: []TypeRepr{TypeName{"Int", ""}},
+					},
+				},
+				Ret: TypeName{"Bool", ""},
+			},
+		},
+		{
 			desc:   "imported type",
 			input:  "GObject.Object",
 			output: TypeName{"Object", "GObject"},

@@ -15,6 +15,7 @@ func type_(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 		selfType,
 		recordType,
 		arrayType,
+		fnType,
 		instantiatedType,
 	)(in)
 }
@@ -96,6 +97,34 @@ func arrayType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 		Size: out.Two,
 	}
 
+	return in, t, nil
+}
+
+func fnType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
+	in, out, err := combinator.Surround(
+		lparen,
+		combinator.WithPrefix(
+			kwFn,
+			combinator.Then(
+				combinator.Surround(
+					lbracket,
+					combinator.Many0(type_),
+					rbracket,
+				),
+				type_,
+			),
+		),
+		rparen,
+	)(in)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	t := FnType{
+		Args: out.One,
+		Ret:  out.Two,
+	}
 	return in, t, nil
 }
 

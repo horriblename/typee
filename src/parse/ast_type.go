@@ -35,12 +35,17 @@ type TypeInstantiation struct {
 	Type   TypeName
 	Params []TypeRepr
 }
+type FnType struct {
+	Args []TypeRepr
+	Ret  TypeRepr
+}
 
 func (self TypeName) type_()          {}
 func (self SelfType) type_()          {}
 func (self RecordType) type_()        {}
 func (self ArrayType) type_()         {}
 func (self TypeInstantiation) type_() {}
+func (self FnType) type_()            {}
 
 func (self TypeName) String() string {
 	if self.Module != "" {
@@ -75,6 +80,20 @@ func (self TypeInstantiation) String() string {
 		return p.String()
 	})
 	return fmt.Sprintf("(%s %s)", self.Type.Name, strings.Join(params, " "))
+}
+func (self FnType) String() string {
+	var b strings.Builder
+	b.WriteString("(fn [")
+	for i, arg := range self.Args {
+		if i != 0 {
+			b.WriteString(" ")
+		}
+		b.WriteString(arg.String())
+	}
+	b.WriteString("] ")
+	b.WriteString(self.Ret.String())
+	b.WriteString(")")
+	return b.String()
 }
 
 func ChildNodes(node TypeRepr) []TypeRepr {
