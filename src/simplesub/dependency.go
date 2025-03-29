@@ -125,6 +125,8 @@ func sortTypeDefs(ast []parse.Expr) (order [][]string, astLookup map[string]pars
 			deps := map[string]unit{}
 			markTypeDeps(n.Type, deps, "")
 			allDeps[n.Name] = deps
+
+		default:
 		}
 	}
 
