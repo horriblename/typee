@@ -344,7 +344,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 		}
 		return nil, fmt.Errorf("%w: %s", ErrUndefinedVariable, expr.Name)
 	case *parse.SelfLiteral:
-		if ty, err := self.parseType(parse.SelfType{}); err == nil {
+		if ty, err := self.parseType(ctx, parse.SelfType{}); err == nil {
 			return ty.instantiate(), nil
 		} else {
 			return nil, err
@@ -367,7 +367,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 			}
 
 			for i, arg := range sig[:len(sig)-1] {
-				param, err := self.parseType(arg)
+				param, err := self.parseType(ctx, arg)
 				if err != nil {
 					return nil, err
 				}
@@ -377,7 +377,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 				self.vars.Insert(expr.Args[i], p)
 			}
 
-			retHint, err := self.parseType(sig[len(sig)-1])
+			retHint, err := self.parseType(ctx, sig[len(sig)-1])
 			if err != nil {
 				return nil, err
 			}
@@ -398,7 +398,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 		for i, arg := range expr.Args {
 			if i == 0 && arg == "self" {
 				// TODO: don't think I need this
-				ty, err := self.parseType(parse.SelfType{})
+				ty, err := self.parseType(ctx, parse.SelfType{})
 				if err != nil {
 					return nil, err
 				}
@@ -669,7 +669,7 @@ func (self *Typer) externDef(ctx *moduleContext, e *parse.FuncDef) (SimpleType, 
 	}
 
 	for i, arg := range sig[:len(sig)-1] {
-		param, err := self.parseType(arg)
+		param, err := self.parseType(ctx, arg)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"reading type of argument '%s' of function %s: %w",
@@ -681,7 +681,7 @@ func (self *Typer) externDef(ctx *moduleContext, e *parse.FuncDef) (SimpleType, 
 		self.vars.Insert(e.Args[i], p)
 	}
 
-	retHint, err := self.parseType(sig[len(sig)-1])
+	retHint, err := self.parseType(ctx, sig[len(sig)-1])
 	if err != nil {
 		return nil, fmt.Errorf(
 			"reading return type '%s' of function %s: %w",
@@ -705,7 +705,7 @@ func (self *Typer) defType(ctx *moduleContext, def parse.Expr) (SimpleType, erro
 		return typ, nil
 
 	case *parse.UnionDef:
-		t, err := self.parseUnionDef(d)
+		t, err := self.parseUnionDef(ctx, d)
 		if err != nil {
 			return nil, err
 		}
@@ -714,7 +714,7 @@ func (self *Typer) defType(ctx *moduleContext, def parse.Expr) (SimpleType, erro
 		return t, nil
 
 	case *parse.ObjectTypeDef:
-		t, err := self.parseClassOutline(d)
+		t, err := self.parseClassOutline(ctx, d)
 		if err != nil {
 			return nil, err
 		}
@@ -724,7 +724,7 @@ func (self *Typer) defType(ctx *moduleContext, def parse.Expr) (SimpleType, erro
 		return t, nil
 
 	case *parse.TypeAlias:
-		target, err := self.parseType(d.Type)
+		target, err := self.parseType(ctx, d.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -740,7 +740,7 @@ func (self *Typer) defType(ctx *moduleContext, def parse.Expr) (SimpleType, erro
 }
 
 // type checks fields and assigns fresh variables to methods
-func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType, error) {
+func (self *Typer) parseClassOutline(ctx *moduleContext, classDef *parse.ObjectTypeDef) (SimpleType, error) {
 	self.classScope = classDef.Name
 	defer func() { self.classScope = "" }()
 
@@ -792,7 +792,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 	for _, field := range classDef.Fields {
 		switch f := field.(type) {
 		case parse.ClassField:
-			typ, err := self.parseType(f.Type)
+			typ, err := self.parseType(ctx, f.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -825,7 +825,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 					args[i] = selfTy
 					continue
 				}
-				ty, err := self.parseType(arg)
+				ty, err := self.parseType(ctx, arg)
 				if err != nil {
 					return nil, fmt.Errorf("in %s.%s, reading type signature [%d] of %d: %w",
 						classDef.Name,
@@ -850,7 +850,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 				args[i] = sty
 			}
 
-			ret, err := self.parseType(sig[len(sig)-1])
+			ret, err := self.parseType(ctx, sig[len(sig)-1])
 			if err != nil {
 				return nil, fmt.Errorf("in %s.%s, reading return type: %w", classDef.Name, f.Func.Name, err)
 			}
@@ -966,11 +966,11 @@ func (self *Typer) defClassMethods(ctx *moduleContext, classDef *parse.ObjectTyp
 	return nil
 }
 
-func (self *Typer) parseUnionDef(unionDef *parse.UnionDef) (SimpleType, error) {
+func (self *Typer) parseUnionDef(ctx *moduleContext, unionDef *parse.UnionDef) (SimpleType, error) {
 	// TODO: check repeated variants?
 	variants := make([]ConcreteType, len(unionDef.Variants))
 	for i, v := range unionDef.Variants {
-		t, err := self.parseType(v)
+		t, err := self.parseType(ctx, v)
 		if err != nil {
 			return nil, err
 		}
@@ -1055,30 +1055,28 @@ func (self *Typer) parseEnumDef(enumDef *parse.EnumDef) (ConcreteType, error) {
 	return t, nil
 }
 
-func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
+func (self *Typer) parseType(ctx *moduleContext, tr parse.TypeRepr) (TypeScheme, error) {
 	switch t := tr.(type) {
 	case parse.TypeName:
-		if _, ok := self.types.Get(t.Name).Unwrap(); ok {
-			ty, err := self.readTypeName(t)
-			if err != nil {
-				return nil, err
-			}
-
-			if pty, ok := ty.(PolymorphicType); ok {
-				nParams, ok := pty.TypeParams.Unwrap()
-				if ok {
-					return nil, fmt.Errorf("%w: %s takes %d type parameters, got 0", ErrWrongTypeParamCount, t.Name, nParams)
-				}
-			}
-
-			return Application{
-				Module: t.Module,
-				Name:   t.Name,
-				Base:   ty,
-				Params: []SimpleType{},
-			}, nil
+		ty, err := self.readTypeName(ctx, t)
+		if err != nil {
+			return nil, err
 		}
-		return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, t.Name)
+
+		if pty, ok := ty.(PolymorphicType); ok {
+			nParams, ok := pty.TypeParams.Unwrap()
+			if ok {
+				return nil, fmt.Errorf("%w: %s takes %d type parameters, got 0", ErrWrongTypeParamCount, t.Name, nParams)
+			}
+		}
+
+		return Application{
+			Module: t.Module,
+			Name:   t.Name,
+			Base:   ty,
+			Params: []SimpleType{},
+		}, nil
+
 	case parse.SelfType:
 		if self.classScope == "" {
 			return nil, ErrSelfTypeUnbound
@@ -1092,7 +1090,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 
 	case parse.RecordType:
 		fields, err := fun.MapIfOk(t.Fields, func(f parse.RecordTypeField) (NamedType, error) {
-			t, err := self.parseType(f.Type)
+			t, err := self.parseType(ctx, f.Type)
 			if err != nil {
 				return NamedType{}, err
 			}
@@ -1107,7 +1105,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 		return Record{Fields: fields}, nil
 
 	case parse.ArrayType:
-		el, err := self.parseType(t.Type)
+		el, err := self.parseType(ctx, t.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -1140,7 +1138,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 		}
 
 	case parse.TypeInstantiation:
-		base, err := self.readTypeName(t.Type)
+		base, err := self.readTypeName(ctx, t.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -1155,7 +1153,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 		}
 
 		params, err := fun.MapIfOk(t.Params, func(r parse.TypeRepr) (SimpleType, error) {
-			t, err := self.parseType(r)
+			t, err := self.parseType(ctx, r)
 			if err != nil {
 				return nil, err
 			}
@@ -1183,7 +1181,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 	}
 }
 
-func (self *Typer) readTypeName(t parse.TypeName) (TypeScheme, error) {
+func (self *Typer) readTypeName(ctx *moduleContext, t parse.TypeName) (TypeScheme, error) {
 	if t.Module == "" {
 		if ty, ok := self.types.Get(t.Name).Unwrap(); !ok {
 			return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, t.Name)
@@ -1192,15 +1190,11 @@ func (self *Typer) readTypeName(t parse.TypeName) (TypeScheme, error) {
 		}
 	} else {
 		// our import system is jank as hell (modules are stored as record types)
-		if mod, ok := self.types.Get(t.Module).Unwrap(); !ok {
+		if mod, ok := ctx.imports[t.Module]; !ok {
 			return nil, fmt.Errorf("%w: %s", ErrUndefinedModule, t.Module)
-		} else if modRcd, ok := mod.(Record); !ok {
-			return nil, fmt.Errorf("%s is not a module", t.Module)
 		} else {
-			for _, field := range modRcd.Fields {
-				if field.Name == t.Name {
-					return field.Type, nil
-				}
+			if ty, ok := mod.Types[t.Name]; ok {
+				return ty, nil
 			}
 			return nil, fmt.Errorf("%w: %s.%s", ErrUndefinedTypeName, t.Module, t.Name)
 		}
