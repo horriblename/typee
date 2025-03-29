@@ -785,8 +785,10 @@ func (self Ref) children() []SimpleType       { return []SimpleType{} }
 func (self Union) children() []SimpleType {
 	return fun.Map(self.Variants, func(c ConcreteType) SimpleType { return c })
 }
-func (self Enum) children() []SimpleType        { return []SimpleType{} }
-func (self Application) children() []SimpleType { return []SimpleType{} } // TODO: is this right?
+func (self Enum) children() []SimpleType { return []SimpleType{} }
+
+// TODO: should probably at the very least return Application.Params
+func (self Application) children() []SimpleType { return []SimpleType{} }
 
 func (self Top) concrete()         {}
 func (self Bot) concrete()         {}
@@ -857,7 +859,7 @@ func (self Enum) String() string {
 }
 func (self Application) String() string {
 	var b strings.Builder
-	b.WriteString("(")
+	b.WriteString("( ")
 	b.WriteString(self.Name)
 	for _, param := range self.Params {
 		b.WriteString(" ")
