@@ -26,6 +26,7 @@ type Typer struct {
 
 var ErrUndefinedVariable = errors.New("undefined variable")
 var ErrUndefinedTypeName = errors.New("undefined type")
+var ErrUndefinedModule = errors.New("undefined module")
 var ErrSelfUnbound = errors.New("keyword self used outside of a method")
 var ErrSelfTypeUnbound = errors.New("keyword Self used outside of a class definition")
 var ErrWrongArgCount = errors.New("wrong argument count")
@@ -701,6 +702,8 @@ func (self *Typer) externDef(ctx *moduleContext, e *parse.FuncDef) (SimpleType, 
 
 func (self *Typer) defType(ctx *moduleContext, def parse.Expr) (SimpleType, error) {
 	switch d := def.(type) {
+	// TODO: this shouldn't be possible (enum defs cannot depend on other types currently)
+	// should I assert against this?
 	case *parse.EnumDef:
 		typ, err := self.parseEnumDef(d)
 		if err != nil {
@@ -1039,8 +1042,25 @@ func (self *Typer) parseEnumDef(enumDef *parse.EnumDef) (ConcreteType, error) {
 func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 	switch t := tr.(type) {
 	case parse.TypeName:
-		if typ, ok := self.types.Get(t.Name).Unwrap(); ok {
-			return typ, nil
+		if _, ok := self.types.Get(t.Name).Unwrap(); ok {
+			ty, err := self.readTypeName(t)
+			if err != nil {
+				return nil, err
+			}
+
+			if pty, ok := ty.(PolymorphicType); ok {
+				nParams, ok := pty.TypeParams.Unwrap()
+				if ok {
+					return nil, fmt.Errorf("%w: %s takes %d type parameters, got 0", ErrWrongTypeParamCount, t.Name, nParams)
+				}
+			}
+
+			return Application{
+				Module: t.Module,
+				Name:   t.Name,
+				Base:   ty,
+				Params: []SimpleType{},
+			}, nil
 		}
 		return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, t.Name)
 	case parse.SelfType:
@@ -1052,7 +1072,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 			return t, nil
 		}
 
-		panic(fmt.Sprintf("type checker bug: class scope '%s' exists but corresponding type not found", self.classScope))
+		return nil, fmt.Errorf("type checker bug: class scope '%s' exists but corresponding type not found", self.classScope)
 
 	case parse.RecordType:
 		fields, err := fun.MapIfOk(t.Fields, func(f parse.RecordTypeField) (NamedType, error) {
@@ -1104,7 +1124,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 		}
 
 	case parse.TypeInstantiation:
-		base, err := self.parseType(t.Type)
+		base, err := self.readTypeName(t.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -1112,6 +1132,10 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 		pbase, ok := base.(PolymorphicType)
 		if !ok {
 			return nil, fmt.Errorf("%w: type %s in %s", ErrUnparameterizedTypePassedParams, base, t)
+		}
+
+		if expected, ok := pbase.TypeParams.Unwrap(); !ok || len(expected) != len(t.Params) {
+			return nil, fmt.Errorf("%w: %s expects %d type params, got %d", ErrWrongTypeParamCount, t.Type.Name, len(expected), len(t.Params))
 		}
 
 		params, err := fun.MapIfOk(t.Params, func(r parse.TypeRepr) (SimpleType, error) {
@@ -1131,10 +1155,39 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 			return nil, err
 		}
 
-		return pbase.concretize(params)
+		return Application{
+			Module: t.Type.Module,
+			Name:   t.Type.Name,
+			Base:   base,
+			Params: params,
+		}, nil
 
 	default:
 		panic(fmt.Sprintf("unexpected parse.TypeRepr: %#v", t))
+	}
+}
+
+func (self *Typer) readTypeName(t parse.TypeName) (TypeScheme, error) {
+	if t.Module == "" {
+		if ty, ok := self.types.Get(t.Name).Unwrap(); !ok {
+			return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, t.Name)
+		} else {
+			return ty, nil
+		}
+	} else {
+		// our import system is jank as hell (modules are stored as record types)
+		if mod, ok := self.types.Get(t.Module).Unwrap(); !ok {
+			return nil, fmt.Errorf("%w: %s", ErrUndefinedModule, t.Module)
+		} else if modRcd, ok := mod.(Record); !ok {
+			return nil, fmt.Errorf("%s is not a module", t.Module)
+		} else {
+			for _, field := range modRcd.Fields {
+				if field.Name == t.Name {
+					return field.Type, nil
+				}
+			}
+			return nil, fmt.Errorf("%w: %s.%s", ErrUndefinedTypeName, t.Module, t.Name)
+		}
 	}
 }
 

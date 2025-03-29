@@ -711,6 +711,7 @@ type SliceType struct {
 type Application struct {
 	Module string
 	Name   string
+	Base   TypeScheme
 	Params []SimpleType
 }
 
