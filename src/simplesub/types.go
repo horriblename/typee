@@ -839,6 +839,22 @@ func (self Application) String() string {
 	return b.String()
 }
 
+func (self Application) concretize() SimpleType {
+	switch base := self.Base.(type) {
+	case PolymorphicType:
+		ty, err := base.concretize(self.Params)
+		if err != nil {
+			panic(fmt.Sprintf("compiler bug: Application.concretize has wrong parameter count - should have been checked?"))
+		}
+
+		return ty
+	case SimpleType:
+		return base
+	default:
+		panic(fmt.Sprintf("unexpected simplesub.TypeScheme: %#v", base))
+	}
+}
+
 type deepPrintCtx struct {
 	visited map[string]bool
 	buf     strings.Builder

@@ -1195,6 +1195,14 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 	trace("constrain %v <: %v", ty0, bound0)
 	indentLvl++
 	defer func() { indentLvl-- }()
+
+	if lhs, ok := ty0.(Application); ok {
+		return constrain(lhs.concretize(), bound0)
+	}
+	if rhs, ok := bound0.(Application); ok {
+		return constrain(ty0, rhs.concretize())
+	}
+
 	// TODO: simpler-sub used type equality I think?
 	if lhs, rhs, ok := matchPair[Primitive, Primitive](ty0, bound0); ok {
 		if lhs.Kind == rhs.Kind {
@@ -1474,6 +1482,15 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 		return SliceType{substitute(t.ElType)}
 	case Ref:
 		return Ref{substitute(t.Content)}
+	case Application:
+		return Application{
+			Module: t.Module,
+			Name:   t.Name,
+			Base:   t.Base,
+			Params: fun.Map(t.Params, func(param SimpleType) SimpleType {
+				return substitute(param)
+			}),
+		}
 	case Primitive, Bot, Str, Top, Union, Enum: // terminals and Union, because generics are banned in Union
 	default:
 		panic(fmt.Sprintf("unexpected simplesub.ConcreteType: %#v", t))

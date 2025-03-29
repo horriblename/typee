@@ -55,6 +55,12 @@ func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[*Variable]
 		}
 	case Ref:
 		analyze(ty.Content, pol, pos, neg)
+	case Application:
+		for _, param := range ty.Params {
+			// FIXME: I'm probably using the wrong pol half the time,
+			// but I'll need to wanna add variance semantics to type var annotations
+			analyze(param, pol, pos, neg)
+		}
 	case Primitive, Int, Str, Top, Bot, Enum, Union: // Union bans generics
 	}
 }
@@ -92,6 +98,15 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleTy
 		return SliceType{transform(ty.ElType, pol, mapping, pos, neg)}
 	case Ref:
 		return Ref{transform(ty.Content, pol, mapping, pos, neg)}
+	case Application:
+		return Application{
+			Module: ty.Module,
+			Name:   ty.Name,
+			Base:   ty.Base,
+			Params: fun.Map(ty.Params, func(param SimpleType) SimpleType {
+				return transform(param, pol, mapping, pos, neg)
+			}),
+		}
 	case Primitive, Int, Str, Top, Bot, Union, Enum: // Union bans generics
 		return st
 	}
@@ -243,6 +258,15 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 		return &types.Enum{Name: "", Values: map[string]int64{}}
 	case Top:
 		return &types.Top{}
+	case Application:
+		return &types.Application{
+			Module: ty.Module,
+			Name:   ty.Name,
+			Params: fun.Map(ty.Params, func(param SimpleType) types.Type {
+				return coalesceTypeInner(param, polarity)
+			}),
+		}
+
 	default:
 		panic(fmt.Sprintf("unexpected biunify.SimpleType: %#v", ty))
 	}
