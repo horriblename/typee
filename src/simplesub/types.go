@@ -172,6 +172,20 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		return rhs, nil
 	} else if lhs, _, ok := matchPair[C, Bot](lhs0, rhs0); ok {
 		return lhs, nil
+	} else if lhs, rhs, ok := matchPair[Application, Application](lhs0, rhs0); ok {
+		if lhs.Module == rhs.Module && lhs.Name == rhs.Name {
+			return lhs, nil
+		}
+
+		return nil, fmt.Errorf("coercion between named types not yet supported: %v and %v", lhs, rhs)
+	} else if lhs, rhs, ok := matchPair[C, Application](lhs0, rhs0); ok {
+		return glbConcrete(rhs, lhs)
+	} else if lhs, rhs, ok := matchPair[Application, C](lhs0, rhs0); ok {
+		if err := constrain(rhs, lhs.concretize()); err != nil {
+			return nil, fmt.Errorf("TODO currently only implemented glb of Application types if the Application type is greater: glb(%v, %v)", lhs, rhs)
+		}
+
+		return lhs, nil
 	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
 		args := make([]SimpleType, 0, len(lhs.Args))
 		argPairs := fun.ZipIter(slices.Values(lhs.Args), slices.Values(rhs.Args))
@@ -396,6 +410,20 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		return Top{}, nil
 	} else if _, _, ok := matchPair[C, Top](lhs0, rhs0); ok {
 		return Top{}, nil
+	} else if lhs, rhs, ok := matchPair[Application, Application](lhs0, rhs0); ok {
+		if lhs.Module == rhs.Module && lhs.Name == rhs.Name {
+			return lhs, nil
+		}
+
+		return nil, fmt.Errorf("coercion between named types not yet supported: %v and %v", lhs, rhs)
+	} else if lhs, rhs, ok := matchPair[C, Application](lhs0, rhs0); ok {
+		return lubConcrete(rhs, lhs)
+	} else if lhs, rhs, ok := matchPair[Application, C](lhs0, rhs0); ok {
+		if err := constrain(lhs.concretize(), rhs); err != nil {
+			return nil, fmt.Errorf("TODO currently only implemented lub of Application types if the Application type is greater: lub(%v, %v)", lhs, rhs)
+		}
+
+		return lhs, nil
 	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
 		assert.Eq(len(lhs.Args), len(rhs.Args), "different arg count")
 
