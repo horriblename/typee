@@ -156,7 +156,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			p, ok := self.types.Get(name).Unwrap()
 			assert.True(ok, "placeholder type dissappeared??")
 
-			placeholder := assert.Cast[*Variable](p, "placeholder not a type var??")
+			placeholder := assert.Cast[SimpleType](p, "Polymorphic placeholder???")
 
 			// FIXME: this _probably_ destroys generalization with mutual recursive usage
 			// but I'm not too sure
@@ -1206,18 +1206,21 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 	indentLvl++
 	defer func() { indentLvl-- }()
 
-	if lhs, ok := ty0.(Application); ok {
-		return constrain(lhs.concretize(), bound0)
-	}
-	if rhs, ok := bound0.(Application); ok {
-		return constrain(ty0, rhs.concretize())
-	}
-
 	// TODO: simpler-sub used type equality I think?
 	if lhs, rhs, ok := matchPair[Primitive, Primitive](ty0, bound0); ok {
 		if lhs.Kind == rhs.Kind {
 			return nil
 		}
+	} else if lhs, rhs, ok := matchPair[Application, Application](ty0, bound0); ok {
+		if lhs.Module == rhs.Module && lhs.Name == rhs.Name {
+			return nil
+		}
+
+		return fmt.Errorf("TODO not implemented: constrain between different Application types")
+	} else if lhs, _, ok := matchPair[Application, SimpleType](ty0, bound0); ok {
+		return constrain(lhs.concretize(), bound0)
+	} else if _, rhs, ok := matchPair[SimpleType, Application](ty0, bound0); ok {
+		return constrain(ty0, rhs.concretize())
 	} else if lhs, rhs, ok := matchPair[Int, Int](ty0, bound0); ok {
 		if lhs.Signed != rhs.Signed || lhs.BitSize != rhs.BitSize {
 			return fmt.Errorf("%w: int conversion not implemented", ErrIncompatibleTypes)
