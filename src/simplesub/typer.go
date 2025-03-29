@@ -129,7 +129,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 	recursiveness := map[string]bool{}
 	groups, selfRecursives := groupRecursives(program)
 
-	typeDefOrder, typeDefAsts, selfRecTypes := sortTypeDefs(program)
+	typeDefOrder, typeDefAsts, _ := sortTypeDefs(program)
 
 	// process type definitions
 	for _, group := range typeDefOrder {
@@ -139,16 +139,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 				continue
 			}
 
-			if _, ok := selfRecTypes[group[0]]; !ok {
-				ast, ok := typeDefAsts[group[0]]
-				assert.True(ok, "compiler bug: failed ast lookup: ", group[0])
-				t, err := self.defType(ctx, ast)
-				if err != nil {
-					return nil, err
-				}
-				self.types.Insert(group[0], t)
-				continue
-			}
+			// TODO: non-self-recursive single item groups maybe can skip placeholder var creation
 		}
 		for _, name := range group {
 			self.types.Insert(name, freshVar())
@@ -779,7 +770,21 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 		supers[i] = sc
 	}
 
-	dummySelf := freshVar()
+	objTy, ok := self.types.Get(classDef.Name).Unwrap()
+	if !ok {
+		return nil, fmt.Errorf("compiler bug: parsing class outline of '%s': corresponding class not defined", classDef.Name)
+	}
+
+	selfTy := Application{
+		Module: "",
+		Name:   classDef.Name,
+		Base:   objTy,
+		// TODO: apply type params
+		Params: []SimpleType{},
+	}
+
+	self.types.Insert("Self", selfTy)
+
 	fields := []NamedMember{}
 	methods := []NamedMember{}
 
@@ -817,7 +822,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 			args := make([]SimpleType, len(sig)-1)
 			for i, arg := range sig[:len(sig)-1] {
 				if i == 0 && (arg == parse.SelfType{}) {
-					args[i] = dummySelf
+					args[i] = selfTy
 					continue
 				}
 				ty, err := self.parseType(arg)
@@ -901,13 +906,25 @@ func (self *Typer) defClassMethods(ctx *moduleContext, classDef *parse.ObjectTyp
 	self.types.NewScope()
 	defer self.types.PopScope()
 
+	objTy, ok := self.types.Get(classDef.Name).Unwrap()
+	if !ok {
+		return fmt.Errorf("compiler bug: typing methods of '%s': corresponding class not found", self.classScope)
+	}
+
+	self.types.Insert("Self", Application{
+		Module: "",
+		Name:   classDef.Name,
+		Base:   objTy,
+		// TODO: apply variables
+		Params: []SimpleType{},
+	})
+
 	for _, field := range classDef.Fields {
 		// idea from ocaml, though theirs are so complicated I can't be sure I copied it
 		// correctly, nor do I know if this is "safe"
 		// ocaml uses limited generalization whereas I generalize the whole thing.
 		// I think generalizing just the type var of the method we're check should be enough
 		// TODO: pretty sure I should concretize instead?
-		self.types.Insert("Self", classTy.NewSignature())
 		f, ok := field.(parse.ClassMethod)
 		if !ok {
 			continue
@@ -985,10 +1002,9 @@ func (self *Typer) typeMethodCall(ctx *moduleContext, methAccess *parse.MethodAc
 	if err != nil {
 		return nil, fmt.Errorf("typing method call on %s: %w", methAccess.Pretty(), err)
 	}
-	objTy := assert.Cast[ObjectType](oTy, "method access with non-object lhs?", methAccess.Pretty())
 
 	argTys := make([]SimpleType, 0, len(form.Children))
-	argTys = append(argTys, objTy.NewSignature())
+	argTys = append(argTys, oTy)
 	for _, arg := range form.Children[1:] {
 		ty, err := self.TypeTerm(ctx, arg)
 		if err != nil {
@@ -998,7 +1014,7 @@ func (self *Typer) typeMethodCall(ctx *moduleContext, methAccess *parse.MethodAc
 	}
 	ret := freshVar()
 
-	err = constrain(objTy, ObjectType{
+	err = constrain(oTy, ObjectType{
 		Name:   "",
 		Supers: []ObjectType{},
 		Fields: []NamedMember{},
@@ -1072,7 +1088,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 			return t, nil
 		}
 
-		return nil, fmt.Errorf("type checker bug: class scope '%s' exists but corresponding type not found", self.classScope)
+		return nil, fmt.Errorf("type checker bug: class scope '%s' exists but Self type not found", self.classScope)
 
 	case parse.RecordType:
 		fields, err := fun.MapIfOk(t.Fields, func(f parse.RecordTypeField) (NamedType, error) {

@@ -967,11 +967,6 @@ func (self *deepPrintCtx) printObjectType(t ObjectType) {
 	self.buf.WriteString("}")
 }
 
-func (self ObjectType) NewSignature() SimpleType {
-	// TODO: should I concretize just some of them instead?
-	return PolymorphicType{self, opt.None[[]uint]()}.instantiate()
-}
-
 func (self ObjectType) FindMethod(name string) (method Member, found bool) {
 	classes := []ObjectType{self}
 	for len(classes) > 0 {
