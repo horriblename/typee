@@ -708,20 +708,26 @@ type ArrayType struct {
 type SliceType struct {
 	ElType SimpleType
 }
+type Application struct {
+	Module string
+	Name   string
+	Params []SimpleType
+}
 
-func (self Top) instantiate() SimpleType        { return self }
-func (self Bot) instantiate() SimpleType        { return self }
-func (self Func) instantiate() SimpleType       { return self }
-func (self Record) instantiate() SimpleType     { return self }
-func (self ObjectType) instantiate() SimpleType { return self }
-func (self ArrayType) instantiate() SimpleType  { return self }
-func (self SliceType) instantiate() SimpleType  { return self }
-func (self Primitive) instantiate() SimpleType  { return self }
-func (self Int) instantiate() SimpleType        { return self }
-func (self Str) instantiate() SimpleType        { return self }
-func (self Ref) instantiate() SimpleType        { return self }
-func (self Union) instantiate() SimpleType      { return self }
-func (self Enum) instantiate() SimpleType       { return self }
+func (self Top) instantiate() SimpleType         { return self }
+func (self Bot) instantiate() SimpleType         { return self }
+func (self Func) instantiate() SimpleType        { return self }
+func (self Record) instantiate() SimpleType      { return self }
+func (self ObjectType) instantiate() SimpleType  { return self }
+func (self ArrayType) instantiate() SimpleType   { return self }
+func (self SliceType) instantiate() SimpleType   { return self }
+func (self Primitive) instantiate() SimpleType   { return self }
+func (self Int) instantiate() SimpleType         { return self }
+func (self Str) instantiate() SimpleType         { return self }
+func (self Ref) instantiate() SimpleType         { return self }
+func (self Union) instantiate() SimpleType       { return self }
+func (self Enum) instantiate() SimpleType        { return self }
+func (self Application) instantiate() SimpleType { return self }
 
 func (self Top) children() []SimpleType { return []SimpleType{} }
 func (self Bot) children() []SimpleType { return []SimpleType{} }
@@ -750,21 +756,23 @@ func (self Ref) children() []SimpleType       { return []SimpleType{} }
 func (self Union) children() []SimpleType {
 	return fun.Map(self.Variants, func(c ConcreteType) SimpleType { return c })
 }
-func (self Enum) children() []SimpleType { return []SimpleType{} }
+func (self Enum) children() []SimpleType        { return []SimpleType{} }
+func (self Application) children() []SimpleType { return []SimpleType{} } // TODO: is this right?
 
-func (self Top) concrete()        {}
-func (self Bot) concrete()        {}
-func (self Func) concrete()       {}
-func (self Record) concrete()     {}
-func (self ObjectType) concrete() {}
-func (self ArrayType) concrete()  {}
-func (self SliceType) concrete()  {}
-func (self Primitive) concrete()  {}
-func (self Int) concrete()        {}
-func (self Str) concrete()        {}
-func (self Ref) concrete()        {}
-func (self Union) concrete()      {}
-func (self Enum) concrete()       {}
+func (self Top) concrete()         {}
+func (self Bot) concrete()         {}
+func (self Func) concrete()        {}
+func (self Record) concrete()      {}
+func (self ObjectType) concrete()  {}
+func (self ArrayType) concrete()   {}
+func (self SliceType) concrete()   {}
+func (self Primitive) concrete()   {}
+func (self Int) concrete()         {}
+func (self Str) concrete()         {}
+func (self Ref) concrete()         {}
+func (self Union) concrete()       {}
+func (self Enum) concrete()        {}
+func (self Application) concrete() {}
 
 func (self Top) String() string { return "⊤" }
 func (self Bot) String() string { return "⊥" }
@@ -816,6 +824,17 @@ func (self Enum) String() string {
 		b.WriteByte(' ')
 	}
 	b.WriteString("})")
+	return b.String()
+}
+func (self Application) String() string {
+	var b strings.Builder
+	b.WriteString("(")
+	b.WriteString(self.Name)
+	for _, param := range self.Params {
+		b.WriteString(" ")
+		b.WriteString(param.String())
+	}
+	b.WriteString(")")
 	return b.String()
 }
 
@@ -942,7 +961,22 @@ func getVars(ty SimpleType) *orderedset.OrderedSet[*Variable] {
 			result.Insert(v)
 			work = append(work, v.children()...)
 			continue
+		} else if obj, ok := ty.(*ObjectType); ok {
+			// HACK: skips vars of methods
+			for _, field := range obj.Fields {
+				work = append(work, field.Type)
+			}
+			for _, meth := range obj.Methods {
+				if methv, ok := meth.Type.(*Variable); ok {
+					// skip methods that are type vars
+					work = append(work, methv.children()...)
+				} else {
+					work = append(work, meth.Type)
+				}
+			}
+			continue
 		}
+
 		work = append(work, ty.children()...)
 
 	}
