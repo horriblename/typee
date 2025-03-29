@@ -1,7 +1,10 @@
 // functional utils
 package fun
 
-import "iter"
+import (
+	"iter"
+	"slices"
+)
 
 func Map[T, U any](xs []T, f func(T) U) []U {
 	ys := make([]U, 0, len(xs))
@@ -61,6 +64,10 @@ func ZipIter[T, U any](i1 iter.Seq[T], i2 iter.Seq[U]) iter.Seq2[T, U] {
 			}
 		}
 	}
+}
+
+func ZipSlices[T, U any](a []T, b []U) iter.Seq2[T, U] {
+	return ZipIter(slices.Values(a), slices.Values(b))
 }
 
 func Collect[T any](s iter.Seq[T]) []T {
