@@ -17,8 +17,11 @@ type Typer struct {
 	debug      bool
 	mainModule string
 	classScope string
-	vars       scope.ScopedMap[TypeScheme]
-	types      scope.ScopedMap[TypeScheme]
+
+	vars     scope.ScopedMap[TypeScheme]
+	types    scope.ScopedMap[TypeScheme]
+	inferred map[int]TypeScheme
+	imports  map[string]ModuleInfo
 
 	// shared across all modules
 	moduleCache map[string]ModuleInfo
@@ -73,23 +76,20 @@ func NewTyper(mainModule string, debug bool) *Typer {
 	}
 }
 
-type moduleContext struct {
-	inferred map[int]TypeScheme
-	imports  map[string]ModuleInfo
-}
-
 func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[string]ModuleInfo, error) {
 	if err := self.typeDeps(program); err != nil {
 		return nil, nil, err
 	}
 
-	ctx := moduleContext{map[int]TypeScheme{}, map[string]ModuleInfo{}}
-	t, err := self.typeProgram(&ctx, program)
+	self.inferred = map[int]TypeScheme{}
+	self.imports = map[string]ModuleInfo{}
+
+	t, err := self.typeProgram(program)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	self.moduleCache[self.mainModule], err = typeTableToSymbolMap(program, ctx.inferred)
+	self.moduleCache[self.mainModule], err = typeTableToSymbolMap(program, self.inferred)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -97,7 +97,7 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[string]M
 	return t, self.moduleCache, err
 }
 
-func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]TypeScheme, error) {
+func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 	// top-level process
 	// 1. type check imported modules (already done in [TypeProgram])
 	// 2. groupRecursives: walk the AST to mark (mutually-)recursive top-level functions.
@@ -106,7 +106,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 	// 5. iterate through top-level nodes generating fresh type vars for each top level non-type-def node.
 	// 6. walk the AST, inferring types of all expressions
 	importCount := 0
-	ctx.imports = map[string]ModuleInfo{}
+	self.imports = map[string]ModuleInfo{}
 	for i, expr := range program {
 		expr, ok := expr.(*parse.Import)
 		if !ok {
@@ -116,7 +116,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 
 		alias := expr.Module[len(expr.Module)-1]
 		fullPath := strings.Join(expr.Module, ".")
-		ctx.imports[alias], ok = self.moduleCache[fullPath]
+		self.imports[alias], ok = self.moduleCache[fullPath]
 		assert.True(ok, "typer bug: module %s missing from moduleCache", fullPath)
 	}
 
@@ -131,6 +131,8 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 
 	typeDefOrder, typeDefAsts, _ := sortTypeDefs(program)
 
+	// TODO: do I still need to sort type defs since I started using Application types?
+
 	// process type definitions
 	for _, group := range typeDefOrder {
 		if len(group) == 1 {
@@ -138,35 +140,17 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 				// skip external (?) type defs
 				continue
 			}
-
-			// TODO: non-self-recursive single item groups maybe can skip placeholder var creation
-		}
-		for _, name := range group {
-			self.types.Insert(name, freshVar())
 		}
 
 		for _, name := range group {
 			ast, ok := typeDefAsts[name]
 			assert.True(ok, "compiler bug: ast lookup failed: ", name)
-			t, err := self.defType(ctx, ast)
+			t, err := self.defType(ast)
 			if err != nil {
 				return nil, fmt.Errorf("defining type %s: %w", name, err)
 			}
 
-			p, ok := self.types.Get(name).Unwrap()
-			assert.True(ok, "placeholder type dissappeared??")
-
-			placeholder := assert.Cast[SimpleType](p, "Polymorphic placeholder???")
-
-			// FIXME: this _probably_ destroys generalization with mutual recursive usage
-			// but I'm not too sure
-			if err := constrain(placeholder, t); err != nil {
-				return nil, fmt.Errorf("unifying placeholder to defined type %s: %w", name, err)
-			}
-
-			if err := constrain(t, placeholder); err != nil {
-				return nil, fmt.Errorf("unifying placeholder to defined type %s: %w", name, err)
-			}
+			self.types.Insert(name, t)
 		}
 	}
 
@@ -208,13 +192,13 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			topLevels[e.Name] = e
 
 		case *parse.ObjectTypeDef:
-			types[i] = ctx.inferred[e.ID()]
+			types[i] = self.inferred[e.ID()]
 		case *parse.UnionDef:
-			types[i] = ctx.inferred[e.ID()]
+			types[i] = self.inferred[e.ID()]
 		case *parse.EnumDef:
-			types[i] = ctx.inferred[e.ID()]
+			types[i] = self.inferred[e.ID()]
 		case *parse.TypeAlias:
-			types[i] = ctx.inferred[e.ID()]
+			types[i] = self.inferred[e.ID()]
 
 		default:
 			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
@@ -226,7 +210,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 		switch e := expr.(type) {
 		case *parse.FuncDef:
 			if e.Extern {
-				typ, err := self.externDef(ctx, e)
+				typ, err := self.externDef(e)
 				if err != nil {
 					return nil, err
 				}
@@ -240,7 +224,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 					return nil, fmt.Errorf("typing function %s: %w", e.Name, err)
 				}
 
-				ctx.inferred[e.ID()] = fnTy
+				self.inferred[e.ID()] = fnTy
 
 				continue
 			}
@@ -255,7 +239,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 				Args:      e.Args,
 				Body:      e.Body[len(e.Body)-1],
 			}
-			typ, err := self.TypeTerm(ctx, &fn)
+			typ, err := self.TypeTerm(&fn)
 			if err != nil {
 				return nil, fmt.Errorf("in function %s: %w", e.Name, err)
 			}
@@ -270,7 +254,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			}
 
 		case *parse.Set:
-			typ, err := self.TypeTerm(ctx, e.Value)
+			typ, err := self.TypeTerm(e.Value)
 			if err != nil {
 				return nil, err
 			}
@@ -286,7 +270,7 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 			}
 
 		case *parse.ObjectTypeDef:
-			if err := self.defClassMethods(ctx, e); err != nil {
+			if err := self.defClassMethods(e); err != nil {
 				return nil, err
 			}
 
@@ -302,13 +286,13 @@ func (self *Typer) typeProgram(ctx *moduleContext, program []parse.Expr) ([]Type
 	return types, nil
 }
 
-func (self *Typer) typeLetRhs(ctx *moduleContext, name string, rhs parse.Expr) (PolymorphicType, error) {
+func (self *Typer) typeLetRhs(name string, rhs parse.Expr) (PolymorphicType, error) {
 	// NOTE: currently top level definitions are always recursive let,
 	// and passing FuncDef as rhs is a little hack so I can write (def foo ...)
 	// instead of (set foo (fn ...))
 	eTy := freshVar()
 	self.vars.Insert(name, eTy)
-	ty, err := self.TypeTerm(ctx, rhs)
+	ty, err := self.TypeTerm(rhs)
 	if err != nil {
 		return PolymorphicType{}, err
 	}
@@ -320,7 +304,7 @@ func (self *Typer) typeLetRhs(ctx *moduleContext, name string, rhs parse.Expr) (
 	return PolymorphicType{Body: eTy}, nil
 }
 
-func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, _ error) {
+func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 	trace("typing: %v", term.Pretty())
 	indentLvl++
 	defer func() {
@@ -328,13 +312,13 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 		trace(": %v", a)
 	}()
 	defer func() {
-		ctx.inferred[term.ID()] = a
+		self.inferred[term.ID()] = a
 	}()
 	switch expr := term.(type) {
 	case *parse.Symbol:
 		if ty, ok := self.vars.Get(expr.Name).Unwrap(); ok {
 			return ty.instantiate(), nil
-		} else if mod, ok := ctx.imports[expr.Name]; ok {
+		} else if mod, ok := self.imports[expr.Name]; ok {
 			// FIXME: this is a terrible idea
 			fields := make([]NamedType, 0, len(mod.Globals))
 			for name, ty := range mod.Globals {
@@ -344,7 +328,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 		}
 		return nil, fmt.Errorf("%w: %s", ErrUndefinedVariable, expr.Name)
 	case *parse.SelfLiteral:
-		if ty, err := self.parseType(ctx, parse.SelfType{}); err == nil {
+		if ty, err := self.parseType(parse.SelfType{}); err == nil {
 			return ty.instantiate(), nil
 		} else {
 			return nil, err
@@ -367,7 +351,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 			}
 
 			for i, arg := range sig[:len(sig)-1] {
-				param, err := self.parseType(ctx, arg)
+				param, err := self.parseType(arg)
 				if err != nil {
 					return nil, err
 				}
@@ -377,12 +361,12 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 				self.vars.Insert(expr.Args[i], p)
 			}
 
-			retHint, err := self.parseType(ctx, sig[len(sig)-1])
+			retHint, err := self.parseType(sig[len(sig)-1])
 			if err != nil {
 				return nil, err
 			}
 
-			bodyTy, err := self.TypeTerm(ctx, expr.Body)
+			bodyTy, err := self.TypeTerm(expr.Body)
 			if err != nil {
 				return nil, err
 			}
@@ -398,7 +382,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 		for i, arg := range expr.Args {
 			if i == 0 && arg == "self" {
 				// TODO: don't think I need this
-				ty, err := self.parseType(ctx, parse.SelfType{})
+				ty, err := self.parseType(parse.SelfType{})
 				if err != nil {
 					return nil, err
 				}
@@ -411,7 +395,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 			self.vars.Insert(arg, param)
 		}
 
-		bodyTy, err := self.TypeTerm(ctx, expr.Body)
+		bodyTy, err := self.TypeTerm(expr.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -421,17 +405,17 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 	case *parse.Form:
 		assert.GreaterThan(len(expr.Children), 0, "unhandled: empty form")
 		if meth, ok := expr.Children[0].(*parse.MethodAccess); ok {
-			return self.typeMethodCall(ctx, meth, expr)
+			return self.typeMethodCall(meth, expr)
 		}
 
-		funcTy, err := self.TypeTerm(ctx, expr.Children[0])
+		funcTy, err := self.TypeTerm(expr.Children[0])
 		if err != nil {
 			return nil, err
 		}
 
 		argTys := make([]SimpleType, len(expr.Children)-1)
 		for i, arg := range expr.Children[1:] {
-			ty, err := self.TypeTerm(ctx, arg)
+			ty, err := self.TypeTerm(arg)
 			if err != nil {
 				return nil, err
 			}
@@ -462,7 +446,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 	case *parse.ArrayLiteral:
 		elTyps := make([]SimpleType, len(expr.Elements))
 		for i, el := range expr.Elements {
-			elTy, err := self.TypeTerm(ctx, el)
+			elTy, err := self.TypeTerm(el)
 			if err != nil {
 				return nil, err
 			}
@@ -482,7 +466,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 	case *parse.Record:
 		fields := make([]NamedType, len(expr.Fields))
 		for i, field := range expr.Fields {
-			fieldTy, err := self.TypeTerm(ctx, field.Value)
+			fieldTy, err := self.TypeTerm(field.Value)
 			if err != nil {
 				return nil, err
 			}
@@ -496,7 +480,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 
 	case *parse.RecordAccess:
 		// TODO: allow non-variable as record
-		recordTy, err := self.TypeTerm(ctx, expr.Record)
+		recordTy, err := self.TypeTerm(expr.Record)
 		if err != nil {
 			return nil, err
 		}
@@ -545,7 +529,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 		return enumTy, nil
 
 	case *parse.IfExpr:
-		condTy, err := self.TypeTerm(ctx, expr.Condition)
+		condTy, err := self.TypeTerm(expr.Condition)
 		if err != nil {
 			return nil, err
 		}
@@ -555,12 +539,12 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 		}
 
 		retTy := freshVar()
-		thenTy, err := self.TypeTerm(ctx, expr.Consequence)
+		thenTy, err := self.TypeTerm(expr.Consequence)
 		if err != nil {
 			return nil, err
 		}
 
-		elseTy, err := self.TypeTerm(ctx, expr.Alternative)
+		elseTy, err := self.TypeTerm(expr.Alternative)
 		if err != nil {
 			return nil, err
 		}
@@ -582,7 +566,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 			}
 		} else {
 			if len(expr.Assignments) == 0 {
-				return self.TypeTerm(ctx, expr.Body)
+				return self.TypeTerm(expr.Body)
 			}
 
 			desugared := expr.Body
@@ -601,7 +585,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 				}
 			}
 
-			return self.TypeTerm(ctx, desugared)
+			return self.TypeTerm(desugared)
 		}
 	case *parse.CaseExpr:
 	case *parse.Set:
@@ -610,7 +594,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 			return nil, fmt.Errorf("%w: %s", ErrUndefinedVariable, expr.Name)
 		}
 
-		val, err := self.TypeTerm(ctx, expr.Value)
+		val, err := self.TypeTerm(expr.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -629,7 +613,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 
 	case *parse.VarDef:
 		// TODO: should var be a let rec?
-		val, err := self.TypeTerm(ctx, expr.Value)
+		val, err := self.TypeTerm(expr.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -640,7 +624,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 	case *parse.TaggedExpr:
 	case *parse.ExternCall:
 		for _, arg := range expr.Args {
-			if _, err := self.TypeTerm(ctx, arg); err != nil {
+			if _, err := self.TypeTerm(arg); err != nil {
 				return nil, err
 			}
 		}
@@ -653,7 +637,7 @@ func (self *Typer) TypeTerm(ctx *moduleContext, term parse.Expr) (a SimpleType, 
 	panic(fmt.Sprintf("unhandled: TypeTerm(%s)", term.Pretty()))
 }
 
-func (self *Typer) externDef(ctx *moduleContext, e *parse.FuncDef) (SimpleType, error) {
+func (self *Typer) externDef(e *parse.FuncDef) (SimpleType, error) {
 	self.vars.NewScope()
 	defer self.vars.PopScope()
 
@@ -669,7 +653,7 @@ func (self *Typer) externDef(ctx *moduleContext, e *parse.FuncDef) (SimpleType, 
 	}
 
 	for i, arg := range sig[:len(sig)-1] {
-		param, err := self.parseType(ctx, arg)
+		param, err := self.parseType(arg)
 		if err != nil {
 			return nil, fmt.Errorf(
 				"reading type of argument '%s' of function %s: %w",
@@ -681,7 +665,7 @@ func (self *Typer) externDef(ctx *moduleContext, e *parse.FuncDef) (SimpleType, 
 		self.vars.Insert(e.Args[i], p)
 	}
 
-	retHint, err := self.parseType(ctx, sig[len(sig)-1])
+	retHint, err := self.parseType(sig[len(sig)-1])
 	if err != nil {
 		return nil, fmt.Errorf(
 			"reading return type '%s' of function %s: %w",
@@ -691,7 +675,53 @@ func (self *Typer) externDef(ctx *moduleContext, e *parse.FuncDef) (SimpleType, 
 	return Func{Args: params, Ret: retHint.instantiate()}, nil
 }
 
-func (self *Typer) defType(ctx *moduleContext, def parse.Expr) (SimpleType, error) {
+func (self *Typer) parseClassShape(def *parse.ObjectTypeDef) ObjectType {
+	fields := []NamedMember{}
+	meths := []NamedMember{}
+
+	for _, field := range def.Fields {
+		switch f := field.(type) {
+		case parse.ClassField:
+			fields = append(fields, NamedMember{
+				Name: field.Name(),
+				Member: Member{
+					Type:   freshVar(),
+					Access: field.Access(),
+				},
+			})
+
+		case parse.ClassMethod:
+			args := make([]SimpleType, len(f.Func.Args))
+			for i := range args {
+				args[i] = freshVar()
+			}
+
+			meths = append(meths, NamedMember{
+				Name: field.Name(),
+				Member: Member{
+					Type: Func{
+						Args: args,
+						Ret:  freshVar(),
+					},
+					Access: field.Access(),
+				},
+			})
+		default:
+			panic(fmt.Sprintf("unexpected parse.ClassMember: %#v", field))
+		}
+	}
+
+	return ObjectType{
+		Name: def.Name,
+		// FIXME: should also resolve this here
+		Supers:  []ObjectType{},
+		Fields:  fields,
+		Methods: meths,
+		Top:     def.Base,
+	}
+}
+
+func (self *Typer) defType(def parse.Expr) (SimpleType, error) {
 	switch d := def.(type) {
 	// TODO: this shouldn't be possible (enum defs cannot depend on other types currently)
 	// should I assert against this?
@@ -701,35 +731,35 @@ func (self *Typer) defType(ctx *moduleContext, def parse.Expr) (SimpleType, erro
 			return nil, err
 		}
 
-		ctx.inferred[d.ID()] = typ
+		self.inferred[d.ID()] = typ
 		return typ, nil
 
 	case *parse.UnionDef:
-		t, err := self.parseUnionDef(ctx, d)
+		t, err := self.parseUnionDef(d)
 		if err != nil {
 			return nil, err
 		}
 
-		ctx.inferred[d.ID()] = t
+		self.inferred[d.ID()] = t
 		return t, nil
 
 	case *parse.ObjectTypeDef:
-		t, err := self.parseClassOutline(ctx, d)
+		t, err := self.parseClassOutline(d)
 		if err != nil {
 			return nil, err
 		}
 
 		// TODO: handle generics
-		ctx.inferred[d.ID()] = t
+		self.inferred[d.ID()] = t
 		return t, nil
 
 	case *parse.TypeAlias:
-		target, err := self.parseType(ctx, d.Type)
+		target, err := self.parseType(d.Type)
 		if err != nil {
 			return nil, err
 		}
 
-		ctx.inferred[d.ID()] = target
+		self.inferred[d.ID()] = target
 
 		// FIXME: should not instantiate!
 		// this works cuz we don't have generalized type alias currenlty
@@ -740,7 +770,7 @@ func (self *Typer) defType(ctx *moduleContext, def parse.Expr) (SimpleType, erro
 }
 
 // type checks fields and assigns fresh variables to methods
-func (self *Typer) parseClassOutline(ctx *moduleContext, classDef *parse.ObjectTypeDef) (SimpleType, error) {
+func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType, error) {
 	self.classScope = classDef.Name
 	defer func() { self.classScope = "" }()
 
@@ -786,7 +816,7 @@ func (self *Typer) parseClassOutline(ctx *moduleContext, classDef *parse.ObjectT
 	for _, field := range classDef.Fields {
 		switch f := field.(type) {
 		case parse.ClassField:
-			typ, err := self.parseType(ctx, f.Type)
+			typ, err := self.parseType(f.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -819,7 +849,7 @@ func (self *Typer) parseClassOutline(ctx *moduleContext, classDef *parse.ObjectT
 					args[i] = selfTy
 					continue
 				}
-				ty, err := self.parseType(ctx, arg)
+				ty, err := self.parseType(arg)
 				if err != nil {
 					return nil, fmt.Errorf("in %s.%s, reading type signature [%d] of %d: %w",
 						classDef.Name,
@@ -844,7 +874,7 @@ func (self *Typer) parseClassOutline(ctx *moduleContext, classDef *parse.ObjectT
 				args[i] = sty
 			}
 
-			ret, err := self.parseType(ctx, sig[len(sig)-1])
+			ret, err := self.parseType(sig[len(sig)-1])
 			if err != nil {
 				return nil, fmt.Errorf("in %s.%s, reading return type: %w", classDef.Name, f.Func.Name, err)
 			}
@@ -886,13 +916,13 @@ func (self *Typer) parseClassOutline(ctx *moduleContext, classDef *parse.ObjectT
 	return t, nil
 }
 
-func (self *Typer) defClassMethods(ctx *moduleContext, classDef *parse.ObjectTypeDef) error {
+func (self *Typer) defClassMethods(classDef *parse.ObjectTypeDef) error {
 	// TODO: run the same SCC check in function dependency graph for methods
 
 	i_meth := 0
 	self.classScope = classDef.Name
 	defer func() { self.classScope = "" }()
-	classTy := assert.Cast[ObjectType](ctx.inferred[classDef.ID()], "typing class method: expected an ObjectType")
+	classTy := assert.Cast[ObjectType](self.inferred[classDef.ID()], "typing class method: expected an ObjectType")
 
 	self.vars.NewScope()
 	defer self.vars.PopScope()
@@ -934,7 +964,7 @@ func (self *Typer) defClassMethods(ctx *moduleContext, classDef *parse.ObjectTyp
 			Body:      f.Func.Body[len(f.Func.Body)-1],
 		}
 
-		typ, err := self.TypeTerm(ctx, &fn)
+		typ, err := self.TypeTerm(&fn)
 		if err != nil {
 			return fmt.Errorf("typing method %s.%s: %w", classDef.Name, f.Func.Name, err)
 		}
@@ -954,11 +984,11 @@ func (self *Typer) defClassMethods(ctx *moduleContext, classDef *parse.ObjectTyp
 	return nil
 }
 
-func (self *Typer) parseUnionDef(ctx *moduleContext, unionDef *parse.UnionDef) (SimpleType, error) {
+func (self *Typer) parseUnionDef(unionDef *parse.UnionDef) (SimpleType, error) {
 	// TODO: check repeated variants?
 	variants := make([]ConcreteType, len(unionDef.Variants))
 	for i, v := range unionDef.Variants {
-		t, err := self.parseType(ctx, v)
+		t, err := self.parseType(v)
 		if err != nil {
 			return nil, err
 		}
@@ -978,7 +1008,7 @@ func (self *Typer) parseUnionDef(ctx *moduleContext, unionDef *parse.UnionDef) (
 	return t, nil
 }
 
-func (self *Typer) typeMethodCall(ctx *moduleContext, methAccess *parse.MethodAccess, form *parse.Form) (SimpleType, error) {
+func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Form) (SimpleType, error) {
 	// goal:
 	// 1. (class Foo {x I64, (def getx[self] self.x)})
 	// 2. typing (foo#getx)
@@ -986,7 +1016,7 @@ func (self *Typer) typeMethodCall(ctx *moduleContext, methAccess *parse.MethodAc
 	// 4. selectively instantiate type var of Foo::getx
 	assert.GreaterThan(len(form.Children), 0, "unhandled: empty form")
 
-	oTy, err := self.TypeTerm(ctx, methAccess.Obj)
+	oTy, err := self.TypeTerm(methAccess.Obj)
 	if err != nil {
 		return nil, fmt.Errorf("typing method call on %s: %w", methAccess.Pretty(), err)
 	}
@@ -994,7 +1024,7 @@ func (self *Typer) typeMethodCall(ctx *moduleContext, methAccess *parse.MethodAc
 	argTys := make([]SimpleType, 0, len(form.Children))
 	argTys = append(argTys, oTy)
 	for _, arg := range form.Children[1:] {
-		ty, err := self.TypeTerm(ctx, arg)
+		ty, err := self.TypeTerm(arg)
 		if err != nil {
 			return nil, err
 		}
@@ -1043,10 +1073,10 @@ func (self *Typer) parseEnumDef(enumDef *parse.EnumDef) (ConcreteType, error) {
 	return t, nil
 }
 
-func (self *Typer) parseType(ctx *moduleContext, tr parse.TypeRepr) (TypeScheme, error) {
+func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 	switch t := tr.(type) {
 	case parse.TypeName:
-		ty, err := self.readTypeName(ctx, t)
+		ty, err := self.readTypeName(t)
 		if err != nil {
 			return nil, err
 		}
@@ -1077,7 +1107,7 @@ func (self *Typer) parseType(ctx *moduleContext, tr parse.TypeRepr) (TypeScheme,
 
 	case parse.RecordType:
 		fields, err := fun.MapIfOk(t.Fields, func(f parse.RecordTypeField) (NamedType, error) {
-			t, err := self.parseType(ctx, f.Type)
+			t, err := self.parseType(f.Type)
 			if err != nil {
 				return NamedType{}, err
 			}
@@ -1092,7 +1122,7 @@ func (self *Typer) parseType(ctx *moduleContext, tr parse.TypeRepr) (TypeScheme,
 		return Record{Fields: fields}, nil
 
 	case parse.ArrayType:
-		el, err := self.parseType(ctx, t.Type)
+		el, err := self.parseType(t.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -1125,7 +1155,7 @@ func (self *Typer) parseType(ctx *moduleContext, tr parse.TypeRepr) (TypeScheme,
 		}
 
 	case parse.TypeInstantiation:
-		base, err := self.readTypeName(ctx, t.Type)
+		base, err := self.readTypeName(t.Type)
 		if err != nil {
 			return nil, err
 		}
@@ -1140,7 +1170,7 @@ func (self *Typer) parseType(ctx *moduleContext, tr parse.TypeRepr) (TypeScheme,
 		}
 
 		params, err := fun.MapIfOk(t.Params, func(r parse.TypeRepr) (SimpleType, error) {
-			t, err := self.parseType(ctx, r)
+			t, err := self.parseType(r)
 			if err != nil {
 				return nil, err
 			}
@@ -1167,7 +1197,7 @@ func (self *Typer) parseType(ctx *moduleContext, tr parse.TypeRepr) (TypeScheme,
 	}
 }
 
-func (self *Typer) readTypeName(ctx *moduleContext, t parse.TypeName) (TypeScheme, error) {
+func (self *Typer) readTypeName(t parse.TypeName) (TypeScheme, error) {
 	if t.Module == "" {
 		if ty, ok := self.types.Get(t.Name).Unwrap(); !ok {
 			return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, t.Name)
@@ -1176,7 +1206,7 @@ func (self *Typer) readTypeName(ctx *moduleContext, t parse.TypeName) (TypeSchem
 		}
 	} else {
 		// our import system is jank as hell (modules are stored as record types)
-		if mod, ok := ctx.imports[t.Module]; !ok {
+		if mod, ok := self.imports[t.Module]; !ok {
 			return nil, fmt.Errorf("%w: %s", ErrUndefinedModule, t.Module)
 		} else {
 			if ty, ok := mod.Types[t.Name]; ok {
@@ -1185,6 +1215,44 @@ func (self *Typer) readTypeName(ctx *moduleContext, t parse.TypeName) (TypeSchem
 			return nil, fmt.Errorf("%w: %s.%s", ErrUndefinedTypeName, t.Module, t.Name)
 		}
 	}
+}
+
+func (self *Typer) concretizeApplication(app Application) (SimpleType, error) {
+	base, err := self.lookupType(app.Module, app.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	switch base := base.(type) {
+	case PolymorphicType:
+		ty, err := base.concretize(app.Params)
+		if err != nil {
+			panic(fmt.Sprintf("compiler bug: Application.concretize has wrong parameter count - should have been checked?"))
+		}
+
+		return ty, nil
+	case SimpleType:
+		return base, nil
+	default:
+		panic(fmt.Sprintf("unexpected simplesub.TypeScheme: %#v", base))
+	}
+}
+
+func (self *Typer) lookupType(module string, name string) (TypeScheme, error) {
+	if module == "" {
+		if ty, ok := self.types.Get(name).Unwrap(); ok {
+			return ty, nil
+		}
+		return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, name)
+	}
+
+	if mod, ok := self.imports[module]; ok {
+		if ty, ok := mod.Types[name]; ok {
+			return ty, nil
+		}
+		return nil, fmt.Errorf("%w: %s.%s", ErrUndefinedTypeName, module, name)
+	}
+	return nil, fmt.Errorf("%w: %s", ErrUndefinedModule, module)
 }
 
 func constrain(ty0 SimpleType, bound0 SimpleType) error {
@@ -1203,10 +1271,10 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		}
 
 		return fmt.Errorf("TODO not implemented: constrain between different Application types")
-	} else if lhs, _, ok := matchPair[Application, SimpleType](ty0, bound0); ok {
-		return constrain(lhs.concretize(), bound0)
-	} else if _, rhs, ok := matchPair[SimpleType, Application](ty0, bound0); ok {
-		return constrain(ty0, rhs.concretize())
+	} else if _, _, ok := matchPair[Application, SimpleType](ty0, bound0); ok {
+		// return constrain(lhs.concretize(), bound0)
+	} else if _, _, ok := matchPair[SimpleType, Application](ty0, bound0); ok {
+		// return constrain(ty0, rhs.concretize())
 	} else if lhs, rhs, ok := matchPair[Int, Int](ty0, bound0); ok {
 		if lhs.Signed != rhs.Signed || lhs.BitSize != rhs.BitSize {
 			return fmt.Errorf("%w: int conversion not implemented", ErrIncompatibleTypes)
