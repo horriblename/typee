@@ -295,24 +295,6 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 	return types, nil
 }
 
-func (self *Typer) typeLetRhs(name string, rhs parse.Expr) (PolymorphicType, error) {
-	// NOTE: currently top level definitions are always recursive let,
-	// and passing FuncDef as rhs is a little hack so I can write (def foo ...)
-	// instead of (set foo (fn ...))
-	eTy := freshVar()
-	self.vars.Insert(name, eTy)
-	ty, err := self.TypeTerm(rhs)
-	if err != nil {
-		return PolymorphicType{}, err
-	}
-
-	if err := self.symbols.constrain(ty, eTy); err != nil {
-		return PolymorphicType{}, err
-	}
-
-	return PolymorphicType{Body: eTy}, nil
-}
-
 func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 	trace("typing: %v", term.Pretty())
 	indentLvl++
@@ -685,52 +667,6 @@ func (self *Typer) externDef(e *parse.FuncDef) (SimpleType, error) {
 	}
 
 	return Func{Args: params, Ret: retHint.instantiate()}, nil
-}
-
-func (self *Typer) parseClassShape(def *parse.ObjectTypeDef) ObjectType {
-	fields := []NamedMember{}
-	meths := []NamedMember{}
-
-	for _, field := range def.Fields {
-		switch f := field.(type) {
-		case parse.ClassField:
-			fields = append(fields, NamedMember{
-				Name: field.Name(),
-				Member: Member{
-					Type:   freshVar(),
-					Access: field.Access(),
-				},
-			})
-
-		case parse.ClassMethod:
-			args := make([]SimpleType, len(f.Func.Args))
-			for i := range args {
-				args[i] = freshVar()
-			}
-
-			meths = append(meths, NamedMember{
-				Name: field.Name(),
-				Member: Member{
-					Type: Func{
-						Args: args,
-						Ret:  freshVar(),
-					},
-					Access: field.Access(),
-				},
-			})
-		default:
-			panic(fmt.Sprintf("unexpected parse.ClassMember: %#v", field))
-		}
-	}
-
-	return ObjectType{
-		Name: def.Name,
-		// FIXME: should also resolve this here
-		Supers:  []ObjectType{},
-		Fields:  fields,
-		Methods: meths,
-		Top:     def.Base,
-	}
 }
 
 func (self *Typer) defType(def parse.Expr) (SimpleType, error) {
