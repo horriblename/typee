@@ -1024,17 +1024,7 @@ func (self *Typer) parseEnumDef(enumDef *parse.EnumDef) (ConcreteType, error) {
 func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 	switch t := tr.(type) {
 	case parse.TypeName:
-		ty, err := self.readTypeName(t)
-		if err != nil {
-			return nil, err
-		}
-
-		if pty, ok := ty.(PolymorphicType); ok {
-			nParams, ok := pty.TypeParams.Unwrap()
-			if ok {
-				return nil, fmt.Errorf("%w: %s takes %d type parameters, got 0", ErrWrongTypeParamCount, t.Name, nParams)
-			}
-		}
+		// FIXME: when should I check for validity? e.g. undefined type, wrong type param etc.
 
 		return Application{
 			Module: t.Module,
@@ -1103,20 +1093,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 		}
 
 	case parse.TypeInstantiation:
-		base, err := self.readTypeName(t.Type)
-		if err != nil {
-			return nil, err
-		}
-
-		pbase, ok := base.(PolymorphicType)
-		if !ok {
-			return nil, fmt.Errorf("%w: type %s in %s", ErrUnparameterizedTypePassedParams, base, t)
-		}
-
-		if expected, ok := pbase.TypeParams.Unwrap(); !ok || len(expected) != len(t.Params) {
-			return nil, fmt.Errorf("%w: %s expects %d type params, got %d", ErrWrongTypeParamCount, t.Type.Name, len(expected), len(t.Params))
-		}
-
+		// FIXME: when to check validity? undefined type, wron type params etc.
 		params, err := fun.MapIfOk(t.Params, func(r parse.TypeRepr) (SimpleType, error) {
 			t, err := self.parseType(r)
 			if err != nil {
