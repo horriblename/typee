@@ -141,7 +141,7 @@ func TestTypeExpr(t *testing.T) {
 			program, err := parse.ParseString(tC.input)
 			assert.Ok(err)
 
-			ty, err := checker.TypeTerm(&moduleContext{map[int]TypeScheme{}, map[string]ModuleInfo{}}, program[0])
+			ty, err := checker.TypeTerm(program[0])
 			assert.True(errors.Is(err, tC.err), "expected error", tC.err, ", got:", err)
 
 			if tC.err != nil {
