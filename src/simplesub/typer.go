@@ -770,15 +770,9 @@ func (self *Typer) parseClassOutline(ctx *moduleContext, classDef *parse.ObjectT
 		supers[i] = sc
 	}
 
-	objTy, ok := self.types.Get(classDef.Name).Unwrap()
-	if !ok {
-		return nil, fmt.Errorf("compiler bug: parsing class outline of '%s': corresponding class not defined", classDef.Name)
-	}
-
 	selfTy := Application{
 		Module: "",
 		Name:   classDef.Name,
-		Base:   objTy,
 		// TODO: apply type params
 		Params: []SimpleType{},
 	}
@@ -906,15 +900,9 @@ func (self *Typer) defClassMethods(ctx *moduleContext, classDef *parse.ObjectTyp
 	self.types.NewScope()
 	defer self.types.PopScope()
 
-	objTy, ok := self.types.Get(classDef.Name).Unwrap()
-	if !ok {
-		return fmt.Errorf("compiler bug: typing methods of '%s': corresponding class not found", self.classScope)
-	}
-
 	self.types.Insert("Self", Application{
 		Module: "",
 		Name:   classDef.Name,
-		Base:   objTy,
 		// TODO: apply variables
 		Params: []SimpleType{},
 	})
@@ -1073,7 +1061,6 @@ func (self *Typer) parseType(ctx *moduleContext, tr parse.TypeRepr) (TypeScheme,
 		return Application{
 			Module: t.Module,
 			Name:   t.Name,
-			Base:   ty,
 			Params: []SimpleType{},
 		}, nil
 
@@ -1172,7 +1159,6 @@ func (self *Typer) parseType(ctx *moduleContext, tr parse.TypeRepr) (TypeScheme,
 		return Application{
 			Module: t.Type.Module,
 			Name:   t.Type.Name,
-			Base:   base,
 			Params: params,
 		}, nil
 
@@ -1499,7 +1485,6 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 		return Application{
 			Module: t.Module,
 			Name:   t.Name,
-			Base:   t.Base,
 			Params: fun.Map(t.Params, func(param SimpleType) SimpleType {
 				return substitute(param)
 			}),

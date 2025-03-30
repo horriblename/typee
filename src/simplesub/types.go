@@ -180,10 +180,10 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		return nil, fmt.Errorf("coercion between named types not yet supported: %v and %v", lhs, rhs)
 	} else if lhs, rhs, ok := matchPair[C, Application](lhs0, rhs0); ok {
 		return glbConcrete(rhs, lhs)
-	} else if lhs, rhs, ok := matchPair[Application, C](lhs0, rhs0); ok {
-		if err := constrain(rhs, lhs.concretize()); err != nil {
-			return nil, fmt.Errorf("TODO currently only implemented glb of Application types if the Application type is greater: glb(%v, %v)", lhs, rhs)
-		}
+	} else if lhs, _, ok := matchPair[Application, C](lhs0, rhs0); ok {
+		// if err := constrain(rhs, lhs.concretize()); err != nil {
+		// 	return nil, fmt.Errorf("TODO currently only implemented glb of Application types if the Application type is greater: glb(%v, %v)", lhs, rhs)
+		// }
 
 		return lhs, nil
 	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
@@ -418,10 +418,10 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		return nil, fmt.Errorf("coercion between named types not yet supported: %v and %v", lhs, rhs)
 	} else if lhs, rhs, ok := matchPair[C, Application](lhs0, rhs0); ok {
 		return lubConcrete(rhs, lhs)
-	} else if lhs, rhs, ok := matchPair[Application, C](lhs0, rhs0); ok {
-		if err := constrain(lhs.concretize(), rhs); err != nil {
-			return nil, fmt.Errorf("TODO currently only implemented lub of Application types if the Application type is greater: lub(%v, %v)", lhs, rhs)
-		}
+	} else if lhs, _, ok := matchPair[Application, C](lhs0, rhs0); ok {
+		// if err := constrain(lhs.concretize(), rhs); err != nil {
+		// 	return nil, fmt.Errorf("TODO currently only implemented lub of Application types if the Application type is greater: lub(%v, %v)", lhs, rhs)
+		// }
 
 		return lhs, nil
 	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
@@ -739,7 +739,6 @@ type SliceType struct {
 type Application struct {
 	Module string
 	Name   string
-	Base   TypeScheme
 	Params []SimpleType
 }
 
@@ -869,8 +868,8 @@ func (self Application) String() string {
 	return b.String()
 }
 
-func (self Application) concretize() SimpleType {
-	switch base := self.Base.(type) {
+func (self Application) concretize(base TypeScheme) SimpleType {
+	switch base := base.(type) {
 	case PolymorphicType:
 		ty, err := base.concretize(self.Params)
 		if err != nil {

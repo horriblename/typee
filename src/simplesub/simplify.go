@@ -102,7 +102,6 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleTy
 		return Application{
 			Module: ty.Module,
 			Name:   ty.Name,
-			Base:   ty.Base,
 			Params: fun.Map(ty.Params, func(param SimpleType) SimpleType {
 				return transform(param, pol, mapping, pos, neg)
 			}),
