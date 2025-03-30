@@ -44,6 +44,10 @@ func addBuiltins(scope *scope.ScopedMap[TypeScheme]) {
 		},
 	})
 
+	scope.Insert("null", PolymorphicType{
+		Body: Ref{freshVar()},
+	})
+
 	t = freshVar()
 	scope.Insert("stackAlloc", PolymorphicType{
 		Body: Func{
