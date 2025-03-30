@@ -103,13 +103,13 @@ func (self *Variable) String() string {
 }
 func (self *Variable) LowerBound() ConcreteType { return self.Representative().lowerBound }
 func (self *Variable) UpperBound() ConcreteType { return self.Representative().upperBound }
-func (self *Variable) newUpperBound(ub ConcreteType) error {
+func (self *Variable) newUpperBound(symbols *symbols, ub ConcreteType) error {
 	if err := self.occursCheck(ub, true); err != nil {
 		return err
 	}
 
 	rep := self.Representative()
-	newUb, err := glbConcrete(rep.upperBound, ub)
+	newUb, err := symbols.glbConcrete(rep.upperBound, ub)
 	if err != nil {
 		return err
 	}
@@ -118,9 +118,9 @@ func (self *Variable) newUpperBound(ub ConcreteType) error {
 	trace("new upper bound for t%d: %v", self.uid, newUb)
 	indentLvl++
 	defer func() { indentLvl-- }()
-	return constrain(rep.lowerBound, ub)
+	return symbols.constrain(rep.lowerBound, ub)
 }
-func (self *Variable) newLowerBound(lb ConcreteType) error {
+func (self *Variable) newLowerBound(symbols *symbols, lb ConcreteType) error {
 	var err error
 	if err := self.occursCheck(lb, false); err != nil {
 		return err
@@ -128,7 +128,7 @@ func (self *Variable) newLowerBound(lb ConcreteType) error {
 
 	rep := self.Representative()
 
-	rep.lowerBound, err = lubConcrete(rep.lowerBound, lb)
+	rep.lowerBound, err = symbols.lubConcrete(rep.lowerBound, lb)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func (self *Variable) newLowerBound(lb ConcreteType) error {
 	trace("new lower bound for t%d: %v", self.uid, rep.lowerBound)
 	indentLvl++
 	defer func() { indentLvl-- }()
-	return constrain(lb, rep.upperBound)
+	return symbols.constrain(lb, rep.upperBound)
 }
 func (self *Variable) Representative() *Variable {
 	if self.representative != nil {
@@ -162,7 +162,7 @@ func (self *Variable) occursCheck(ty ConcreteType, dir bool) error {
 	return nil
 }
 
-func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
+func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	type C = ConcreteType
 	if _, rhs, ok := matchPair[Top, C](lhs0, rhs0); ok {
 		return rhs, nil
@@ -179,25 +179,25 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		return nil, fmt.Errorf("coercion between named types not yet supported: %v and %v", lhs, rhs)
 	} else if lhs, rhs, ok := matchPair[C, Application](lhs0, rhs0); ok {
-		return glbConcrete(rhs, lhs)
+		return self.glbConcrete(rhs, lhs)
 	} else if lhs, _, ok := matchPair[Application, C](lhs0, rhs0); ok {
-		// if err := constrain(rhs, lhs.concretize()); err != nil {
-		// 	return nil, fmt.Errorf("TODO currently only implemented glb of Application types if the Application type is greater: glb(%v, %v)", lhs, rhs)
-		// }
+		if err := self.constrain(rhs, lhs); err != nil {
+			return nil, fmt.Errorf("TODO currently only implemented glb of Application types if the Application type is greater: glb(%v, %v)", lhs, rhs)
+		}
 
 		return lhs, nil
 	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
 		args := make([]SimpleType, 0, len(lhs.Args))
 		argPairs := fun.ZipIter(slices.Values(lhs.Args), slices.Values(rhs.Args))
 		for larg, rarg := range argPairs {
-			arg, err := lub(larg, rarg)
+			arg, err := self.lub(larg, rarg)
 			if err != nil {
 				return nil, err
 			}
 			args = append(args, arg)
 		}
 
-		ret, err := glb(lhs.Ret, rhs.Ret)
+		ret, err := self.glb(lhs.Ret, rhs.Ret)
 		if err != nil {
 			return nil, err
 		}
@@ -211,7 +211,7 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		mergedMap := maps.Clone(lhsMap)
 		for rhsKey, rhsVal := range rhsMap {
 			if lhsVal, ok := mergedMap[rhsKey]; ok {
-				mergedMap[rhsKey], err = glb(lhsVal, rhsVal)
+				mergedMap[rhsKey], err = self.glb(lhsVal, rhsVal)
 				if err != nil {
 					return nil, err
 				}
@@ -220,9 +220,9 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		}
 		return Record{mapToNamedTypes(mergedMap)}, nil
 	} else if lhs, rhs, ok := matchPair[Record, ObjectType](lhs0, rhs0); ok {
-		return glbCrossObject(lhs, rhs)
+		return self.glbCrossObject(lhs, rhs)
 	} else if lhs, rhs, ok := matchPair[ObjectType, Record](lhs0, rhs0); ok {
-		return glbCrossObject(rhs, lhs)
+		return self.glbCrossObject(rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
 		if lhs.Name != "" && rhs.Name != "" {
 			if lhs.Name == rhs.Name {
@@ -234,7 +234,7 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		// return the named class if named :> unnamed
 		if lhs.Name != "" {
-			if err := constrain(rhs, lhs); err != nil {
+			if err := self.constrain(rhs, lhs); err != nil {
 				// TODO: how should I handle this
 				return nil, fmt.Errorf("unimplemented: glb(named_class, unnamed_class): constrain result: %v", err)
 			}
@@ -244,7 +244,7 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		// return the named class if named :> unnamed
 		if rhs.Name != "" {
-			if err := constrain(lhs, rhs); err != nil {
+			if err := self.constrain(lhs, rhs); err != nil {
 				// TODO: how should I handle this
 				return nil, fmt.Errorf("unimplemented: glb(named_class, unnamed_class): constrain result: %v", err)
 			}
@@ -257,7 +257,7 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		mergedFields := maps.Clone(lhsFields)
 		for rhsKey, rhsVal := range rhsFields {
 			if lhsVal, ok := mergedFields[rhsKey]; ok {
-				ty, err := glb(lhsVal.Type, rhsVal.Type)
+				ty, err := self.glb(lhsVal.Type, rhsVal.Type)
 				if err != nil {
 					return nil, err
 				}
@@ -274,7 +274,7 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		mergedMeths := maps.Clone(lhsMap)
 		for rhsKey, rhsVal := range rhsMap {
 			if lhsVal, ok := mergedMeths[rhsKey]; ok {
-				ty, err := glb(lhsVal.Type, rhsVal.Type)
+				ty, err := self.glb(lhsVal.Type, rhsVal.Type)
 				if err != nil {
 					return nil, err
 				}
@@ -292,7 +292,7 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 			Methods: mapToNamedMembers(mergedMeths),
 		}, nil
 	} else if lhs, rhs, ok := matchPair[ArrayType, ArrayType](lhs0, rhs0); ok {
-		lb, err := glb(lhs.ElType, rhs.ElType)
+		lb, err := self.glb(lhs.ElType, rhs.ElType)
 		if err != nil {
 			return nil, err
 		}
@@ -303,7 +303,7 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		return ArrayType{lb, lhs.Size}, nil
 	} else if lhs, rhs, ok := matchPair[SliceType, SliceType](lhs0, rhs0); ok {
-		lb, err := glb(lhs.ElType, rhs.ElType)
+		lb, err := self.glb(lhs.ElType, rhs.ElType)
 		if err != nil {
 			return nil, err
 		}
@@ -351,7 +351,7 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
 		return Str{}, nil
 	} else if lhs, rhs, ok := matchPair[Ref, Ref](lhs0, rhs0); ok {
-		content, err := glb(lhs.Content, rhs.Content)
+		content, err := self.glb(lhs.Content, rhs.Content)
 		if err != nil {
 			return nil, err
 		}
@@ -383,7 +383,7 @@ func glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	}
 }
 
-func glbCrossObject(lhs Record, rhs ObjectType) (ConcreteType, error) {
+func (self *symbols) glbCrossObject(lhs Record, rhs ObjectType) (ConcreteType, error) {
 	var err error
 	lhsMap := namedTypesToMap(lhs.Fields)
 	rhsMap := namedMembersToMap(rhs.Fields)
@@ -391,7 +391,7 @@ func glbCrossObject(lhs Record, rhs ObjectType) (ConcreteType, error) {
 	mergedMap := maps.Clone(lhsMap)
 	for rhsKey, rhsVal := range rhsMap {
 		if lhsVal, ok := mergedMap[rhsKey]; ok {
-			mergedMap[rhsKey], err = glb(lhsVal, rhsVal.Type)
+			mergedMap[rhsKey], err = self.glb(lhsVal, rhsVal.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -400,7 +400,7 @@ func glbCrossObject(lhs Record, rhs ObjectType) (ConcreteType, error) {
 	return Record{mapToNamedTypes(mergedMap)}, nil
 }
 
-func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
+func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	type C = ConcreteType
 	if _, rhs, ok := matchPair[Bot, C](lhs0, rhs0); ok {
 		return rhs, nil
@@ -417,11 +417,11 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		return nil, fmt.Errorf("coercion between named types not yet supported: %v and %v", lhs, rhs)
 	} else if lhs, rhs, ok := matchPair[C, Application](lhs0, rhs0); ok {
-		return lubConcrete(rhs, lhs)
-	} else if lhs, _, ok := matchPair[Application, C](lhs0, rhs0); ok {
-		// if err := constrain(lhs.concretize(), rhs); err != nil {
-		// 	return nil, fmt.Errorf("TODO currently only implemented lub of Application types if the Application type is greater: lub(%v, %v)", lhs, rhs)
-		// }
+		return self.lubConcrete(rhs, lhs)
+	} else if lhs, rhs, ok := matchPair[Application, C](lhs0, rhs0); ok {
+		if err := self.constrain(lhs, rhs); err != nil {
+			return nil, fmt.Errorf("TODO currently only implemented lub of Application types if the Application type is greater: lub(%v, %v)", lhs, rhs)
+		}
 
 		return lhs, nil
 	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
@@ -429,14 +429,14 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		args := make([]SimpleType, 0, len(lhs.Args))
 		for i, lhsArg := range lhs.Args {
-			ty, err := glb(lhsArg, rhs.Args[i])
+			ty, err := self.glb(lhsArg, rhs.Args[i])
 			if err != nil {
 				return nil, err
 			}
 			args = append(args, ty)
 		}
 
-		ret, err := lub(lhs.Ret, rhs.Ret)
+		ret, err := self.lub(lhs.Ret, rhs.Ret)
 		if err != nil {
 			return nil, err
 		}
@@ -450,7 +450,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		for _, lhsField := range lhs.Fields {
 			if rhsField, ok := rhsMap[lhsField.Name]; ok {
 				// TODO: reject "union" types like int|string
-				ty, err := lub(lhsField.Type, rhsField)
+				ty, err := self.lub(lhsField.Type, rhsField)
 				if err != nil {
 					return nil, err
 				}
@@ -463,11 +463,11 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		}
 		return Record{Fields: merged}, nil
 	} else if lhs, rhs, ok := matchPair[Record, ObjectType](lhs0, rhs0); ok {
-		return lubCrossObject(lhs, rhs)
+		return self.lubCrossObject(lhs, rhs)
 	} else if lhs, rhs, ok := matchPair[ObjectType, Record](lhs0, rhs0); ok {
-		return lubCrossObject(rhs, lhs)
+		return self.lubCrossObject(rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[ArrayType, ArrayType](lhs0, rhs0); ok {
-		el, err := lub(lhs.ElType, rhs.ElType)
+		el, err := self.lub(lhs.ElType, rhs.ElType)
 		if err != nil {
 			return nil, err
 		}
@@ -478,7 +478,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		return ArrayType{el, lhs.Size}, nil
 	} else if lhs, rhs, ok := matchPair[SliceType, SliceType](lhs0, rhs0); ok {
-		el, err := lub(lhs.ElType, rhs.ElType)
+		el, err := self.lub(lhs.ElType, rhs.ElType)
 		if err != nil {
 			return nil, err
 		}
@@ -531,7 +531,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		// return the named class if named <: unnamed
 		if lhs.Name != "" {
-			if err := constrain(lhs, rhs); err != nil {
+			if err := self.constrain(lhs, rhs); err != nil {
 				return nil, fmt.Errorf("unimplemented: lub(named_class, unnamed_class): constrain result: %v", err)
 			}
 
@@ -540,7 +540,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 
 		// return the named class if named <: unnamed
 		if rhs.Name != "" {
-			if err := constrain(rhs, lhs); err != nil {
+			if err := self.constrain(rhs, lhs); err != nil {
 				return nil, fmt.Errorf("unimplemented: lub(named_class, unnamed_class): constrain result: %v", err)
 			}
 
@@ -552,7 +552,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		fields := []NamedMember{}
 		for _, lhsMember := range lhs.Fields {
 			if rhsMember, ok := rhsFieldMap[lhsMember.Name]; ok {
-				ty, err := lub(lhsMember.Type, rhsMember.Type)
+				ty, err := self.lub(lhsMember.Type, rhsMember.Type)
 				if err != nil {
 					return nil, err
 				}
@@ -571,7 +571,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 		merged := []NamedMember{}
 		for _, lhsMember := range lhs.Methods {
 			if rhsMember, ok := rhsMethMap[lhsMember.Name]; ok {
-				ty, err := lub(lhsMember.Type, rhsMember.Type)
+				ty, err := self.lub(lhsMember.Type, rhsMember.Type)
 				if err != nil {
 					return nil, err
 				}
@@ -604,7 +604,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
 		return Str{}, nil
 	} else if lhs, rhs, ok := matchPair[Ref, Ref](lhs0, rhs0); ok {
-		content, err := lub(lhs.Content, rhs.Content)
+		content, err := self.lub(lhs.Content, rhs.Content)
 		if err != nil {
 			return nil, err
 		}
@@ -615,7 +615,7 @@ func lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	}
 }
 
-func lubCrossObject(lhs Record, rhs ObjectType) (ConcreteType, error) {
+func (self *symbols) lubCrossObject(lhs Record, rhs ObjectType) (ConcreteType, error) {
 	// the "intersection" of both records
 	rhsMap := namedMembersToMap(rhs.Fields)
 
@@ -623,7 +623,7 @@ func lubCrossObject(lhs Record, rhs ObjectType) (ConcreteType, error) {
 	for _, lhsField := range lhs.Fields {
 		if rhsField, ok := rhsMap[lhsField.Name]; ok {
 			// TODO: reject "union" types like int|string
-			ty, err := lub(lhsField.Type, rhsField.Type)
+			ty, err := self.lub(lhsField.Type, rhsField.Type)
 			if err != nil {
 				return nil, err
 			}
@@ -637,23 +637,23 @@ func lubCrossObject(lhs Record, rhs ObjectType) (ConcreteType, error) {
 	return Record{Fields: merged}, nil
 }
 
-func glb(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
+func (self *symbols) glb(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
 	if lhs, rhs, ok := matchPair[ConcreteType, ConcreteType](lhs0, rhs0); ok {
-		return glbConcrete(lhs, rhs)
+		return self.glbConcrete(lhs, rhs)
 	} else if lhs, rhs, ok := matchPair[*Variable, *Variable](lhs0, rhs0); ok {
-		if err := unify(lhs, rhs); err != nil {
+		if err := self.unify(lhs, rhs); err != nil {
 			return nil, err
 		}
 
 		return rhs, nil
 	} else if lhs, rhs, ok := matchPair[ConcreteType, *Variable](lhs0, rhs0); ok {
-		if err := rhs.newUpperBound(lhs); err != nil {
+		if err := rhs.newUpperBound(self, lhs); err != nil {
 			return nil, err
 		}
 
 		return rhs, nil
 	} else if lhs, rhs, ok := matchPair[*Variable, ConcreteType](lhs0, rhs0); ok {
-		if err := lhs.newUpperBound(rhs); err != nil {
+		if err := lhs.newUpperBound(self, rhs); err != nil {
 			return nil, err
 		}
 
@@ -661,24 +661,24 @@ func glb(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
 	}
 	panic("unreachable")
 }
-func lub(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
+func (self *symbols) lub(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
 	if lhs, rhs, ok := matchPair[ConcreteType, ConcreteType](lhs0, rhs0); ok {
-		return lubConcrete(lhs, rhs)
+		return self.lubConcrete(lhs, rhs)
 
 	} else if lhs, rhs, ok := matchPair[*Variable, *Variable](lhs0, rhs0); ok {
-		if err := unify(lhs, rhs); err != nil {
+		if err := self.unify(lhs, rhs); err != nil {
 			return nil, err
 		}
 
 		return lhs, nil
 	} else if lhs, rhs, ok := matchPair[ConcreteType, *Variable](lhs0, rhs0); ok {
-		if err := rhs.newLowerBound(lhs); err != nil {
+		if err := rhs.newLowerBound(self, lhs); err != nil {
 			return nil, err
 		}
 
 		return rhs, nil
 	} else if lhs, rhs, ok := matchPair[*Variable, ConcreteType](lhs0, rhs0); ok {
-		if err := lhs.newLowerBound(rhs); err != nil {
+		if err := lhs.newLowerBound(self, rhs); err != nil {
 			return nil, err
 		}
 
@@ -742,20 +742,28 @@ type Application struct {
 	Params []SimpleType
 }
 
-func (self Top) instantiate() SimpleType         { return self }
-func (self Bot) instantiate() SimpleType         { return self }
-func (self Func) instantiate() SimpleType        { return self }
-func (self Record) instantiate() SimpleType      { return self }
-func (self ObjectType) instantiate() SimpleType  { return self }
-func (self ArrayType) instantiate() SimpleType   { return self }
-func (self SliceType) instantiate() SimpleType   { return self }
-func (self Primitive) instantiate() SimpleType   { return self }
-func (self Int) instantiate() SimpleType         { return self }
-func (self Str) instantiate() SimpleType         { return self }
-func (self Ref) instantiate() SimpleType         { return self }
-func (self Union) instantiate() SimpleType       { return self }
-func (self Enum) instantiate() SimpleType        { return self }
-func (self Application) instantiate() SimpleType { return self }
+func (self Top) instantiate() SimpleType        { return self }
+func (self Bot) instantiate() SimpleType        { return self }
+func (self Func) instantiate() SimpleType       { return self }
+func (self Record) instantiate() SimpleType     { return self }
+func (self ObjectType) instantiate() SimpleType { return self }
+func (self ArrayType) instantiate() SimpleType  { return self }
+func (self SliceType) instantiate() SimpleType  { return self }
+func (self Primitive) instantiate() SimpleType  { return self }
+func (self Int) instantiate() SimpleType        { return self }
+func (self Str) instantiate() SimpleType        { return self }
+func (self Ref) instantiate() SimpleType        { return self }
+func (self Union) instantiate() SimpleType      { return self }
+func (self Enum) instantiate() SimpleType       { return self }
+func (self Application) instantiate() SimpleType {
+	return Application{
+		Module: self.Module,
+		Name:   self.Name,
+		Params: fun.Map(self.Params, func(t SimpleType) SimpleType {
+			return t.instantiate()
+		}),
+	}
+}
 
 func (self Top) children() []SimpleType { return []SimpleType{} }
 func (self Bot) children() []SimpleType { return []SimpleType{} }

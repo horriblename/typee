@@ -13,15 +13,19 @@ import (
 	"github.com/horriblename/typee/src/types"
 )
 
-type Typer struct {
-	debug      bool
-	mainModule string
-	classScope string
-
+type symbols struct {
 	vars     scope.ScopedMap[TypeScheme]
 	types    scope.ScopedMap[TypeScheme]
 	inferred map[int]TypeScheme
 	imports  map[string]ModuleInfo
+}
+
+type Typer struct {
+	symbols
+
+	debug      bool
+	mainModule string
+	classScope string
 
 	// shared across all modules
 	moduleCache map[string]ModuleInfo
@@ -68,11 +72,16 @@ func NewTyper(mainModule string, debug bool) *Typer {
 	addBuiltinTypes(&types)
 	types.NewScope()
 	return &Typer{
+		symbols: symbols{
+			vars:     vars,
+			types:    types,
+			inferred: map[int]TypeScheme{},
+			imports:  map[string]ModuleInfo{},
+		},
 		mainModule:  mainModule,
 		debug:       debug,
-		vars:        vars,
-		types:       types,
 		moduleCache: map[string]ModuleInfo{},
+		classScope:  "",
 	}
 }
 
@@ -220,7 +229,7 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 					pt := assert.Cast[PolymorphicType](types[i], "cannot fail")
 					fnTy = pt.Body
 				}
-				if err := constrain(typ, fnTy); err != nil {
+				if err := self.symbols.constrain(typ, fnTy); err != nil {
 					return nil, fmt.Errorf("typing function %s: %w", e.Name, err)
 				}
 
@@ -249,7 +258,7 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 				pt := assert.Cast[PolymorphicType](types[i], "cannot fail")
 				placeholderTy = pt.Body
 			}
-			if err := constrain(typ, placeholderTy); err != nil {
+			if err := self.symbols.constrain(typ, placeholderTy); err != nil {
 				return nil, fmt.Errorf("verifying type signature of function %s: %w", e.Name, err)
 			}
 
@@ -265,7 +274,7 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 				valTy = pt.Body
 			}
 
-			if err := constrain(typ, valTy); err != nil {
+			if err := self.symbols.constrain(typ, valTy); err != nil {
 				return nil, err
 			}
 
@@ -297,7 +306,7 @@ func (self *Typer) typeLetRhs(name string, rhs parse.Expr) (PolymorphicType, err
 		return PolymorphicType{}, err
 	}
 
-	if err := constrain(ty, eTy); err != nil {
+	if err := self.symbols.constrain(ty, eTy); err != nil {
 		return PolymorphicType{}, err
 	}
 
@@ -329,6 +338,9 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		return nil, fmt.Errorf("%w: %s", ErrUndefinedVariable, expr.Name)
 	case *parse.SelfLiteral:
 		if ty, err := self.parseType(parse.SelfType{}); err == nil {
+			// TODO: this feels wrong, should'nt need to instantiate for every self right?
+			// I should keep track of what type Self parses into, if it's a PolymorphicType
+			// (or Application of PolymorphicType), I might be in trouble
 			return ty.instantiate(), nil
 		} else {
 			return nil, err
@@ -372,7 +384,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 			}
 
 			retInst := retHint.instantiate()
-			if err := constrain(retInst, bodyTy); err != nil {
+			if err := self.symbols.constrain(retInst, bodyTy); err != nil {
 				return nil, err
 			}
 
@@ -423,7 +435,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		}
 
 		ret := freshVar()
-		if err := constrain(funcTy, Func{argTys, ret}); err != nil {
+		if err := self.symbols.constrain(funcTy, Func{argTys, ret}); err != nil {
 			return nil, err
 		}
 
@@ -456,7 +468,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 
 		ty := freshVar()
 		for _, elTy := range elTyps {
-			if err := constrain(elTy, ty); err != nil {
+			if err := self.symbols.constrain(elTy, ty); err != nil {
 				return nil, fmt.Errorf("array element has incompatible type with other elements before it: %w", err)
 			}
 		}
@@ -486,7 +498,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		}
 
 		ret := freshVar()
-		err = constrain(recordTy, ObjectType{
+		err = self.symbols.constrain(recordTy, ObjectType{
 			Name:   "",
 			Supers: []ObjectType{},
 			Fields: []NamedMember{{
@@ -522,7 +534,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 			},
 		}
 
-		if err := constrain(enumTy, bound); err != nil {
+		if err := self.symbols.constrain(enumTy, bound); err != nil {
 			return nil, err
 		}
 
@@ -534,7 +546,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 			return nil, err
 		}
 
-		if err := constrain(condTy, Primitive{PrimitiveBool}); err != nil {
+		if err := self.symbols.constrain(condTy, Primitive{PrimitiveBool}); err != nil {
 			return nil, err
 		}
 
@@ -549,11 +561,11 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 			return nil, err
 		}
 
-		if err := constrain(thenTy, retTy); err != nil {
+		if err := self.symbols.constrain(thenTy, retTy); err != nil {
 			return nil, err
 		}
 
-		if err := constrain(elseTy, retTy); err != nil {
+		if err := self.symbols.constrain(elseTy, retTy); err != nil {
 			return nil, err
 		}
 		return retTy, nil
@@ -604,7 +616,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 			panic("TODO: call set on PolymorphicType")
 		}
 
-		err = constrain(val, varSTy)
+		err = self.symbols.constrain(val, varSTy)
 		if err != nil {
 			return nil, err
 		}
@@ -970,11 +982,11 @@ func (self *Typer) defClassMethods(classDef *parse.ObjectTypeDef) error {
 		}
 
 		// FIXME: this works cuz currently class and methods aren't generalized
-		if err := constrain(placeholderTy, typ); err != nil {
+		if err := self.symbols.constrain(placeholderTy, typ); err != nil {
 			return fmt.Errorf("typing method %s.%s: %w", classDef.Name, f.Func.Name, err)
 		}
 
-		if err := constrain(typ, placeholderTy); err != nil {
+		if err := self.symbols.constrain(typ, placeholderTy); err != nil {
 			return fmt.Errorf("typing method %s.%s: %w", classDef.Name, f.Func.Name, err)
 		}
 
@@ -1032,7 +1044,7 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 	}
 	ret := freshVar()
 
-	err = constrain(oTy, ObjectType{
+	err = self.symbols.constrain(oTy, ObjectType{
 		Name:   "",
 		Supers: []ObjectType{},
 		Fields: []NamedMember{},
@@ -1217,7 +1229,7 @@ func (self *Typer) readTypeName(t parse.TypeName) (TypeScheme, error) {
 	}
 }
 
-func (self *Typer) concretizeApplication(app Application) (SimpleType, error) {
+func (self *symbols) concretizeApplication(app Application) (SimpleType, error) {
 	base, err := self.lookupType(app.Module, app.Name)
 	if err != nil {
 		return nil, err
@@ -1227,7 +1239,7 @@ func (self *Typer) concretizeApplication(app Application) (SimpleType, error) {
 	case PolymorphicType:
 		ty, err := base.concretize(app.Params)
 		if err != nil {
-			panic(fmt.Sprintf("compiler bug: Application.concretize has wrong parameter count - should have been checked?"))
+			return nil, err
 		}
 
 		return ty, nil
@@ -1238,7 +1250,7 @@ func (self *Typer) concretizeApplication(app Application) (SimpleType, error) {
 	}
 }
 
-func (self *Typer) lookupType(module string, name string) (TypeScheme, error) {
+func (self *symbols) lookupType(module string, name string) (TypeScheme, error) {
 	if module == "" {
 		if ty, ok := self.types.Get(name).Unwrap(); ok {
 			return ty, nil
@@ -1255,7 +1267,7 @@ func (self *Typer) lookupType(module string, name string) (TypeScheme, error) {
 	return nil, fmt.Errorf("%w: %s", ErrUndefinedModule, module)
 }
 
-func constrain(ty0 SimpleType, bound0 SimpleType) error {
+func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 	trace("constrain %v <: %v", ty0, bound0)
 	indentLvl++
 	defer func() { indentLvl-- }()
@@ -1271,10 +1283,20 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		}
 
 		return fmt.Errorf("TODO not implemented: constrain between different Application types")
-	} else if _, _, ok := matchPair[Application, SimpleType](ty0, bound0); ok {
-		// return constrain(lhs.concretize(), bound0)
-	} else if _, _, ok := matchPair[SimpleType, Application](ty0, bound0); ok {
-		// return constrain(ty0, rhs.concretize())
+	} else if lhs, _, ok := matchPair[Application, SimpleType](ty0, bound0); ok {
+		lhs, err := self.concretizeApplication(lhs)
+		if err != nil {
+			return err
+		}
+
+		return self.constrain(lhs, bound0)
+	} else if _, rhs, ok := matchPair[SimpleType, Application](ty0, bound0); ok {
+		rhs, err := self.concretizeApplication(rhs)
+		if err != nil {
+			return err
+		}
+
+		return self.constrain(ty0, rhs)
 	} else if lhs, rhs, ok := matchPair[Int, Int](ty0, bound0); ok {
 		if lhs.Signed != rhs.Signed || lhs.BitSize != rhs.BitSize {
 			return fmt.Errorf("%w: int conversion not implemented", ErrIncompatibleTypes)
@@ -1285,9 +1307,9 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 	} else if _, _, ok := matchPair[Enum, Int](ty0, bound0); ok {
 		return nil
 	} else if lhs, rhs, ok := matchPair[Ref, Ref](ty0, bound0); ok {
-		return constrain(lhs.Content, rhs.Content)
+		return self.constrain(lhs.Content, rhs.Content)
 	} else if lhs, rhs, ok := matchPair[ArrayType, ArrayType](ty0, bound0); ok {
-		err := constrain(lhs.ElType, rhs.ElType)
+		err := self.constrain(lhs.ElType, rhs.ElType)
 		if err != nil {
 			return err
 		}
@@ -1298,7 +1320,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 
 		return nil
 	} else if lhs, rhs, ok := matchPair[SliceType, SliceType](ty0, bound0); ok {
-		return constrain(lhs.ElType, rhs.ElType)
+		return self.constrain(lhs.ElType, rhs.ElType)
 	} else if lhs, rhs, ok := matchPair[Enum, Enum](ty0, bound0); ok {
 		if lhs.Name != "" && rhs.Name != "" && lhs.Name != rhs.Name {
 			return fmt.Errorf("%w: wanted %s got %s", ErrWrongEnumType, rhs.Name, lhs.Name)
@@ -1331,16 +1353,16 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		}
 
 		for i, tyArg := range ty.Args {
-			if err := constrain(bound.Args[i], tyArg); err != nil {
+			if err := self.constrain(bound.Args[i], tyArg); err != nil {
 				return err
 			}
 		}
-		return constrain(ty.Ret, bound.Ret)
+		return self.constrain(ty.Ret, bound.Ret)
 	} else if ty, bound, ok := matchPair[Record, Record](ty0, bound0); ok {
 		tyFields := namedTypesToMap(ty.Fields)
 		for _, boundField := range bound.Fields {
 			if tyField, ok := tyFields[boundField.Name]; ok {
-				if err := constrain(tyField, boundField.Type); err != nil {
+				if err := self.constrain(tyField, boundField.Type); err != nil {
 					return err
 				}
 			} else {
@@ -1361,7 +1383,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		tyFields := namedTypesToMap(ty.Fields)
 		for _, boundField := range bound.Fields {
 			if tyField, ok := tyFields[boundField.Name]; ok {
-				if err := constrain(tyField, boundField.Type); err != nil {
+				if err := self.constrain(tyField, boundField.Type); err != nil {
 					return err
 				}
 			} else {
@@ -1375,7 +1397,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		for _, boundField := range bound.Fields {
 			if tyField, ok := tyFields[boundField.Name]; ok {
 				//TODO: check visibility
-				if err := constrain(tyField.Type, boundField.Type); err != nil {
+				if err := self.constrain(tyField.Type, boundField.Type); err != nil {
 					return err
 				}
 			} else {
@@ -1387,7 +1409,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 		for _, boundMember := range bound.Methods {
 			if tyMember, ok := tyMembers[boundMember.Name]; ok {
 				//TODO: check visibility
-				if err := constrain(tyMember.Type, boundMember.Type); err != nil {
+				if err := self.constrain(tyMember.Type, boundMember.Type); err != nil {
 					return err
 				}
 			} else {
@@ -1397,11 +1419,11 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 
 		return nil
 	} else if ty, bound, ok := matchPair[*Variable, *Variable](ty0, bound0); ok {
-		return unify(ty, bound)
+		return self.unify(ty, bound)
 	} else if ty, bound, ok := matchPair[*Variable, ConcreteType](ty0, bound0); ok {
-		return ty.newUpperBound(bound)
+		return ty.newUpperBound(self, bound)
 	} else if ty, bound, ok := matchPair[ConcreteType, *Variable](ty0, bound0); ok {
-		return bound.newLowerBound(ty)
+		return bound.newLowerBound(self, ty)
 	} else if ty, bound, ok := matchPair[ConcreteType, Union](ty0, bound0); ok {
 		for _, variant := range bound.Variants {
 			if concreteEq(ty, variant) {
@@ -1415,7 +1437,7 @@ func constrain(ty0 SimpleType, bound0 SimpleType) error {
 	}
 }
 
-func unify(lhs *Variable, rhs *Variable) error /*FIXME: idk what type*/ {
+func (self *symbols) unify(lhs *Variable, rhs *Variable) error /*FIXME: idk what type*/ {
 	trace("unify %s and %s", lhs.String(), rhs.String())
 	indentLvl++
 	defer func() { indentLvl-- }()
@@ -1437,11 +1459,11 @@ func unify(lhs *Variable, rhs *Variable) error /*FIXME: idk what type*/ {
 		return err
 	}
 
-	if err := rep1.newLowerBound(rep0.lowerBound); err != nil {
+	if err := rep1.newLowerBound(self, rep0.lowerBound); err != nil {
 		return err
 	}
 
-	if err := rep1.newUpperBound(rep0.upperBound); err != nil {
+	if err := rep1.newUpperBound(self, rep0.upperBound); err != nil {
 		return err
 	}
 
