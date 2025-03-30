@@ -11,6 +11,7 @@ type funcBuilder struct {
 	orig_args []*gi.ArgInfo
 	args      []funcBuilderArg
 	rets      []funcBuilderArg
+	skiplist  []int
 }
 
 type funcBuilderArg struct {
@@ -34,7 +35,6 @@ func newFunctionBuilder(fi *gi.FunctionInfo) *funcBuilder {
 	}
 
 	// build skip list
-	var skiplist []int
 	for _, arg := range fb.orig_args {
 		// TODO: why skip dynamic array?
 		// ti := arg.Type()
@@ -46,18 +46,18 @@ func newFunctionBuilder(fi *gi.FunctionInfo) *funcBuilder {
 
 		clo := arg.Closure()
 		if clo != -1 {
-			skiplist = append(skiplist, clo)
+			fb.skiplist = append(fb.skiplist, clo)
 		}
 
 		des := arg.Destroy()
 		if des != -1 {
-			skiplist = append(skiplist, des)
+			fb.skiplist = append(fb.skiplist, des)
 		}
 	}
 
 	// then walk over arguments
 	for i, ai := range fb.orig_args {
-		if slices.Contains(skiplist, i) {
+		if slices.Contains(fb.skiplist, i) {
 			continue
 		}
 

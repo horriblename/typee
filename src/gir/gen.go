@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -382,8 +383,13 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 			p(" self")
 		}
 	}
-	for _, arg := range fb.orig_args {
-		p(" %s", sanitize(snake_case_to_camelCase(arg.Name())))
+	for i, arg := range fb.orig_args {
+		// TODO: does this work for all types skipped?
+		if slices.Contains(fb.skiplist, i) {
+			p(" null")
+		} else {
+			p(" %s", sanitize(snake_case_to_camelCase(arg.Name())))
+		}
 	}
 
 	p(")\n  ]\n    ")
