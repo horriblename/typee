@@ -1339,7 +1339,7 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 		return bound.newLowerBound(self, ty)
 	} else if ty, bound, ok := matchPair[ConcreteType, Union](ty0, bound0); ok {
 		for _, variant := range bound.Variants {
-			if concreteEq(ty, variant) {
+			if err := self.constrain(ty, variant); err == nil {
 				return nil
 			}
 		}
