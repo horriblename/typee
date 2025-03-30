@@ -772,6 +772,17 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 	case *Slice:
 		b, ok := b.(*Slice)
 		return ok && structuralEq(ctx, a.Type, b.Type)
+	case *Application:
+		b, ok := b.(*Application)
+		if !ok {
+			return false
+		}
+		for pa, pb := range fun.ZipSlices(a.Params, b.Params) {
+			if !structuralEq(ctx, pa, pb) {
+				return false
+			}
+		}
+		return true
 	}
 
 	panic("unreachable")
