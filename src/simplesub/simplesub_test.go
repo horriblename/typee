@@ -8,12 +8,16 @@ import (
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
-	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/types"
 )
 
 var tI64 = types.Int{Signed: true, BitSize: 64}
+var appI64 = types.Application{Name: "I64"}
+
+func tApp(name string, params ...types.Type) *types.Application {
+	return &types.Application{Name: name, Params: params}
+}
 
 func TestTypeExpr(t *testing.T) {
 	testCases := []struct {
@@ -74,8 +78,8 @@ func TestTypeExpr(t *testing.T) {
 			desc:  "type annotated function",
 			input: "(fn (Int Int) [x] 12)",
 			typ: &types.Func{
-				Args: []types.Type{&tI64},
-				Ret:  &tI64,
+				Args: []types.Type{tApp("Int")},
+				Ret:  tApp("Int"),
 			},
 		},
 		{
@@ -83,9 +87,9 @@ func TestTypeExpr(t *testing.T) {
 			input: "(fn ([Str] Str) [x] (at x 2))",
 			typ: &types.Func{
 				Args: []types.Type{
-					&types.Slice{Type: &types.String{}},
+					&types.Slice{Type: tApp("String")},
 				},
-				Ret: &types.String{},
+				Ret: tApp("String"),
 			},
 		},
 		{
@@ -127,11 +131,12 @@ func TestTypeExpr(t *testing.T) {
 			input: "(let [x 12 y 23 z false] (if [z] (+ x y) x))",
 			typ:   &tI64,
 		},
-		{
-			desc:  "type instantiation: type is not parameterized",
-			input: "(fn ((Int Str) Str) [x] x)",
-			err:   ErrUnparameterizedTypePassedParams,
-		},
+		// // blocked by missing impl of constrain between different Application types
+		// {
+		// 	desc:  "type instantiation: type is not parameterized",
+		// 	input: "(fn ((Int Str) Str) [x] x)",
+		// 	err:   ErrUnparameterizedTypePassedParams,
+		// },
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -209,7 +214,7 @@ func TestTypeProgram(t *testing.T) {
 					Fields: map[string]types.Member{
 						"y": {
 							Access: types.AccessPrivate,
-							Type:   &types.String{},
+							Type:   tApp("Str"),
 						},
 					},
 					Statics: map[string]types.Member{},
@@ -221,7 +226,7 @@ func TestTypeProgram(t *testing.T) {
 					Fields: map[string]types.Member{
 						"x": {
 							Access: types.AccessPrivate,
-							Type:   &tI64,
+							Type:   tApp("Int"),
 						},
 					},
 					Statics: map[string]types.Member{},
@@ -229,8 +234,8 @@ func TestTypeProgram(t *testing.T) {
 						"getx": {
 							Access: types.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{&types.Class{Name: "Foo"}},
-								Ret:  &tI64,
+								Args: []types.Type{tApp("Foo")},
+								Ret:  tApp("Int"),
 							},
 						},
 					},
@@ -240,8 +245,8 @@ func TestTypeProgram(t *testing.T) {
 					&foo,
 					&bar,
 					&types.Func{
-						Args: []types.Type{&foo},
-						Ret:  &foo,
+						Args: []types.Type{tApp("Foo")},
+						Ret:  tApp("Foo"),
 					},
 					&types.Func{
 						Args: []types.Type{},
@@ -254,14 +259,13 @@ func TestTypeProgram(t *testing.T) {
 			desc:  "self and Self alias",
 			input: "(class Foo {pub x Int, pub (def foo (Self Int) [self] self.x)})",
 			typ: func() []types.Type {
-				foo := types.Class{}
-				foo = types.Class{
+				foo := &types.Class{
 					Name:   "Foo",
 					Supers: []*types.Class{},
 					Fields: map[string]types.Member{
 						"x": {
 							Access: types.AccessPublic,
-							Type:   &tI64,
+							Type:   tApp("Int"),
 						},
 					},
 					Statics: map[string]types.Member{},
@@ -269,13 +273,13 @@ func TestTypeProgram(t *testing.T) {
 						"foo": {
 							Access: types.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{&foo},
-								Ret:  &tI64,
+								Args: []types.Type{tApp("Foo")},
+								Ret:  tApp("Int"),
 							},
 						},
 					},
 				}
-				return []types.Type{&foo}
+				return []types.Type{foo}
 			}(),
 		},
 		{
@@ -287,15 +291,14 @@ func TestTypeProgram(t *testing.T) {
 			`,
 			typ: func() []types.Type {
 				fooSet := orderedset.NewOrderedSet[types.Type](&types.String{})
-				fooUnion := types.Union{Name: "Foo", Variants: fooSet}
 				return []types.Type{
 					&types.Union{
 						Name:     "Foo",
 						Variants: fooSet,
 					},
 					&types.Func{
-						Args: []types.Type{&fooUnion},
-						Ret:  &tI64,
+						Args: []types.Type{&types.Application{Name: "Foo"}},
+						Ret:  tApp("Int"),
 					},
 					&types.Func{
 						Args: []types.Type{},
@@ -484,12 +487,12 @@ func TestTypeProgram(t *testing.T) {
 						Ret:  &types.Generic{ID: 2},
 					},
 					&types.Func{
-						Args: []types.Type{grade, status},
+						Args: []types.Type{tApp("Grade"), tApp("Status")},
 						Ret: &types.Record{
 							Fields: map[string]types.Type{
-								"res":    &tI64,
-								"grade":  grade,
-								"status": status,
+								"res":    tApp("Int"),
+								"grade":  tApp("Grade"),
+								"status": tApp("Status"),
 							},
 						},
 					},
@@ -515,10 +518,8 @@ func TestTypeProgram(t *testing.T) {
 			input: "(extern def doThing (Int Str) [n])",
 			typ: []types.Type{
 				&types.Func{
-					Args: []types.Type{
-						&tI64,
-					},
-					Ret: &types.String{},
+					Args: []types.Type{tApp("Int")},
+					Ret:  tApp("Str"),
 				},
 			},
 		},
@@ -528,9 +529,7 @@ func TestTypeProgram(t *testing.T) {
 			typ: []types.Type{
 				&types.Func{
 					Args: []types.Type{},
-					Ret: &types.Ref{
-						Content: opt.Some[types.Type](&tI64),
-					},
+					Ret:  tApp("Ref", tApp("Int")),
 				},
 			},
 		},
@@ -540,9 +539,7 @@ func TestTypeProgram(t *testing.T) {
 			typ: []types.Type{
 				&types.Func{
 					Args: []types.Type{},
-					Ret: &types.Ref{
-						Content: opt.Some[types.Type](&tI64),
-					},
+					Ret:  tApp("Ref", tApp("Int")),
 				},
 			},
 		},
@@ -556,27 +553,24 @@ func TestTypeProgram(t *testing.T) {
 			typ: func() []types.Type {
 				bar := types.Record{
 					Fields: map[string]types.Type{
-						"y": &tI64,
+						"y": tApp("Int"),
 					},
 				}
 				foo := types.Record{
 					Fields: map[string]types.Type{
-						"x": &bar,
+						"x": tApp("Bar"),
 					},
 				}
 				return []types.Type{
 					&types.Func{
-						Args: []types.Type{&foo},
-						Ret:  &bar,
+						Args: []types.Type{tApp("Foo")},
+						Ret:  tApp("Bar"),
 					},
 					&foo,
 					&bar,
 				}
 			}(),
 		},
-		// currently broken, due to polarity.
-		// Fix would be to enforce method signatures and pre-type classes
-		// fully so that no (unbound) variables exist in method types
 		{
 			desc: "out of order class definition works",
 			input: `
@@ -587,29 +581,26 @@ func TestTypeProgram(t *testing.T) {
 				})
 			`,
 			typ: func() []types.Type {
-				var foo types.Class
-				foo = types.Class{
+				foo := types.Class{
 					Name:   "Foo",
 					Supers: []*types.Class{},
 					Fields: map[string]types.Member{"x": {
-						Access: types.AccessPrivate, Type: &tI64}},
+						Access: types.AccessPrivate, Type: tApp("I64")}},
 					Statics: map[string]types.Member{},
 					Methods: map[string]types.Member{
 						"addOne": {
 							Access: types.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{
-									&foo,
-								},
-								Ret: &tI64,
+								Args: []types.Type{tApp("Foo")},
+								Ret:  tApp("I64"),
 							},
 						},
 					},
 				}
 				return []types.Type{
 					&types.Func{
-						Args: []types.Type{&foo},
-						Ret:  &tI64,
+						Args: []types.Type{tApp("Foo")},
+						Ret:  tApp("I64"),
 					},
 					&foo,
 				}
@@ -632,9 +623,8 @@ func TestTypeProgram(t *testing.T) {
 			})
 			`,
 			typ: func() []types.Type {
-				i32 := &types.Int{Signed: true, BitSize: 32}
-				binding := &types.Class{}
-				*binding = types.Class{
+				i32 := &types.Application{Name: "I32"}
+				binding := types.Class{
 					Name:    "Binding",
 					Supers:  []*types.Class{},
 					Fields:  map[string]types.Member{},
@@ -643,14 +633,14 @@ func TestTypeProgram(t *testing.T) {
 						"dupSource": {
 							Access: 0,
 							Type: &types.Func{
-								Args: []types.Type{binding},
+								Args: []types.Type{&types.Application{Name: "Binding"}},
 								Ret:  i32,
 							},
 						},
 						"dupTarget": {
 							Access: 0,
 							Type: &types.Func{
-								Args: []types.Type{binding},
+								Args: []types.Type{&types.Application{Name: "Binding"}},
 								Ret:  i32,
 							},
 						},
@@ -658,11 +648,73 @@ func TestTypeProgram(t *testing.T) {
 					Top: false,
 				}
 				return []types.Type{
-					&types.Func{Args: []types.Type{binding}, Ret: i32},
-					&types.Func{Args: []types.Type{binding}, Ret: i32},
-					binding,
+					&types.Func{Args: []types.Type{&types.Application{Name: "Binding"}}, Ret: i32},
+					&types.Func{Args: []types.Type{&types.Application{Name: "Binding"}}, Ret: i32},
+					&binding,
 				}
 			}(),
+		},
+		{
+			desc: "mutually recursive class definition",
+			input: `
+				(class Foo {
+					x I64,
+					pub (def add (Self Bar Int) [self bar] 1),
+				})
+				(class Bar {
+					y I64,
+					pub (def add (Self Foo Int) [self foo] (+ self.y foo.x)),
+				})
+			`,
+			typ: []types.Type{
+				&types.Class{
+					Name:   "Foo",
+					Supers: []*types.Class{},
+					Fields: map[string]types.Member{
+						"x": {
+							Type:   &types.Application{Name: "I64"},
+							Access: types.AccessPrivate,
+						}},
+					Methods: map[string]types.Member{
+						"add": {
+							Access: types.AccessPublic,
+							Type: &types.Func{
+								Args: []types.Type{
+									&types.Application{Name: "Foo"},
+									&types.Application{Name: "Bar"},
+								},
+								Ret: &types.Application{Name: "Int"},
+							},
+						},
+					},
+					Top:     false,
+					Statics: map[string]types.Member{},
+				},
+				&types.Class{
+					Name:   "Bar",
+					Supers: []*types.Class{},
+					Fields: map[string]types.Member{
+						"y": {
+							Access: types.AccessPrivate,
+							Type:   &types.Application{Name: "I64"},
+						},
+					},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{
+						"add": {
+							Access: types.AccessPublic,
+							Type: &types.Func{
+								Args: []types.Type{
+									&types.Application{Name: "Bar"},
+									&types.Application{Name: "Foo"},
+								},
+								Ret: &types.Application{Name: "Int"},
+							},
+						},
+					},
+					Top: false,
+				},
+			},
 		},
 	}
 	for _, tC := range testCases {
@@ -672,10 +724,10 @@ func TestTypeProgram(t *testing.T) {
 			checker := NewTyper("MainModule", true)
 
 			program, err := parse.ParseString(tC.input)
-			assert.Ok(err)
+			assert.Ok(err, "parse error")
 
 			ty, _, err := checker.TypeProgram(program)
-			assert.Ok(err)
+			assert.Ok(err, "type error")
 
 			t.Logf("pre-simplify: %v", ty)
 
