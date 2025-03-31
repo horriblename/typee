@@ -4,8 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"os"
+	"runtime"
+	"runtime/pprof"
 	"strings"
 
 	"github.com/chzyer/readline"
@@ -56,6 +59,8 @@ func main() {
 		os.Exit(2)
 	}
 
+	maybeProfileMem()
+
 	if err != nil {
 		errorf("%s", err)
 		os.Exit(1)
@@ -75,6 +80,47 @@ func errorf(format string, args ...any) {
 	fmt.Fprintln(os.Stderr)
 }
 
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
+var memprofile = flag.String("memprofile", "", "write memory profile to `file`")
+
+type closer struct{ close func() error }
+
+func (self closer) Close() error { return self.close() }
+
+func maybeProfileCpu() io.Closer {
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		return closer{func() error {
+			pprof.StopCPUProfile()
+			return f.Close()
+		}}
+	}
+	return closer{func() error { return nil }}
+}
+
+func maybeProfileMem() {
+	if *memprofile != "" {
+		f, err := os.Create(*memprofile)
+		if err != nil {
+			log.Fatal("could not create memory profile: ", err)
+		}
+		defer f.Close() // error handling omitted for example
+		runtime.GC()    // get up-to-date statistics
+		// Lookup("allocs") creates a profile similar to go test -memprofile.
+		// Alternatively, use Lookup("heap") for a profile
+		// that has inuse_space as the default index.
+		if err := pprof.Lookup("allocs").WriteTo(f, 0); err != nil {
+			log.Fatal("could not write memory profile: ", err)
+		}
+	}
+}
+
 const flagOut = "o"
 const flagOutLong = "out"
 const defaultOut = "a.out"
@@ -92,6 +138,8 @@ func cmdCheck() error {
 	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
 	printTypedTree := flag.Bool(flagPrintTypedTree, false, helpPrintTypedTree)
 	flag.Parse()
+	prof := maybeProfileCpu()
+	defer prof.Close()
 
 	if *traceTyper {
 		simplesub.EnableTrace = true
@@ -136,6 +184,8 @@ func cmdBuild() error {
 	}
 
 	flag.Parse()
+	prof := maybeProfileCpu()
+	defer prof.Close()
 
 	asmFlags := strings.Fields(*assemblerFlags)
 	ldFlags := strings.Fields(*linkerFlags)
@@ -168,6 +218,9 @@ func cmdRun() error {
 	}
 
 	flag.Parse()
+	prof := maybeProfileCpu()
+	defer prof.Close()
+
 	params := buildParams{
 		targetStage: run,
 		inFile:      flag.Arg(0),
@@ -189,6 +242,8 @@ func cmdRepl() error {
 	rawType := flag.Bool(flagRawType, false, helpRawType)
 	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
 	flag.Parse()
+	prof := maybeProfileCpu()
+	defer prof.Close()
 
 	if *traceTyper {
 		simplesub.EnableTrace = true
@@ -269,6 +324,8 @@ func cmdGlueGir() error {
 	outLong := flag.String(flagOutLong, "", helpOut)
 	dbgConfig := flag.Bool(flagDbgPrintConfig, false, helpDbgPrintConfig)
 	flag.Parse()
+	prof := maybeProfileCpu()
+	defer prof.Close()
 
 	if len(flag.Args()) != 1 {
 		errorf("wrong arg count")
