@@ -1122,26 +1122,6 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 	}
 }
 
-func (self *Typer) readTypeName(t parse.TypeName) (TypeScheme, error) {
-	if t.Module == "" {
-		if ty, ok := self.types.Get(t.Name).Unwrap(); !ok {
-			return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, t.Name)
-		} else {
-			return ty, nil
-		}
-	} else {
-		// our import system is jank as hell (modules are stored as record types)
-		if mod, ok := self.imports[t.Module]; !ok {
-			return nil, fmt.Errorf("%w: %s", ErrUndefinedModule, t.Module)
-		} else {
-			if ty, ok := mod.Types[t.Name]; ok {
-				return ty, nil
-			}
-			return nil, fmt.Errorf("%w: %s.%s", ErrUndefinedTypeName, t.Module, t.Name)
-		}
-	}
-}
-
 func (self *symbols) concretizeApplication(app Application) (SimpleType, error) {
 	base, err := self.lookupType(app.Module, app.Name)
 	if err != nil {
