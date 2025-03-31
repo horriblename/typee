@@ -687,7 +687,7 @@ func (self *symbols) lub(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
 	panic(fmt.Sprintf("unreachable: type pair %T, %T", lhs0, rhs0))
 }
 
-func matchPair[L, R any](lhs interface{}, rhs interface{}) (_ L, _ R, ok bool) {
+func matchPair[L, R any](lhs any, rhs any) (_ L, _ R, ok bool) {
 	l, ok0 := lhs.(L)
 	r, ok1 := rhs.(R)
 
@@ -874,22 +874,6 @@ func (self Application) String() string {
 	}
 	b.WriteString(")")
 	return b.String()
-}
-
-func (self Application) concretize(base TypeScheme) SimpleType {
-	switch base := base.(type) {
-	case PolymorphicType:
-		ty, err := base.concretize(self.Params)
-		if err != nil {
-			panic(fmt.Sprintf("compiler bug: Application.concretize has wrong parameter count - should have been checked?"))
-		}
-
-		return ty
-	case SimpleType:
-		return base
-	default:
-		panic(fmt.Sprintf("unexpected simplesub.TypeScheme: %#v", base))
-	}
 }
 
 type deepPrintCtx struct {

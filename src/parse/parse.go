@@ -820,12 +820,6 @@ func kwVar(in []lex.Token) ([]lex.Token, struct{}, error) {
 func kwIf(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.If])(in)
 }
-func kwLet(in []lex.Token) ([]lex.Token, struct{}, error) {
-	return wrappedResult(matchOne[*lex.Let])(in)
-}
-func kwLetRec(in []lex.Token) ([]lex.Token, struct{}, error) {
-	return wrappedResult(matchOne[*lex.LetRec])(in)
-}
 func kwImport(in []lex.Token) ([]lex.Token, struct{}, error) {
 	return wrappedResult(matchOne[*lex.Import])(in)
 }

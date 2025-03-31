@@ -840,16 +840,6 @@ type PrettyCtx struct {
 	counter int
 }
 
-func (ctx *PrettyCtx) get(id TypeID) string {
-	if prettyName, ok := ctx.mapping[id]; ok {
-		return prettyName
-	}
-
-	ctx.counter = ctx.counter + 1
-	ctx.mapping[id] = fmt.Sprintf("t%d", ctx.counter)
-	return ctx.mapping[id]
-}
-
 func (ctx *PrettyCtx) String(typ Type) string {
 	if ctx.mapping == nil {
 		ctx.mapping = map[TypeID]string{}
