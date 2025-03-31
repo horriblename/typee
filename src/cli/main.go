@@ -13,9 +13,7 @@ import (
 
 	"github.com/chzyer/readline"
 	"github.com/horriblename/typee/src/gir"
-	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
-	"github.com/horriblename/typee/src/types"
 )
 
 const helpMain string = `
@@ -249,6 +247,10 @@ func cmdRepl() error {
 		simplesub.EnableTrace = true
 	}
 	typer := simplesub.NewTyper("Repl", true)
+	state := replState{
+		typer:   typer,
+		rawType: *rawType,
+	}
 
 	rl, err := readline.NewEx(&readline.Config{
 		Prompt:       "> ",
@@ -273,41 +275,7 @@ func cmdRepl() error {
 			return err
 		}
 
-		line = strings.TrimSpace(line)
-
-		expr, err := parse.ParseString(line)
-		if err != nil {
-			errorf("%s", err.Error())
-			continue
-		}
-
-		if len(expr) == 0 {
-			continue
-		}
-
-		ty, _, err := typer.TypeProgram(expr)
-		if err != nil {
-			errorf("%s", err)
-			continue
-		}
-
-		if *rawType {
-			errorf("pre-simplify: (polymorphic) %s", ty[0].String())
-		}
-
-		st, ok := ty[0].(simplesub.SimpleType)
-		if !ok {
-			st = ty[0].(simplesub.PolymorphicType).Body
-		}
-		simplified := simplesub.SimplifyType(st)
-
-		if *rawType {
-			errorf("pre-coalesce: (polymorphic) %v", simplified)
-		}
-
-		simpleTy := simplesub.CoalesceType(simplified)
-
-		errorf(": %s", types.DeepPrint(simpleTy))
+		processInput(state, line)
 	}
 
 	return nil
