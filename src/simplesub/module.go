@@ -11,6 +11,7 @@ import (
 )
 
 type ModuleInfo struct {
+	Name     CanonName
 	Ast      []parse.Expr
 	Types    map[string]TypeScheme
 	Globals  map[string]TypeScheme
@@ -31,7 +32,7 @@ func (self *Typer) typeDeps(program []parse.Expr) error {
 			continue
 		}
 
-		name := strings.Join(dep.Module, ".")
+		name := CanonName(strings.Join(dep.Module, "."))
 
 		if _, ok := self.moduleCache[name]; ok {
 			return nil
@@ -54,8 +55,8 @@ func (self *Typer) typeDeps(program []parse.Expr) error {
 
 // sort modules in dependency tree, leaf modules (no dependencies) go first
 
-func parseModule(name string) ([]parse.Expr, error) {
-	modPath := path.Join(strings.Split(name, ".")...) + ".hor"
+func parseModule(name CanonName) ([]parse.Expr, error) {
+	modPath := path.Join(strings.Split(string(name), ".")...) + ".hor"
 	data, err := os.ReadFile(modPath)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing %s: %w", modPath, err)

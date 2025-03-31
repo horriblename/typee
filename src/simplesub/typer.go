@@ -18,22 +18,22 @@ type symbols struct {
 	types    scope.ScopedMap[TypeScheme]
 	inferred map[int]TypeScheme
 	imports  map[string]ModuleInfo
+
+	// shared across all modules
+	moduleCache map[CanonName]ModuleInfo
 }
 
 type Typer struct {
 	symbols
 
 	debug      bool
-	mainModule string
+	mainModule CanonName
 	classScope string
-
-	// shared across all modules
-	moduleCache map[string]ModuleInfo
 }
 
 var ErrUndefinedVariable = errors.New("undefined variable")
 var ErrUndefinedTypeName = errors.New("undefined type")
-var ErrUndefinedModule = errors.New("undefined module")
+var ErrUndefinedModule = errors.New("undefined module. missing import?")
 var ErrSelfUnbound = errors.New("keyword self used outside of a method")
 var ErrSelfTypeUnbound = errors.New("keyword Self used outside of a class definition")
 var ErrWrongArgCount = errors.New("wrong argument count")
@@ -64,7 +64,7 @@ var ErrPolymorphicInSignature = errors.New("illegal polymorphic type in function
 
 const scopeLevelTop int = 1
 
-func NewTyper(mainModule string, debug bool) *Typer {
+func NewTyper(mainModule CanonName, debug bool) *Typer {
 	vars := scope.NewScopedMap[TypeScheme]()
 	addBuiltins(&vars)
 	vars.NewScope()
@@ -73,19 +73,19 @@ func NewTyper(mainModule string, debug bool) *Typer {
 	types.NewScope()
 	return &Typer{
 		symbols: symbols{
-			vars:     vars,
-			types:    types,
-			inferred: map[int]TypeScheme{},
-			imports:  map[string]ModuleInfo{},
+			vars:        vars,
+			types:       types,
+			inferred:    map[int]TypeScheme{},
+			imports:     map[string]ModuleInfo{},
+			moduleCache: map[CanonName]ModuleInfo{},
 		},
-		mainModule:  mainModule,
-		debug:       debug,
-		moduleCache: map[string]ModuleInfo{},
-		classScope:  "",
+		mainModule: mainModule,
+		debug:      debug,
+		classScope: "",
 	}
 }
 
-func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[string]ModuleInfo, error) {
+func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[CanonName]ModuleInfo, error) {
 	if err := self.typeDeps(program); err != nil {
 		return nil, nil, err
 	}
@@ -124,7 +124,7 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 		}
 
 		alias := expr.Module[len(expr.Module)-1]
-		fullPath := strings.Join(expr.Module, ".")
+		fullPath := CanonName(strings.Join(expr.Module, "."))
 		self.imports[alias], ok = self.moduleCache[fullPath]
 		assert.True(ok, "typer bug: module %s missing from moduleCache", fullPath)
 	}
@@ -1025,9 +1025,17 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 	switch t := tr.(type) {
 	case parse.TypeName:
 		// FIXME: when should I check for validity? e.g. undefined type, wrong type param etc.
+		mod := CanonName("")
+		if t.Module != "" {
+			if m, ok := self.imports[t.Module]; ok {
+				mod = m.Name
+			} else {
+				return nil, fmt.Errorf("%w module: %s", ErrUndefinedModule, t.Module)
+			}
+		}
 
 		return Application{
-			Module: t.Module,
+			Module: mod,
 			Name:   t.Name,
 			Params: []SimpleType{},
 		}, nil
@@ -1111,8 +1119,17 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 			return nil, err
 		}
 
+		mod := CanonName("")
+		if t.Type.Module != "" {
+			if m, ok := self.imports[t.Type.Module]; ok {
+				mod = m.Name
+			} else {
+				return nil, fmt.Errorf("%w module: %s", ErrUndefinedModule, t.Type.Module)
+			}
+		}
+
 		return Application{
-			Module: t.Type.Module,
+			Module: mod,
 			Name:   t.Type.Name,
 			Params: params,
 		}, nil
@@ -1143,7 +1160,7 @@ func (self *symbols) concretizeApplication(app Application) (SimpleType, error) 
 	}
 }
 
-func (self *symbols) lookupType(module string, name string) (TypeScheme, error) {
+func (self *symbols) lookupType(module CanonName, name string) (TypeScheme, error) {
 	if module == "" {
 		if ty, ok := self.types.Get(name).Unwrap(); ok {
 			return ty, nil
@@ -1151,7 +1168,7 @@ func (self *symbols) lookupType(module string, name string) (TypeScheme, error) 
 		return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, name)
 	}
 
-	if mod, ok := self.imports[module]; ok {
+	if mod, ok := self.moduleCache[module]; ok {
 		if ty, ok := mod.Types[name]; ok {
 			return ty, nil
 		}

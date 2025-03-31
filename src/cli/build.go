@@ -80,7 +80,8 @@ func buildProgram(params buildParams) error {
 		os.Exit(1)
 	}
 
-	typer := simplesub.NewTyper(mainModule, true)
+	modName := simplesub.CanonName(mainModule)
+	typer := simplesub.NewTyper(modName, true)
 	t, modules, err := typer.TypeProgram(ast)
 	errorf("")
 	if err != nil {
@@ -89,7 +90,7 @@ func buildProgram(params buildParams) error {
 	}
 
 	if params.printTypedTree {
-		errorf("%s", simplesub.DebugTypedTree(ast, modules[mainModule].TypeTree))
+		errorf("%s", simplesub.DebugTypedTree(ast, modules[modName].TypeTree))
 	}
 
 	if params.printTypes {
@@ -115,7 +116,7 @@ func buildProgram(params buildParams) error {
 			useExternalQbe: params.externalQbe,
 			module:         name,
 			ast:            mod.Ast,
-			typeTree:       mod.TypeTree,
+			allModules:     modules,
 			assemblerFlags: params.assemblerFlags,
 		})
 		if err != nil {
@@ -167,15 +168,15 @@ func buildProgram(params buildParams) error {
 
 type compileUnitArgs struct {
 	useExternalQbe bool
-	module         string
+	module         simplesub.CanonName
 	ast            []parse.Expr
-	typeTree       map[int]simplesub.TypeScheme
+	allModules     map[simplesub.CanonName]simplesub.ModuleInfo
 	assemblerFlags []string
 }
 
 func compileUnit(args compileUnitArgs) (outFile string, _ error) {
-	qbePath := args.module + ".qbe"
-	asmFName := args.module + ".s"
+	qbePath := string(args.module + ".qbe")
+	asmFName := string(args.module + ".s")
 
 	qbeFile, err := os.OpenFile(qbePath, os.O_TRUNC|os.O_CREATE|os.O_RDWR, 0o755)
 	if err != nil {
@@ -183,7 +184,7 @@ func compileUnit(args compileUnitArgs) (outFile string, _ error) {
 	}
 	defer qbeFile.Close()
 
-	genqbe.Gen(qbeFile, args.module, args.typeTree, args.ast)
+	genqbe.Gen(qbeFile, args.module, args.allModules, args.ast)
 	qbeFile.Seek(0, 0)
 
 	if args.useExternalQbe {
@@ -208,7 +209,7 @@ func compileUnit(args compileUnitArgs) (outFile string, _ error) {
 	}
 
 	// maybe I should use `as` and `ld` instead? idk
-	objFName := args.module + ".o"
+	objFName := string(args.module + ".o")
 	assemblerArgs := append(args.assemblerFlags, "-c", asmFName, "-o", objFName)
 	slog.Debug("assembler", "args", assemblerArgs)
 	assembler := exec.Command("gcc", assemblerArgs...)

@@ -22,7 +22,7 @@ import (
 var ErrCannotCompilePolymorphicType = errors.New("tried to compile a polymorphic type")
 
 type ctx struct {
-	module string
+	module simplesub.CanonName
 
 	ptrType      qbeil.BaseType
 	intType      qbeil.BaseType
@@ -30,7 +30,8 @@ type ctx struct {
 
 	typeDecl    bytes.Buffer
 	il          qbeil.Builder
-	types       map[int]simplesub.TypeScheme
+	astToType   map[int]simplesub.TypeScheme
+	localTypes  map[string]simplesub.TypeScheme
 	simplified  map[int]types.Type
 	statics     map[qbeil.Var]string
 	globals     map[string]int
@@ -43,7 +44,8 @@ type ctx struct {
 	generatedTranslation map[types.Type]qbeil.AggregateType
 }
 
-func Gen(w io.Writer, module string, typs map[int]simplesub.TypeScheme, ast []parse.Expr) {
+func Gen(w io.Writer, module simplesub.CanonName, modules map[simplesub.CanonName]simplesub.ModuleInfo, ast []parse.Expr) {
+	mainMod := assert.Get(modules, module, "BUG in qbe gen: missing module info of ", module)
 	ctx := ctx{
 		module:               module,
 		ptrType:              qbeil.Long, // TODO: infer ptr & int size + manual options
@@ -51,7 +53,8 @@ func Gen(w io.Writer, module string, typs map[int]simplesub.TypeScheme, ast []pa
 		defaultAlign:         64,
 		typeDecl:             bytes.Buffer{},
 		il:                   qbeil.Builder{OutFile: w},
-		types:                typs,
+		astToType:            mainMod.TypeTree,
+		localTypes:           mainMod.Types,
 		simplified:           map[int]types.Type{},
 		statics:              map[qbeil.Var]string{},
 		globals:              globals(ast),
@@ -192,7 +195,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 			// should be unreachable currently
 			if lhs, ok := e.Record.(*parse.Symbol); ok {
 				mangled := mangleName(mangleOpts{
-					module: lhs.Name,
+					module: simplesub.CanonName(lhs.Name),
 					class:  "",
 					name:   e.Field,
 				})
@@ -388,10 +391,10 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 
 	case *parse.RecordAccess:
 		// TODO: currently only module access supported
-		var modulePath string
+		var modulePath simplesub.CanonName
 		switch lhs := callee.Record.(type) {
 		case *parse.Symbol:
-			modulePath = lhs.Name
+			modulePath = simplesub.CanonName(lhs.Name)
 		case *parse.RecordAccess:
 			modulePath = flattenRecordAccessPath(lhs)
 		default:
@@ -408,7 +411,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 	}
 }
 
-func genCallWithFuncName(ctx *ctx, module string, class string, fnName string, expr *parse.Form) qbeil.Value {
+func genCallWithFuncName(ctx *ctx, module simplesub.CanonName, class string, fnName string, expr *parse.Form) qbeil.Value {
 	mangled := fnName
 	if !mapHas(ctx.externs, fnName) /* FIXME: might get shadowed */ {
 		mangled = mangleName(mangleOpts{module: module, class: class, name: fnName})
@@ -607,6 +610,16 @@ func (ctx *ctx) finish() {
 
 func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	switch t := typ.(type) {
+	case *types.Application:
+		if t.Module == "" {
+			_, ok := ctx.localTypes[t.Name]
+			if !ok {
+				panic("TODO missing local type " + t.Name)
+			}
+			// (simplesub.SimplifyType(ty))
+			// return ctx.toILType(ty)
+		}
+		panic("TODO")
 	case *types.Int:
 		switch t.BitSize {
 		case 8:
@@ -805,12 +818,12 @@ func (ctx *ctx) simplify(exprID int) types.Type {
 		return t
 	}
 
-	st, ok := ctx.types[exprID].(simplesub.SimpleType)
+	st, ok := ctx.astToType[exprID].(simplesub.SimpleType)
 	if !ok {
-		pt, ok := ctx.types[exprID].(simplesub.PolymorphicType)
+		pt, ok := ctx.astToType[exprID].(simplesub.PolymorphicType)
 		// HACK: temp workaround for class and method types
 		if !ok {
-			panic(fmt.Sprintf("unreachable or nil TypeScheme at expr ID %d: %v", exprID, ctx.types[exprID]))
+			panic(fmt.Sprintf("unreachable or nil TypeScheme at expr ID %d: %v", exprID, ctx.astToType[exprID]))
 		}
 		st = pt.Body
 	}
@@ -841,7 +854,7 @@ func (self *ctx) sizeOf(t qbeil.Type) (bits int, alignBits int) {
 	return qbeil.SizeOf(self.defaultAlign, t)
 }
 
-func flattenRecordAccessPath(expr *parse.RecordAccess) string {
+func flattenRecordAccessPath(expr *parse.RecordAccess) simplesub.CanonName {
 	lhs := expr.Record
 	modulePath := []string{}
 	for {
@@ -860,7 +873,7 @@ func flattenRecordAccessPath(expr *parse.RecordAccess) string {
 	}
 	b.WriteString(modulePath[0])
 
-	return b.String()
+	return simplesub.CanonName(b.String())
 }
 
 func globals(program []parse.Expr) map[string]int {

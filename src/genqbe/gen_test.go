@@ -37,13 +37,13 @@ func TestGen(t *testing.T) {
 			program, err := parse.ParseString(string(src))
 			assert.Ok(err)
 
-			mod := "MainModule"
+			mod := simplesub.CanonName("MainModule")
 			typer := simplesub.NewTyper(mod, false)
 			_, types, err := typer.TypeProgram(program)
 			assert.Ok(err)
 
 			var buf bytes.Buffer
-			Gen(&buf, mod, types[mod].TypeTree, program)
+			Gen(&buf, mod, types, program)
 
 			got := buf.String()
 			if got != expect {

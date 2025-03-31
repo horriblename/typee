@@ -1,9 +1,13 @@
 package genqbe
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/horriblename/typee/src/simplesub"
+)
 
 type mangleOpts struct {
-	module string
+	module simplesub.CanonName
 	class  string
 	name   string
 }
@@ -15,7 +19,7 @@ func mangleName(m mangleOpts) string {
 
 	var b strings.Builder
 	if m.module != "" {
-		b.WriteString(m.module)
+		b.WriteString(string(m.module))
 		b.WriteString(".")
 	}
 	if m.class != "" {

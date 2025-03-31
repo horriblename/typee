@@ -18,6 +18,9 @@ import (
 
 //go-sumtype:decl TypeScheme SimpleType ConcreteType
 
+// canonical name, unique across all modules
+type CanonName string
+
 type PrimitiveKind string
 
 const (
@@ -737,7 +740,7 @@ type SliceType struct {
 	ElType SimpleType
 }
 type Application struct {
-	Module string
+	Module CanonName
 	Name   string
 	Params []SimpleType
 }

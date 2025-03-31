@@ -14,6 +14,9 @@ import (
 	"github.com/horriblename/typee/src/opt"
 )
 
+// canonical name unique across all modules
+type CanonName string
+
 // AccessLvl are ordered in a way in order of subtype lattic,
 // i.e. public (largest in value) can be considered a supertype of private (smallest in value)
 type AccessLvl uint8
@@ -101,7 +104,7 @@ type TypeScheme struct {
 	Body Type
 }
 type Application struct {
-	Module string
+	Module CanonName
 	Name   string
 	Params []Type
 }
@@ -433,7 +436,7 @@ func (self *Application) String() string {
 	var b strings.Builder
 	b.WriteString("(")
 	if self.Module != "" {
-		b.WriteString(self.Module)
+		b.WriteString(string(self.Module))
 		b.WriteString(".")
 	}
 	b.WriteString(self.Name)
