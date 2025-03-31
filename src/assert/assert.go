@@ -50,6 +50,13 @@ func Cast[T any](x any, msg ...any) T {
 	}
 }
 
+func Get[K comparable, V any](m map[K]V, k K, msg ...any) V {
+	if v, ok := m[k]; ok {
+		return v
+	}
+	panic(fmt.Sprintf("accessing key '%v' failed. %v", k, joinHint(msg)))
+}
+
 func joinHint(msg ...any) string {
 	if len(msg) == 0 {
 		return ""
