@@ -10,7 +10,6 @@ import (
 	"github.com/horriblename/typee/src/internal/scope"
 	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
-	"github.com/horriblename/typee/src/types"
 )
 
 type symbols struct {
@@ -487,7 +486,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 				Name: expr.Field,
 				Member: Member{
 					Type:   ret,
-					Access: types.AccessPublic, // TODO: protected/private if in class
+					Access: parse.AccessPublic, // TODO: protected/private if in class
 				},
 			}},
 			Methods: []NamedMember{},
@@ -988,7 +987,7 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 			Name: methAccess.Method,
 			Member: Member{
 				Type:   Func{argTys, ret},
-				Access: types.AccessPublic, // TODO
+				Access: parse.AccessPublic, // TODO
 			},
 		}},
 		Top: false,

@@ -8,10 +8,30 @@ import (
 
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/opt"
-	"github.com/horriblename/typee/src/types"
 )
 
 type ObjectKind int
+
+type AccessLvl int
+
+const (
+	AccessPrivate AccessLvl = iota
+	AccessProtected
+	AccessPublic
+)
+
+func (self AccessLvl) String() string {
+	switch self {
+	case AccessPrivate:
+		return "priv"
+	case AccessProtected:
+		return "protected"
+	case AccessPublic:
+		return "pub"
+	default:
+		panic(fmt.Sprintf("unexpected types.AccessLvl: %#v", self))
+	}
+}
 
 const (
 	Class ObjectKind = 0
@@ -536,24 +556,24 @@ func (self *ObjectTypeDef) Pretty() string {
 // class member
 
 type ClassMember interface {
-	Access() types.AccessLvl
+	Access() AccessLvl
 	Name() string
 	String() string
 }
 
 type ClassField struct {
-	Access_ types.AccessLvl
+	Access_ AccessLvl
 	Name_   string
 	Type    TypeRepr
 }
 
 type ClassMethod struct {
-	Access_ types.AccessLvl
+	Access_ AccessLvl
 	Func    *FuncDef
 }
 
-func (self ClassField) Access() types.AccessLvl  { return self.Access_ }
-func (self ClassMethod) Access() types.AccessLvl { return self.Access_ }
+func (self ClassField) Access() AccessLvl  { return self.Access_ }
+func (self ClassMethod) Access() AccessLvl { return self.Access_ }
 
 func (self ClassField) Name() string  { return self.Name_ }
 func (self ClassMethod) Name() string { return self.Func.Name }

@@ -213,7 +213,7 @@ func TestTypeProgram(t *testing.T) {
 					Supers: []*types.Class{},
 					Fields: map[string]types.Member{
 						"y": {
-							Access: types.AccessPrivate,
+							Access: parse.AccessPrivate,
 							Type:   tApp("Str"),
 						},
 					},
@@ -225,14 +225,14 @@ func TestTypeProgram(t *testing.T) {
 					Supers: []*types.Class{&bar},
 					Fields: map[string]types.Member{
 						"x": {
-							Access: types.AccessPrivate,
+							Access: parse.AccessPrivate,
 							Type:   tApp("Int"),
 						},
 					},
 					Statics: map[string]types.Member{},
 					Methods: map[string]types.Member{
 						"getx": {
-							Access: types.AccessPublic,
+							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args: []types.Type{tApp("Foo")},
 								Ret:  tApp("Int"),
@@ -264,14 +264,14 @@ func TestTypeProgram(t *testing.T) {
 					Supers: []*types.Class{},
 					Fields: map[string]types.Member{
 						"x": {
-							Access: types.AccessPublic,
+							Access: parse.AccessPublic,
 							Type:   tApp("Int"),
 						},
 					},
 					Statics: map[string]types.Member{},
 					Methods: map[string]types.Member{
 						"foo": {
-							Access: types.AccessPublic,
+							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args: []types.Type{tApp("Foo")},
 								Ret:  tApp("Int"),
@@ -377,7 +377,7 @@ func TestTypeProgram(t *testing.T) {
 								Supers: []*types.Class{},
 								Fields: map[string]types.Member{
 									"x": {
-										Access: types.AccessPublic,
+										Access: parse.AccessPublic,
 										Type:   &tI64,
 									},
 								},
@@ -585,11 +585,11 @@ func TestTypeProgram(t *testing.T) {
 					Name:   "Foo",
 					Supers: []*types.Class{},
 					Fields: map[string]types.Member{"x": {
-						Access: types.AccessPrivate, Type: tApp("I64")}},
+						Access: parse.AccessPrivate, Type: tApp("I64")}},
 					Statics: map[string]types.Member{},
 					Methods: map[string]types.Member{
 						"addOne": {
-							Access: types.AccessPublic,
+							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args: []types.Type{tApp("Foo")},
 								Ret:  tApp("I64"),
@@ -673,11 +673,11 @@ func TestTypeProgram(t *testing.T) {
 					Fields: map[string]types.Member{
 						"x": {
 							Type:   &types.Application{Name: "I64"},
-							Access: types.AccessPrivate,
+							Access: parse.AccessPrivate,
 						}},
 					Methods: map[string]types.Member{
 						"add": {
-							Access: types.AccessPublic,
+							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args: []types.Type{
 									&types.Application{Name: "Foo"},
@@ -695,14 +695,14 @@ func TestTypeProgram(t *testing.T) {
 					Supers: []*types.Class{},
 					Fields: map[string]types.Member{
 						"y": {
-							Access: types.AccessPrivate,
+							Access: parse.AccessPrivate,
 							Type:   &types.Application{Name: "I64"},
 						},
 					},
 					Statics: map[string]types.Member{},
 					Methods: map[string]types.Member{
 						"add": {
-							Access: types.AccessPublic,
+							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args: []types.Type{
 									&types.Application{Name: "Bar"},

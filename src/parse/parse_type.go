@@ -6,7 +6,6 @@ import (
 	"github.com/horriblename/typee/src/combinator"
 	"github.com/horriblename/typee/src/lex"
 	"github.com/horriblename/typee/src/opt"
-	"github.com/horriblename/typee/src/types"
 )
 
 func type_(in []lex.Token) ([]lex.Token, TypeRepr, error) {
@@ -204,15 +203,15 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 
 func classMember(in []lex.Token) ([]lex.Token, ClassMember, error) {
 	in, vis, _ := combinator.Maybe(memberVisibility)(in)
-	rest, res, err := classField(in, vis.Or(types.AccessPrivate))
+	rest, res, err := classField(in, vis.Or(AccessPrivate))
 	if err != nil {
-		return classMethod(in, vis.Or(types.AccessPrivate))
+		return classMethod(in, vis.Or(AccessPrivate))
 	}
 
 	return rest, res, nil
 }
 
-func classField(in []lex.Token, visibility types.AccessLvl) ([]lex.Token, ClassField, error) {
+func classField(in []lex.Token, visibility AccessLvl) ([]lex.Token, ClassField, error) {
 	in, res, err := combinator.Then(
 		symbolName,
 		type_,
@@ -228,7 +227,7 @@ func classField(in []lex.Token, visibility types.AccessLvl) ([]lex.Token, ClassF
 	}, nil
 }
 
-func classMethod(in []lex.Token, visibility types.AccessLvl) ([]lex.Token, ClassMember, error) {
+func classMethod(in []lex.Token, visibility AccessLvl) ([]lex.Token, ClassMember, error) {
 	in, res, err := defForm(in)
 	if err != nil {
 		return nil, nil, err
@@ -272,18 +271,18 @@ func interfaceDef(in []lex.Token) ([]lex.Token, Expr, error) {
 	return in, &t, nil
 }
 
-func memberVisibility(in []lex.Token) ([]lex.Token, types.AccessLvl, error) {
+func memberVisibility(in []lex.Token) ([]lex.Token, AccessLvl, error) {
 	if len(in) == 0 {
 		return nil, 0, errAt(in)
 	}
 
 	switch in[0].(type) {
 	case *lex.Pub:
-		return in[1:], types.AccessPublic, nil
+		return in[1:], AccessPublic, nil
 	case *lex.Protected:
-		return in[1:], types.AccessProtected, nil
+		return in[1:], AccessProtected, nil
 	case *lex.Priv:
-		return in[1:], types.AccessPrivate, nil
+		return in[1:], AccessPrivate, nil
 	default:
 		return nil, 0, fmt.Errorf("not visibility token: %s", in[0].String())
 	}

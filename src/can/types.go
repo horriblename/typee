@@ -2,7 +2,7 @@ package can
 
 import (
 	"github.com/horriblename/typee/src/opt"
-	"github.com/horriblename/typee/src/types"
+	"github.com/horriblename/typee/src/parse"
 )
 
 //go-sumtype:decl Type
@@ -80,7 +80,7 @@ type ClassType struct {
 
 type Member[T any] struct {
 	Type   T
-	Access types.AccessLvl
+	Access parse.AccessLvl
 }
 
 type UnionType struct {

@@ -7,7 +7,6 @@ import (
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/lex"
 	"github.com/horriblename/typee/src/opt"
-	"github.com/horriblename/typee/src/types"
 )
 
 func TestParse(t *testing.T) {
@@ -305,7 +304,7 @@ func TestParse(t *testing.T) {
 				Supers: []string{"Bar", "Baz"},
 				Fields: []ClassMember{
 					ClassField{
-						Access_: types.AccessPublic,
+						Access_: AccessPublic,
 						Name_:   "foo",
 						Type:    TypeName{"Int", ""},
 					},
@@ -321,7 +320,7 @@ func TestParse(t *testing.T) {
 				Supers: []string{},
 				Fields: []ClassMember{
 					ClassField{
-						Access_: types.AccessPublic,
+						Access_: AccessPublic,
 						Name_:   "foo",
 						Type:    TypeName{"Int", ""},
 					},
@@ -339,12 +338,12 @@ func TestParse(t *testing.T) {
 				Supers: []string{},
 				Fields: []ClassMember{
 					ClassField{
-						Access_: types.AccessPublic,
+						Access_: AccessPublic,
 						Name_:   "foo",
 						Type:    TypeName{"Int", ""},
 					},
 					ClassMethod{
-						Access_: types.AccessProtected,
+						Access_: AccessProtected,
 						Func: &FuncDef{
 							id:        2,
 							Name:      "foo",

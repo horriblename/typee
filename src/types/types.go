@@ -12,33 +12,11 @@ import (
 	"github.com/horriblename/typee/src/fun"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/opt"
+	"github.com/horriblename/typee/src/parse"
 )
 
 // canonical name unique across all modules
 type CanonName string
-
-// AccessLvl are ordered in a way in order of subtype lattic,
-// i.e. public (largest in value) can be considered a supertype of private (smallest in value)
-type AccessLvl uint8
-
-const (
-	AccessPrivate AccessLvl = iota
-	AccessProtected
-	AccessPublic
-)
-
-func (self AccessLvl) String() string {
-	switch self {
-	case AccessPrivate:
-		return "priv"
-	case AccessProtected:
-		return "protected"
-	case AccessPublic:
-		return "pub"
-	default:
-		panic(fmt.Sprintf("unexpected types.AccessLvl: %#v", self))
-	}
-}
 
 type Type interface {
 	type_()
@@ -48,7 +26,7 @@ type Type interface {
 }
 
 type Member struct {
-	Access AccessLvl
+	Access parse.AccessLvl
 	Type   Type
 }
 

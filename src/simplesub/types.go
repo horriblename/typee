@@ -13,6 +13,7 @@ import (
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/opt"
+	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/types"
 )
 
@@ -1024,7 +1025,7 @@ func getVars(ty SimpleType) *orderedset.OrderedSet[*Variable] {
 
 type Member struct {
 	Type   SimpleType
-	Access types.AccessLvl
+	Access parse.AccessLvl
 }
 
 type NamedMember struct {
