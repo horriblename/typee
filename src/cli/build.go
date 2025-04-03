@@ -11,6 +11,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/genqbe"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
@@ -80,7 +81,7 @@ func buildProgram(params buildParams) error {
 		os.Exit(1)
 	}
 
-	modName := simplesub.CanonName(mainModule)
+	modName := can.ModuleName(mainModule)
 	typer := simplesub.NewTyper(modName, true)
 	t, modules, err := typer.TypeProgram(ast)
 	errorf("")
@@ -168,9 +169,9 @@ func buildProgram(params buildParams) error {
 
 type compileUnitArgs struct {
 	useExternalQbe bool
-	module         simplesub.CanonName
+	module         can.ModuleName
 	ast            []parse.Expr
-	allModules     map[simplesub.CanonName]simplesub.ModuleInfo
+	allModules     map[can.ModuleName]simplesub.ModuleInfo
 	assemblerFlags []string
 }
 

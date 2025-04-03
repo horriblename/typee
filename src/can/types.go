@@ -36,14 +36,14 @@ func (SliceType) typ()       {}
 func (FnType) typ()          {}
 
 type TypeAlias struct {
-	Module ModuleID
+	Module ModuleName
 	Name   string
 	Type   Type
 	//? Params []struct{Name string, Type}
 }
 
 type TypeApplication struct {
-	Module ModuleID
+	Module ModuleName
 	Name   string
 	Params []Type
 }
@@ -92,6 +92,6 @@ type UnionType struct {
 //
 
 type Module struct {
-	Name ModuleID
+	Name ModuleName
 	Defs map[string]TypeDef
 }

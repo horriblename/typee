@@ -9,14 +9,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/fun"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
 )
-
-// canonical name unique across all modules
-type CanonName string
 
 type Type interface {
 	type_()
@@ -82,7 +80,7 @@ type TypeScheme struct {
 	Body Type
 }
 type Application struct {
-	Module CanonName
+	Module can.ModuleName
 	Name   string
 	Params []Type
 }

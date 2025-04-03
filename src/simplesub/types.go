@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/opt"
@@ -18,9 +19,6 @@ import (
 )
 
 //go-sumtype:decl TypeScheme SimpleType ConcreteType
-
-// canonical name, unique across all modules
-type CanonName string
 
 type PrimitiveKind string
 
@@ -741,7 +739,7 @@ type SliceType struct {
 	ElType SimpleType
 }
 type Application struct {
-	Module CanonName
+	Module can.ModuleName
 	Name   string
 	Params []SimpleType
 }

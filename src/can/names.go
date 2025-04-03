@@ -1,3 +1,4 @@
 package can
 
-type ModuleID string
+// canonical name unique across all modules
+type ModuleName string

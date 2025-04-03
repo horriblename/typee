@@ -19,7 +19,7 @@ var ErrMissingMethodSignature = errors.New("class methods must have signature")
 
 func Canonicalize(module string, ast []parse.Expr) (Module, error) {
 	env := env{
-		Home:  ModuleID(module),
+		Home:  ModuleName(module),
 		Types: map[string]TypeDef{},
 	}
 	return env.canonicalize(ast)
@@ -146,7 +146,7 @@ func (env *env) canonicalizeType(tyRepr parse.TypeRepr) Type {
 
 	case parse.TypeInstantiation:
 		return TypeApplication{
-			Module: ModuleID(ty.Type.Module),
+			Module: ModuleName(ty.Type.Module),
 			Name:   ty.Type.Name,
 			Params: fun.Map(ty.Params, func(param parse.TypeRepr) Type {
 				return env.canonicalizeType(param)
@@ -155,7 +155,7 @@ func (env *env) canonicalizeType(tyRepr parse.TypeRepr) Type {
 
 	case parse.TypeName:
 		return TypeApplication{
-			Module: ModuleID(ty.Module),
+			Module: ModuleName(ty.Module),
 			Name:   ty.Name,
 			Params: []Type{},
 		}

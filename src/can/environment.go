@@ -1,6 +1,6 @@
 package can
 
 type env struct {
-	Home  ModuleID
+	Home  ModuleName
 	Types map[string]TypeDef
 }

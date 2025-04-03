@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
 )
@@ -37,7 +38,7 @@ func TestGen(t *testing.T) {
 			program, err := parse.ParseString(string(src))
 			assert.Ok(err)
 
-			mod := simplesub.CanonName("MainModule")
+			mod := can.ModuleName("MainModule")
 			typer := simplesub.NewTyper(mod, false)
 			_, types, err := typer.TypeProgram(program)
 			assert.Ok(err)

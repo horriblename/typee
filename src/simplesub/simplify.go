@@ -259,7 +259,7 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 		return &types.Top{}
 	case Application:
 		return &types.Application{
-			Module: types.CanonName(ty.Module),
+			Module: ty.Module,
 			Name:   ty.Name,
 			Params: fun.Map(ty.Params, func(param SimpleType) types.Type {
 				return coalesceTypeInner(param, polarity)

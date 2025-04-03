@@ -3,11 +3,11 @@ package genqbe
 import (
 	"strings"
 
-	"github.com/horriblename/typee/src/simplesub"
+	"github.com/horriblename/typee/src/can"
 )
 
 type mangleOpts struct {
-	module simplesub.CanonName
+	module can.ModuleName
 	class  string
 	name   string
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/internal/scope"
 	"github.com/horriblename/typee/src/opt"
@@ -19,14 +20,14 @@ type symbols struct {
 	imports  map[string]ModuleInfo
 
 	// shared across all modules
-	moduleCache map[CanonName]ModuleInfo
+	moduleCache map[can.ModuleName]ModuleInfo
 }
 
 type Typer struct {
 	symbols
 
 	debug      bool
-	mainModule CanonName
+	mainModule can.ModuleName
 	classScope string
 }
 
@@ -63,7 +64,7 @@ var ErrPolymorphicInSignature = errors.New("illegal polymorphic type in function
 
 const scopeLevelTop int = 1
 
-func NewTyper(mainModule CanonName, debug bool) *Typer {
+func NewTyper(mainModule can.ModuleName, debug bool) *Typer {
 	vars := scope.NewScopedMap[TypeScheme]()
 	addBuiltins(&vars)
 	vars.NewScope()
@@ -76,7 +77,7 @@ func NewTyper(mainModule CanonName, debug bool) *Typer {
 			types:       types,
 			inferred:    map[int]TypeScheme{},
 			imports:     map[string]ModuleInfo{},
-			moduleCache: map[CanonName]ModuleInfo{},
+			moduleCache: map[can.ModuleName]ModuleInfo{},
 		},
 		mainModule: mainModule,
 		debug:      debug,
@@ -84,7 +85,7 @@ func NewTyper(mainModule CanonName, debug bool) *Typer {
 	}
 }
 
-func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[CanonName]ModuleInfo, error) {
+func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[can.ModuleName]ModuleInfo, error) {
 	if err := self.typeDeps(program); err != nil {
 		return nil, nil, err
 	}
@@ -123,7 +124,7 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 		}
 
 		alias := expr.Module[len(expr.Module)-1]
-		fullPath := CanonName(strings.Join(expr.Module, "."))
+		fullPath := can.ModuleName(strings.Join(expr.Module, "."))
 		self.imports[alias], ok = self.moduleCache[fullPath]
 		assert.True(ok, "typer bug: module %s missing from moduleCache", fullPath)
 	}
@@ -1024,7 +1025,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 	switch t := tr.(type) {
 	case parse.TypeName:
 		// FIXME: when should I check for validity? e.g. undefined type, wrong type param etc.
-		mod := CanonName("")
+		mod := can.ModuleName("")
 		if t.Module != "" {
 			if m, ok := self.imports[t.Module]; ok {
 				mod = m.Name
@@ -1118,7 +1119,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 			return nil, err
 		}
 
-		mod := CanonName("")
+		mod := can.ModuleName("")
 		if t.Type.Module != "" {
 			if m, ok := self.imports[t.Type.Module]; ok {
 				mod = m.Name
@@ -1159,7 +1160,7 @@ func (self *symbols) concretizeApplication(app Application) (SimpleType, error) 
 	}
 }
 
-func (self *symbols) lookupType(module CanonName, name string) (TypeScheme, error) {
+func (self *symbols) lookupType(module can.ModuleName, name string) (TypeScheme, error) {
 	if module == "" {
 		if ty, ok := self.types.Get(name).Unwrap(); ok {
 			return ty, nil

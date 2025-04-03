@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/genqbe/qbeil"
 	"github.com/horriblename/typee/src/internal/scope"
@@ -22,7 +23,7 @@ import (
 var ErrCannotCompilePolymorphicType = errors.New("tried to compile a polymorphic type")
 
 type ctx struct {
-	module simplesub.CanonName
+	module can.ModuleName
 
 	ptrType      qbeil.BaseType
 	intType      qbeil.BaseType
@@ -44,7 +45,7 @@ type ctx struct {
 	generatedTranslation map[types.Type]qbeil.AggregateType
 }
 
-func Gen(w io.Writer, module simplesub.CanonName, modules map[simplesub.CanonName]simplesub.ModuleInfo, ast []parse.Expr) {
+func Gen(w io.Writer, module can.ModuleName, modules map[can.ModuleName]simplesub.ModuleInfo, ast []parse.Expr) {
 	mainMod := assert.Get(modules, module, "BUG in qbe gen: missing module info of ", module)
 	ctx := ctx{
 		module:               module,
@@ -195,7 +196,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 			// should be unreachable currently
 			if lhs, ok := e.Record.(*parse.Symbol); ok {
 				mangled := mangleName(mangleOpts{
-					module: simplesub.CanonName(lhs.Name),
+					module: can.ModuleName(lhs.Name),
 					class:  "",
 					name:   e.Field,
 				})
@@ -391,10 +392,10 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 
 	case *parse.RecordAccess:
 		// TODO: currently only module access supported
-		var modulePath simplesub.CanonName
+		var modulePath can.ModuleName
 		switch lhs := callee.Record.(type) {
 		case *parse.Symbol:
-			modulePath = simplesub.CanonName(lhs.Name)
+			modulePath = can.ModuleName(lhs.Name)
 		case *parse.RecordAccess:
 			modulePath = flattenRecordAccessPath(lhs)
 		default:
@@ -411,7 +412,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 	}
 }
 
-func genCallWithFuncName(ctx *ctx, module simplesub.CanonName, class string, fnName string, expr *parse.Form) qbeil.Value {
+func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName string, expr *parse.Form) qbeil.Value {
 	mangled := fnName
 	if !mapHas(ctx.externs, fnName) /* FIXME: might get shadowed */ {
 		mangled = mangleName(mangleOpts{module: module, class: class, name: fnName})
@@ -764,7 +765,7 @@ func (ctx *ctx) classDefIL(t *types.Class, e *parse.ObjectTypeDef) qbeil.Aggrega
 		layouts := map[string]qbeil.FieldLayout{}
 
 		for name, field := range t.Fields {
-			if field.Access == types.AccessPublic || field.Access == types.AccessProtected {
+			if field.Access == parse.AccessPublic || field.Access == parse.AccessProtected {
 				ilTy := ctx.toILType(field.Type)
 				bits, _ := ctx.sizeOf(ilTy) // TODO: align
 				fields = append(fields, qbeil.SingleType(ilTy))
@@ -854,7 +855,7 @@ func (self *ctx) sizeOf(t qbeil.Type) (bits int, alignBits int) {
 	return qbeil.SizeOf(self.defaultAlign, t)
 }
 
-func flattenRecordAccessPath(expr *parse.RecordAccess) simplesub.CanonName {
+func flattenRecordAccessPath(expr *parse.RecordAccess) can.ModuleName {
 	lhs := expr.Record
 	modulePath := []string{}
 	for {
@@ -873,7 +874,7 @@ func flattenRecordAccessPath(expr *parse.RecordAccess) simplesub.CanonName {
 	}
 	b.WriteString(modulePath[0])
 
-	return simplesub.CanonName(b.String())
+	return can.ModuleName(b.String())
 }
 
 func globals(program []parse.Expr) map[string]int {

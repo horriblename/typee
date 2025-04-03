@@ -7,11 +7,12 @@ import (
 	"path"
 	"strings"
 
+	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/parse"
 )
 
 type ModuleInfo struct {
-	Name     CanonName
+	Name     can.ModuleName
 	Ast      []parse.Expr
 	Types    map[string]TypeScheme
 	Globals  map[string]TypeScheme
@@ -32,7 +33,7 @@ func (self *Typer) typeDeps(program []parse.Expr) error {
 			continue
 		}
 
-		name := CanonName(strings.Join(dep.Module, "."))
+		name := can.ModuleName(strings.Join(dep.Module, "."))
 
 		if _, ok := self.moduleCache[name]; ok {
 			return nil
@@ -55,7 +56,7 @@ func (self *Typer) typeDeps(program []parse.Expr) error {
 
 // sort modules in dependency tree, leaf modules (no dependencies) go first
 
-func parseModule(name CanonName) ([]parse.Expr, error) {
+func parseModule(name can.ModuleName) ([]parse.Expr, error) {
 	modPath := path.Join(strings.Split(string(name), ".")...) + ".hor"
 	data, err := os.ReadFile(modPath)
 	if err != nil {
