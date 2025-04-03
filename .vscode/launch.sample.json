@@ -1,6 +1,6 @@
 {
   "version": "0.2.0",
-  "description": "Only to server as an example",
+  "description": "Only to serve as an example",
   "configurations": [
     {
       "name": "cli",

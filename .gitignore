@@ -1,7 +1,7 @@
 .direnv
 
 Makefile
-
+/.vscode/launch.json
 /*.qbe
 *.s
 *.o
