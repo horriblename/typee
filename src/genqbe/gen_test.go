@@ -31,6 +31,11 @@ func TestGen(t *testing.T) {
 			src, err := os.ReadFile("tests/" + entry.Name())
 			assert.Ok(err)
 
+			if bytes.HasPrefix(src, []byte(";skip\n")) {
+				t.Skipf("skipping %s: skip directive found", name)
+				return
+			}
+
 			e, err := os.ReadFile("tests/" + name + ".qbe")
 			assert.Ok(err)
 			expect := string(e)

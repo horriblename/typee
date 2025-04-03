@@ -195,7 +195,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 
 		switch lhsTy := lhsTy.(type) {
 		case *types.Class:
-			return genClassAccess(ctx, lhsTy, e)
+			return genClassAccessByName(ctx, "", lhsTy.Name, e)
 		case *types.Record:
 			// TODO: right now we just assume a module path, but we need to handle records too
 			// should be unreachable currently
@@ -207,6 +207,20 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 				})
 				return qbeil.Var{Global: true, Name: mangled}
 			}
+			panic("TODO record access with non-symbol record-typed lhs")
+		case *types.Application:
+			if len(lhsTy.Params) != 0 {
+				panic(fmt.Sprintf("use of polymorphic type on left hand side of %s not yet supported", e.Pretty()))
+			}
+			lhsTs := ctx.findType(lhsTy.Module, lhsTy.Name)
+			switch lhsTy := lhsTs.(type) {
+			case *simplesub.ObjectType:
+				return genClassAccessByName(ctx, "", lhsTy.Name, e)
+			case *simplesub.Record:
+				// lhs can't be a module, right???
+				panic("TODO")
+			}
+
 		default:
 			panic(fmt.Sprintf("unexpected types.Type: %#v", lhsTy))
 		}
@@ -258,7 +272,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		return genLet(ctx, e)
 	}
 
-	panic("unimpl gen " + expr.Pretty())
+	panic("unimpl gen " + expr.String())
 }
 
 func genGlobalVar(ctx *ctx, expr *parse.Set) (val qbeil.Value) {
@@ -314,6 +328,14 @@ func genGlobalVar(ctx *ctx, expr *parse.Set) (val qbeil.Value) {
 	default:
 		panic(fmt.Sprintf("global variable of expression %s not supported", expr))
 	}
+}
+
+func (ctx *ctx) findType(module can.ModuleName, name string) simplesub.TypeScheme {
+	if module == "" {
+		return assert.Get(ctx.localTypes, name, "BUG: encountered missing local type during type gen: ", name)
+	}
+	mod := assert.Get(ctx.allModules, module, "BUG: encountered unresolved module during type gen:", module)
+	return assert.Get(mod.Types, name, "BUG: encountered unresolved imported type during type gen:", name, "of", module)
 }
 
 // class should be empty string for non-methods
@@ -567,16 +589,17 @@ func genUnionDef(ctx *ctx, e *parse.UnionDef) {
 	ctx.declareType(e.Name, ctx.unionDefIL(unionTy, e))
 }
 
-func genClassAccess(ctx *ctx, class *types.Class, expr *parse.RecordAccess) qbeil.Value {
-	assert.Neq(class.Name, "", "unnamed class not yet supported")
+func genClassAccessByName(ctx *ctx, module can.ModuleName, class string, expr *parse.RecordAccess) qbeil.Value {
+	assert.Neq(class, "", "unnamed class in class access not yet supported")
+	assert.Eq(module, "", "imported class not yet supported")
 
-	ct := ctx.userTypes[class.Name]
+	ct := ctx.userTypes[class]
 	classTy, ok := ct.(qbeil.StructType)
 	assert.True(ok, "codegen: record access on non-struct type (type checker bug?)")
 
 	fieldLayout, ok := classTy.Layouts[expr.Field]
 	if !ok {
-		panic(fmt.Sprintf("typer bug: tried to use a non-existent class field %s.%s", class.Name, expr.Field))
+		panic(fmt.Sprintf("typer bug: tried to use a non-existent class field %s.%s", class, expr.Field))
 	}
 
 	// TODO: once we support structs, we can't just pass this around (can we?)
