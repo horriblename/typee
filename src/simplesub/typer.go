@@ -65,11 +65,9 @@ var ErrPolymorphicInSignature = errors.New("illegal polymorphic type in function
 const scopeLevelTop int = 1
 
 func NewTyper(mainModule can.ModuleName, debug bool) *Typer {
-	vars := scope.NewScopedMap[TypeScheme]()
-	addBuiltins(&vars)
+	vars := scope.ScopedMapWithGlobals(builtinVars())
 	vars.NewScope()
-	types := scope.NewScopedMap[TypeScheme]()
-	addBuiltinTypes(&types)
+	types := scope.ScopedMapWithGlobals(builtinTypes())
 	types.NewScope()
 	return &Typer{
 		symbols: symbols{

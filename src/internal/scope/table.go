@@ -1,6 +1,10 @@
 package scope
 
-import "github.com/horriblename/typee/src/opt"
+import (
+	"maps"
+
+	"github.com/horriblename/typee/src/opt"
+)
 
 type scopeChange[T any] struct {
 	Key   string
@@ -15,6 +19,16 @@ type ScopedMap[T any] struct {
 
 func NewScopedMap[T any]() ScopedMap[T] {
 	return ScopedMap[T]{table: map[string]T{}, changes: []scopeChange[T]{}}
+}
+
+// A ScopedMap with a starting globals table that cannot be removed via [ScopedMap.PopScope]
+// m will be cloned
+func ScopedMapWithGlobals[T any](m map[string]T) ScopedMap[T] {
+	return ScopedMap[T]{
+		table:      maps.Clone(m),
+		changes:    []scopeChange[T]{},
+		savePoints: []int{},
+	}
 }
 
 func (self *ScopedMap[T]) Get(k string) opt.Option[T] {
