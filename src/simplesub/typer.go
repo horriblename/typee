@@ -995,6 +995,9 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 		return nil, fmt.Errorf("typing method call %s: %w", form.Pretty(), err)
 	}
 
+	// TODO: put this somewhere else
+	self.inferred[methAccess.ID()] = Func{argTys, ret}
+
 	return ret, nil
 }
 
