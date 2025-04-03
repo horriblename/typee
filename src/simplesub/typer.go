@@ -1023,6 +1023,15 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 	switch t := tr.(type) {
 	case parse.TypeName:
 		// FIXME: when should I check for validity? e.g. undefined type, wrong type param etc.
+		if t.Module == "" {
+			// HACK: builtins get turned into their base type because it makes my life easier
+			// (otherwise would need to export builtins to genqbe and we don't yet have mechanism
+			// to separate builtins from local types :c)
+			if ty, ok := builtinTypes()[t.Name]; ok {
+				return ty, nil
+			}
+		}
+
 		mod := can.ModuleName("")
 		if t.Module != "" {
 			if m, ok := self.imports[t.Module]; ok {
@@ -1115,6 +1124,18 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 
 		if err != nil {
 			return nil, err
+		}
+
+		if t.Type.Module == "" {
+			// HACK: builtins get turned into their base type because it makes my life easier
+			// (otherwise would need to export builtins to genqbe and we don't yet have mechanism
+			// to separate builtins from local types :c)
+			if ty, ok := builtinTypes()[t.Type.Name]; ok {
+				if pt, ok := ty.(PolymorphicType); ok {
+					return pt.concretize(params)
+				}
+				return nil, fmt.Errorf("%w: %s takes no parameters, %d given", ErrWrongTypeParamCount, t.Type.Name, len(params))
+			}
 		}
 
 		mod := can.ModuleName("")
