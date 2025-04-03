@@ -1072,6 +1072,8 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 		return left.Name != right.Name
 	} else if left, right, ok := matchPair[Enum, Enum](lhs, rhs); ok {
 		return left.Name != right.Name
+	} else if left, right, ok := matchPair[Application, Application](lhs, rhs); ok {
+		return left.Module == right.Module && left.Name == right.Name
 	} else if left, right, ok := matchPair[ObjectType, ObjectType](lhs, rhs); ok {
 		if left.Name != "" && left.Name == right.Name {
 			return true
