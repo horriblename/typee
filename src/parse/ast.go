@@ -281,7 +281,7 @@ func (self *ExternCall) ID() int    { return self.id }
 func (self *Import) ID() int        { return self.id }
 
 func (self *Form) String() string   { return fmt.Sprintf("#%d Form %+v", self.id, self.Children) }
-func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol {%s}", self.id, self.Name) }
+func (self *Symbol) String() string { return fmt.Sprintf("#%d Symbol{%s}", self.id, self.Name) }
 func (self *FuncDef) String() string {
 	sigStr := ""
 	if sig, ok := self.Signature.Unwrap(); ok {
@@ -355,7 +355,7 @@ func (self *RecordAccess) String() string {
 	return fmt.Sprintf("#%d %s.%s", self.id, self.Record.String(), self.Field)
 }
 func (self *MethodAccess) String() string {
-	return fmt.Sprintf("#%d %s.%s", self.id, self.Obj.String(), self.Method)
+	return fmt.Sprintf("#%d(%s#%s)", self.id, self.Obj.String(), self.Method)
 }
 func (self *RecordField) String() string {
 	return fmt.Sprintf("%s: %s", self.Name, self.Value)
