@@ -15,6 +15,11 @@ type Type interface {
 	IL() string
 }
 
+func (BaseType) typ()   {}
+func (ExtType) typ()    {}
+func (StructType) typ() {}
+func (UnionType) typ()  {}
+
 type RepeatType struct {
 	Type Type
 
@@ -35,8 +40,30 @@ type ABIType interface {
 }
 
 type BaseType int
+
+const (
+	Word   BaseType = iota // 32-bit int
+	Long                   // 64-bit int
+	Single                 // 32-bit float
+	Double                 // 64-bit float
+)
+
 type ExtType int
+
+const (
+	Byte     ExtType = iota // 8-bit
+	HalfWord                // 16-bit
+)
+
 type SubWordType int
+
+const (
+	SignedByte   SubWordType = iota // 8-bit
+	UnsignedByte                    // 8-bit
+	SignedHalf                      // 16-bit
+	UnsignedHalf                    // 16-bit
+)
+
 type StructType struct {
 	Align   int // 0 means default: maximum alignment of children
 	Name    string
@@ -54,26 +81,6 @@ type FieldLayout struct {
 	Type
 	OffsetBits int
 }
-
-const (
-	Word   BaseType = iota // 32-bit int
-	Long                   // 64-bit int
-	Single                 // 32-bit float
-	Double                 // 64-bit float
-
-	Byte     ExtType = iota // 8-bit
-	HalfWord                // 16-bit
-
-	SignedByte   SubWordType = iota // 8-bit
-	UnsignedByte                    // 8-bit
-	SignedHalf                      // 16-bit
-	UnsignedHalf                    // 16-bit
-)
-
-func (BaseType) typ()   {}
-func (ExtType) typ()    {}
-func (StructType) typ() {}
-func (UnionType) typ()  {}
 
 func (StructType) abi()  {}
 func (UnionType) abi()   {}
@@ -260,7 +267,16 @@ func SizeOf(defaultAlignBits int, t Type) (bits int, alignBits int) {
 	case UnionType:
 		return t.Size, t.Align
 
+	case ExtType:
+		switch t {
+		case Byte:
+			return 8, defaultAlignBits
+		case HalfWord:
+			return 16, defaultAlignBits
+		default:
+			panic(fmt.Sprintf("unexpected qbeil.ExtType: %#v", t))
+		}
 	default:
-		panic(fmt.Sprintf("unexpected Type: %#v", t))
+		panic(fmt.Sprintf("unexpected Type: %v", t))
 	}
 }
