@@ -810,47 +810,57 @@ func (ctx *ctx) classDefIL(t *types.Class, e *parse.ObjectTypeDef) qbeil.Aggrega
 		return ut
 	}
 
-	if len(t.Supers) == 0 {
-		fields := []qbeil.RepeatType{
-			qbeil.SingleType(ctx.userTypes["GObject"]), // parent
-			qbeil.SingleType(ctx.ptrType),              // private pointer
-		}
-		bits, _ := ctx.sizeOf(ctx.userTypes["GObject"]) // TODO: align
-		pubOffset := bits / 8
-		layouts := map[string]qbeil.FieldLayout{}
-
-		for name, field := range t.Fields {
-			if field.Access == parse.AccessPublic || field.Access == parse.AccessProtected {
-				ilTy := ctx.toILType(field.Type)
-				bits, _ := ctx.sizeOf(ilTy) // TODO: align
-				fields = append(fields, qbeil.SingleType(ilTy))
-				layouts[name] = qbeil.FieldLayout{
-					OffsetBits: pubOffset,
-					Type:       ilTy,
-				}
-				pubOffset += bits / 8
-			}
-		}
-
-		// generate methods
-		for _, field := range e.Fields {
-			method, ok := field.(parse.ClassMethod)
-			if !ok {
-				continue
-			}
-
-			genFunc(ctx, t.Name, method.Func)
-		}
-
-		return qbeil.StructType{
-			Align:   0,
-			Layouts: layouts,
-			Name:    t.Name,
-			Fields:  fields,
-		}
-
+	var classParent qbeil.AggregateType
+	if len(e.Supers) != 0 {
+		// TODO: assert super is class or something
+		classParent = assert.Get(ctx.userTypes, e.Supers[0], "super type of ", e.Name, ":", e.Supers[0], "not found?")
+	} else if !e.Base {
+		classParent = assert.Get(ctx.userTypes, "GObject", "type Object not defined?")
 	}
-	panic("unimpl: super types")
+
+	fields := []qbeil.RepeatType{}
+	pubOffset := 0
+	if classParent != nil {
+		fields = append(fields, qbeil.SingleType(classParent))
+		bits, _ := ctx.sizeOf(classParent)
+		pubOffset += bits / 8
+	}
+	fields = append(fields, qbeil.SingleType(ctx.ptrType)) // private pointer
+	bits, _ := ctx.sizeOf(ctx.ptrType)
+	pubOffset += bits / 8
+
+	layouts := map[string]qbeil.FieldLayout{}
+
+	for name, field := range t.Fields {
+		if field.Access == parse.AccessPublic || field.Access == parse.AccessProtected {
+			ilTy := ctx.toILType(field.Type)
+			bits, _ := ctx.sizeOf(ilTy) // TODO: align
+			fields = append(fields, qbeil.SingleType(ilTy))
+			layouts[name] = qbeil.FieldLayout{
+				OffsetBits: pubOffset,
+				Type:       ilTy,
+			}
+			pubOffset += bits / 8
+		}
+	}
+
+	// generate methods
+	for _, field := range e.Fields {
+		method, ok := field.(parse.ClassMethod)
+		if !ok {
+			continue
+		}
+
+		genFunc(ctx, t.Name, method.Func)
+	}
+
+	return qbeil.StructType{
+		Align:   0,
+		Layouts: layouts,
+		Name:    t.Name,
+		Fields:  fields,
+	}
+
 }
 
 func (ctx *ctx) unionDefIL(t *types.Union, e *parse.UnionDef) qbeil.AggregateType {

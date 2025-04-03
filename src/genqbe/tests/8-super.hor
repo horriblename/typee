@@ -1,0 +1,5 @@
+(class Foo { pub x Int, pub y Int })
+(class Bar (Foo) { pub z Int, })
+
+(def main []
+	(let [bar (Bar.new)] bar.z))
