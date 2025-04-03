@@ -33,6 +33,7 @@ type ctx struct {
 	il          qbeil.Builder
 	astToType   map[int]simplesub.TypeScheme
 	localTypes  map[string]simplesub.TypeScheme
+	allModules  map[can.ModuleName]simplesub.ModuleInfo
 	simplified  map[int]types.Type
 	statics     map[qbeil.Var]string
 	globals     map[string]int
@@ -56,6 +57,7 @@ func Gen(w io.Writer, module can.ModuleName, modules map[can.ModuleName]simplesu
 		il:                   qbeil.Builder{OutFile: w},
 		astToType:            mainMod.TypeTree,
 		localTypes:           mainMod.Types,
+		allModules:           modules,
 		simplified:           map[int]types.Type{},
 		statics:              map[qbeil.Var]string{},
 		globals:              globals(ast),
@@ -386,7 +388,14 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 
 	case *parse.MethodAccess:
 		ty := ctx.simplify(callee.Obj.ID())
-		class := ty.(*types.Class).Name
+		var class string
+		switch t := ty.(type) {
+		case *types.Class:
+			class = t.Name
+		case *types.Application:
+			class = t.Name
+			assert.Eq(len(t.Params), 0, "parameterized function call not supported yet")
+		}
 		assert.Neq(class, "", "unnamed class not yet supported")
 		return genCallWithFuncName(ctx, ctx.module, class, callee.Method, expr)
 
@@ -496,12 +505,23 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 
 		funcSig, ok := fn.(*types.Func)
 		assert.True(ok, "tried to call non-function top-level:", fnFriendlyName, "of type", fmt.Sprintf("%#v", fn))
-		assert.Eq(len(expr.Children), len(funcSig.Args)+1, fnFriendlyName, ": function argument count does not match signature")
+		if meth, ok := expr.Children[0].(*parse.MethodAccess); ok {
+			assert.Eq(len(expr.Children), len(funcSig.Args), meth.Pretty(), ": method argument count does not match signature")
+		} else {
+			assert.Eq(len(expr.Children), len(funcSig.Args)+1, fnFriendlyName, ": function argument count does not match signature")
+		}
 		target := ctx.il.TempVar(false)
 
-		args := fun.ZipMap(expr.Children[1:], funcSig.Args, func(arg parse.Expr, typ types.Type) qbeil.ABITypedValue {
-			return qbeil.ABITypedValue{Type: ctx.toABIType(typ), Value: gen(ctx, arg)}
-		})
+		var args []qbeil.ABITypedValue
+		if meth, ok := expr.Children[0].(*parse.MethodAccess); ok {
+			args = []qbeil.ABITypedValue{{
+				Type:  ctx.toABIType(funcSig.Args[0]),
+				Value: gen(ctx, meth.Obj),
+			}}
+		}
+		for arg, typ := range fun.ZipSlices(expr.Children[1:], funcSig.Args) {
+			args = append(args, qbeil.ABITypedValue{Type: ctx.toABIType(typ), Value: gen(ctx, arg)})
+		}
 		funcVar := qbeil.Var{Global: true, Name: mangled}
 
 		ctx.il.Call(&target, ctx.toABIType(funcSig.Ret), funcVar, args)
@@ -612,15 +632,24 @@ func (ctx *ctx) finish() {
 func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	switch t := typ.(type) {
 	case *types.Application:
-		if t.Module == "" {
-			_, ok := ctx.localTypes[t.Name]
-			if !ok {
-				panic("TODO missing local type " + t.Name)
-			}
-			// (simplesub.SimplifyType(ty))
-			// return ctx.toILType(ty)
+		mod := ctx.localTypes
+		if t.Module != "" {
+			m, ok := ctx.allModules[t.Module]
+			assert.True(ok, "BUG: unresolved import still in code gen phase: ", t.Module)
+
+			mod = m.Types
 		}
-		panic("TODO")
+
+		ty, ok := mod[t.Name]
+		assert.True(ok, "BUG: unresolved type still in code gen phase, module:", t.Module, ", type:", t.Name)
+
+		if pt, ok := ty.(simplesub.PolymorphicType); ok {
+			panic(fmt.Sprintf("BUG polymorphic type should not be toILType'd? %v", pt))
+		}
+
+		st := assert.Cast[simplesub.SimpleType](ty, "already checked for PolymorphicType")
+		return ctx.toILType(ctx.simplifyType(st))
+
 	case *types.Int:
 		switch t.BitSize {
 		case 8:
@@ -831,6 +860,13 @@ func (ctx *ctx) simplify(exprID int) types.Type {
 	t1 := simplesub.SimplifyType(st)
 	t2 := simplesub.CoalesceType(t1)
 	ctx.simplified[exprID] = t2
+	return t2
+}
+
+func (ctx *ctx) simplifyType(ty simplesub.SimpleType) types.Type {
+	t1 := simplesub.SimplifyType(ty)
+	t2 := simplesub.CoalesceType(t1)
+
 	return t2
 }
 
