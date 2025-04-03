@@ -1,5 +1,8 @@
 ;; class construction + type annotated method
-(class Foo {pub (def name (Self Str) [self] "foo")})
+(class Foo {pub 
+	(def name (Self Str) [self] "foo"),
+	(def name2 (Self Str) [self] (self#name)),
+})
 (def bar (Foo Str) [foo] (foo#name))
 (def main []
 	 (print (bar (Foo.new))))

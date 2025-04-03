@@ -151,6 +151,9 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		return qbeil.IntLiteral{
 			Value: val,
 		}
+	case *parse.SelfLiteral:
+		return qbeil.Var{Global: false, Name: "self"}
+
 	case *parse.Symbol:
 		if val, ok := ctx.vars.Get(e.Name).Unwrap(); ok {
 			return val

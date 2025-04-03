@@ -11,15 +11,20 @@ export function :Str $MainModule.Foo_name(l %self) {
 	storel 3, %_tmp_3
 	ret %_tmp_2
 }
+export function :Str $MainModule.Foo_name2(l %self) {
+@start
+	%_tmp_4 =:Str call $MainModule.Foo_name (l %self)
+	ret %_tmp_4
+}
 export function :Str $MainModule.bar(l %foo) {
 @start
-	%_tmp_4 =:Str call $MainModule.Foo_name (l %foo)
-	ret %_tmp_4
+	%_tmp_5 =:Str call $MainModule.Foo_name (l %foo)
+	ret %_tmp_5
 }
 export function w $main() {
 @start
-	%_tmp_6 =l call $malloc (l 32)
-	%_tmp_5 =:Str call $MainModule.bar (l %_tmp_6)
-	%_tmp_7 =l call $print (:Str %_tmp_5)
-	ret %_tmp_7
+	%_tmp_7 =l call $malloc (l 32)
+	%_tmp_6 =:Str call $MainModule.bar (l %_tmp_7)
+	%_tmp_8 =l call $print (:Str %_tmp_6)
+	ret %_tmp_8
 }
