@@ -560,34 +560,19 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		return retTy, nil
 
 	case *parse.LetExpr:
-		if expr.Recursive {
-			if self.vars.ScopeLevel() <= scopeLevelTop {
-				// TODO
-				panic("TODO")
-			}
-		} else {
-			if len(expr.Assignments) == 0 {
-				return self.TypeTerm(expr.Body)
+		self.vars.NewScope()
+		defer self.vars.PopScope()
+		for _, ass := range expr.Assignments {
+			ty, err := self.TypeTerm(ass.Value)
+			if err != nil {
+				return nil, err
 			}
 
-			desugared := expr.Body
-			for i := len(expr.Assignments) - 1; i >= 0; i-- {
-				ass := expr.Assignments[i]
-
-				desugared = &parse.Form{
-					Children: []parse.Expr{
-						&parse.Fn{
-							Id:   expr.ID(),
-							Args: []string{ass.Var},
-							Body: desugared,
-						},
-						ass.Value,
-					},
-				}
-			}
-
-			return self.TypeTerm(desugared)
+			self.vars.Insert(ass.Var, ty)
 		}
+
+		return self.TypeTerm(expr.Body)
+
 	case *parse.CaseExpr:
 	case *parse.Set:
 		varTy, ok := self.vars.Get(expr.Name).Unwrap()
