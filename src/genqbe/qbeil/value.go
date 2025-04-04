@@ -14,6 +14,10 @@ type Value interface {
 	IL() string
 }
 
+func (Var) val()          {}
+func (IntLiteral) val()   {}
+func (FloatLiteral) val() {}
+
 // global or local variable, $foo/%foo
 type Var struct {
 	Global bool
@@ -25,10 +29,6 @@ type IntLiteral struct {
 }
 
 type FloatLiteral struct{ Value float64 } // TODO: support f32
-
-func (Var) val()          {}
-func (IntLiteral) val()   {}
-func (FloatLiteral) val() {}
 
 func (v Var) IL() string {
 	if v.Global {
