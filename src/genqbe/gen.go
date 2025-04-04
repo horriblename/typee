@@ -697,10 +697,12 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 	}
 	ctx.declareType(e.Name+"Private", private)
 
-	genClassGetType(ctx, e, class, classType, private)
+	genClassBoilerplate(ctx, e, class, classType, private)
 }
 
-func genClassGetType(
+// generates functions that take care of initialization
+// e.g. function to retrieve the GType of the class
+func genClassBoilerplate(
 	ctx *ctx,
 	e *parse.ObjectTypeDef,
 	class qbeil.AggregateType,
@@ -711,8 +713,7 @@ func genClassGetType(
 	classTypeBits, _ := ctx.sizeOf(classType)
 	privateBits, _ := ctx.sizeOf(private)
 
-	typeNameVar := ctx.il.TempVar(true)
-	ctx.il.StrData(qbeil.DataDef{
+	typeNameVar := ctx.il.StrData(qbeil.DataDef{
 		Linkage: qbeil.Linkage{},
 		VarName: mangleName(mangleOpts{
 			module: ctx.module,
@@ -722,20 +723,21 @@ func genClassGetType(
 	}, e.Name)
 
 	// TODO: name collision?
-	typeIdVarName := mangleName(mangleOpts{
-		module: ctx.module,
-		class:  e.Name,
-		name:   "_type_id__once",
-	})
-	typeIdVar := ctx.il.Data(
+	typeIdVarOnce := ctx.il.Data(
 		qbeil.DataDef{
 			Linkage: qbeil.Linkage{},
-			VarName: typeIdVarName,
-			Align:   0,
+			VarName: mangleName(mangleOpts{
+				module: ctx.module,
+				class:  e.Name,
+				name:   "_type_id__once",
+			}),
+			Align: 0,
 		},
 		ctx.ptrType, // TODO: is this correct? gsize == guintptr??
 		qbeil.IntLiteral{Value: 0},
 	)
+
+	typeIdTempVar := ctx.il.TempVar(false)
 
 	typeInfoName := mangleName(mangleOpts{
 		module: ctx.module,
@@ -783,7 +785,7 @@ func genClassGetType(
 	ctx.il.Func(
 		qbeil.Linkage{Type: qbeil.Export},
 		ctx.ptrType, /* GType */
-		mangleName(mangleOpts{
+		"$"+mangleName(mangleOpts{
 			module: ctx.module,
 			class:  e.Name,
 			name:   "get_type",
@@ -796,7 +798,7 @@ func genClassGetType(
 		&enterResultVar, // FIXME: boolean?
 		ctx.intType,
 		qbeil.Var{Global: true, Name: "g_once_init_enter"},
-		[]qbeil.ABITypedValue{{Type: ctx.ptrType, Value: typeIdVar}},
+		[]qbeil.ABITypedValue{{Type: ctx.ptrType, Value: typeIdVarOnce}},
 	)
 
 	thenLabel := ctx.il.TempLabel("then_")
@@ -806,7 +808,7 @@ func genClassGetType(
 	ctx.il.InsertLabel(thenLabel)
 
 	ctx.il.Call(
-		&typeIdVar,
+		&typeIdTempVar,
 		// return type is GType
 		ctx.ptrType,
 		qbeil.Var{Global: true, Name: "g_type_register_static"},
@@ -819,18 +821,29 @@ func genClassGetType(
 		},
 	)
 
+	privateOffsetTemp := ctx.il.TempVar(false)
 	ctx.il.Call(
-		&privateOffset,
+		&privateOffsetTemp,
 		ctx.intType,
 		qbeil.Var{Global: true, Name: "g_type_add_instance_private"},
 		[]qbeil.ABITypedValue{
-			{Type: ctx.ptrType /* GType */, Value: typeIdVar},
+			{Type: ctx.ptrType /* GType */, Value: typeIdVarOnce},
 			{Type: ctx.ptrType /* size_t */, Value: qbeil.IntLiteral{Value: int64(privateBits / 8)}},
 		},
 	)
 
+	ctx.il.Command("store"+ctx.ptrType.IL(), privateOffsetTemp, privateOffset)
+
+	ctx.il.Call(nil, nil,
+		qbeil.Var{Global: true, Name: "g_once_init_leave"},
+		[]qbeil.ABITypedValue{
+			{Type: ctx.ptrType, Value: typeIdVarOnce},
+			{Type: ctx.ptrType, Value: typeIdTempVar},
+		},
+	)
+
 	ctx.il.InsertLabel(elseLabel)
-	ctx.il.Ret(typeIdVar)
+	ctx.il.Ret(typeIdVarOnce)
 
 	ctx.il.EndFunc()
 }
