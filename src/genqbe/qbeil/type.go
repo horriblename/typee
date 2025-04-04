@@ -16,7 +16,7 @@ type Type interface {
 }
 
 func (BaseType) typ()   {}
-func (ExtType) typ()    {}
+func (ExtraType) typ()  {}
 func (StructType) typ() {}
 func (UnionType) typ()  {}
 
@@ -39,6 +39,11 @@ type ABIType interface {
 	IL() string
 }
 
+func (StructType) abi()  {}
+func (UnionType) abi()   {}
+func (SubWordType) abi() {}
+func (BaseType) abi()    {}
+
 type BaseType int
 
 const (
@@ -48,11 +53,19 @@ const (
 	Double                 // 64-bit float
 )
 
-type ExtType int
+type ExtType interface {
+	extType()
+	IL() string
+}
+
+func (BaseType) extType()  {}
+func (ExtraType) extType() {}
+
+type ExtraType int
 
 const (
-	Byte     ExtType = iota // 8-bit
-	HalfWord                // 16-bit
+	Byte     ExtraType = iota // 8-bit
+	HalfWord                  // 16-bit
 )
 
 type SubWordType int
@@ -82,11 +95,6 @@ type FieldLayout struct {
 	OffsetBits int
 }
 
-func (StructType) abi()  {}
-func (UnionType) abi()   {}
-func (SubWordType) abi() {}
-func (BaseType) abi()    {}
-
 func (t BaseType) IL() string {
 	switch t {
 	case Word:
@@ -101,7 +109,7 @@ func (t BaseType) IL() string {
 
 	panic("unreachable")
 }
-func (t ExtType) IL() string {
+func (t ExtraType) IL() string {
 	switch t {
 	case Byte:
 		return "b"
