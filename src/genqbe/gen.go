@@ -822,7 +822,7 @@ func (ctx *ctx) toABIType(typ types.Type) qbeil.ABIType {
 	}
 }
 
-// like [ctx.toILType] but converts class type to a pointer instead of its full [qbeil.StructType]
+// like [ctx.toILType] but converts class type to its full [qbeil.StructType] instead of a pointer type
 func (ctx *ctx) classDefIL(t *types.Class, e *parse.ObjectTypeDef) qbeil.AggregateType {
 	if t.Name == "" {
 		// FIXME: generic support
