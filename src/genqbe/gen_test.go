@@ -36,7 +36,8 @@ func TestGen(t *testing.T) {
 				return
 			}
 
-			e, err := os.ReadFile("tests/" + name + ".qbe")
+			expectFile := path.Join("tests", name+".qbe")
+			e, err := os.ReadFile(expectFile)
 			assert.Ok(err)
 			expect := string(e)
 
@@ -53,29 +54,25 @@ func TestGen(t *testing.T) {
 
 			got := buf.String()
 			if got != expect {
-				// t.Log("--- expected:")
-				// t.Log(expect)
-				// t.Log("--- got:")
-				// t.Log(got)
-				t.Errorf("--- diff:\n%s", diffStr(t, string(expect), got))
+				gotFile := path.Join(t.TempDir(), "got.txt")
+				assert.Ok(os.WriteFile(gotFile, []byte(got), 0o644))
+				diff := diff(t, expectFile, gotFile)
+
+				if os.Getenv("HOR_FIX_TEST") != "1" {
+					t.Errorf("--- diff:\n%s", diff)
+				} else {
+					t.Errorf("updating test expectations...")
+					assert.Ok(os.WriteFile(expectFile, []byte(got), 0o644))
+				}
 			}
 		})
 	}
 }
 
-func diffStr(t *testing.T, a, b string) string {
+func diff(t *testing.T, a, b string) string {
 	t.Helper()
-	dir := t.TempDir()
-	pathA := path.Join(dir, "a")
-	pathB := path.Join(dir, "b")
-	if err := os.WriteFile(pathA, []byte(a), 0o644); err != nil {
-		t.Fatalf("diffStr: %s", err.Error())
-	}
-	if err := os.WriteFile(pathB, []byte(b), 0o644); err != nil {
-		t.Fatalf("diffStr: %s", err.Error())
-	}
 
-	out, err := exec.Command("git", "diff", "--color=always", pathA, pathB).Output()
+	out, err := exec.Command("git", "diff", "--color=always", a, b).Output()
 	_, exitErr := err.(*exec.ExitError)
 	if err != nil && !exitErr {
 		t.Fatalf("diffStr: running diff cmd: %s", err.Error())
