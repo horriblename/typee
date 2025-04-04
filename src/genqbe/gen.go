@@ -178,8 +178,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		} else if _, ok := ctx.globals[e.Name]; ok {
 			return qbeil.Var{Global: true, Name: e.Name}
 		}
-		// TODO: why do I need this??
-		return qbeil.Var{Global: false, Name: e.Name}
+		panic("BUG: an undefined variable made it's way to code gen phase: " + e.Name)
 
 	case *parse.ExternCall:
 		target := ctx.il.TempVar(false)
@@ -367,6 +366,10 @@ func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
 			panic(fmt.Sprintf("in function %s%s: %v", class, expr.Name, e))
 		}
 	}()
+
+	ctx.vars.NewScope()
+	defer ctx.vars.PopScope()
+
 	friendlyName := fmt.Sprintf("%s.%s", class, expr.Name)
 	funcTyp, ok := ctx.simplify(expr.ID()).(*types.Func)
 	assert.True(ok, "generate function code: type of ", friendlyName, " is not function")
@@ -382,10 +385,12 @@ func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
 	argTyps := make([]qbeil.TypedVar, 0, len(expr.Args))
 
 	for i, argTyp := range funcTyp.Args {
+		val := qbeil.Var{Global: false, Name: expr.Args[i]}
 		argTyps = append(argTyps, qbeil.NewTypedVar(
 			ctx.toABIType(argTyp),
-			qbeil.Var{Global: false, Name: expr.Args[i]},
+			val,
 		))
+		ctx.vars.Insert(expr.Args[i], val)
 	}
 
 	// TODO: don't export all symbols
