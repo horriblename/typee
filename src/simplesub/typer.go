@@ -91,12 +91,12 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[can.Modu
 	self.inferred = map[int]TypeScheme{}
 	self.imports = map[string]ModuleInfo{}
 
-	t, err := self.typeProgram(program)
+	t, typesAst, err := self.typeProgram(program)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	self.moduleCache[self.mainModule], err = typeTableToSymbolMap(program, self.inferred)
+	self.moduleCache[self.mainModule], err = typeTableToSymbolMap(program, typesAst, self.inferred)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -104,7 +104,7 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[can.Modu
 	return t, self.moduleCache, err
 }
 
-func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
+func (self *Typer) typeProgram(program []parse.Expr) (_ []TypeScheme, typesAst []parse.Expr, _ error) {
 	// top-level process
 	// 1. type check imported modules (already done in [TypeProgram])
 	// 2. groupRecursives: walk the AST to mark (mutually-)recursive top-level functions.
@@ -154,7 +154,7 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 			assert.True(ok, "compiler bug: ast lookup failed: ", name)
 			t, err := self.defType(ast)
 			if err != nil {
-				return nil, fmt.Errorf("defining type %s: %w", name, err)
+				return nil, nil, fmt.Errorf("defining type %s: %w", name, err)
 			}
 
 			self.types.Insert(name, t)
@@ -208,7 +208,7 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 			types[i] = self.inferred[e.ID()]
 
 		default:
-			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
+			return nil, nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
 		}
 	}
 
@@ -219,7 +219,7 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 			if e.Extern {
 				typ, err := self.externDef(e)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 
 				fnTy, ok := types[i].(SimpleType)
@@ -228,7 +228,7 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 					fnTy = pt.Body
 				}
 				if err := self.symbols.constrain(typ, fnTy); err != nil {
-					return nil, fmt.Errorf("typing function %s: %w", e.Name, err)
+					return nil, nil, fmt.Errorf("typing function %s: %w", e.Name, err)
 				}
 
 				self.inferred[e.ID()] = fnTy
@@ -237,7 +237,7 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 			}
 
 			if len(e.Body) == 0 {
-				return nil, fmt.Errorf("in function %s: %w", e.Name, ErrEmptyFuncBody)
+				return nil, nil, fmt.Errorf("in function %s: %w", e.Name, ErrEmptyFuncBody)
 			}
 
 			fn := parse.Fn{
@@ -248,7 +248,7 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 			}
 			typ, err := self.TypeTerm(&fn)
 			if err != nil {
-				return nil, fmt.Errorf("in function %s: %w", e.Name, err)
+				return nil, nil, fmt.Errorf("in function %s: %w", e.Name, err)
 			}
 
 			placeholderTy, ok := types[i].(SimpleType)
@@ -257,13 +257,13 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 				placeholderTy = pt.Body
 			}
 			if err := self.symbols.constrain(typ, placeholderTy); err != nil {
-				return nil, fmt.Errorf("verifying type signature of function %s: %w", e.Name, err)
+				return nil, nil, fmt.Errorf("verifying type signature of function %s: %w", e.Name, err)
 			}
 
 		case *parse.Set:
 			typ, err := self.TypeTerm(e.Value)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			valTy, ok := types[i].(SimpleType)
@@ -273,12 +273,12 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 			}
 
 			if err := self.symbols.constrain(typ, valTy); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 		case *parse.ObjectTypeDef:
 			if err := self.defClassMethods(e); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 		case *parse.UnionDef:
@@ -286,11 +286,20 @@ func (self *Typer) typeProgram(program []parse.Expr) ([]TypeScheme, error) {
 		case *parse.TypeAlias:
 
 		default:
-			return nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
+			return nil, nil, fmt.Errorf("%w:\n    %s", ErrInvalidTopLevel, expr.Pretty())
 		}
 	}
 
-	return types, nil
+	for _, group := range typeDefOrder {
+		for _, name := range group {
+			// builtins don't have an AST lookup, skip them
+			if ast, ok := typeDefAsts[name]; ok {
+				typesAst = append(typesAst, ast)
+			}
+		}
+	}
+
+	return types, typesAst, nil
 }
 
 func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {

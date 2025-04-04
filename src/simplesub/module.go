@@ -14,6 +14,7 @@ import (
 type ModuleInfo struct {
 	Name     can.ModuleName
 	Ast      []parse.Expr
+	TypesAst []parse.Expr
 	Types    map[string]TypeScheme
 	Globals  map[string]TypeScheme
 	TypeTree map[int]TypeScheme
@@ -69,9 +70,10 @@ func parseModule(name can.ModuleName) ([]parse.Expr, error) {
 // sorts a map[nodes]outgoingNodes
 // leaf nodes go first, root goes last
 
-func typeTableToSymbolMap(program []parse.Expr, typTable map[int]TypeScheme) (ModuleInfo, error) {
+func typeTableToSymbolMap(program []parse.Expr, typesAst []parse.Expr, typTable map[int]TypeScheme) (ModuleInfo, error) {
 	symbols := ModuleInfo{
 		Ast:      program,
+		TypesAst: typesAst,
 		Types:    map[string]TypeScheme{},
 		Globals:  map[string]TypeScheme{},
 		TypeTree: typTable,
