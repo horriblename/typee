@@ -1,5 +1,6 @@
 (class Foo { pub x Int, pub y Int })
+(class Baz (Bar) { pub a Int, })
 (class Bar (Foo) { pub z Int, })
 
 (def main []
-	(let [bar (Bar.new)] bar.z))
+	(let [baz (Baz.new)] baz.a))

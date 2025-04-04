@@ -46,7 +46,13 @@ type ctx struct {
 	generatedTranslation map[types.Type]qbeil.AggregateType
 }
 
-func Gen(w io.Writer, module can.ModuleName, modules map[can.ModuleName]simplesub.ModuleInfo, ast []parse.Expr) {
+func Gen(
+	w io.Writer,
+	module can.ModuleName,
+	modules map[can.ModuleName]simplesub.ModuleInfo,
+	ast []parse.Expr,
+	typeDefsAst []parse.Expr,
+) {
 	mainMod := assert.Get(modules, module, "BUG in qbe gen: missing module info of ", module)
 	ctx := ctx{
 		module:               module,
@@ -104,6 +110,20 @@ func Gen(w io.Writer, module can.ModuleName, modules map[can.ModuleName]simplesu
 		}
 	}
 
+	// generate type definitions first
+	for _, expr := range typeDefsAst {
+		switch e := expr.(type) {
+		case *parse.ObjectTypeDef:
+			genClassDef(&ctx, e)
+		case *parse.UnionDef:
+			genUnionDef(&ctx, e)
+		case *parse.EnumDef, *parse.TypeAlias:
+		default:
+			panic(fmt.Sprintf("unexpected AST node in type defs AST: %#v", expr))
+		}
+	}
+
+	// generate functions and global vars
 	for _, expr := range ast {
 		genTopLevel(&ctx, expr)
 	}
@@ -114,19 +134,14 @@ func Gen(w io.Writer, module can.ModuleName, modules map[can.ModuleName]simplesu
 func genTopLevel(ctx *ctx, expr parse.Expr) {
 	switch e := expr.(type) {
 	case *parse.Import:
-	case *parse.ObjectTypeDef:
-		genClassDef(ctx, e)
-
-	case *parse.UnionDef:
-		genUnionDef(ctx, e)
-
 	case *parse.Set:
 		genGlobalVar(ctx, e)
 	case *parse.FuncDef:
 		if !e.Extern {
 			gen(ctx, expr)
 		}
-	case *parse.EnumDef, *parse.TypeAlias:
+	// type defs are processed earlier
+	case *parse.ObjectTypeDef, *parse.UnionDef, *parse.EnumDef, *parse.TypeAlias:
 
 	default:
 		panic(fmt.Sprintf("unexpected parse.Expr: %#v", e))

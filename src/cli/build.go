@@ -117,6 +117,7 @@ func buildProgram(params buildParams) error {
 			useExternalQbe: params.externalQbe,
 			module:         name,
 			ast:            mod.Ast,
+			typesAst:       mod.TypesAst,
 			allModules:     modules,
 			assemblerFlags: params.assemblerFlags,
 		})
@@ -171,6 +172,7 @@ type compileUnitArgs struct {
 	useExternalQbe bool
 	module         can.ModuleName
 	ast            []parse.Expr
+	typesAst       []parse.Expr
 	allModules     map[can.ModuleName]simplesub.ModuleInfo
 	assemblerFlags []string
 }
@@ -185,7 +187,7 @@ func compileUnit(args compileUnitArgs) (outFile string, _ error) {
 	}
 	defer qbeFile.Close()
 
-	genqbe.Gen(qbeFile, args.module, args.allModules, args.ast)
+	genqbe.Gen(qbeFile, args.module, args.allModules, args.ast, args.typesAst)
 	qbeFile.Seek(0, 0)
 
 	if args.useExternalQbe {

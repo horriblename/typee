@@ -2,10 +2,11 @@ type :Str = {l, l, }
 type :GObject = {l, l, l, }
 type :Foo = {:GObject, l, l, l, }
 type :Bar = {:Foo, l, l, }
+type :Baz = {:Bar, l, l, }
 export function w $main() {
 @start
-	%_tmp_1 =l call $malloc (l 64)
-	%_tmp_2 =l add %_tmp_1, 56
+	%_tmp_1 =l call $malloc (l 80)
+	%_tmp_2 =l add %_tmp_1, 72
 	%_tmp_3 =l loadl %_tmp_2
 	ret %_tmp_3
 }
