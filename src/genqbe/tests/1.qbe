@@ -1,5 +1,7 @@
 type :Str = {l, l, }
 type :GObject = {l, l, l, }
+type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
+type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
 export function l $MainModule.foo(l %x, l %y) {
 @start
 	%_tmp_1 =l add %y, 1
