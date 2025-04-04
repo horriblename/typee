@@ -27,6 +27,7 @@ func (b *Builder) Jnz(val Value, then Label, otherwise Label) {
 	b.Buf.WriteString(then.IL())
 	b.Buf.WriteString(", ")
 	b.Buf.WriteString(otherwise.IL())
+	b.Buf.WriteString("\n")
 }
 
 func (b *Builder) InsertLabel(l Label) {
