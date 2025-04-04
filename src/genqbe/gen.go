@@ -170,11 +170,15 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		return qbeil.Var{Global: false, Name: "self"}
 
 	case *parse.Symbol:
+		if e.Name == "null" {
+			return qbeil.IntLiteral{Value: 0}
+		}
 		if val, ok := ctx.vars.Get(e.Name).Unwrap(); ok {
 			return val
 		} else if _, ok := ctx.globals[e.Name]; ok {
 			return qbeil.Var{Global: true, Name: e.Name}
 		}
+		// TODO: why do I need this??
 		return qbeil.Var{Global: false, Name: e.Name}
 
 	case *parse.ExternCall:
