@@ -58,7 +58,7 @@ func (b *Builder) Func(linkage Linkage, ret ABIType, name string, args []TypedVa
 		returnType = ret.IL() + " "
 	}
 
-	err := b.indented([]byte(fmt.Sprintf("%sfunction %s%s(", linkageStr, returnType, name)))
+	err := b.indented(fmt.Appendf(nil, "%sfunction %s%s(", linkageStr, returnType, name))
 	if err != nil {
 		return err
 	}
@@ -85,11 +85,11 @@ func (b *Builder) EndFunc() {
 }
 
 func (b *Builder) Label(name string) {
-	b.indented([]byte(fmt.Sprint("@", name, "\n")))
+	b.indented(fmt.Append(nil, "@", name, "\n"))
 }
 
 func (b *Builder) Ret(val Value) {
-	b.indented([]byte(fmt.Sprintf("ret %s\n", val.IL())))
+	b.indented(fmt.Appendf(nil, "ret %s\n", val.IL()))
 }
 func (b *Builder) Arithmetic(target string, ret Type, op string, args ...Value) {
 	retStr := ""
@@ -100,7 +100,7 @@ func (b *Builder) Arithmetic(target string, ret Type, op string, args ...Value) 
 	argsStr := fun.Map(args, func(arg Value) string { return arg.IL() })
 	argStr := strings.Join(argsStr, ", ")
 
-	b.indented([]byte(fmt.Sprintf("%s %s %s %s\n", target, retStr, op, argStr)))
+	b.indented(fmt.Appendf(nil, "%s %s %s %s\n", target, retStr, op, argStr))
 }
 
 func (b *Builder) dataPrelude(def DataDef) {
@@ -123,7 +123,7 @@ func (b *Builder) Command(op string, args ...Value) {
 	argStrs := fun.Map(args, func(arg Value) string { return arg.IL() })
 	argStr := strings.Join(argStrs, ", ")
 
-	b.indented([]byte(fmt.Sprintf("%s %s\n", op, argStr)))
+	b.indented(fmt.Appendf(nil, "%s %s\n", op, argStr))
 }
 
 func (b *Builder) Call(target *Var, typ ABIType, name Var, args []ABITypedValue) {
@@ -132,12 +132,12 @@ func (b *Builder) Call(target *Var, typ ABIType, name Var, args []ABITypedValue)
 	}), ", ")
 	if target != nil {
 		b.indented(
-			[]byte(fmt.Sprintf(
+			fmt.Appendf(nil,
 				"%s =%s call %s (%s)\n",
-				target.IL(), typ.IL(), name.IL(), argsStr)),
+				target.IL(), typ.IL(), name.IL(), argsStr),
 		)
 	} else {
-		b.indented([]byte(fmt.Sprintf("call %s (%s)\n", name.IL(), argsStr)))
+		b.indented(fmt.Appendf(nil, "call %s (%s)\n", name.IL(), argsStr))
 	}
 }
 
