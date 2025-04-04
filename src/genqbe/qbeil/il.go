@@ -46,7 +46,8 @@ func (b *Builder) indented(l []byte) error {
 	return nil
 }
 
-func (b *Builder) Func(linkage Linkage, ret *ABIType, name string, args []TypedVar) error {
+// ret can be nil
+func (b *Builder) Func(linkage Linkage, ret ABIType, name string, args []TypedVar) error {
 	linkageStr := linkage.String()
 	if linkageStr != "" {
 		linkageStr += " "
@@ -54,7 +55,7 @@ func (b *Builder) Func(linkage Linkage, ret *ABIType, name string, args []TypedV
 
 	returnType := ""
 	if ret != nil {
-		returnType = (*ret).IL() + " "
+		returnType = ret.IL() + " "
 	}
 
 	err := b.indented([]byte(fmt.Sprintf("%sfunction %s%s(", linkageStr, returnType, name)))
@@ -100,38 +101,6 @@ func (b *Builder) Arithmetic(target string, ret Type, op string, args ...Value) 
 	argStr := strings.Join(argsStr, ", ")
 
 	b.indented([]byte(fmt.Sprintf("%s %s %s %s\n", target, retStr, op, argStr)))
-}
-
-type DataDef struct {
-	Linkage Linkage
-	VarName string
-	Align   int // 0 for auto
-}
-
-// global data definition of an int variable
-func (b *Builder) Data(def DataDef, typ Type, val Value) Var {
-	b.dataPrelude(def)
-
-	b.Buf.WriteString("{")
-	b.Buf.WriteString(typ.IL())
-	b.Buf.WriteString(" ")
-	b.Buf.WriteString(val.IL())
-	b.Buf.WriteString("}\n")
-
-	return Var{Global: true, Name: def.VarName}
-}
-
-func (b *Builder) StrData(def DataDef, val string) Var {
-	b.dataPrelude(def)
-
-	b.Buf.WriteString("{")
-	b.Buf.WriteString(Byte.IL())
-	b.Buf.WriteString(" ")
-	b.Buf.WriteString(strconv.Quote(val))
-	b.Buf.WriteString(", b 0") // null terminate
-	b.Buf.WriteString("}\n")
-
-	return Var{Global: true, Name: def.VarName}
 }
 
 func (b *Builder) dataPrelude(def DataDef) {
