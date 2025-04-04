@@ -22,6 +22,9 @@ import (
 // compiler bugs
 var ErrCannotCompilePolymorphicType = errors.New("tried to compile a polymorphic type")
 
+// copied from gtype.h, should replace with something less stupid
+const G_TYPE_OBJECT int = 20 << 2
+
 type ctx struct {
 	module can.ModuleName
 
@@ -36,7 +39,7 @@ type ctx struct {
 	allModules  map[can.ModuleName]simplesub.ModuleInfo
 	simplified  map[int]types.Type
 	statics     map[qbeil.Var]string
-	globals     map[string]int
+	globals     map[string]int // maps global var names to their AST id
 	userTypes   map[string]qbeil.AggregateType
 	recordTypes map[int]qbeil.AggregateType
 	externs     map[string]struct{}
@@ -101,6 +104,73 @@ func Gen(
 			qbeil.SingleType(ctx.ptrType),
 			qbeil.SingleType(ctx.intType),
 			qbeil.SingleType(ctx.ptrType),
+		},
+	})
+
+	// struct _GTypeInfo {
+	//   /* interface types, classed types, instantiated types */
+	//   guint16                class_size;
+	//
+	//   GBaseInitFunc          base_init;
+	//   GBaseFinalizeFunc      base_finalize;
+	//
+	//   /* interface types, classed types, instantiated types */
+	//   GClassInitFunc         class_init;
+	//   GClassFinalizeFunc     class_finalize;
+	//   gconstpointer          class_data;
+	//
+	//   /* instantiated types */
+	//   guint16                instance_size;
+	//   guint16                n_preallocs;
+	//   GInstanceInitFunc      instance_init;
+	//
+	//   /* value handling */
+	//   const GTypeValueTable	*value_table;
+	// };
+	ctx.declareType("GTypeInfo", qbeil.StructType{
+		Name: "GTypeInfo",
+		Fields: []qbeil.RepeatType{
+			qbeil.SingleType(qbeil.HalfWord), // class_size
+
+			qbeil.SingleType(ctx.ptrType),
+			qbeil.SingleType(ctx.ptrType),
+
+			qbeil.SingleType(ctx.ptrType),
+			qbeil.SingleType(ctx.ptrType),
+			qbeil.SingleType(ctx.ptrType),
+
+			qbeil.SingleType(qbeil.HalfWord),
+			qbeil.SingleType(qbeil.HalfWord),
+			qbeil.SingleType(ctx.ptrType),
+
+			qbeil.SingleType(ctx.ptrType),
+		},
+	})
+
+	ctx.declareType("GObjectClass", qbeil.StructType{
+		Name: "GObjectClass",
+		Fields: []qbeil.RepeatType{
+			qbeil.SingleType(ctx.ptrType), // GTypeClass, has one field GType
+
+			qbeil.SingleType(ctx.ptrType), // GSList*
+
+			qbeil.SingleType(ctx.ptrType), // function pointer: constructor
+			qbeil.SingleType(ctx.ptrType), // function pointer: set_property
+			qbeil.SingleType(ctx.ptrType), // function pointer: get_property
+			qbeil.SingleType(ctx.ptrType), // function pointer: dispose
+			qbeil.SingleType(ctx.ptrType), // function pointer: finalize
+
+			qbeil.SingleType(ctx.ptrType), // function pointer: dispatch_properties_changed
+			qbeil.SingleType(ctx.ptrType), // function pointer: notify
+			qbeil.SingleType(ctx.ptrType), // function pointer: constructed
+
+			qbeil.SingleType(ctx.ptrType), // gsize
+			qbeil.SingleType(ctx.ptrType), // gsize
+
+			qbeil.SingleType(ctx.ptrType), // gpointer
+			qbeil.SingleType(ctx.ptrType), // gsize
+
+			{Type: ctx.ptrType, Count: 3}, // padding
 		},
 	})
 
@@ -401,7 +471,7 @@ func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
 		retTyp = qbeil.Word
 	}
 
-	assert.Ok(ctx.il.Func(linkage, &retTyp, thisFunc.IL(), argTyps))
+	assert.Ok(ctx.il.Func(linkage, retTyp, thisFunc.IL(), argTyps))
 
 	for _, stmt := range expr.Body[:len(expr.Body)-1] {
 		gen(ctx, stmt)
@@ -600,7 +670,169 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 		panic(fmt.Sprintf("compiler bug: class definition yields non-class type %#v", ct))
 	}
 
-	ctx.declareType(e.Name, ctx.classDefIL(classTy, e))
+	class := ctx.classDefIL(classTy, e)
+	ctx.declareType(e.Name, class)
+
+	// TODO: define GObjectClass
+	parentClass := assert.Get(ctx.userTypes, "GObjectClass", "undefined parent class type?")
+	if len(e.Supers) > 0 {
+		// TODO: what if all are interfaces
+		parentClass = ctx.userTypes[e.Supers[0]+"Class"]
+	}
+
+	// TODO: name collision?
+	classType := qbeil.StructType{
+		Name: e.Name + "Class",
+		Fields: []qbeil.RepeatType{
+			// parent_class
+			qbeil.SingleType(parentClass),
+		},
+	}
+	ctx.declareType(e.Name+"Class", classType)
+
+	private := qbeil.StructType{
+		Name: e.Name + "Private",
+		// TODO: handle privates
+		Fields: []qbeil.RepeatType{},
+	}
+	ctx.declareType(e.Name+"Private", private)
+
+	genClassGetType(ctx, e, class, classType, private)
+}
+
+func genClassGetType(
+	ctx *ctx,
+	e *parse.ObjectTypeDef,
+	class qbeil.AggregateType,
+	classType qbeil.AggregateType,
+	private qbeil.AggregateType,
+) {
+	classBits, _ := ctx.sizeOf(class)
+	classTypeBits, _ := ctx.sizeOf(classType)
+	privateBits, _ := ctx.sizeOf(private)
+
+	typeNameVar := ctx.il.TempVar(true)
+	ctx.il.StrData(qbeil.DataDef{
+		Linkage: qbeil.Linkage{},
+		VarName: mangleName(mangleOpts{
+			module: ctx.module,
+			class:  e.Name,
+			name:   "class_name",
+		}),
+	}, e.Name)
+
+	// TODO: name collision?
+	typeIdVarName := mangleName(mangleOpts{
+		module: ctx.module,
+		class:  e.Name,
+		name:   "_type_id__once",
+	})
+	typeIdVar := ctx.il.Data(
+		qbeil.DataDef{
+			Linkage: qbeil.Linkage{},
+			VarName: typeIdVarName,
+			Align:   0,
+		},
+		ctx.ptrType, // TODO: is this correct? gsize == guintptr??
+		qbeil.IntLiteral{Value: 0},
+	)
+
+	typeInfoName := mangleName(mangleOpts{
+		module: ctx.module,
+		class:  e.Name,
+		name:   "g_define_type_info",
+	})
+	typeInfoConst := ctx.il.CompositeData(
+		qbeil.DataDef{
+			Linkage: qbeil.Linkage{},
+			VarName: typeInfoName,
+			Align:   0,
+		},
+		qbeil.DataItems([]qbeil.TypedDataItem{
+			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: int64(classTypeBits / 8)}},
+
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
+
+			// should be (type)_class_init
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
+
+			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: int64(classBits / 8)}},
+			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: 0}},
+			// should be (type)_instance_init
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
+
+			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: 0}},
+		}),
+	)
+
+	privateOffset := ctx.il.Data(
+		qbeil.DataDef{
+			Linkage: qbeil.Linkage{},
+			VarName: e.Name + "_private_offset",
+		},
+		// gint
+		ctx.intType,
+		qbeil.IntLiteral{Value: 0},
+	)
+
+	// get_type function
+
+	ctx.il.Func(
+		qbeil.Linkage{Type: qbeil.Export},
+		ctx.ptrType, /* GType */
+		mangleName(mangleOpts{
+			module: ctx.module,
+			class:  e.Name,
+			name:   "get_type",
+		}),
+		[]qbeil.TypedVar{},
+	)
+
+	enterResultVar := ctx.il.TempVar(false)
+	ctx.il.Call(
+		&enterResultVar, // FIXME: boolean?
+		ctx.intType,
+		qbeil.Var{Global: true, Name: "g_once_init_enter"},
+		[]qbeil.ABITypedValue{{Type: ctx.ptrType, Value: typeIdVar}},
+	)
+
+	thenLabel := ctx.il.TempLabel("then_")
+	elseLabel := ctx.il.TempLabel("else_")
+	ctx.il.Jnz(enterResultVar, thenLabel, elseLabel)
+
+	ctx.il.InsertLabel(thenLabel)
+
+	ctx.il.Call(
+		&typeIdVar,
+		// return type is GType
+		ctx.ptrType,
+		qbeil.Var{Global: true, Name: "g_type_register_static"},
+		[]qbeil.ABITypedValue{
+			{Type: ctx.ptrType /* GType */, Value: qbeil.IntLiteral{Value: int64(G_TYPE_OBJECT)}},
+			{Type: ctx.ptrType, Value: typeNameVar},
+			{Type: ctx.ptrType, Value: typeInfoConst},
+			// TODO: this is an enum GTypeFlags, idk what type it should be
+			{Type: ctx.intType, Value: qbeil.IntLiteral{Value: 0}},
+		},
+	)
+
+	ctx.il.Call(
+		&privateOffset,
+		ctx.intType,
+		qbeil.Var{Global: true, Name: "g_type_add_instance_private"},
+		[]qbeil.ABITypedValue{
+			{Type: ctx.ptrType /* GType */, Value: typeIdVar},
+			{Type: ctx.ptrType /* size_t */, Value: qbeil.IntLiteral{Value: int64(privateBits / 8)}},
+		},
+	)
+
+	ctx.il.InsertLabel(elseLabel)
+	ctx.il.Ret(typeIdVar)
+
+	ctx.il.EndFunc()
 }
 
 func genUnionDef(ctx *ctx, e *parse.UnionDef) {
