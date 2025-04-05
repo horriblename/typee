@@ -996,20 +996,6 @@ func getVars(ty SimpleType) *orderedset.OrderedSet[*Variable] {
 			result.Insert(v)
 			work = append(work, v.children()...)
 			continue
-		} else if obj, ok := ty.(*ObjectType); ok {
-			// HACK: skips vars of methods
-			for _, field := range obj.Fields {
-				work = append(work, field.Type)
-			}
-			for _, meth := range obj.Methods {
-				if methv, ok := meth.Type.(*Variable); ok {
-					// skip methods that are type vars
-					work = append(work, methv.children()...)
-				} else {
-					work = append(work, meth.Type)
-				}
-			}
-			continue
 		}
 
 		work = append(work, ty.children()...)
