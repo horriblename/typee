@@ -91,7 +91,7 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleTy
 			return transform(field, !pol, mapping, pos, neg)
 		})
 
-		return Func{args, transform(ty.Ret, pol, mapping, pos, neg)}
+		return Func{args, transform(ty.Ret, pol, mapping, pos, neg), false}
 	case ArrayType:
 		return ArrayType{transform(ty.ElType, pol, mapping, pos, neg), ty.Size}
 	case SliceType:

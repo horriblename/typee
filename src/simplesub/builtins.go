@@ -6,15 +6,9 @@ import (
 
 var I64 = Int{true, 64}
 
-var intBinaryOptType = Func{
-	Args: []SimpleType{I64, I64},
-	Ret:  I64,
-}
+var intBinaryOptType = Func{Args: []SimpleType{I64, I64}, Ret: I64}
 
-var intComparatorType = Func{
-	Args: []SimpleType{I64, I64},
-	Ret:  Primitive{PrimitiveBool},
-}
+var intComparatorType = Func{Args: []SimpleType{I64, I64}, Ret: Primitive{PrimitiveBool}}
 
 var _builtinVars map[string]TypeScheme
 
@@ -33,46 +27,28 @@ func builtinVars() map[string]TypeScheme {
 		">": intComparatorType,
 		"<": intComparatorType,
 		"=": intComparatorType,
-		"print": Func{
-			Args: []SimpleType{Str{}},
-			Ret:  Record{},
-		},
-		"exit": Func{
-			Args: []SimpleType{I64},
-			Ret:  Bot{},
-		},
+		"print": Func{Args: []SimpleType{Str{}}, Ret: Record{}},
+		"exit": Func{Args: []SimpleType{I64}, Ret: Bot{}},
 		"at": PolymorphicType{
-			Body: Func{
-				Args: []SimpleType{
+			Body: Func{Args: []SimpleType{
 					SliceType{at_t},
 					I64,
-				},
-				Ret: at_t,
-			},
+				}, Ret: at_t},
 		},
 		"null": PolymorphicType{
 			Body: Ref{freshVar()},
 		},
 
 		"stackAlloc": PolymorphicType{
-			Body: Func{
-				Args: []SimpleType{},
-				Ret:  Ref{freshVar()},
-			},
+			Body: Func{Args: []SimpleType{}, Ret: Ref{freshVar()}},
 		},
 
 		"deref": PolymorphicType{
-			Body: Func{
-				Args: []SimpleType{Ref{deref_t}},
-				Ret:  deref_t,
-			},
+			Body: Func{Args: []SimpleType{Ref{deref_t}}, Ret: deref_t},
 		},
 
 		"strFromCStr": PolymorphicType{
-			Body: Func{
-				Args: []SimpleType{Primitive{PrimitiveOpaque}},
-				Ret:  Str{},
-			},
+			Body: Func{Args: []SimpleType{Primitive{PrimitiveOpaque}}, Ret: Str{}},
 		},
 	}
 	return _builtinVars

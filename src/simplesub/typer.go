@@ -157,7 +157,7 @@ func (self *Typer) typeProgram(program []parse.Expr) (_ []TypeScheme, typesAst [
 				return nil, nil, fmt.Errorf("defining type %s: %w", name, err)
 			}
 
-			self.types.Insert(name, t)
+			self.types.Insert(name, PolymorphicType{Body: t})
 		}
 	}
 
@@ -404,35 +404,11 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		return Func{Args: params, Ret: bodyTy}, nil
 
 	case *parse.Form:
-		assert.GreaterThan(len(expr.Children), 0, "unhandled: empty form")
-		if meth, ok := expr.Children[0].(*parse.MethodAccess); ok {
-			return self.typeMethodCall(meth, expr)
-		}
-
-		funcTy, err := self.TypeTerm(expr.Children[0])
-		if err != nil {
-			return nil, err
-		}
-
-		argTys := make([]SimpleType, len(expr.Children)-1)
-		for i, arg := range expr.Children[1:] {
-			ty, err := self.TypeTerm(arg)
-			if err != nil {
-				return nil, err
-			}
-			argTys[i] = ty
-		}
-
-		ret := freshVar()
-		if err := self.symbols.constrain(funcTy, Func{argTys, ret}); err != nil {
-			return nil, err
-		}
-
-		return ret, nil
+		return self.typeFunctionCall(expr)
 
 	case *parse.New:
 		if class, ok := self.types.Get(expr.Class).Unwrap(); ok {
-			return Func{[]SimpleType{}, class.instantiate()}, nil
+			return Func{[]SimpleType{}, class.instantiate(), false}, nil
 		}
 		return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, expr.Class)
 
@@ -832,10 +808,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 				Name: f.Name(),
 				Member: Member{
 					// TODO: generalize methods
-					Type: Func{
-						Args: args,
-						Ret:  simpleRet,
-					},
+					Type:   Func{Args: args, Ret: simpleRet},
 					Access: f.Access(),
 				},
 			})
@@ -948,6 +921,34 @@ func (self *Typer) parseUnionDef(unionDef *parse.UnionDef) (SimpleType, error) {
 	return t, nil
 }
 
+func (self *Typer) typeFunctionCall(expr *parse.Form) (SimpleType, error) {
+	assert.GreaterThan(len(expr.Children), 0, "unhandled: empty form")
+	if meth, ok := expr.Children[0].(*parse.MethodAccess); ok {
+		return self.typeMethodCall(meth, expr)
+	}
+
+	funcTy, err := self.TypeTerm(expr.Children[0])
+	if err != nil {
+		return nil, err
+	}
+
+	argTys := make([]SimpleType, len(expr.Children)-1)
+	for i, arg := range expr.Children[1:] {
+		ty, err := self.TypeTerm(arg)
+		if err != nil {
+			return nil, err
+		}
+		argTys[i] = ty
+	}
+
+	ret := freshVar()
+	if err := self.symbols.constrain(funcTy, Func{argTys, ret, false}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
 func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Form) (SimpleType, error) {
 	// goal:
 	// 1. (class Foo {x I64, (def getx[self] self.x)})
@@ -956,10 +957,7 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 	// 4. selectively instantiate type var of Foo::getx
 	assert.GreaterThan(len(form.Children), 0, "unhandled: empty form")
 
-	oTy, err := self.TypeTerm(methAccess.Obj)
-	if err != nil {
-		return nil, fmt.Errorf("typing method call on %s: %w", methAccess.Pretty(), err)
-	}
+	oTy := freshVar()
 
 	argTys := make([]SimpleType, 0, len(form.Children))
 	argTys = append(argTys, oTy)
@@ -972,14 +970,14 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 	}
 	ret := freshVar()
 
-	err = self.symbols.constrain(oTy, ObjectType{
+	err := self.symbols.constrain(oTy, ObjectType{
 		Name:   "",
 		Supers: []ObjectType{},
 		Fields: []NamedMember{},
 		Methods: []NamedMember{{
 			Name: methAccess.Method,
 			Member: Member{
-				Type:   Func{argTys, ret},
+				Type:   Func{argTys, ret, false},
 				Access: parse.AccessPublic, // TODO
 			},
 		}},
@@ -990,7 +988,7 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 	}
 
 	// TODO: put this somewhere else
-	self.inferred[methAccess.ID()] = Func{argTys, ret}
+	self.inferred[methAccess.ID()] = Func{argTys, ret, false}
 
 	return ret, nil
 }
@@ -1163,13 +1161,14 @@ func (self *symbols) concretizeApplication(app Application) (SimpleType, error) 
 
 	switch base := base.(type) {
 	case PolymorphicType:
-		ty, err := base.concretize(app.Params)
-		if err != nil {
-			return nil, err
-		}
+		// FIXME: should instantiate + concretize
+		ty := base.instantiate()
 
 		return ty, nil
 	case SimpleType:
+		if len(app.Params) != 0 {
+			panic("TODO: handle wrong parameter count?")
+		}
 		return base, nil
 	default:
 		panic(fmt.Sprintf("unexpected simplesub.TypeScheme: %#v", base))
@@ -1454,12 +1453,9 @@ func freshenInner(freshened map[uint]*Variable, ty SimpleType) SimpleType {
 func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) SimpleType) ConcreteType {
 	switch t := ty.(type) {
 	case Func:
-		return Func{
-			fun.Map(t.Args, func(arg SimpleType) SimpleType {
-				return substitute(arg)
-			}),
-			substitute(t.Ret),
-		}
+		return Func{fun.Map(t.Args, func(arg SimpleType) SimpleType {
+			return substitute(arg)
+		}), substitute(t.Ret), false}
 	case Int:
 	case Record:
 		return Record{

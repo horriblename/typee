@@ -204,7 +204,7 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 			return nil, err
 		}
 
-		return Func{args, ret}, nil
+		return Func{args, ret, false}, nil
 	} else if lhs, rhs, ok := matchPair[Record, Record](lhs0, rhs0); ok {
 		var err error
 		lhsMap := namedTypesToMap(lhs.Fields)
@@ -443,7 +443,7 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 			return nil, err
 		}
 
-		return Func{args, ret}, nil
+		return Func{args, ret, false}, nil
 	} else if lhs, rhs, ok := matchPair[Record, Record](lhs0, rhs0); ok {
 		// the "intersection" of both records
 		rhsMap := namedTypesToMap(rhs.Fields)
@@ -705,8 +705,9 @@ type ConcreteType interface {
 type Top struct{}
 type Bot struct{}
 type Func struct {
-	Args []SimpleType
-	Ret  SimpleType
+	Args   []SimpleType
+	Ret    SimpleType
+	Method bool
 }
 type Record struct{ Fields []NamedType }
 type Primitive struct{ Kind PrimitiveKind }
