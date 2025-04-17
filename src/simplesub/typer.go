@@ -344,21 +344,25 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		self.vars.NewScope()
 		defer self.vars.PopScope()
 
-		params := make([]SimpleType, len(expr.Args))
+		paramsTy := make([]SimpleType, 0, len(expr.Args))
 		var err error
 		if sig, ok := expr.Signature.Unwrap(); ok {
+			isMethod := sig[0] == parse.SelfType{}
 			if len(sig) != len(expr.Args)+1 {
 				return nil, fmt.Errorf("%w: function has %d args but type signature only takes %d", ErrBadTypeSignature, len(expr.Args), len(sig)-1)
 			}
 
 			for i, arg := range sig[:len(sig)-1] {
+				if i == 0 && isMethod {
+					continue
+				}
 				param, err := self.parseType(arg)
 				if err != nil {
 					return nil, err
 				}
 
 				p := param.instantiate()
-				params[i] = p
+				paramsTy = append(paramsTy, p)
 				self.vars.Insert(expr.Args[i], p)
 			}
 
@@ -377,7 +381,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 				return nil, err
 			}
 
-			return Func{Args: params, Ret: retInst}, nil
+			return Func{Args: paramsTy, Ret: retInst, Method: isMethod}, nil
 		}
 
 		for i, arg := range expr.Args {
@@ -388,11 +392,11 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 					return nil, err
 				}
 
-				params[i] = ty.instantiate()
+				paramsTy = append(paramsTy, ty.instantiate())
 				continue
 			}
 			param := freshVar()
-			params[i] = param
+			paramsTy = append(paramsTy, param)
 			self.vars.Insert(arg, param)
 		}
 
@@ -401,7 +405,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 			return nil, err
 		}
 
-		return Func{Args: params, Ret: bodyTy}, nil
+		return Func{Args: paramsTy, Ret: bodyTy}, nil
 
 	case *parse.Form:
 		return self.typeFunctionCall(expr)
@@ -759,12 +763,9 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 				)
 			}
 
-			args := make([]SimpleType, len(sig)-1)
-			for i, arg := range sig[:len(sig)-1] {
-				if i == 0 && (arg == parse.SelfType{}) {
-					args[i] = selfTy
-					continue
-				}
+			args := make([]SimpleType, 0, len(sig)-2)
+			// TODO: static methods
+			for i, arg := range sig[1 : len(sig)-1] {
 				ty, err := self.parseType(arg)
 				if err != nil {
 					return nil, fmt.Errorf("in %s.%s, reading type signature [%d] of %d: %w",
@@ -787,7 +788,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 					)
 				}
 
-				args[i] = sty
+				args = append(args, sty)
 			}
 
 			ret, err := self.parseType(sig[len(sig)-1])
@@ -808,7 +809,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 				Name: f.Name(),
 				Member: Member{
 					// TODO: generalize methods
-					Type:   Func{Args: args, Ret: simpleRet},
+					Type:   Func{Args: args, Ret: simpleRet, Method: true},
 					Access: f.Access(),
 				},
 			})
@@ -957,10 +958,26 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 	// 4. selectively instantiate type var of Foo::getx
 	assert.GreaterThan(len(form.Children), 0, "unhandled: empty form")
 
-	oTy := freshVar()
+	var oTy SimpleType
+	switch obj := methAccess.Obj.(type) {
+	case *parse.Symbol:
+		if ts, ok := self.vars.Get(obj.Name).Unwrap(); ok {
+			oTy = ts.instantiate()
+		} else {
+			return nil, fmt.Errorf("%w: %s", ErrUndefinedVariable, obj.Name)
+		}
+	case *parse.SelfLiteral:
+		selfTy, err := self.parseType(parse.SelfType{})
+		if err != nil {
+			return nil, err
+		}
+
+		oTy = selfTy.instantiate()
+	default:
+		panic("method call on non-symbol or self not yet supported: " + methAccess.Pretty())
+	}
 
 	argTys := make([]SimpleType, 0, len(form.Children))
-	argTys = append(argTys, oTy)
 	for _, arg := range form.Children[1:] {
 		ty, err := self.TypeTerm(arg)
 		if err != nil {
@@ -977,7 +994,7 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 		Methods: []NamedMember{{
 			Name: methAccess.Method,
 			Member: Member{
-				Type:   Func{argTys, ret, false},
+				Type:   Func{argTys, ret, true},
 				Access: parse.AccessPublic, // TODO
 			},
 		}},

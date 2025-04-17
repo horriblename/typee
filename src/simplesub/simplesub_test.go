@@ -236,7 +236,7 @@ func TestTypeProgram(t *testing.T) {
 						"getx": {
 							Access: parse.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{tApp("Foo")},
+								Args: []types.Type{},
 								Ret:  &tI64,
 							},
 						},
@@ -275,7 +275,7 @@ func TestTypeProgram(t *testing.T) {
 						"foo": {
 							Access: parse.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{tApp("Foo")},
+								Args: []types.Type{},
 								Ret:  &tI64,
 							},
 						},
@@ -597,7 +597,7 @@ func TestTypeProgram(t *testing.T) {
 						"addOne": {
 							Access: parse.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{tApp("Foo")},
+								Args: []types.Type{},
 								Ret:  &tI64,
 							},
 						},
@@ -638,14 +638,14 @@ func TestTypeProgram(t *testing.T) {
 						"dupSource": {
 							Access: 0,
 							Type: &types.Func{
-								Args: []types.Type{tApp("Binding")},
+								Args: []types.Type{},
 								Ret:  &tI32,
 							},
 						},
 						"dupTarget": {
 							Access: 0,
 							Type: &types.Func{
-								Args: []types.Type{tApp("Binding")},
+								Args: []types.Type{},
 								Ret:  &tI32,
 							},
 						},
@@ -684,11 +684,8 @@ func TestTypeProgram(t *testing.T) {
 						"add": {
 							Access: parse.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{
-									tApp("Foo"),
-									tApp("Bar"),
-								},
-								Ret: &tI64,
+								Args: []types.Type{tApp("Bar")},
+								Ret:  &tI64,
 							},
 						},
 					},
@@ -709,15 +706,50 @@ func TestTypeProgram(t *testing.T) {
 						"add": {
 							Access: parse.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{
-									tApp("Bar"),
-									tApp("Foo"),
-								},
-								Ret: &tI64,
+								Args: []types.Type{tApp("Foo")},
+								Ret:  &tI64,
 							},
 						},
 					},
 					Top: false,
+				},
+			},
+		},
+		{
+			desc: "regression: constraining type var of object type should not fail occursCheck",
+			input: `
+				(class Foo {
+					x Int,
+					pub (def hello (Self {}) [self] (print "Hello"))
+				})
+
+				(def main [] (let [foo (Foo.new)] (foo#hello)))
+			`,
+			typ: []types.Type{
+				&types.Class{
+					Name:   "Foo",
+					Supers: []*types.Class{},
+					Fields: map[string]types.Member{
+						"x": {
+							Access: parse.AccessPrivate,
+							Type:   &tI64,
+						},
+					},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{
+						"hello": {
+							Access: parse.AccessPublic,
+							Type: &types.Func{
+								Args: []types.Type{},
+								Ret:  &types.Record{},
+							},
+						},
+					},
+					Top: false,
+				},
+				&types.Func{
+					Args: []types.Type{},
+					Ret:  &types.Record{},
 				},
 			},
 		},
