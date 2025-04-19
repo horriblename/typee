@@ -32,18 +32,19 @@ type ctx struct {
 	intType      qbeil.BaseType
 	defaultAlign int
 
-	typeDecl    bytes.Buffer
-	il          qbeil.Builder
-	astToType   map[int]simplesub.TypeScheme
-	localTypes  map[string]simplesub.TypeScheme
-	allModules  map[can.ModuleName]simplesub.ModuleInfo
-	simplified  map[int]types.Type
-	statics     map[qbeil.Var]string
-	globals     map[string]int // maps global var names to their AST id
-	userTypes   map[string]qbeil.AggregateType
-	recordTypes map[int]qbeil.AggregateType
-	externs     map[string]struct{}
-	vars        scope.ScopedMap[qbeil.Value]
+	typeDecl       bytes.Buffer
+	il             qbeil.Builder
+	astToType      map[int]simplesub.TypeScheme
+	localTypes     map[string]simplesub.TypeScheme
+	allModules     map[can.ModuleName]simplesub.ModuleInfo
+	simplified     map[int]types.Type
+	statics        map[qbeil.Var]string
+	globals        map[string]int // maps global var names to their AST id
+	userTypes      map[string]qbeil.AggregateType
+	recordTypes    map[int]qbeil.AggregateType
+	externs        map[string]struct{}
+	vars           scope.ScopedMap[qbeil.Value]
+	classInProcess *types.Class
 
 	idGenerator          int64
 	generatedTranslation map[types.Type]qbeil.AggregateType
@@ -431,7 +432,7 @@ func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
 	defer func() {
 		if e := recover(); e != nil {
 			if class != "" {
-				class = class + "."
+				class = class + "#"
 			}
 			panic(fmt.Sprintf("in function %s%s: %v", class, expr.Name, e))
 		}
@@ -441,9 +442,21 @@ func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
 	defer ctx.vars.PopScope()
 
 	friendlyName := fmt.Sprintf("%s.%s", class, expr.Name)
-	funcTyp, ok := ctx.simplify(expr.ID()).(*types.Func)
-	assert.True(ok, "generate function code: type of ", friendlyName, " is not function")
-	assert.Eq(len(expr.Args), len(funcTyp.Args))
+	realArgTys := []types.Type{}
+	var retTy types.Type
+	{
+		funcTyp, ok := ctx.simplify(expr.ID()).(*types.Func)
+		assert.True(ok, "generate function code: type of ", friendlyName, " is not function")
+		retTy = funcTyp.Ret
+		if funcTyp.Method {
+			assert.Eq(len(expr.Args), len(funcTyp.Args)+1, "gen BUG: arg count from AST != len(funcTyp.Args)")
+			assert.True(ctx.classInProcess != nil, "gen BUG: generating method ", friendlyName, ": classInProcess is nil")
+			realArgTys = append([]types.Type{ctx.classInProcess}, funcTyp.Args...)
+		} else {
+			assert.Eq(len(expr.Args), len(funcTyp.Args), "gen BUG: arg count from AST != len(funcTyp.Args)")
+			realArgTys = funcTyp.Args
+		}
+	}
 	assert.GreaterThan(len(expr.Body), 0, "function", friendlyName, "has empty body")
 
 	mangled := expr.Name
@@ -452,9 +465,9 @@ func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
 	}
 
 	thisFunc := qbeil.Var{Global: true, Name: mangled}
-	argTyps := make([]qbeil.TypedVar, 0, len(expr.Args))
+	argTyps := make([]qbeil.TypedVar, 0, len(realArgTys))
 
-	for i, argTyp := range funcTyp.Args {
+	for i, argTyp := range realArgTys {
 		val := qbeil.Var{Global: false, Name: expr.Args[i]}
 		argTyps = append(argTyps, qbeil.NewTypedVar(
 			ctx.toABIType(argTyp),
@@ -465,7 +478,7 @@ func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
 
 	// TODO: don't export all symbols
 	linkage := qbeil.Linkage{Type: qbeil.Export}
-	retTyp := ctx.toABIType(funcTyp.Ret)
+	retTyp := ctx.toABIType(retTy)
 	if expr.Name == "main" && class == "" {
 		linkage.Type = qbeil.Export
 		retTyp = qbeil.Word
@@ -623,22 +636,27 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 		fn := ctx.simplify(callee.ID())
 
 		funcSig, ok := fn.(*types.Func)
+		// for methods, the class is prepended
+		var realArgTys []types.Type
 		assert.True(ok, "tried to call non-function top-level:", fnFriendlyName, "of type", fmt.Sprintf("%#v", fn))
 		if meth, ok := expr.Children[0].(*parse.MethodAccess); ok {
-			assert.Eq(len(expr.Children), len(funcSig.Args), meth.Pretty(), ": method argument count does not match signature")
+			assert.Eq(len(expr.Children), len(funcSig.Args)+1, meth.Pretty(), ": method argument count does not match signature")
+			objTy := ctx.simplify(meth.Obj.ID())
+			realArgTys = append([]types.Type{objTy}, funcSig.Args...)
 		} else {
 			assert.Eq(len(expr.Children), len(funcSig.Args)+1, fnFriendlyName, ": function argument count does not match signature")
+			realArgTys = funcSig.Args
 		}
 		target := ctx.il.TempVar(false)
 
 		var args []qbeil.ABITypedValue
 		if meth, ok := expr.Children[0].(*parse.MethodAccess); ok {
 			args = []qbeil.ABITypedValue{{
-				Type:  ctx.toABIType(funcSig.Args[0]),
+				Type:  ctx.toABIType(realArgTys[0]),
 				Value: gen(ctx, meth.Obj),
 			}}
 		}
-		for arg, typ := range fun.ZipSlices(expr.Children[1:], funcSig.Args) {
+		for arg, typ := range fun.ZipSlices(expr.Children[1:], realArgTys) {
 			args = append(args, qbeil.ABITypedValue{Type: ctx.toABIType(typ), Value: gen(ctx, arg)})
 		}
 		funcVar := qbeil.Var{Global: true, Name: mangled}
@@ -1078,6 +1096,9 @@ func (ctx *ctx) classDefIL(t *types.Class, e *parse.ObjectTypeDef) qbeil.Aggrega
 	if ut, ok := ctx.userTypes[t.Name]; ok {
 		return ut
 	}
+
+	ctx.classInProcess = t
+	defer func() { ctx.classInProcess = nil }()
 
 	var classParent qbeil.AggregateType
 	if len(e.Supers) != 0 {
