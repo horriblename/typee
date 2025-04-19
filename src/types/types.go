@@ -67,8 +67,9 @@ type Slice struct {
 	Type Type
 }
 type Func struct {
-	Args []Type
-	Ret  Type
+	Args   []Type
+	Ret    Type
+	Method bool
 }
 type Generic struct {
 	ID      TypeID
@@ -764,7 +765,7 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 		return true
 	}
 
-	panic("unreachable")
+	panic(fmt.Sprintf("unexpected types.Type: %T", a))
 }
 
 // TODO: remove
