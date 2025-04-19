@@ -1005,7 +1005,8 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 	}
 
 	// TODO: put this somewhere else
-	self.inferred[methAccess.ID()] = Func{argTys, ret, false}
+	self.inferred[methAccess.ID()] = Func{argTys, ret, true}
+	self.inferred[methAccess.Obj.ID()] = oTy
 
 	return ret, nil
 }
