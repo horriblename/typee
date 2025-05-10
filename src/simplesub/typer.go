@@ -61,6 +61,7 @@ var ErrUnparameterizedTypePassedParams = errors.New("an unparameterized type was
 var ErrEnumMissingKey = errors.New("enum type is missing a key")
 var ErrMethodMissingSignature = errors.New("method must have signature")
 var ErrPolymorphicInSignature = errors.New("illegal polymorphic type in function signature")
+var ErrMethodCallOnStaticMethod = errors.New("tried to call static method on object instance")
 
 const scopeLevelTop int = 1
 
@@ -763,9 +764,22 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 				)
 			}
 
+			if len(sig) < 2 {
+				return nil, fmt.Errorf("typing %s.%s: %s: %v",
+					classDef.Name,
+					f.Func.Name,
+					"annotated type signature too short",
+					sig,
+				)
+			}
 			args := make([]SimpleType, 0, len(sig)-2)
-			// TODO: static methods
-			for i, arg := range sig[1 : len(sig)-1] {
+			startFrom := 0
+			isMethod := len(f.Func.Args) > 0 && f.Func.Args[0] == "self"
+			if isMethod {
+				startFrom = 1
+			}
+
+			for i, arg := range sig[startFrom : len(sig)-1] {
 				ty, err := self.parseType(arg)
 				if err != nil {
 					return nil, fmt.Errorf("in %s.%s, reading type signature [%d] of %d: %w",
@@ -809,7 +823,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 				Name: f.Name(),
 				Member: Member{
 					// TODO: generalize methods
-					Type:   Func{Args: args, Ret: simpleRet, Method: true},
+					Type:   Func{Args: args, Ret: simpleRet, Method: isMethod},
 					Access: f.Access(),
 				},
 			})
@@ -1294,6 +1308,9 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 		if len(ty.Args) != len(bound.Args) {
 			return fmt.Errorf("%w: %v is not a subtype of %v", ErrConstraintViolated, ty, bound)
 		}
+		if ty.Method != bound.Method {
+			return ErrMethodCallOnStaticMethod
+		}
 
 		for i, tyArg := range ty.Args {
 			if err := self.constrain(bound.Args[i], tyArg); err != nil {
@@ -1473,7 +1490,7 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 	case Func:
 		return Func{fun.Map(t.Args, func(arg SimpleType) SimpleType {
 			return substitute(arg)
-		}), substitute(t.Ret), false}
+		}), substitute(t.Ret), t.Method}
 	case Int:
 	case Record:
 		return Record{

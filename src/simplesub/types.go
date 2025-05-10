@@ -182,7 +182,7 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		return nil, fmt.Errorf("coercion between named types not yet supported: %v and %v", lhs, rhs)
 	} else if lhs, rhs, ok := matchPair[C, Application](lhs0, rhs0); ok {
 		return self.glbConcrete(rhs, lhs)
-	} else if lhs, _, ok := matchPair[Application, C](lhs0, rhs0); ok {
+	} else if lhs, rhs, ok := matchPair[Application, C](lhs0, rhs0); ok {
 		if err := self.constrain(rhs, lhs); err != nil {
 			return nil, fmt.Errorf("TODO currently only implemented glb of Application types if the Application type is greater: glb(%v, %v)", lhs, rhs)
 		}
@@ -204,7 +204,8 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 			return nil, err
 		}
 
-		return Func{args, ret, false}, nil
+		assert.Eq(lhs.Method, rhs.Method, "typer BUG mismatched Func.Method in glb?")
+		return Func{args, ret, lhs.Method}, nil
 	} else if lhs, rhs, ok := matchPair[Record, Record](lhs0, rhs0); ok {
 		var err error
 		lhsMap := namedTypesToMap(lhs.Fields)
@@ -443,7 +444,8 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 			return nil, err
 		}
 
-		return Func{args, ret, false}, nil
+		assert.Eq(lhs.Method, rhs.Method, "typer BUG mismatched Func.Method in lub?")
+		return Func{args, ret, lhs.Method}, nil
 	} else if lhs, rhs, ok := matchPair[Record, Record](lhs0, rhs0); ok {
 		// the "intersection" of both records
 		rhsMap := namedTypesToMap(rhs.Fields)
@@ -818,7 +820,8 @@ func (self Application) concrete() {}
 func (self Top) String() string { return "⊤" }
 func (self Bot) String() string { return "⊥" }
 func (self Func) String() string {
-	return fmt.Sprintf("(%s -> %s)",
+	return fmt.Sprintf("%s(%s -> %s)",
+		If(self.Method, "#").Else(""),
 		strings.Join(fun.Map(self.Args, func(t SimpleType) string { return t.String() }), ", "),
 		self.Ret.String(),
 	)
@@ -893,6 +896,9 @@ func DeepPrint(ty TypeScheme) string {
 func (self *deepPrintCtx) print(ty TypeScheme) {
 	switch t := ty.(type) {
 	case Func:
+		if t.Method {
+			self.buf.WriteString("#")
+		}
 		for i, arg := range t.Args {
 			if i != 0 {
 				self.buf.WriteString(", ")

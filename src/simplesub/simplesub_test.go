@@ -203,7 +203,11 @@ func TestTypeProgram(t *testing.T) {
 		{
 			desc: "class definition",
 			input: `
-				(class Foo (Bar) {x Int, pub (def getx (Self Int) [self] self.x)})
+				(class Foo (Bar) {
+					x Int,
+					pub (def getx (Self Int) [self] self.x),
+					pub (def print (Str {}) [name] (print name)),
+				})
 				(class Bar {y Str})
 				(def foo (Foo Foo) [f] f)
 				(def main []
@@ -238,6 +242,13 @@ func TestTypeProgram(t *testing.T) {
 							Type: &types.Func{
 								Args: []types.Type{},
 								Ret:  &tI64,
+							},
+						},
+						"print": {
+							Access: parse.AccessPublic,
+							Type: &types.Func{
+								Args: []types.Type{&types.String{}},
+								Ret:  &types.Record{},
 							},
 						},
 					},
