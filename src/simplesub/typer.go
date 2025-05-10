@@ -40,6 +40,7 @@ var ErrWrongArgCount = errors.New("wrong argument count")
 var ErrTypeMismatch = errors.New("mismatched type")
 var ErrMissingField = errors.New("missing field")
 var ErrMissingMethod = errors.New("missing method")
+var ErrMissingStaticMethod = errors.New("missing static method")
 var ErrConstraintViolated = errors.New("constraint violated")
 var ErrCannotConstrain = errors.New("cannot constrain")
 var ErrInvalidTopLevel = errors.New("invalid top level construct: must be set or def")
@@ -62,6 +63,7 @@ var ErrEnumMissingKey = errors.New("enum type is missing a key")
 var ErrMethodMissingSignature = errors.New("method must have signature")
 var ErrPolymorphicInSignature = errors.New("illegal polymorphic type in function signature")
 var ErrMethodCallOnStaticMethod = errors.New("tried to call static method on object instance")
+var ErrStaticMethodCallOnNonStatic = errors.New("tried to call method as a static method")
 
 const scopeLevelTop int = 1
 
@@ -461,7 +463,11 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		return Record{Fields: fields}, nil
 
 	case *parse.RecordAccess:
-		// TODO: allow non-variable as record
+		if sym, ok := expr.Record.(*parse.Symbol); ok {
+			if ty, ok := self.types.Get(sym.Name).Unwrap(); ok {
+				return self.typeStaticMethodCall(expr, ty)
+			}
+		}
 		recordTy, err := self.TypeTerm(expr.Record)
 		if err != nil {
 			return nil, err
@@ -1023,6 +1029,21 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 	self.inferred[methAccess.Obj.ID()] = oTy
 
 	return ret, nil
+}
+
+func (self *Typer) typeStaticMethodCall(expr *parse.RecordAccess, owner TypeScheme) (SimpleType, error) {
+	o := owner.instantiate()
+	switch o := o.(type) {
+	case ObjectType:
+		for _, meth := range o.Methods {
+			if meth.Name == expr.Field {
+				return meth.Type, nil
+			}
+		}
+		return nil, fmt.Errorf("%w: %s", ErrMissingStaticMethod, expr)
+	default:
+		panic("TODO: handle static method call on non-object type")
+	}
 }
 
 func (self *Typer) parseEnumDef(enumDef *parse.EnumDef) (ConcreteType, error) {

@@ -209,7 +209,8 @@ func TestTypeProgram(t *testing.T) {
 					pub (def print (Str {}) [name] (print name)),
 				})
 				(class Bar {y Str})
-				(def foo (Foo Foo) [f] f)
+				(def foo (Foo {nothing: {}, foo: Foo}) [f]
+					{foo: f, nothing: (Foo.print "hi")})
 				(def main []
 					(foo (Foo.new)))
 			`,
@@ -259,11 +260,21 @@ func TestTypeProgram(t *testing.T) {
 					&bar,
 					&types.Func{
 						Args: []types.Type{tApp("Foo")},
-						Ret:  tApp("Foo"),
+						Ret: &types.Record{
+							Fields: map[string]types.Type{
+								"nothing": &types.Record{},
+								"foo":     tApp("Foo"),
+							},
+						},
 					},
 					&types.Func{
 						Args: []types.Type{},
-						Ret:  &foo,
+						Ret: &types.Record{
+							Fields: map[string]types.Type{
+								"nothing": &types.Record{},
+								"foo":     tApp("Foo"),
+							},
+						},
 					},
 				}
 			}(),
