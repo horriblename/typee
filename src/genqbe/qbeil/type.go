@@ -266,7 +266,7 @@ func SizeOf(defaultAlignBits int, t Type) (bits int, alignBits int) {
 		for _, field := range t.Fields {
 			// TODO: actually handle align
 			fs, fa := SizeOf(defaultAlignBits, field.Type)
-			fs *= min(1, field.Count)
+			fs *= max(1, field.Count)
 			align = max(align, fa)
 			bits += fs
 		}
