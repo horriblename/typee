@@ -771,6 +771,10 @@ func genClassBoilerplate(
 		qbeil.DataItems([]qbeil.TypedDataItem{
 			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: int64(classTypeBits / 8)}},
 
+			// padding TODO: pad automatically
+			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: 0}},
+			{Type: qbeil.Word, Value: qbeil.IntLiteral{Value: 0}},
+
 			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
 			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
 
@@ -781,6 +785,10 @@ func genClassBoilerplate(
 
 			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: int64(classBits / 8)}},
 			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: 0}},
+
+			// padding TODO: pad automatically
+			{Type: qbeil.Word, Value: qbeil.IntLiteral{Value: 0}},
+
 			// should be (type)_instance_init
 			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
 
