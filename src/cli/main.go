@@ -207,10 +207,14 @@ func cmdBuild() error {
 func cmdRun() error {
 	outPath := flag.String(flagOut, defaultOut, helpOut)
 	outPathLong := flag.String(flagOutLong, defaultOut, helpOut)
-	useExternalQbe := flag.Bool(flagExternalQbe, false, helpExternalQbe)
+	assemblerFlags := flag.String(flagAssemblerFlags, "", helpAssemblerFlags)
 	linkerFlags := flag.String(flagLinkerFlags, "", helpLinkerFlags)
+	logLevel := flag.Int(flagLogLevel, int(slog.LevelInfo.Level()), helpLogLevel)
+	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
+	printTypedTree := flag.Bool(flagPrintTypedTree, false, helpPrintTypedTree)
+	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
+	externalQbe := flag.Bool(flagExternalQbe, false, helpExternalQbe)
 
-	ldFlags := strings.Fields(*linkerFlags)
 	if *outPathLong != defaultOut {
 		*outPath = *outPathLong
 	}
@@ -219,12 +223,20 @@ func cmdRun() error {
 	prof := maybeProfileCpu()
 	defer prof.Close()
 
+	asmFlags := strings.Fields(*assemblerFlags)
+	ldFlags := strings.Fields(*linkerFlags)
+
 	params := buildParams{
-		targetStage: run,
-		inFile:      flag.Arg(0),
-		outFile:     *outPath,
-		externalQbe: *useExternalQbe,
-		linkerFlags: ldFlags,
+		targetStage:    run,
+		inFile:         flag.Arg(0),
+		outFile:        *outPath,
+		printTypes:     *printTypes,
+		printTypedTree: *printTypedTree,
+		assemblerFlags: asmFlags,
+		linkerFlags:    ldFlags,
+		traceTyper:     *traceTyper,
+		externalQbe:    *externalQbe,
+		logLevel:       slog.Level(*logLevel),
 	}
 
 	return buildProgram(params)
