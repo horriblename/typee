@@ -275,11 +275,11 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	flags := fi.Flags()
 	name := fi.Name()
 
-	if (flags&gi.FUNCTION_IS_METHOD != 0) && len(self.methodOwner) == 0 {
+	needSelfArg := flags&gi.FUNCTION_IS_METHOD != 0 || flags&gi.FUNCTION_IS_CONSTRUCTOR != 0
+	if needSelfArg && len(self.methodOwner) == 0 {
 		panic(fmt.Sprintf("tried processing a method %s but no current class", name))
 	}
 	// container := fi.Container()
-	isValidMethod := flags&gi.FUNCTION_IS_METHOD != 0 && len(self.methodOwner) != 0
 	fb := newFunctionBuilder(fi)
 
 	if self.inStruct {
@@ -296,7 +296,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	// wrapper function type signature
 
-	if isValidMethod {
+	if needSelfArg {
 		if self.inStruct {
 			p("(Ref %s)", (self.methodOwner[len(self.methodOwner)-1]))
 		} else {
@@ -304,14 +304,14 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		}
 	}
 	for i, arg := range fb.args {
-		if i != 0 || isValidMethod {
+		if i != 0 || needSelfArg {
 			p(" ")
 		}
 		flags := typeNone
 		p("%s", horType(arg.typeInfo, typeConfig{flags, self.namespace}))
 	}
 
-	if len(fb.args) > 0 || isValidMethod || self.inStruct /* methods in structs aren't gi.FUNCTION_IS_METHOD */ {
+	if len(fb.args) > 0 || needSelfArg || self.inStruct /* methods in structs aren't gi.FUNCTION_IS_METHOD */ {
 		p(" ")
 	}
 
@@ -349,7 +349,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	// wrapper function args
 
 	p(") [")
-	if isValidMethod {
+	if needSelfArg {
 		if self.inStruct {
 			p("self_")
 		} else {
@@ -357,7 +357,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		}
 	}
 	for i, arg := range fb.args {
-		if i != 0 || isValidMethod {
+		if i != 0 || needSelfArg {
 			p(" ")
 		}
 		p("%s", sanitize(snake_case_to_camelCase(arg.argInfo.Name())))
@@ -376,7 +376,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	// call to extern function
 	p("    ret (%s", fi.Symbol())
 
-	if isValidMethod {
+	if needSelfArg {
 		if self.inStruct {
 			p(" self_")
 		} else {
@@ -436,7 +436,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	// extern type signature
 
-	if isValidMethod {
+	if needSelfArg {
 		if self.inStruct {
 			extern("(Ref %s) ", self.methodOwner[len(self.methodOwner)-1])
 		} else {
@@ -467,7 +467,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	// extern arguments
 
-	if isValidMethod {
+	if needSelfArg {
 		extern("self_ ")
 	}
 
