@@ -788,16 +788,6 @@ func genClassBoilerplate(
 		}),
 	)
 
-	privateOffset := ctx.il.Data(
-		qbeil.DataDef{
-			Linkage: qbeil.Linkage{},
-			VarName: e.Name + "_private_offset",
-		},
-		// gint
-		ctx.intType,
-		qbeil.IntLiteral{Value: 0},
-	)
-
 	// get_type function
 
 	ctx.il.Func(
@@ -839,18 +829,30 @@ func genClassBoilerplate(
 		},
 	)
 
-	privateOffsetTemp := ctx.il.TempVar(false)
-	ctx.il.Call(
-		&privateOffsetTemp,
-		ctx.intType,
-		qbeil.Var{Global: true, Name: "g_type_add_instance_private"},
-		[]qbeil.ABITypedValue{
-			{Type: ctx.ptrType /* GType */, Value: typeIdVarOnce},
-			{Type: ctx.ptrType /* size_t */, Value: qbeil.IntLiteral{Value: int64(privateBits / 8)}},
-		},
-	)
+	if privateBits > 0 {
+		privateOffset := ctx.il.Data(
+			qbeil.DataDef{
+				Linkage: qbeil.Linkage{},
+				VarName: e.Name + "_private_offset",
+			},
+			// gint
+			ctx.intType,
+			qbeil.IntLiteral{Value: 0},
+		)
 
-	ctx.il.Command("store"+ctx.ptrType.IL(), privateOffsetTemp, privateOffset)
+		privateOffsetTemp := ctx.il.TempVar(false)
+		ctx.il.Call(
+			&privateOffsetTemp,
+			ctx.intType,
+			qbeil.Var{Global: true, Name: "g_type_add_instance_private"},
+			[]qbeil.ABITypedValue{
+				{Type: ctx.ptrType /* GType */, Value: typeIdVarOnce},
+				{Type: ctx.ptrType /* size_t */, Value: qbeil.IntLiteral{Value: int64(privateBits / 8)}},
+			},
+		)
+
+		ctx.il.Command("store"+ctx.ptrType.IL(), privateOffsetTemp, privateOffset)
+	}
 
 	ctx.il.Call(nil, nil,
 		qbeil.Var{Global: true, Name: "g_once_init_leave"},
