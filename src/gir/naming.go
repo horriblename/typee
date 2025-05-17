@@ -43,6 +43,10 @@ func CONST_CASE_to_camelCase(name string) string {
 
 // prevent name clash with keywords
 func sanitize(name string) string {
+	// TODO: check len, proper 1st rune not char
+	if !unicode.IsLower(rune(name[0])) {
+		return name
+	}
 	return "r@" + name
 }
 
