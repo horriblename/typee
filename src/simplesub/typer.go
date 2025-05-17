@@ -703,9 +703,9 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 
 	supers := make([]ObjectType, len(classDef.Supers))
 	for i, s := range classDef.Supers {
-		sup, ok := self.types.Get(s).Unwrap()
-		if !ok {
-			return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, s)
+		sup, err := self.symbols.lookupTypeName(s)
+		if err != nil {
+			return nil, err
 		}
 
 		// TODO: should concretize instead
@@ -1451,6 +1451,26 @@ func (self *symbols) unify(lhs *Variable, rhs *Variable) error /*FIXME: idk what
 	rep0.representative = rep1
 
 	return nil
+}
+
+// TODO: merge with [symbols.lookupType]
+func (self *symbols) lookupTypeName(tyName parse.TypeName) (TypeScheme, error) {
+	if tyName.Module == "" {
+		if ty, ok := self.types.Get(tyName.Name).Unwrap(); ok {
+			return ty, nil
+		}
+		return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, tyName.Name)
+	}
+
+	mod, ok := self.imports[tyName.Module]
+	if !ok {
+		return nil, fmt.Errorf("%w: %s", ErrUndefinedModule, tyName.Module)
+	}
+
+	if ty, ok := mod.Types[tyName.Name]; ok {
+		return ty, nil
+	}
+	return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, tyName)
 }
 
 func freshVar() *Variable {

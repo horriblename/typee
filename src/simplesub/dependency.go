@@ -94,7 +94,9 @@ func sortTypeDefs(ast []parse.Expr) (order [][]string, astLookup map[string]pars
 			astLookup[n.Name] = n
 			deps := map[string]unit{}
 			for _, super := range n.Supers {
-				deps[super] = unit{}
+				if super.Module == "" {
+					deps[super.Name] = unit{}
+				}
 			}
 			selfRecursive := false
 			for _, member := range n.Fields {
