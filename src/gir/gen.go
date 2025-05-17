@@ -338,7 +338,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 			}
 
 			if ret.index >= 0 {
-				p("%s: %s, ", ret.argInfo.Name(), horType(ret.typeInfo, typeConfig{typeNone, self.namespace}))
+				p("%s: %s, ", sanitize(ret.argInfo.Name()), horType(ret.typeInfo, typeConfig{typeNone, self.namespace}))
 			} else {
 				p("_%d: %s, ", i, horType(ret.typeInfo, typeConfig{typeNone, self.namespace}))
 			}
@@ -419,7 +419,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		p("{\n")
 		for i, ret := range fb.rets {
 			if ret.index >= 0 {
-				p("    %s: %s,\n", ret.argInfo.Name(), retValue(ret))
+				p("    %s: %s,\n", sanitize(ret.argInfo.Name()), retValue(ret))
 			} else {
 				p("    _%d: %s,\n", i, retValue(ret))
 			}
