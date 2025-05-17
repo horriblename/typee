@@ -64,6 +64,7 @@ var ErrMethodMissingSignature = errors.New("method must have signature")
 var ErrPolymorphicInSignature = errors.New("illegal polymorphic type in function signature")
 var ErrMethodCallOnStaticMethod = errors.New("tried to call static method on object instance")
 var ErrStaticMethodCallOnNonStatic = errors.New("tried to call method as a static method")
+var ErrInvalidClassCoercion = errors.New("invalid class coercion")
 
 const scopeLevelTop int = 1
 
@@ -1374,6 +1375,16 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 
 		return nil
 	} else if ty, bound, ok := matchPair[ObjectType, ObjectType](ty0, bound0); ok {
+		if ty.Name != "" && bound.Name != "" {
+			for _, sup := range ty.Supers {
+				// TODO: transient super type A <: B <: C
+				// TODO: canonical class names
+				if sup.Name == bound.Name {
+					return nil
+				}
+				return fmt.Errorf("%w: %s not a subclass of %s", ErrInvalidClassCoercion, ty.Name, bound.Name)
+			}
+		}
 		tyFields := namedMembersToMap(ty.Fields)
 		for _, boundField := range bound.Fields {
 			if tyField, ok := tyFields[boundField.Name]; ok {
