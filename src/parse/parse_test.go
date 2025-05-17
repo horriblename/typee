@@ -33,9 +33,9 @@ func TestParse(t *testing.T) {
 				id:   5,
 				Name: "foo",
 				Signature: opt.Some([]TypeRepr{
-					TypeName{"Str", ""},
-					TypeName{"Int", ""},
-					TypeName{"Str", ""},
+					TypeName{"", "Str"},
+					TypeName{"", "Int"},
+					TypeName{"", "Str"},
 				}),
 				Args: []string{"x", "y"},
 				Body: []Expr{&Form{
@@ -72,8 +72,8 @@ func TestParse(t *testing.T) {
 			output: []Expr{&Fn{
 				Id: 3,
 				Signature: opt.Some([]TypeRepr{
-					TypeName{"Foo", ""},
-					TypeName{"Bar", ""},
+					TypeName{"", "Foo"},
+					TypeName{"", "Bar"},
 				}),
 				Args: []string{"x"},
 				Body: &RecordAccess{
@@ -279,7 +279,7 @@ func TestParse(t *testing.T) {
 			input: `(class Foo {})`,
 			output: []Expr{&ObjectTypeDef{
 				id:     1,
-				Supers: []string{},
+				Supers: []TypeName{},
 				Name:   "Foo",
 				Fields: []ClassMember{},
 			}},
@@ -290,23 +290,23 @@ func TestParse(t *testing.T) {
 			output: []Expr{&FuncDef{
 				id:        2,
 				Name:      "meth",
-				Signature: opt.Some([]TypeRepr{SelfType{}, TypeName{"Int", ""}, TypeName{"Int", ""}}),
+				Signature: opt.Some([]TypeRepr{SelfType{}, TypeName{"", "Int"}, TypeName{"", "Int"}}),
 				Args:      []string{"self", "n"},
 				Body:      []Expr{&Symbol{"n", 1}},
 			}},
 		},
 		{
 			desc:  "class def",
-			input: `(class Foo(Bar Baz) {pub foo Int,})`,
+			input: `(class Foo(Bar Baz.Bar) {pub foo Int,})`,
 			output: []Expr{&ObjectTypeDef{
 				id:     1,
 				Name:   "Foo",
-				Supers: []string{"Bar", "Baz"},
+				Supers: []TypeName{{"", "Bar"}, {"Baz", "Bar"}},
 				Fields: []ClassMember{
 					ClassField{
 						Access_: AccessPublic,
 						Name_:   "foo",
-						Type:    TypeName{"Int", ""},
+						Type:    TypeName{"", "Int"},
 					},
 				},
 			}},
@@ -317,12 +317,12 @@ func TestParse(t *testing.T) {
 			output: []Expr{&ObjectTypeDef{
 				id:     1,
 				Name:   "Foo",
-				Supers: []string{},
+				Supers: []TypeName{},
 				Fields: []ClassMember{
 					ClassField{
 						Access_: AccessPublic,
 						Name_:   "foo",
-						Type:    TypeName{"Int", ""},
+						Type:    TypeName{"", "Int"},
 					},
 				},
 				Base: true,
@@ -335,12 +335,12 @@ func TestParse(t *testing.T) {
 				id:     3,
 				Kind:   Iface,
 				Name:   "Foo",
-				Supers: []string{},
+				Supers: []TypeName{},
 				Fields: []ClassMember{
 					ClassField{
 						Access_: AccessPublic,
 						Name_:   "foo",
-						Type:    TypeName{"Int", ""},
+						Type:    TypeName{"", "Int"},
 					},
 					ClassMethod{
 						Access_: AccessProtected,
@@ -442,8 +442,8 @@ func TestParse(t *testing.T) {
 				id:   1,
 				Name: "Foo",
 				Variants: []TypeRepr{
-					TypeName{"Int", ""},
-					TypeName{"Str", ""},
+					TypeName{"", "Int"},
+					TypeName{"", "Str"},
 				},
 			}},
 		},
@@ -453,7 +453,7 @@ func TestParse(t *testing.T) {
 			output: []Expr{&TypeAlias{
 				id:   1,
 				Name: "Foo",
-				Type: TypeName{"Str", ""},
+				Type: TypeName{"", "Str"},
 			}},
 		},
 		{
@@ -495,8 +495,8 @@ func TestParse(t *testing.T) {
 				id:   1,
 				Name: "thing",
 				Signature: opt.Some([]TypeRepr{
-					TypeName{"Foo", ""},
-					TypeName{"Str", ""},
+					TypeName{"", "Foo"},
+					TypeName{"", "Str"},
 				}),
 				Args:   []string{"foo"},
 				Body:   []Expr{},
@@ -528,7 +528,7 @@ func TestParseType(t *testing.T) {
 		{
 			desc:   "simple name",
 			input:  "Foo",
-			output: TypeName{"Foo", ""},
+			output: TypeName{"", "Foo"},
 		},
 		{
 			desc:   "Self",
@@ -540,10 +540,10 @@ func TestParseType(t *testing.T) {
 			input: "{a: Foo, b: {x: Int}}",
 			output: RecordType{
 				Fields: []RecordTypeField{
-					{"a", TypeName{"Foo", ""}},
+					{"a", TypeName{"", "Foo"}},
 					{"b", RecordType{
 						Fields: []RecordTypeField{
-							{"x", TypeName{"Int", ""}},
+							{"x", TypeName{"", "Int"}},
 						},
 					}},
 				},
@@ -554,7 +554,7 @@ func TestParseType(t *testing.T) {
 			input: "[[Foo 5]]",
 			output: ArrayType{
 				Type: ArrayType{
-					Type: TypeName{"Foo", ""},
+					Type: TypeName{"", "Foo"},
 					Size: opt.Some(int64(5)),
 				},
 				Size: opt.None[int64](),
@@ -564,10 +564,10 @@ func TestParseType(t *testing.T) {
 			desc:  "type instantiation",
 			input: "(Foo Int Str)",
 			output: TypeInstantiation{
-				Type: TypeName{"Foo", ""},
+				Type: TypeName{"", "Foo"},
 				Params: []TypeRepr{
-					TypeName{"Int", ""},
-					TypeName{"Str", ""},
+					TypeName{"", "Int"},
+					TypeName{"", "Str"},
 				},
 			},
 		},
@@ -576,19 +576,19 @@ func TestParseType(t *testing.T) {
 			input: "(fn [Int (Foo Int)] Bool)",
 			output: FnType{
 				Args: []TypeRepr{
-					TypeName{"Int", ""},
+					TypeName{"", "Int"},
 					TypeInstantiation{
-						Type:   TypeName{"Foo", ""},
-						Params: []TypeRepr{TypeName{"Int", ""}},
+						Type:   TypeName{"", "Foo"},
+						Params: []TypeRepr{TypeName{"", "Int"}},
 					},
 				},
-				Ret: TypeName{"Bool", ""},
+				Ret: TypeName{"", "Bool"},
 			},
 		},
 		{
 			desc:   "imported type",
 			input:  "GObject.Object",
-			output: TypeName{"Object", "GObject"},
+			output: TypeName{"GObject", "Object"},
 		},
 	}
 	for _, tC := range testCases {

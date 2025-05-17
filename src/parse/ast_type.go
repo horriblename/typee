@@ -16,8 +16,8 @@ type TypeRepr interface {
 }
 
 type TypeName struct {
-	Name   string
 	Module string
+	Name   string
 }
 type SelfType struct{}
 type RecordType struct {

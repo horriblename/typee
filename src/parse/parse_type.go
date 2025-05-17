@@ -10,7 +10,7 @@ import (
 
 func type_(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 	return combinator.Any(
-		typeName,
+		typeNameRepr,
 		selfType,
 		recordType,
 		arrayType,
@@ -19,7 +19,11 @@ func type_(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 	)(in)
 }
 
-func typeName(in []lex.Token) ([]lex.Token, TypeRepr, error) {
+func typeNameRepr(in []lex.Token) ([]lex.Token, TypeRepr, error) {
+	return typeName(in)
+}
+
+func typeName(in []lex.Token) ([]lex.Token, TypeName, error) {
 	return combinator.Map(combinator.Then(
 		combinator.Maybe(
 			combinator.WithSuffix(
@@ -28,7 +32,7 @@ func typeName(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 			),
 		),
 		symbolName,
-	), func(s combinator.Pair[opt.Option[string], string]) TypeRepr {
+	), func(s combinator.Pair[opt.Option[string], string]) TypeName {
 		if mod, ok := s.One.Unwrap(); ok {
 			return TypeName{Name: s.Two, Module: mod}
 		}
@@ -131,7 +135,7 @@ func instantiatedType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 	in, out, err := combinator.Surround(
 		lparen,
 		combinator.Then(
-			typeName,
+			typeNameRepr,
 			combinator.Many(type_),
 		),
 		rparen,
@@ -161,7 +165,7 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 						lparen,
 						combinator.Or(
 							combinator.WithPrefix(lbrace, rbrace),
-							combinator.Many0(symbolName),
+							combinator.Many0(typeName),
 						),
 						rparen),
 					),
@@ -179,15 +183,15 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, err
 	}
 
-	var sups []string
+	var sups []TypeName
 	derived := true
 	if super, ok := res.Two.One.Unwrap(); ok {
 		sups, derived = super.Right()
 		if !derived {
-			sups = []string{}
+			sups = []TypeName{}
 		}
 	} else {
-		sups = []string{}
+		sups = []TypeName{}
 	}
 
 	t := ObjectTypeDef{
@@ -246,7 +250,8 @@ func interfaceDef(in []lex.Token) ([]lex.Token, Expr, error) {
 			combinator.Then(
 				symbolName,
 				combinator.Then(
-					combinator.Maybe(combinator.Surround(lparen, combinator.Many0(symbolName), rparen)),
+					// supers
+					combinator.Maybe(combinator.Surround(lparen, combinator.Many0(typeName), rparen)),
 					combinator.Surround(
 						lbrace,
 						combinator.Delimited(classMember, comma),
@@ -265,7 +270,7 @@ func interfaceDef(in []lex.Token) ([]lex.Token, Expr, error) {
 		id:     newId(),
 		Kind:   Iface,
 		Name:   res.One,
-		Supers: res.Two.One.Or([]string{}),
+		Supers: res.Two.One.Or([]TypeName{}),
 		Fields: res.Two.Two,
 	}
 	return in, &t, nil

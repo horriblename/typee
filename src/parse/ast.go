@@ -167,7 +167,7 @@ type ObjectTypeDef struct {
 	id     int
 	Kind   ObjectKind
 	Name   string
-	Supers []string
+	Supers []TypeName
 	Fields []ClassMember
 	Base   bool // base class: A class with no super type
 }
@@ -347,7 +347,8 @@ func (self *ArrayLiteral) String() string {
 func (self *ObjectTypeDef) String() string {
 	supers := "{}"
 	if !self.Base {
-		supers = strings.Join(self.Supers, ", ")
+		sup := fun.Map(self.Supers, func(ty TypeName) string { return ty.String() })
+		supers = strings.Join(sup, ", ")
 	}
 	return fmt.Sprintf("#%d (class %s (%s) %v)", self.id, self.Name, supers, self.Fields)
 }
@@ -544,7 +545,9 @@ func (self *ObjectTypeDef) Pretty() string {
 	b.WriteString(self.Name)
 	b.WriteString(" ")
 	b.WriteString("(")
-	b.WriteString(strings.Join(self.Supers, ","))
+	b.WriteString(strings.Join(fun.Map(self.Supers, func(ty TypeName) string {
+		return ty.String()
+	}), ","))
 	b.WriteString(") {")
 	b.WriteString(strings.Join(
 		fun.Map(self.Fields, func(m ClassMember) string { return m.String() }),
