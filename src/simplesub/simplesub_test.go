@@ -18,8 +18,14 @@ var tI64 = types.Int{Signed: true, BitSize: 64}
 var tI32 = types.Int{Signed: true, BitSize: 32}
 var appI64 = types.Application{Name: "I64"}
 
+const mainModule = "MainModule"
+
 func tApp(name string, params ...types.Type) *types.Application {
-	return &types.Application{Module: can.ModuleName("MainModule"), Name: name, Params: params}
+	return &types.Application{
+		Module: can.ModuleName(mainModule),
+		Name:   name,
+		Params: params,
+	}
 }
 
 func TestTypeExpr(t *testing.T) {
@@ -144,7 +150,7 @@ func TestTypeExpr(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			assert := assert.NewTestAsserts(t)
-			checker := NewTyper("MainModule", true)
+			checker := NewTyper(mainModule, true)
 
 			program, err := parse.ParseString(tC.input)
 			assert.Ok(err)
@@ -822,7 +828,7 @@ func TestTypeProgram(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			EnableTrace = true
 			assert := assert.NewTestAsserts(t)
-			checker := NewTyper("MainModule", true)
+			checker := NewTyper(mainModule, true)
 
 			program, err := parse.ParseString(tC.input)
 			assert.Ok(err, "parse error")

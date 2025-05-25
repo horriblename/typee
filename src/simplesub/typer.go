@@ -21,13 +21,13 @@ type symbols struct {
 
 	// shared across all modules
 	moduleCache map[can.ModuleName]ModuleInfo
+	mainModule  can.ModuleName
 }
 
 type Typer struct {
 	symbols
 
 	debug      bool
-	mainModule can.ModuleName
 	classScope string
 }
 
@@ -80,8 +80,8 @@ func NewTyper(mainModule can.ModuleName, debug bool) *Typer {
 			inferred:    map[int]TypeScheme{},
 			imports:     map[string]ModuleInfo{},
 			moduleCache: map[can.ModuleName]ModuleInfo{},
+			mainModule:  mainModule,
 		},
-		mainModule: mainModule,
 		debug:      debug,
 		classScope: "",
 	}
@@ -1235,7 +1235,8 @@ func (self *symbols) concretizeApplication(app Application) (SimpleType, error) 
 }
 
 func (self *symbols) lookupType(module can.ModuleName, name string) (TypeScheme, error) {
-	if module == "" {
+	assert.Neq(module, "", "empty module name in Application should be impossible?")
+	if module == self.mainModule {
 		if ty, ok := self.types.Get(name).Unwrap(); ok {
 			return ty, nil
 		}
