@@ -254,47 +254,7 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 			return rhs, nil
 		}
 
-		lhsFields := namedMembersToMap(lhs.Fields)
-		rhsFields := namedMembersToMap(rhs.Fields)
-
-		mergedFields := maps.Clone(lhsFields)
-		for rhsKey, rhsVal := range rhsFields {
-			if lhsVal, ok := mergedFields[rhsKey]; ok {
-				ty, err := self.glb(lhsVal.Type, rhsVal.Type)
-				if err != nil {
-					return nil, err
-				}
-				mergedFields[rhsKey] = Member{
-					Type:   ty,
-					Access: max(lhsVal.Access, rhsVal.Access),
-				}
-			}
-		}
-
-		lhsMap := namedMembersToMap(lhs.Methods)
-		rhsMap := namedMembersToMap(rhs.Methods)
-
-		mergedMeths := maps.Clone(lhsMap)
-		for rhsKey, rhsVal := range rhsMap {
-			if lhsVal, ok := mergedMeths[rhsKey]; ok {
-				ty, err := self.glb(lhsVal.Type, rhsVal.Type)
-				if err != nil {
-					return nil, err
-				}
-				mergedMeths[rhsKey] = Member{
-					Type:   ty,
-					Access: max(lhsVal.Access, rhsVal.Access),
-				}
-			}
-		}
-		// TODO: named classes
-		return ObjectType{
-			Module:  "",
-			Name:    "",
-			Supers:  []ObjectType{},
-			Fields:  mapToNamedMembers(mergedFields),
-			Methods: mapToNamedMembers(mergedMeths),
-		}, nil
+		return self.glbUnnamedObjects(lhs, rhs)
 	} else if lhs, rhs, ok := matchPair[ArrayType, ArrayType](lhs0, rhs0); ok {
 		lb, err := self.glb(lhs.ElType, rhs.ElType)
 		if err != nil {
@@ -385,6 +345,53 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 	} else {
 		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
 	}
+}
+
+func (self *symbols) glbUnnamedObjects(lhs ObjectType, rhs ObjectType) (ConcreteType, error) {
+	assert.Eq(lhs.Name, "", "compiler invariant broken: lubUnnamedObjects called on ", lhs.Module, ".", lhs.Name)
+	assert.Eq(rhs.Name, "", "compiler invariant broken: lubUnnamedObjects called on ", rhs.Module, ".", rhs.Name)
+
+	lhsFields := namedMembersToMap(lhs.Fields)
+	rhsFields := namedMembersToMap(rhs.Fields)
+
+	mergedFields := maps.Clone(lhsFields)
+	for rhsKey, rhsVal := range rhsFields {
+		if lhsVal, ok := mergedFields[rhsKey]; ok {
+			ty, err := self.glb(lhsVal.Type, rhsVal.Type)
+			if err != nil {
+				return nil, err
+			}
+			mergedFields[rhsKey] = Member{
+				Type:   ty,
+				Access: max(lhsVal.Access, rhsVal.Access),
+			}
+		}
+	}
+
+	lhsMap := namedMembersToMap(lhs.Methods)
+	rhsMap := namedMembersToMap(rhs.Methods)
+
+	mergedMeths := maps.Clone(lhsMap)
+	for rhsKey, rhsVal := range rhsMap {
+		if lhsVal, ok := mergedMeths[rhsKey]; ok {
+			ty, err := self.glb(lhsVal.Type, rhsVal.Type)
+			if err != nil {
+				return nil, err
+			}
+			mergedMeths[rhsKey] = Member{
+				Type:   ty,
+				Access: max(lhsVal.Access, rhsVal.Access),
+			}
+		}
+	}
+
+	return ObjectType{
+		Module:  "",
+		Name:    "",
+		Supers:  []ObjectType{},
+		Fields:  mapToNamedMembers(mergedFields),
+		Methods: mapToNamedMembers(mergedMeths),
+	}, nil
 }
 
 func (self *symbols) glbCrossObject(lhs Record, rhs ObjectType) (ConcreteType, error) {
@@ -552,51 +559,7 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 			return rhs, nil
 		}
 
-		rhsFieldMap := namedMembersToMap(rhs.Fields)
-
-		fields := []NamedMember{}
-		for _, lhsMember := range lhs.Fields {
-			if rhsMember, ok := rhsFieldMap[lhsMember.Name]; ok {
-				ty, err := self.lub(lhsMember.Type, rhsMember.Type)
-				if err != nil {
-					return nil, err
-				}
-
-				fields = append(fields, NamedMember{
-					Name: lhsMember.Name,
-					Member: Member{
-						Type:   ty,
-						Access: min(lhsMember.Access, rhsMember.Access),
-					},
-				})
-			}
-		}
-
-		rhsMethMap := namedMembersToMap(rhs.Methods)
-		merged := []NamedMember{}
-		for _, lhsMember := range lhs.Methods {
-			if rhsMember, ok := rhsMethMap[lhsMember.Name]; ok {
-				ty, err := self.lub(lhsMember.Type, rhsMember.Type)
-				if err != nil {
-					return nil, err
-				}
-
-				merged = append(merged, NamedMember{
-					Name: lhsMember.Name,
-					Member: Member{
-						Type:   ty,
-						Access: min(lhsMember.Access, rhsMember.Access),
-					},
-				})
-			}
-		}
-		return ObjectType{
-			Module:  "",
-			Name:    "",
-			Supers:  []ObjectType{}, // TODO
-			Fields:  fields,
-			Methods: merged,
-		}, nil
+		return self.lubUnnamedObjects(lhs, rhs)
 	} else if lhs, rhs, ok := matchPair[Primitive, Primitive](lhs0, rhs0); ok {
 		if lhs.Kind == rhs.Kind {
 			return Primitive{lhs.Kind}, nil
@@ -619,6 +582,57 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 	} else {
 		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
 	}
+}
+
+func (self *symbols) lubUnnamedObjects(lhs ObjectType, rhs ObjectType) (ConcreteType, error) {
+	assert.Eq(lhs.Name, "", "compiler invariant broken: lubUnnamedObjects called on ", lhs.Module, ".", lhs.Name)
+	assert.Eq(rhs.Name, "", "compiler invariant broken: lubUnnamedObjects called on ", rhs.Module, ".", rhs.Name)
+
+	rhsFieldMap := namedMembersToMap(rhs.Fields)
+
+	fields := []NamedMember{}
+	for _, lhsMember := range lhs.Fields {
+		if rhsMember, ok := rhsFieldMap[lhsMember.Name]; ok {
+			ty, err := self.lub(lhsMember.Type, rhsMember.Type)
+			if err != nil {
+				return nil, err
+			}
+
+			fields = append(fields, NamedMember{
+				Name: lhsMember.Name,
+				Member: Member{
+					Type:   ty,
+					Access: min(lhsMember.Access, rhsMember.Access),
+				},
+			})
+		}
+	}
+
+	rhsMethMap := namedMembersToMap(rhs.Methods)
+	merged := []NamedMember{}
+	for _, lhsMember := range lhs.Methods {
+		if rhsMember, ok := rhsMethMap[lhsMember.Name]; ok {
+			ty, err := self.lub(lhsMember.Type, rhsMember.Type)
+			if err != nil {
+				return nil, err
+			}
+
+			merged = append(merged, NamedMember{
+				Name: lhsMember.Name,
+				Member: Member{
+					Type:   ty,
+					Access: min(lhsMember.Access, rhsMember.Access),
+				},
+			})
+		}
+	}
+	return ObjectType{
+		Module:  "",
+		Name:    "",
+		Supers:  []ObjectType{}, // TODO
+		Fields:  fields,
+		Methods: merged,
+	}, nil
 }
 
 func (self *symbols) lubCrossObject(lhs Record, rhs ObjectType) (ConcreteType, error) {
