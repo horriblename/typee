@@ -228,7 +228,7 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		return self.glbCrossObject(rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
 		if lhs.Name != "" && rhs.Name != "" {
-			if lhs.Name == rhs.Name {
+			if lhs.Module == rhs.Module && lhs.Name == rhs.Name {
 				// TODO: will this cause problems in polymorphic classes?
 				return lhs, nil
 			}

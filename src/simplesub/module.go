@@ -70,8 +70,9 @@ func parseModule(name can.ModuleName) ([]parse.Expr, error) {
 // sorts a map[nodes]outgoingNodes
 // leaf nodes go first, root goes last
 
-func typeTableToSymbolMap(program []parse.Expr, typesAst []parse.Expr, typTable map[int]TypeScheme) (ModuleInfo, error) {
+func typeTableToSymbolMap(mod can.ModuleName, program []parse.Expr, typesAst []parse.Expr, typTable map[int]TypeScheme) (ModuleInfo, error) {
 	symbols := ModuleInfo{
+		Name:     mod,
 		Ast:      program,
 		TypesAst: typesAst,
 		Types:    map[string]TypeScheme{},

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/horriblename/typee/src/assert"
+	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/fun"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/opt"
@@ -18,7 +19,7 @@ var tI32 = types.Int{Signed: true, BitSize: 32}
 var appI64 = types.Application{Name: "I64"}
 
 func tApp(name string, params ...types.Type) *types.Application {
-	return &types.Application{Name: name, Params: params}
+	return &types.Application{Module: can.ModuleName("MainModule"), Name: name, Params: params}
 }
 
 func TestTypeExpr(t *testing.T) {
@@ -533,6 +534,47 @@ func TestTypeProgram(t *testing.T) {
 			typ: []types.Type{
 				&types.Func{
 					Args: []types.Type{&tI64},
+					Ret:  &tI64,
+				},
+			},
+		},
+		{
+			desc: "imported super",
+			input: `
+				(import TestModule.Super)
+				(class Foo (Super.Super) {})
+
+				(def foo (Super.Super Int) [s] s.x)
+				(def main [] (foo (Foo.new)))
+			`,
+			typ: []types.Type{
+				&types.Class{
+					Name: "Foo",
+					Supers: []*types.Class{
+						{
+							Name:   "Super",
+							Supers: []*types.Class{},
+							Fields: map[string]types.Member{
+								"x": {
+									Access: parse.AccessPublic,
+									Type:   &types.Int{},
+								},
+							},
+							Top: false,
+						},
+					},
+					Top: false,
+				},
+				&types.Func{
+					Args: []types.Type{&types.Application{
+						Module: "TestModule.Super",
+						Name:   "Super",
+						Params: []types.Type{},
+					}},
+					Ret: &tI64,
+				},
+				&types.Func{
+					Args: []types.Type{},
 					Ret:  &tI64,
 				},
 			},

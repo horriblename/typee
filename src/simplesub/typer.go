@@ -100,7 +100,7 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[can.Modu
 		return nil, nil, err
 	}
 
-	self.moduleCache[self.mainModule], err = typeTableToSymbolMap(program, typesAst, self.inferred)
+	self.moduleCache[self.mainModule], err = typeTableToSymbolMap(self.mainModule, program, typesAst, self.inferred)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -128,6 +128,7 @@ func (self *Typer) typeProgram(program []parse.Expr) (_ []TypeScheme, typesAst [
 		alias := expr.Module[len(expr.Module)-1]
 		fullPath := can.ModuleName(strings.Join(expr.Module, "."))
 		self.imports[alias], ok = self.moduleCache[fullPath]
+		assert.Eq(self.imports[alias].Name, fullPath, "import-aliased module has wrong full path?")
 		assert.True(ok, "typer bug: module %s missing from moduleCache", fullPath)
 	}
 
@@ -730,7 +731,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 	}
 
 	selfTy := Application{
-		Module: "",
+		Module: self.mainModule,
 		Name:   classDef.Name,
 		// TODO: apply type params
 		Params: []SimpleType{},
@@ -842,7 +843,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 	}
 
 	t := ObjectType{
-		Module:  "",
+		Module:  self.mainModule,
 		Name:    classDef.Name,
 		Supers:  supers,
 		Fields:  fields,
@@ -868,7 +869,7 @@ func (self *Typer) defClassMethods(classDef *parse.ObjectTypeDef) error {
 	defer self.types.PopScope()
 
 	self.types.Insert("Self", Application{
-		Module: "",
+		Module: self.mainModule,
 		Name:   classDef.Name,
 		// TODO: apply variables
 		Params: []SimpleType{},
@@ -1084,10 +1085,11 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 			}
 		}
 
-		mod := can.ModuleName("")
+		mod := self.mainModule
 		if t.Module != "" {
 			if m, ok := self.imports[t.Module]; ok {
 				mod = m.Name
+				assert.Neq(mod, "", "imported module has empty module name?")
 			} else {
 				return nil, fmt.Errorf("%w module: %s", ErrUndefinedModule, t.Module)
 			}
@@ -1190,7 +1192,7 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 			}
 		}
 
-		mod := can.ModuleName("")
+		mod := self.mainModule
 		if t.Type.Module != "" {
 			if m, ok := self.imports[t.Type.Module]; ok {
 				mod = m.Name
@@ -1379,13 +1381,21 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 		return nil
 	} else if ty, bound, ok := matchPair[ObjectType, ObjectType](ty0, bound0); ok {
 		if ty.Name != "" && bound.Name != "" {
+			if ty.Module == bound.Module && ty.Name == bound.Name {
+				return nil
+			}
 			for _, sup := range ty.Supers {
 				// TODO: transient super type A <: B <: C
 				// TODO: canonical class names
-				if sup.Name == bound.Name {
+				if sup.Module == bound.Module && sup.Name == bound.Name {
 					return nil
 				}
-				return fmt.Errorf("%w: %s not a subclass of %s", ErrInvalidClassCoercion, ty.Name, bound.Name)
+				return fmt.Errorf("%w: %s.%s not a subclass of %s.%s",
+					ErrInvalidClassCoercion,
+					ty.Module,
+					ty.Name,
+					bound.Module,
+					bound.Name)
 			}
 		}
 		tyFields := namedMembersToMap(ty.Fields)
