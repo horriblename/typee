@@ -52,6 +52,7 @@ type Enum struct {
 	Values map[string]int64
 }
 type Class struct {
+	Module  can.ModuleName
 	Name    string
 	Supers  []*Class
 	Fields  map[string]Member

@@ -289,6 +289,7 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		}
 		// TODO: named classes
 		return ObjectType{
+			Module:  "",
 			Name:    "",
 			Supers:  []ObjectType{},
 			Fields:  mapToNamedMembers(mergedFields),
@@ -590,6 +591,7 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 			}
 		}
 		return ObjectType{
+			Module:  "",
 			Name:    "",
 			Supers:  []ObjectType{}, // TODO
 			Fields:  fields,
@@ -728,6 +730,7 @@ type Enum struct {
 	Values map[string]opt.Option[int64]
 }
 type ObjectType struct {
+	Module  can.ModuleName
 	Name    string
 	Supers  []ObjectType
 	Fields  []NamedMember

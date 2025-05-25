@@ -81,6 +81,7 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleTy
 			return NamedMember{meth.Name, Member{transform(meth.Type, pol, mapping, pos, neg), meth.Access}}
 		})
 		return ObjectType{
+			Module:  ty.Module,
 			Name:    ty.Name,
 			Supers:  ty.Supers,
 			Fields:  fields,

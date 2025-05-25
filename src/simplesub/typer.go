@@ -476,6 +476,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 
 		ret := freshVar()
 		err = self.symbols.constrain(recordTy, ObjectType{
+			Module: "",
 			Name:   "",
 			Supers: []ObjectType{},
 			Fields: []NamedMember{{
@@ -841,6 +842,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 	}
 
 	t := ObjectType{
+		Module:  "",
 		Name:    classDef.Name,
 		Supers:  supers,
 		Fields:  fields,
@@ -1009,6 +1011,7 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 	ret := freshVar()
 
 	err := self.symbols.constrain(oTy, ObjectType{
+		Module: "",
 		Name:   "",
 		Supers: []ObjectType{},
 		Fields: []NamedMember{},
@@ -1552,6 +1555,7 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 		}
 	case ObjectType:
 		return ObjectType{
+			Module: t.Module,
 			Name:   t.Name,
 			Supers: t.Supers,
 			Fields: fun.Map(t.Fields, func(field NamedMember) NamedMember {

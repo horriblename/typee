@@ -695,7 +695,8 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 	parentClass := assert.Get(ctx.userTypes, "GObjectClass", "undefined parent class type?")
 	if len(e.Supers) > 0 {
 		// TODO: what if all are interfaces
-		parentClass = ctx.userTypes[e.Supers[0]+"Class"]
+		// TODO: generate imported types
+		parentClass = ctx.userTypes[e.Supers[0].String()+"Class"]
 	}
 
 	// TODO: name collision?
@@ -1113,7 +1114,7 @@ func (ctx *ctx) classDefIL(t *types.Class, e *parse.ObjectTypeDef) qbeil.Aggrega
 	var classParent qbeil.AggregateType
 	if len(e.Supers) != 0 {
 		// TODO: assert super is class or something
-		classParent = assert.Get(ctx.userTypes, e.Supers[0], "super type of ", e.Name, ":", e.Supers[0], "not found?")
+		classParent = assert.Get(ctx.userTypes, e.Supers[0].String(), "super type of ", e.Name, ":", e.Supers[0], "not found?")
 	} else if !e.Base {
 		classParent = assert.Get(ctx.userTypes, "GObject", "type Object not defined?")
 	}
