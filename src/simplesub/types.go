@@ -960,6 +960,8 @@ func (self *deepPrintCtx) printObjectType(t ObjectType) {
 	if t.Name == "" {
 		self.buf.WriteString("_UnknownClass")
 	} else {
+		self.buf.WriteString(string(t.Module))
+		self.buf.WriteString(".")
 		self.buf.WriteString(t.Name)
 	}
 

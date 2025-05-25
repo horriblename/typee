@@ -367,8 +367,7 @@ func (r *Class) String() string {
 	if r.Name == "" {
 		return "_UnknownObjectType"
 	} else {
-		// HaCK
-		return fmt.Sprintf("%s{...}", r.Name)
+		return fmt.Sprintf("%s.%s{...}", r.Module, r.Name)
 	}
 }
 func (self *Array) String() string {
