@@ -128,8 +128,8 @@ func (self *Typer) typeProgram(program []parse.Expr) (_ []TypeScheme, typesAst [
 		alias := expr.Module[len(expr.Module)-1]
 		fullPath := can.ModuleName(strings.Join(expr.Module, "."))
 		self.imports[alias], ok = self.moduleCache[fullPath]
+		assert.True(ok, "typer bug: module", fullPath, "missing from moduleCache")
 		assert.Eq(self.imports[alias].Name, fullPath, "import-aliased module has wrong full path?")
-		assert.True(ok, "typer bug: module %s missing from moduleCache", fullPath)
 	}
 
 	program = program[importCount:]
