@@ -906,8 +906,8 @@ func check(err error) {
 
 func handleCheck(err any, orig error) error {
 	if err != nil {
-		if err, ok := err.(*internalError); ok {
-			return err.error
+		if e, ok := err.(*internalError); ok {
+			return e.error
 		} else {
 			panic(err)
 		}
