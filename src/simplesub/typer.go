@@ -1290,9 +1290,15 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 	} else if _, _, ok := matchPair[Str, Str](ty0, bound0); ok {
 		return nil
 	} else if _, _, ok := matchPair[Enum, Int](ty0, bound0); ok {
+		// TODO: why did I allow this??
 		return nil
 	} else if lhs, rhs, ok := matchPair[Ref, Ref](ty0, bound0); ok {
 		return self.constrain(lhs.Content, rhs.Content)
+	} else if _, rhs, ok := matchPair[Ref, Primitive](ty0, bound0); ok {
+		// allow unconditional Ref <: Opaque
+		if rhs.Kind == PrimitiveOpaque {
+			return nil
+		}
 	} else if lhs, rhs, ok := matchPair[ArrayType, ArrayType](ty0, bound0); ok {
 		err := self.constrain(lhs.ElType, rhs.ElType)
 		if err != nil {

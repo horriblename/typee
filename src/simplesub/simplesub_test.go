@@ -140,6 +140,15 @@ func TestTypeExpr(t *testing.T) {
 			input: "(let [x 12 y 23 z false] (if [z] (+ x y) x))",
 			typ:   &tI64,
 		},
+		{
+			desc: "always allow Ref <: Opaque",
+			input: `(let [
+				x (stackAlloc)
+				castIntRef (fn ((Ref Int) (Ref Int)) [y] y)
+				f (fn (Opaque Int) [x] 5)
+			] (f (castIntRef x)))`,
+			typ: &tI64,
+		},
 		// // blocked by missing impl of constrain between different Application types
 		// {
 		// 	desc:  "type instantiation: type is not parameterized",
@@ -148,6 +157,7 @@ func TestTypeExpr(t *testing.T) {
 		// },
 	}
 	for _, tC := range testCases {
+		EnableTrace = true
 		t.Run(tC.desc, func(t *testing.T) {
 			assert := assert.NewTestAsserts(t)
 			checker := NewTyper(mainModule, true)
