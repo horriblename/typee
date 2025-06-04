@@ -1394,6 +1394,7 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 			for _, sup := range ty.Supers {
 				// TODO: transient super type A <: B <: C
 				// TODO: canonical class names
+				// TODO: multiple supers
 				if sup.Module == bound.Module && sup.Name == bound.Name {
 					return nil
 				}
