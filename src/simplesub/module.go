@@ -31,13 +31,14 @@ func (self *Typer) typeDeps(program []parse.Expr) error {
 	for _, mod := range program {
 		dep, ok := mod.(*parse.Import)
 		if !ok {
-			continue
+			break
 		}
 
 		name := can.ModuleName(strings.Join(dep.Module, "."))
 
 		if _, ok := self.moduleCache[name]; ok {
-			return nil
+			trace("in %s: import %s already type-checked", origModule, self.mainModule)
+			continue
 		}
 
 		ast, err := parseModule(name)
