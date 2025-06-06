@@ -349,31 +349,19 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		self.vars.NewScope()
 		defer self.vars.PopScope()
 
-		paramsTy := make([]SimpleType, 0, len(expr.Args))
 		var err error
 		if sig, ok := expr.Signature.Unwrap(); ok {
-			isMethod := sig[0] == parse.SelfType{}
 			if len(sig) != len(expr.Args)+1 {
 				return nil, fmt.Errorf("%w: function has %d args but type signature only takes %d", ErrBadTypeSignature, len(expr.Args), len(sig)-1)
 			}
-
-			for i, arg := range sig[:len(sig)-1] {
-				if i == 0 && isMethod {
-					continue
-				}
-				param, err := self.parseType(arg)
-				if err != nil {
-					return nil, err
-				}
-
-				p := param.instantiate()
-				paramsTy = append(paramsTy, p)
-				self.vars.Insert(expr.Args[i], p)
-			}
-
-			retHint, err := self.parseType(sig[len(sig)-1])
+			sigTy, err := self.parseFuncSignature(sig)
 			if err != nil {
 				return nil, err
+			}
+
+			argOffset := If(sigTy.Method, 1).Else(0)
+			for i, p := range sigTy.Args {
+				self.vars.Insert(expr.Args[i+argOffset], p)
 			}
 
 			bodyTy, err := self.TypeTerm(expr.Body)
@@ -381,14 +369,15 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 				return nil, err
 			}
 
-			retInst := retHint.instantiate()
-			if err := self.symbols.constrain(retInst, bodyTy); err != nil {
+			if err := self.symbols.constrain(sigTy.Ret, bodyTy); err != nil {
 				return nil, err
 			}
 
-			return Func{Args: paramsTy, Ret: retInst, Method: isMethod}, nil
+			// can probably just return sigTy?
+			return Func{Args: sigTy.Args, Ret: sigTy.Ret, Method: sigTy.Method}, nil
 		}
 
+		paramsTy := make([]SimpleType, 0, len(expr.Args))
 		for i, arg := range expr.Args {
 			if i == 0 && arg == "self" {
 				// TODO: don't think I need this
@@ -773,66 +762,25 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 				)
 			}
 
-			if len(sig) < 2 {
-				return nil, fmt.Errorf("typing %s.%s: %s: %v",
+			nargs := len(f.Func.Args)
+			if len(sig) < nargs+1 {
+				return nil, fmt.Errorf("typing %s.%s: annotated type signature too short, expected %d, got: %v",
 					classDef.Name,
 					f.Func.Name,
-					"annotated type signature too short",
+					nargs+1,
 					sig,
 				)
 			}
-			args := make([]SimpleType, 0, len(sig)-2)
-			startFrom := 0
-			isMethod := len(f.Func.Args) > 0 && f.Func.Args[0] == "self"
-			if isMethod {
-				startFrom = 1
-			}
 
-			for i, arg := range sig[startFrom : len(sig)-1] {
-				ty, err := self.parseType(arg)
-				if err != nil {
-					return nil, fmt.Errorf("in %s.%s, reading type signature [%d] of %d: %w",
-						classDef.Name,
-						f.Func.Name,
-						i,
-						len(sig)-1,
-						err,
-					)
-				}
-
-				sty, ok := ty.(SimpleType)
-				if !ok {
-					return nil, fmt.Errorf("in %s.%s, reading type signature [%d] of %d: %w",
-						classDef.Name,
-						f.Func.Name,
-						i,
-						len(sig)-1,
-						ErrPolymorphicInSignature,
-					)
-				}
-
-				args = append(args, sty)
-			}
-
-			ret, err := self.parseType(sig[len(sig)-1])
+			meth, err := self.parseFuncSignature(sig)
 			if err != nil {
-				return nil, fmt.Errorf("in %s.%s, reading return type: %w", classDef.Name, f.Func.Name, err)
-			}
-
-			simpleRet, ok := ret.(SimpleType)
-			if !ok {
-				return nil, fmt.Errorf("in %s.%s, reading return type: %w",
-					classDef.Name,
-					f.Func.Name,
-					ErrPolymorphicInSignature,
-				)
+				return nil, fmt.Errorf("typing %s.%s: %w", classDef.Name, f.Func.Name, err)
 			}
 
 			methods = append(methods, NamedMember{
 				Name: f.Name(),
 				Member: Member{
-					// TODO: generalize methods
-					Type:   Func{Args: args, Ret: simpleRet, Method: isMethod},
+					Type:   meth,
 					Access: f.Access(),
 				},
 			})
@@ -852,6 +800,37 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 	}
 
 	return t, nil
+}
+
+func (self *Typer) parseFuncSignature(sig []parse.TypeRepr) (Func, error) {
+	startFrom := 0
+	isMethod := sig[0] == parse.SelfType{}
+	argTys := make([]SimpleType, 0, len(sig))
+	if isMethod {
+		startFrom = 1 // skip first Self in method type
+	}
+
+	argsSig := sig[startFrom : len(sig)-1] // last element is return type
+	for _, arg := range argsSig {
+		param, err := self.parseType(arg)
+		if err != nil {
+			return Func{}, err
+		}
+
+		p := param.instantiate()
+		argTys = append(argTys, p)
+	}
+
+	retHint, err := self.parseType(sig[len(sig)-1])
+	if err != nil {
+		return Func{}, err
+	}
+
+	return Func{
+		Args:   argTys,
+		Ret:    retHint.instantiate(),
+		Method: isMethod,
+	}, nil
 }
 
 func (self *Typer) defClassMethods(classDef *parse.ObjectTypeDef) error {
