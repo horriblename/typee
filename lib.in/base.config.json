@@ -1,0 +1,11 @@
+{
+	"extra-types": {
+	},
+	"whitelist": {
+		"callbacks": []
+	},
+	"blacklist": {
+	},
+	"method-blacklist": {
+	}
+}
