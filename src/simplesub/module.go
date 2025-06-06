@@ -43,13 +43,13 @@ func (self *Typer) typeDeps(program []parse.Expr) error {
 
 		ast, err := parseModule(name)
 		if err != nil {
-			return err
+			return fmt.Errorf("parsing module %s: %w", name, err)
 		}
 
 		self.mainModule = name
 		_, _, err = self.TypeProgram(ast)
 		if err != nil {
-			return err
+			return fmt.Errorf("typing module %s: %w", name, err)
 		}
 	}
 
