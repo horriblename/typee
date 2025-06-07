@@ -222,47 +222,68 @@ func (self *Generator) processConstantInfo(ci *gi.ConstantInfo) {
 	p("(set %s %s)\n", sanitize(CONST_CASE_to_camelCase(name)), val)
 }
 func (self *Generator) processCallbackInfo(ci *gi.CallableInfo) {
-	// p := printerTo(&this.goBindings)
-	//
-	// var args []*gi.ArgInfo
-	// for i, n := 0, ci.NumArg(); i < n; i++ {
-	// 	arg := ci.Arg(i)
-	// 	args = append(args, arg)
-	// }
-	//
-	// userdata := -1
-	// for i, arg := range args {
-	// 	if arg.Closure() != -1 {
-	// 		userdata = i
-	// 		break
-	// 	}
-	//
-	// 	// treat any void* as userdata o_O
-	// 	t := arg.Type()
-	// 	if t.Tag() == gi.TYPE_TAG_VOID && t.IsPointer() {
-	// 		userdata = i
-	// 		break
-	// 	}
-	// }
-	//
-	// if userdata == -1 {
-	// 	p("# blacklisted (no userdata): ")
-	// }
-	//
-	// name := ci.Name()
-	// p("(: %s (fn [", name)
-	// for i, ri, n := 0, 0, len(args); i < n; i++ {
-	// 	if i == userdata {
-	// 		continue
-	// 	}
-	//
-	// 	// I use here TypeReturn because for closures it's inverted
-	// 	// C code calls closure and it has to be concrete and Go code
-	// 	// returns stuff to C (like calling a C function)
-	// }
-	// p("]")
-	//
-	// p("))")
+	// TODO: should I use function builder et al.
+	p := printerTo(&self.goBindings)
+
+	var args []*gi.ArgInfo
+	for i, n := 0, ci.NumArg(); i < n; i++ {
+		arg := ci.Arg(i)
+		args = append(args, arg)
+	}
+
+	userdata := -1
+	for i, arg := range args {
+		if arg.Closure() != -1 {
+			userdata = i
+			break
+		}
+
+		// treat any void* as userdata o_O
+		t := arg.Type()
+		if t.Tag() == gi.TYPE_TAG_VOID && t.IsPointer() {
+			userdata = i
+			break
+		}
+	}
+
+	if userdata == -1 {
+		p("; blacklisted (no userdata): ")
+	}
+
+	name := ci.Name()
+	// feels terrible forcing Ref on all callbacks, maybe I should just allow coercing
+	// null/Ref to function types
+	p("(type %s (Ref (fn [", name)
+	for i, ri, n := 0, 0, len(args); i < n; i++ {
+		if i == userdata {
+			continue
+		}
+
+		// idk what typeReturn is for honestly
+		// from go-gir:
+		// > I use here TypeReturn because for closures it's inverted
+		// > C code calls closure and it has to be concrete and Go code
+		// > returns stuff to C (like calling a C function)
+		arg := args[i]
+		if ri != 0 {
+			p(" ")
+		}
+		p("%s %s", arg.Name(), horType(arg.Type(), typeConfig{
+			namespace: self.namespace,
+			flags:     typeReturn,
+		}))
+		ri++
+	}
+	ret := ci.ReturnType()
+	if ret.Tag() == gi.TYPE_TAG_VOID && !ret.IsPointer() {
+		p("] {})))\n")
+	} else {
+		p("] %s)))\n", horType(ci.ReturnType(), typeConfig{namespace: self.namespace}))
+	}
+
+	if userdata == -1 {
+		return
+	}
 }
 func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	p := printerTo(&self.goBindings)
