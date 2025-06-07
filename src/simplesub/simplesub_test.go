@@ -475,7 +475,61 @@ func TestTypeProgram(t *testing.T) {
 		// 		}
 		// 	}(),
 		// },
-		//
+		{
+			desc: "callbacks",
+			input: `
+				(type Wrapper (fn [Int] {x: Int}))
+				(def apply [f x] (f x))
+				(def applySig (Wrapper Int {x: Int}) [f x] (f x))
+				(def wrap [x] {x: x})
+				(def foo [] (apply wrap 10))
+				(def foo2 [] (applySig wrap 10))
+			`,
+			typ: func() []types.Type {
+				wrappedInt := types.Record{
+					Fields: map[string]types.Type{
+						"x": &tI64,
+					},
+				}
+				wrapper := types.Func{
+					Args: []types.Type{&tI64},
+					Ret:  &wrappedInt,
+				}
+				return []types.Type{
+					&wrapper,
+					&types.Func{
+						Args: []types.Type{
+							&types.Func{
+								Args: []types.Type{&types.Generic{ID: 2}},
+								Ret:  &types.Generic{ID: 3},
+							},
+							&types.Generic{ID: 2},
+						},
+						Ret: &types.Generic{ID: 3},
+					},
+					&types.Func{
+						Args: []types.Type{tApp("Wrapper"), &tI64},
+						Ret:  &wrappedInt,
+					},
+					&types.Func{
+						Args: []types.Type{&types.Generic{ID: 1}},
+						Ret: &types.Record{
+							Fields: map[string]types.Type{
+								"x": &types.Generic{ID: 1},
+							},
+						},
+					},
+					&types.Func{
+						Args: []types.Type{},
+						Ret:  &wrappedInt,
+					},
+					&types.Func{
+						Args: []types.Type{},
+						Ret:  &wrappedInt,
+					},
+				}
+			}(),
+		},
 		{
 			desc: "let recursion",
 			input: `
