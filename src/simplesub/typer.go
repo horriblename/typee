@@ -65,6 +65,7 @@ var ErrPolymorphicInSignature = errors.New("illegal polymorphic type in function
 var ErrMethodCallOnStaticMethod = errors.New("tried to call static method on object instance")
 var ErrStaticMethodCallOnNonStatic = errors.New("tried to call method as a static method")
 var ErrInvalidClassCoercion = errors.New("invalid class coercion")
+var ErrIncompleteTypeInSignature = errors.New("incomplete type used in signature")
 
 const scopeLevelTop int = 1
 
@@ -1184,6 +1185,38 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 			Module: mod,
 			Name:   t.Type.Name,
 			Params: params,
+		}, nil
+
+	case parse.FnType:
+		args := make([]SimpleType, 0, len(t.Args))
+		for _, arg := range t.Args {
+			ts, err := self.parseType(arg)
+			if err != nil {
+				return nil, err
+			}
+
+			st, ok := ts.(SimpleType)
+			if !ok {
+				return nil, fmt.Errorf("%w: %s", ErrIncompleteTypeInSignature, arg)
+			}
+
+			args = append(args, st)
+		}
+
+		retTs, err := self.parseType(t.Ret)
+		if err != nil {
+			return nil, err
+		}
+
+		ret, ok := retTs.(SimpleType)
+		if !ok {
+			return nil, fmt.Errorf("%w: %s", ErrIncompleteTypeInSignature, t.Ret)
+		}
+
+		return Func{
+			Args:   args,
+			Ret:    ret,
+			Method: false,
 		}, nil
 
 	default:
