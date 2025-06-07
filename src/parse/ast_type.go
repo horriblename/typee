@@ -110,6 +110,8 @@ func ChildNodes(node TypeRepr) []TypeRepr {
 		return append([]TypeRepr{n.Type}, n.Params...)
 	case TypeName:
 		return []TypeRepr{}
+	case FnType:
+		return append(n.Args, n.Ret)
 	default:
 		panic(fmt.Sprintf("unexpected parse.TypeRepr: %#v", node))
 	}
