@@ -2,7 +2,6 @@
 	"extra-types": {
 	},
 	"whitelist": {
-		"callbacks": []
 	},
 	"blacklist": {
 	},

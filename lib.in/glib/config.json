@@ -26,8 +26,7 @@
             "get_home_dir",
 
             "get_tmp_dir"
-        ],
-        "callbacks": []
+        ]
     },
     "_comment": "SpawnError.2big is a stupid name and I need to fix that",
     "blacklist": {
