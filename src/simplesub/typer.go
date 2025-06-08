@@ -142,7 +142,7 @@ func (self *Typer) typeProgram(program []parse.Expr) (_ []TypeScheme, typesAst [
 	recursiveness := map[string]bool{}
 	groups, selfRecursives := groupRecursives(program)
 
-	typeDefOrder, typeDefAsts, _ := sortTypeDefs(self.mainModule, program)
+	typeDefOrder, typeDefAsts, _ := sortTypeDefs(program)
 
 	// TODO: do I still need to sort type defs since I started using Application types?
 
