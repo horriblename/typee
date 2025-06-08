@@ -67,7 +67,11 @@ func horType(ti *gi.TypeInfo, cfg typeConfig) string {
 		panic("GHash not supported yet")
 	case gi.TYPE_TAG_ERROR:
 		// TODO: should be a GLib.Error
-		out.WriteString("Error")
+		if cfg.namespace == "GLib" {
+			out.WriteString("Error")
+		} else {
+			out.WriteString("GLib.Error")
+		}
 	case gi.TYPE_TAG_INTERFACE:
 		// TODO
 		if ti.IsPointer() {
