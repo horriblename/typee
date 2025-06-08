@@ -46,7 +46,7 @@ func Cast[T any](x any, msg ...any) T {
 	if y, ok := x.(T); ok {
 		return y
 	} else {
-		panic(fmt.Sprintf("cast from %v to %T failed. %v", x, y, joinHint(msg)))
+		panic(fmt.Sprintf("cast from %v to %T failed, actual type %T. %v", x, y, x, joinHint(msg)))
 	}
 }
 
