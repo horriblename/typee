@@ -94,6 +94,7 @@ func sortTypeDefs(ast []parse.Expr) (order [][]string, astLookup map[string]pars
 			astLookup[n.Name] = n
 			deps := map[string]unit{}
 			for _, super := range n.Supers {
+				// TODO: properly track type origin
 				if super.Module == "" {
 					deps[super.Name] = unit{}
 				}
@@ -147,6 +148,7 @@ func markTypeDeps(x parse.TypeRepr, deps map[string]unit, self string) (selfRecu
 		assert.True(ok, "len already checked")
 
 		if n, ok := node.(parse.TypeName); ok {
+			// TODO: properly track type origin
 			if n.Name == self {
 				selfRecursive = true
 			}
