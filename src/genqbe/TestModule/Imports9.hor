@@ -1,0 +1,4 @@
+(type Foo {x: Int})
+(class Foo1 {
+	pub x Int
+})

@@ -1,0 +1,6 @@
+(import TestModule.Imports9)
+
+(def foo (Imports9.Foo Int) [f] f.x)
+
+(def foo1 (Imports9.Foo1 Int) [f] f.x)
+
