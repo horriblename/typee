@@ -284,7 +284,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 
 		switch lhsTy := lhsTy.(type) {
 		case *types.Class:
-			return genClassAccessByName(ctx, "", lhsTy.Name, e)
+			return genClassAccessByName(ctx, lhsTy.Module, lhsTy.Name, e)
 		case *types.Record:
 			// TODO: right now we just assume a module path, but we need to handle records too
 			// should be unreachable currently
@@ -302,12 +302,17 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 				panic(fmt.Sprintf("use of polymorphic type on left hand side of %s not yet supported", e.Pretty()))
 			}
 			lhsTs := ctx.findType(lhsTy.Module, lhsTy.Name)
-			switch lhsTy := lhsTs.(type) {
+			switch lhsConcrete := lhsTs.(type) {
 			case simplesub.ObjectType:
-				return genClassAccessByName(ctx, "", lhsTy.Name, e)
+				return genClassAccessByName(ctx, lhsConcrete.Module, lhsConcrete.Name, e)
 			case simplesub.Record:
-				// lhs can't be a module, right???
-				panic("TODO")
+				ilTy := ctx.toILType(lhsTy)
+
+				structTy, ok := ilTy.(qbeil.StructType)
+				assert.True(ok, fmt.Sprintf(
+					"BUG: expected %s to be a struct type but is a %T",
+					lhsTy.Name, ilTy))
+				return genRecordAccess(ctx, e, structTy)
 			default:
 				panic("TODO Application resulting in unhandled type: " + lhsTs.String())
 			}
@@ -895,7 +900,7 @@ func genClassAccessByName(ctx *ctx, module can.ModuleName, class string, expr *p
 
 	ct := ctx.userTypes[class]
 	classTy, ok := ct.(qbeil.StructType)
-	assert.True(ok, "codegen: record access on non-struct type (type checker bug?)")
+	assert.True(ok, "codegen: record access on non-struct type (type checker bug?)", ct, "from expr: ", expr)
 
 	fieldLayout, ok := classTy.Layouts[expr.Field]
 	if !ok {
@@ -906,6 +911,41 @@ func genClassAccessByName(ctx *ctx, module can.ModuleName, class string, expr *p
 	bt, ok := fieldLayout.Type.(qbeil.BaseType)
 	if !ok {
 		panic("unreachable: embedded struct types are currently invalid in classes")
+	}
+
+	// TODO: 32-bit system
+	addr := ctx.il.TempVar(false)
+	ctx.il.Arithmetic(addr.IL(), ctx.ptrType, "add",
+		gen(ctx, expr.Record),
+		qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits)},
+	)
+
+	val := ctx.il.TempVar(false)
+	switch bt {
+	case qbeil.Double:
+		ctx.il.Arithmetic(val.IL(), bt, "loadd", addr)
+	case qbeil.Long:
+		ctx.il.Arithmetic(val.IL(), bt, "loadl", addr)
+	case qbeil.Single:
+		ctx.il.Arithmetic(val.IL(), bt, "loads", addr)
+	case qbeil.Word:
+		ctx.il.Arithmetic(val.IL(), bt, "loadw", addr)
+	default:
+		panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", bt))
+	}
+
+	return val
+}
+
+func genRecordAccess(ctx *ctx, expr *parse.RecordAccess, rcdTy qbeil.StructType) qbeil.Value {
+	fieldLayout, ok := rcdTy.Layouts[expr.Field]
+	if !ok {
+		panic(fmt.Sprintf("typer bug: uncaught use of non-existent record field %s", expr.Field))
+	}
+
+	bt, ok := fieldLayout.Type.(qbeil.BaseType)
+	if !ok {
+		panic("unreachable: record field with non-base types currently not allowed")
 	}
 
 	// TODO: 32-bit system
