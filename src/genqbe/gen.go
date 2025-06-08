@@ -957,7 +957,7 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	switch t := typ.(type) {
 	case *types.Application:
 		mod := ctx.localTypes
-		if t.Module != "" {
+		if t.Module != ctx.module {
 			m, ok := ctx.allModules[t.Module]
 			assert.True(ok, "BUG: unresolved import still in code gen phase: ", t.Module)
 
