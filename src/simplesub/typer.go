@@ -469,7 +469,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		err = self.symbols.constrain(recordTy, ObjectType{
 			Module: "",
 			Name:   "",
-			Supers: []ObjectType{},
+			Supers: []Application{},
 			Fields: []NamedMember{{
 				Name: expr.Field,
 				Member: Member{
@@ -694,30 +694,22 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 	self.classScope = classDef.Name
 	defer func() { self.classScope = "" }()
 
-	supers := make([]ObjectType, len(classDef.Supers))
+	supers := make([]Application, len(classDef.Supers))
 	for i, s := range classDef.Supers {
-		sup, err := self.symbols.lookupTypeName(s)
-		if err != nil {
-			return nil, err
-		}
-
-		// TODO: should concretize instead
-		si := sup.instantiate()
-		sc, ok := si.(ObjectType)
-		if !ok {
-			if svar, ok := si.(*Variable); ok {
-				// HACK: this works cuz currently the type vars constrained both ways
-				if svclass, ok := svar.LowerBound().(ObjectType); ok {
-					sc = svclass
-				} else {
-					return nil, fmt.Errorf("%w: in %s: %s of type %s is not an object type", ErrIllegalSuperType, classDef.Name, s, svar)
-				}
-			} else {
-				return nil, fmt.Errorf("%w: in %s: %s of type %s is not an object type", ErrIllegalSuperType, classDef.Name, s, svar)
+		modName := self.mainModule
+		if s.Module != "" {
+			mod, ok := self.imports[s.Module]
+			if !ok {
+				return nil, fmt.Errorf("%w: %s", ErrUndefinedModule, s.Module)
 			}
+			modName = mod.Name
 		}
 
-		supers[i] = sc
+		supers[i] = Application{
+			Module: modName,
+			Name:   s.Name,
+			Params: []SimpleType{},
+		}
 	}
 
 	selfTy := Application{
@@ -994,7 +986,7 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 	err := self.symbols.constrain(oTy, ObjectType{
 		Module: "",
 		Name:   "",
-		Supers: []ObjectType{},
+		Supers: []Application{},
 		Fields: []NamedMember{},
 		Methods: []NamedMember{{
 			Name: methAccess.Method,

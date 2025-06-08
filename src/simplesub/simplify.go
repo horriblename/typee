@@ -242,9 +242,9 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 			}
 		}
 
-		supers := fun.Map(ty.Supers, func(o ObjectType) *types.Class {
+		supers := fun.Map(ty.Supers, func(o Application) *types.Application {
 			s := coalesceTypeInner(o, polarity)
-			return s.(*types.Class)
+			return s.(*types.Application)
 		})
 
 		return &types.Class{

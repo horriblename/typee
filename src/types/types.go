@@ -54,7 +54,7 @@ type Enum struct {
 type Class struct {
 	Module  can.ModuleName
 	Name    string
-	Supers  []*Class
+	Supers  []*Application
 	Fields  map[string]Member
 	Statics map[string]Member
 	Methods map[string]Member
@@ -476,7 +476,7 @@ func (self *deepPrintCtx) printClass(r *Class) {
 	} else {
 		b.WriteString(r.Name)
 		b.WriteRune('(')
-		b.WriteString(strings.Join(fun.Map(r.Supers, func(c *Class) string {
+		b.WriteString(strings.Join(fun.Map(r.Supers, func(c *Application) string {
 			return c.Name
 		}), ", "))
 		b.WriteString(")")
@@ -508,7 +508,7 @@ func (r *Class) DeepPrint() string {
 	} else {
 		b.WriteString(r.Name)
 		b.WriteRune('(')
-		b.WriteString(strings.Join(fun.Map(r.Supers, func(c *Class) string {
+		b.WriteString(strings.Join(fun.Map(r.Supers, func(c *Application) string {
 			return c.Name
 		}), ", "))
 		b.WriteString(")")

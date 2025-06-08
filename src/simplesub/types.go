@@ -388,7 +388,7 @@ func (self *symbols) glbUnnamedObjects(lhs ObjectType, rhs ObjectType) (Concrete
 	return ObjectType{
 		Module:  "",
 		Name:    "",
-		Supers:  []ObjectType{},
+		Supers:  []Application{},
 		Fields:  mapToNamedMembers(mergedFields),
 		Methods: mapToNamedMembers(mergedMeths),
 	}, nil
@@ -629,7 +629,7 @@ func (self *symbols) lubUnnamedObjects(lhs ObjectType, rhs ObjectType) (Concrete
 	return ObjectType{
 		Module:  "",
 		Name:    "",
-		Supers:  []ObjectType{}, // TODO
+		Supers:  []Application{}, // TODO
 		Fields:  fields,
 		Methods: merged,
 	}, nil
@@ -746,7 +746,7 @@ type Enum struct {
 type ObjectType struct {
 	Module  can.ModuleName
 	Name    string
-	Supers  []ObjectType
+	Supers  []Application
 	Fields  []NamedMember
 	Methods []NamedMember
 	Top     bool // top class is a class that does not have a parent class
