@@ -303,11 +303,13 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 			}
 			lhsTs := ctx.findType(lhsTy.Module, lhsTy.Name)
 			switch lhsTy := lhsTs.(type) {
-			case *simplesub.ObjectType:
+			case simplesub.ObjectType:
 				return genClassAccessByName(ctx, "", lhsTy.Name, e)
-			case *simplesub.Record:
+			case simplesub.Record:
 				// lhs can't be a module, right???
 				panic("TODO")
+			default:
+				panic("TODO Application resulting in unhandled type: " + lhsTs.String())
 			}
 
 		default:
