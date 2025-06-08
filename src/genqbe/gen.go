@@ -997,38 +997,7 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	case *types.Class:
 		return ctx.ptrType
 	case *types.Record:
-		if il, ok := ctx.generatedTranslation[t]; ok {
-			return il
-		}
-
-		// FIXME: unordered
-		fields := make([]qbeil.RepeatType, 0, len(t.Fields))
-		layouts := map[string]qbeil.FieldLayout{}
-		offset := 0
-		for field, fieldTy := range t.Fields {
-			// TODO: recursive types?
-			// TODO: align
-			ilTy := ctx.toILType(fieldTy)
-			fields = append(fields, qbeil.SingleType(ilTy))
-			sizeBits, _ := ctx.sizeOf(ilTy)
-			layouts[field] = qbeil.FieldLayout{
-				Type:       ilTy,
-				OffsetBits: offset,
-			}
-
-			offset += sizeBits
-		}
-		name := ctx.newTempName("Record_")
-		ilTyp := qbeil.StructType{
-			Align:   0,
-			Name:    name,
-			Layouts: layouts,
-			Fields:  fields,
-		}
-
-		ctx.declareType(name, ilTyp)
-		ctx.generatedTranslation[t] = ilTyp
-		return ilTyp
+		return ctx.recordToILType(t)
 
 	case *types.Ref:
 		return ctx.ptrType
@@ -1096,6 +1065,39 @@ func (ctx *ctx) toABIType(typ types.Type) qbeil.ABIType {
 		// FIXME: fix qbeil types
 		return ctx.toILType(typ).(qbeil.ABIType)
 	}
+}
+
+func (ctx *ctx) recordToILType(t *types.Record) qbeil.StructType {
+	if il, ok := ctx.generatedTranslation[t]; ok {
+		return il.(qbeil.StructType)
+	}
+
+	fields := make([]qbeil.RepeatType, 0, len(t.Fields))
+	layouts := map[string]qbeil.FieldLayout{}
+	offset := 0
+
+	for name, fieldTy := range t.Fields {
+		ilTy := ctx.toILType(fieldTy)
+		bits, _ := ctx.sizeOf(ilTy) // TODO: align
+		fields = append(fields, qbeil.SingleType(ilTy))
+		layouts[name] = qbeil.FieldLayout{
+			Type:       ilTy,
+			OffsetBits: offset,
+		}
+		offset += bits
+	}
+
+	name := ctx.newTempName("Record_")
+	ilTyp := qbeil.StructType{
+		Align:   0,
+		Layouts: layouts,
+		Name:    name,
+		Fields:  fields,
+	}
+
+	ctx.declareType(name, ilTyp)
+	ctx.generatedTranslation[t] = ilTyp
+	return ilTyp
 }
 
 // like [ctx.toILType] but converts class type to its full [qbeil.StructType] instead of a pointer type
