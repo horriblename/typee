@@ -42,12 +42,12 @@ func TestGen(t *testing.T) {
 			expect := string(e)
 
 			program, err := parse.ParseString(string(src))
-			assert.Ok(err)
+			assert.Ok(err, "parse error")
 
 			mod := can.ModuleName("MainModule")
 			typer := simplesub.NewTyper(mod, false)
 			_, types, err := typer.TypeProgram(program)
-			assert.Ok(err)
+			assert.Ok(err, "type error")
 
 			var buf bytes.Buffer
 			Gen(&buf, mod, types, program, types[mod].TypesAst)
