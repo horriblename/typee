@@ -303,6 +303,51 @@ func TestTypeProgram(t *testing.T) {
 			}(),
 		},
 		{
+			desc: "recursive class definition with super relation",
+			input: `
+				(class Baz (Bar) {})
+				(class Foo {})
+				(class Bar (Foo) {})
+			`,
+			typ: []types.Type{
+				&types.Class{
+					Module: mainModule,
+					Name:   "Baz",
+					Supers: []*types.Application{{
+						Module: mainModule,
+						Name:   "Bar",
+						Params: []types.Type{},
+					}},
+					Fields:  map[string]types.Member{},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{},
+					Top:     false,
+				},
+				&types.Class{
+					Module:  mainModule,
+					Name:    "Foo",
+					Supers:  []*types.Application{},
+					Fields:  map[string]types.Member{},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{},
+					Top:     false,
+				},
+				&types.Class{
+					Module: mainModule,
+					Name:   "Bar",
+					Supers: []*types.Application{{
+						Module: mainModule,
+						Name:   "Foo",
+						Params: []types.Type{},
+					}},
+					Fields:  map[string]types.Member{},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{},
+					Top:     false,
+				},
+			},
+		},
+		{
 			desc:  "self and Self alias",
 			input: "(class Foo {pub x Int, pub (def foo (Self Int) [self] self.x)})",
 			typ: func() []types.Type {
