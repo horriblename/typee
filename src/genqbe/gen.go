@@ -695,8 +695,21 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 		panic(fmt.Sprintf("compiler bug: class definition yields non-class type %#v", ct))
 	}
 
-	class := ctx.classDefIL(classTy, e)
+	class := ctx.classToILType(classTy)
 	ctx.declareType(e.Name, class)
+
+	{
+		ctx.classInProcess = classTy // TODO: refactor this out somehow
+		for _, field := range e.Fields {
+			method, ok := field.(parse.ClassMethod)
+			if !ok {
+				continue
+			}
+
+			genFunc(ctx, classTy.Name, method.Func)
+		}
+		ctx.classInProcess = nil
+	}
 
 	// TODO: define GObjectClass
 	parentClass := assert.Get(ctx.userTypes, "GObjectClass", "undefined parent class type?")
@@ -728,6 +741,7 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 
 // generates functions that take care of initialization
 // e.g. function to retrieve the GType of the class
+// NOTE: only generate for types owned by ctx.module
 func genClassBoilerplate(
 	ctx *ctx,
 	className string,
@@ -1140,27 +1154,55 @@ func (ctx *ctx) recordToILType(t *types.Record) qbeil.StructType {
 	return ilTyp
 }
 
-// like [ctx.toILType] but converts class type to its full [qbeil.StructType] instead of a pointer type
-func (ctx *ctx) classDefIL(t *types.Class, e *parse.ObjectTypeDef) qbeil.AggregateType {
+func (ctx *ctx) ensureClassDeclared(t *types.Class) qbeil.AggregateType {
+	if t.Module == ctx.module {
+		if ilTy, ok := ctx.userTypes[t.Name]; ok {
+			return ilTy
+		}
+		panic(fmt.Sprintf("BUG local class %s.%s undeclared during codegen", t.Module, t.Name))
+	}
+
+	ilTy := ctx.classToILType(t)
+	ilTyName := string(t.Module) + "." + t.Name
+	if _, ok := ctx.userTypes[ilTyName]; !ok {
+		ctx.userTypes[ilTyName] = ilTy
+	}
+
+	return ilTy
+}
+
+// like [ctx.toILType] but converts class type to its full [qbeil.AggregateType] instead of a pointer type
+func (ctx *ctx) classToILType(t *types.Class) qbeil.AggregateType {
 	if t.Name == "" {
 		// FIXME: generic support
 		panic("unnamed classes should be illegal at codegen")
 	}
 
-	// FIXME: why did I put this here?? there's no way a userType already exists during class definition right?
-	if ut, ok := ctx.userTypes[t.Name]; ok {
+	ilName := t.Name
+	if t.Module != ctx.module {
+		ilName = string(t.Module) + "." + t.Name
+	}
+
+	if ut, ok := ctx.userTypes[ilName]; ok {
 		return ut
 	}
 
-	ctx.classInProcess = t
-	defer func() { ctx.classInProcess = nil }()
-
 	var classParent qbeil.AggregateType
-	if len(e.Supers) != 0 {
+	if len(t.Supers) != 0 {
 		// TODO: assert super is class or something
-		classParent = assert.Get(ctx.userTypes, e.Supers[0].String(), "super type of ", e.Name, ":", e.Supers[0], "not found?")
-	} else if !e.Base {
-		classParent = assert.Get(ctx.userTypes, "GObject", "type Object not defined?")
+		// TODO: multi inheritence
+		sup := t.Supers[0]
+		supMod := assert.Get(ctx.allModules, sup.Module,
+			"BUG encountered unresolved module", sup.Module, "during codegen")
+		supTs := assert.Get(supMod.Types, sup.Name,
+			"BUG unresolved imported type", sup.Module, ".", sup.Name, "encountered during codegen")
+		supSt := assert.Cast[simplesub.SimpleType](supTs,
+			"BUG encountered type scheme super", sup.Module, ".", sup.Name, "during codegen")
+		supTy := assert.Cast[*types.Class](ctx.simplifyType(supSt),
+			"BUG encountered non-class super type", sup.Module, ".", sup.Name, "during codegen")
+		classParent = ctx.ensureClassDeclared(supTy) // TODO
+	} else if !t.Top {
+		classParent = assert.Get(ctx.userTypes, "GObject", "BUG type Object not defined?")
 	}
 
 	fields := []qbeil.RepeatType{}
@@ -1187,16 +1229,6 @@ func (ctx *ctx) classDefIL(t *types.Class, e *parse.ObjectTypeDef) qbeil.Aggrega
 			}
 			pubOffset += bits / 8
 		}
-	}
-
-	// generate methods
-	for _, field := range e.Fields {
-		method, ok := field.(parse.ClassMethod)
-		if !ok {
-			continue
-		}
-
-		genFunc(ctx, t.Name, method.Func)
 	}
 
 	return qbeil.StructType{
