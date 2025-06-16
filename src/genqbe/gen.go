@@ -723,14 +723,14 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 	}
 	ctx.declareType(e.Name+"Private", private)
 
-	genClassBoilerplate(ctx, e, class, classType, private)
+	genClassBoilerplate(ctx, e.Name, class, classType, private)
 }
 
 // generates functions that take care of initialization
 // e.g. function to retrieve the GType of the class
 func genClassBoilerplate(
 	ctx *ctx,
-	e *parse.ObjectTypeDef,
+	className string,
 	class qbeil.AggregateType,
 	classType qbeil.AggregateType,
 	private qbeil.AggregateType,
@@ -743,10 +743,10 @@ func genClassBoilerplate(
 		Linkage: qbeil.Linkage{},
 		VarName: mangleName(mangleOpts{
 			module: ctx.module,
-			class:  e.Name,
+			class:  className,
 			name:   "class_name",
 		}),
-	}, e.Name)
+	}, className)
 
 	// TODO: name collision?
 	typeIdVarOnce := ctx.il.Data(
@@ -754,7 +754,7 @@ func genClassBoilerplate(
 			Linkage: qbeil.Linkage{},
 			VarName: mangleName(mangleOpts{
 				module: ctx.module,
-				class:  e.Name,
+				class:  className,
 				name:   "_type_id__once",
 			}),
 			Align: 0,
@@ -767,7 +767,7 @@ func genClassBoilerplate(
 
 	typeInfoName := mangleName(mangleOpts{
 		module: ctx.module,
-		class:  e.Name,
+		class:  className,
 		name:   "g_define_type_info",
 	})
 	typeInfoConst := ctx.il.CompositeData(
@@ -811,7 +811,7 @@ func genClassBoilerplate(
 		ctx.ptrType, /* GType */
 		"$"+mangleName(mangleOpts{
 			module: ctx.module,
-			class:  e.Name,
+			class:  className,
 			name:   "get_type",
 		}),
 		[]qbeil.TypedVar{},
@@ -849,7 +849,7 @@ func genClassBoilerplate(
 		privateOffset := ctx.il.Data(
 			qbeil.DataDef{
 				Linkage: qbeil.Linkage{},
-				VarName: e.Name + "_private_offset",
+				VarName: className + "_private_offset",
 			},
 			// gint
 			ctx.intType,
