@@ -284,7 +284,11 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 
 		switch lhsTy := lhsTy.(type) {
 		case *types.Class:
-			return genClassAccessByName(ctx, lhsTy.Module, lhsTy.Name, e)
+			mod := lhsTy.Module
+			if mod == "" {
+				mod = ctx.module
+			}
+			return genClassAccessByName(ctx, mod, lhsTy.Name, e)
 		case *types.Record:
 			// TODO: right now we just assume a module path, but we need to handle records too
 			// should be unreachable currently
@@ -910,11 +914,21 @@ func genUnionDef(ctx *ctx, e *parse.UnionDef) {
 
 func genClassAccessByName(ctx *ctx, module can.ModuleName, class string, expr *parse.RecordAccess) qbeil.Value {
 	assert.Neq(class, "", "unnamed class in class access not yet supported")
-	assert.Eq(module, "", "imported class not yet supported")
+	assert.Neq(module, "", "unnamed module of class", class)
 
-	ct := ctx.userTypes[class]
-	classTy, ok := ct.(qbeil.StructType)
-	assert.True(ok, "codegen: record access on non-struct type (type checker bug?)", ct, "from expr: ", expr)
+	var classTy qbeil.StructType
+	if module != ctx.module {
+		ilTy := ctx.ensureClassNameDeclared(module, class)
+		classTy = assert.Cast[qbeil.StructType](ilTy,
+			fmt.Sprintf("BUG codegen: IL type of %s.%s is not a StructType, but a %T", module, class, ilTy))
+	} else {
+		ct, ok := ctx.userTypes[class]
+		assert.True(ok, "codegen: record access on type with no declared IL type? class:",
+			class, "from expr:", expr)
+		classTy, ok = ct.(qbeil.StructType)
+		assert.True(ok, "codegen: record access on non-struct type (type checker bug?)",
+			ct, "from expr: ", expr)
+	}
 
 	fieldLayout, ok := classTy.Layouts[expr.Field]
 	if !ok {
@@ -1169,6 +1183,31 @@ func (ctx *ctx) ensureClassDeclared(t *types.Class) qbeil.AggregateType {
 	}
 
 	return ilTy
+}
+
+func (ctx *ctx) ensureClassNameDeclared(mod can.ModuleName, class string) qbeil.AggregateType {
+	if mod == ctx.module {
+		if ilTy, ok := ctx.userTypes[class]; ok {
+			return ilTy
+		}
+		panic(fmt.Sprintf("BUG local class %s.%s undeclared during codegen", mod, class))
+	}
+
+	ilTyName := string(mod) + "." + class
+	if ilTy, ok := ctx.userTypes[ilTyName]; ok {
+		return ilTy
+	}
+
+	module := assert.Get(ctx.allModules, mod,
+		"BUG codegen: encountered unresolved module", mod)
+	ts := assert.Get(module.Types, class,
+		"BUG unresolved imported type", mod, ".", class, "encountered during codegen")
+	st := assert.Cast[simplesub.SimpleType](ts,
+		"BUG codegen: encountered type scheme", mod, ".", class)
+	ty := assert.Cast[*types.Class](ctx.simplifyType(st),
+		"BUG codegen: encountered non-class type where a class is expected", mod, ".", class)
+
+	return ctx.ensureClassDeclared(ty)
 }
 
 // like [ctx.toILType] but converts class type to its full [qbeil.AggregateType] instead of a pointer type
