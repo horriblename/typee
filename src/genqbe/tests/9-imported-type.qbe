@@ -1,0 +1,18 @@
+type :Str = {l, l, }
+type :GObject = {l, l, l, }
+type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
+type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
+type :Record_1 = {l, }
+type :Record_2 = {l, }
+export function l $MainModule.foo(:Record_1 %f) {
+@start
+	%_tmp_1 =l add %f, 0
+	%_tmp_2 =l loadl %_tmp_1
+	ret %_tmp_2
+}
+export function l $MainModule.foo1(l %f) {
+@start
+	%_tmp_3 =l add %f, 32
+	%_tmp_4 =l loadl %_tmp_3
+	ret %_tmp_4
+}
