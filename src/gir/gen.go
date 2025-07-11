@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/linuxdeepin/go-gir/generator/gi"
 )
@@ -191,7 +193,14 @@ func (self *Generator) processEnumInfo(ei *gi.EnumInfo) {
 	p("(enum %s {\n", ei.Name())
 	for i, n := 0, ei.NumValue(); i < n; i++ {
 		val := ei.Value(i)
-		p("  %s:%d\n", snake_case_to_PascalCase(val.Name()), val.Value())
+		name := snake_case_to_PascalCase(val.Name())
+		// GIR enum names can start with digits because GTK_LICENSE_0BSD is a thing
+		rune0, _ := utf8.DecodeRuneInString(name)
+		if unicode.IsDigit(rune0) {
+			name = "_" + name
+		}
+
+		p("  %s:%d\n", name, val.Value())
 	}
 	p("})\n")
 }
