@@ -210,7 +210,7 @@ func (self *Generator) processConstantInfo(ci *gi.ConstantInfo) {
 	name := ci.Name()
 	if self.namespace == "Gdk" && strings.HasPrefix(name, "KEY_") {
 		// KEY_ constants maybe deserve special treatment?
-		p("(const Key_%s %s)\n", name[4:], ci.Value())
+		p("(set Key_%s %d)\n", name[4:], ci.Value())
 		return
 	}
 	var val string
