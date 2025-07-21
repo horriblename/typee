@@ -730,6 +730,8 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 			// parent_class
 			qbeil.SingleType(parentClass),
 		},
+		Align:   0,
+		Layouts: map[string]qbeil.FieldLayout{},
 	}
 	ctx.declareType(e.Name+"Class", classType)
 
