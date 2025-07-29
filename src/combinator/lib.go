@@ -1,6 +1,10 @@
 package combinator
 
-import "github.com/horriblename/typee/src/opt"
+import (
+	"errors"
+
+	"github.com/horriblename/typee/src/opt"
+)
 
 type Parser[I any, O any] func(I) (I, O, error)
 
@@ -221,5 +225,15 @@ func Map[I, O1, O2 any](parser Parser[I, O1], f func(O1) O2) Parser[I, O2] {
 		} else {
 			return rest, f(o1), nil
 		}
+	}
+}
+
+func TryIf[I, O any](cond bool, parser Parser[I, O]) Parser[I, O] {
+	return func(i I) (i0 I, o0 O, _ error) {
+		if cond {
+			return parser(i)
+		}
+		// TODO:: what to do with error?
+		return i0, o0, errors.New("condition failed, skipping parser")
 	}
 }
