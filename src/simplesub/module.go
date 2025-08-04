@@ -7,6 +7,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/parse"
 )
@@ -83,22 +84,28 @@ func typeTableToSymbolMap(mod can.ModuleName, program []parse.Expr, typesAst []p
 	for _, expr := range program {
 		switch e := expr.(type) {
 		case *parse.FuncDef:
-			symbols.Globals[e.Name] = assertType(typTable[e.ID()])
+			symbols.Globals[e.Name] = assert.Get(typTable, e.ID(),
+				fmt.Sprintf("function %s of ID %d is missing from type table", e.Name, e.ID()))
 
 		case *parse.Set:
-			symbols.Globals[e.Name] = assertType(typTable[e.Value.ID()])
+			symbols.Globals[e.Name] = assert.Get(typTable, e.Value.ID(),
+				fmt.Sprintf("function %s of ID %d is missing from type table", e.Name, e.Value.ID()))
 
 		case *parse.ObjectTypeDef:
-			symbols.Types[e.Name] = assertType(typTable[e.ID()])
+			symbols.Types[e.Name] = assert.Get(typTable, e.ID(),
+				fmt.Sprintf("function %s of ID %d is missing from type table", e.Name, e.ID()))
 
 		case *parse.UnionDef:
-			symbols.Types[e.Name] = assertType(typTable[e.ID()])
+			symbols.Types[e.Name] = assert.Get(typTable, e.ID(),
+				fmt.Sprintf("function %s of ID %d is missing from type table", e.Name, e.ID()))
 
 		case *parse.EnumDef:
-			symbols.Types[e.Name] = assertType(typTable[e.ID()])
+			symbols.Types[e.Name] = assert.Get(typTable, e.ID(),
+				fmt.Sprintf("function %s of ID %d is missing from type table", e.Name, e.ID()))
 
 		case *parse.TypeAlias:
-			symbols.Types[e.Name] = assertType(typTable[e.ID()])
+			symbols.Types[e.Name] = assert.Get(typTable, e.ID(),
+				fmt.Sprintf("function %s of ID %d is missing from type table", e.Name, e.ID()))
 
 		case *parse.Import:
 		default:
@@ -107,11 +114,4 @@ func typeTableToSymbolMap(mod can.ModuleName, program []parse.Expr, typesAst []p
 	}
 
 	return symbols, nil
-}
-
-func assertType(typ TypeScheme) TypeScheme {
-	if typ == nil {
-		panic("assertion failed: type should not be nil")
-	}
-	return typ
 }
