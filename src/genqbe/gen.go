@@ -829,11 +829,7 @@ func genClassBoilerplate(
 	ctx.il.Func(
 		qbeil.Linkage{Type: qbeil.Export},
 		ctx.ptrType, /* GType */
-		"$"+mangleName(mangleOpts{
-			module: ctx.module,
-			class:  className,
-			name:   "get_type",
-		}),
+		"$"+mangledClassTypeGetter(ctx.module, className),
 		[]qbeil.TypedVar{},
 	)
 

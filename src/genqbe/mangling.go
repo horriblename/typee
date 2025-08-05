@@ -30,3 +30,11 @@ func mangleName(m mangleOpts) string {
 	b.WriteString(strings.ReplaceAll(m.name, "_", "__"))
 	return b.String()
 }
+
+func mangledClassTypeGetter(module can.ModuleName, className string) string {
+	return mangleName(mangleOpts{
+		module: module,
+		class:  className,
+		name:   "get_type",
+	})
+}
