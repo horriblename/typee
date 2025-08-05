@@ -406,10 +406,11 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		return self.typeFunctionCall(expr)
 
 	case *parse.New:
-		if class, ok := self.types.Get(expr.Class).Unwrap(); ok {
-			return Func{[]SimpleType{}, class.instantiate(), false}, nil
+		class, err := self.lookupTypeName(expr.Class)
+		if err != nil {
+			return nil, err
 		}
-		return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, expr.Class)
+		return Func{[]SimpleType{}, class.instantiate(), false}, nil
 
 	case *parse.BoolLiteral:
 		return Primitive{PrimitiveBool}, nil
@@ -490,9 +491,9 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 
 	case *parse.EnumAccess:
 		// FIXME: uh, actually type check this pls
-		enum, ok := self.types.Get(expr.Enum).Unwrap()
-		if !ok {
-			return nil, fmt.Errorf("%w: %s", ErrUndefinedTypeName, expr.Enum)
+		enum, err := self.lookupTypeName(expr.Enum)
+		if err != nil {
+			return nil, err
 		}
 		enumTy := enum.instantiate()
 
@@ -1062,6 +1063,9 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 			if m, ok := self.imports[t.Module]; ok {
 				mod = m.Name
 				assert.Neq(mod, "", "imported module has empty module name?")
+				if _, ok := m.Types[t.Name]; !ok {
+					return nil, fmt.Errorf("%w: %s.%s", ErrUndefinedTypeName, mod, t.Name)
+				}
 			} else {
 				return nil, fmt.Errorf("%w module: %s", ErrUndefinedModule, t.Module)
 			}
@@ -1430,7 +1434,10 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 					return err
 				}
 			} else {
-				return fmt.Errorf("%w %s: %v", ErrMissingMethod, boundMember.Name, boundMember.Type)
+				return fmt.Errorf("%w %s: %v\nactual type: %v",
+					ErrMissingMethod, boundMember.Name, boundMember.Type,
+					ty,
+				)
 			}
 		}
 

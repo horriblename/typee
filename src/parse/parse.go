@@ -633,17 +633,13 @@ func symbol(in []lex.Token) ([]lex.Token, Expr, error) {
 		in = rest
 	}
 
-	sym, ok := lhs.(*Symbol)
-	if !ok {
-		// TODO: allow dot accessor followed by other accessors
-		return rest, lhs, nil
-	}
+	typeName, isTypeName := maybeRecordAccessToTypeName(lhs)
 
 	rest, accessor, err := combinator.Maybe(
 		combinator.Any(
 			methodAccess(lhs),
-			classConstructor(sym.Name),
-			enumAccess(sym.Name),
+			combinator.TryIf(isTypeName, classConstructor(typeName)),
+			combinator.TryIf(isTypeName, enumAccess(typeName)),
 		),
 	)(in)
 
@@ -681,6 +677,17 @@ func recordAccess(lhs Expr) combinator.Parser[[]lex.Token, Expr] {
 	}
 }
 
+func maybeRecordAccessToTypeName(lhs Expr) (_ TypeName, ok bool) {
+	if sym, ok := lhs.(*Symbol); ok {
+		return TypeName{Module: "", Name: sym.Name}, true
+	} else if acc, ok := lhs.(*RecordAccess); ok {
+		if mod, ok := acc.Record.(*Symbol); ok {
+			return TypeName{Module: mod.Name, Name: acc.Field}, true
+		}
+	}
+	return TypeName{}, false
+}
+
 func methodAccess(lhs Expr) combinator.Parser[[]lex.Token, Expr] {
 	return combinator.Map(
 		combinator.WithPrefix(hash, symbolName),
@@ -694,7 +701,7 @@ func methodAccess(lhs Expr) combinator.Parser[[]lex.Token, Expr] {
 	)
 }
 
-func classConstructor(class string) combinator.Parser[[]lex.Token, Expr] {
+func classConstructor(class TypeName) combinator.Parser[[]lex.Token, Expr] {
 	return combinator.Map(
 		combinator.WithPrefix(dot, kwNew),
 		func(struct{}) Expr {
@@ -706,7 +713,7 @@ func classConstructor(class string) combinator.Parser[[]lex.Token, Expr] {
 	)
 }
 
-func enumAccess(enum string) combinator.Parser[[]lex.Token, Expr] {
+func enumAccess(enum TypeName) combinator.Parser[[]lex.Token, Expr] {
 	return combinator.Map(
 		combinator.WithPrefix(doubleColon, symbolName),
 		func(key string) Expr {

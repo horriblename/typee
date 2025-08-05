@@ -180,7 +180,7 @@ type MethodAccess struct {
 
 type New struct {
 	id    int
-	Class string
+	Class TypeName
 }
 
 type UnionDef struct {
@@ -203,7 +203,7 @@ type EnumVariant struct {
 
 type EnumAccess struct {
 	id   int
-	Enum string
+	Enum TypeName
 	Key  string
 }
 

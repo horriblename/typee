@@ -383,7 +383,17 @@ func TestParse(t *testing.T) {
 			output: []Expr{&Form{
 				id: 3,
 				Children: []Expr{
-					&New{id: 2, Class: "Foo"},
+					&New{id: 2, Class: TypeName{"", "Foo"}},
+				},
+			}},
+		},
+		{
+			desc:  "construct imported type",
+			input: `(Foo.Bar.new)`,
+			output: []Expr{&Form{
+				id: 4,
+				Children: []Expr{
+					&New{id: 3, Class: TypeName{"Foo", "Bar"}},
 				},
 			}},
 		},
@@ -431,7 +441,16 @@ func TestParse(t *testing.T) {
 			input: "Foo::A",
 			output: []Expr{&EnumAccess{
 				id:   2,
-				Enum: "Foo",
+				Enum: TypeName{"", "Foo"},
+				Key:  "A",
+			}},
+		},
+		{
+			desc:  "imported enum access",
+			input: "Foo.Bar::A",
+			output: []Expr{&EnumAccess{
+				id:   3,
+				Enum: TypeName{"Foo", "Bar"},
 				Key:  "A",
 			}},
 		},
