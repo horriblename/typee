@@ -715,25 +715,7 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 		ctx.classInProcess = nil
 	}
 
-	// TODO: define GObjectClass
-	parentClass := assert.Get(ctx.userTypes, "GObjectClass", "undefined parent class type?")
-	if len(e.Supers) > 0 {
-		// TODO: what if all are interfaces
-		// TODO: generate imported types
-		parentClass = ctx.userTypes[e.Supers[0].String()+"Class"]
-	}
-
-	// TODO: name collision?
-	classType := qbeil.StructType{
-		Name: e.Name + "Class",
-		Fields: []qbeil.RepeatType{
-			// parent_class
-			qbeil.SingleType(parentClass),
-		},
-		Align:   0,
-		Layouts: map[string]qbeil.FieldLayout{},
-	}
-	ctx.declareType(e.Name+"Class", classType)
+	classType := ctx.ensureClassTypeDeclared(classTy)
 
 	private := qbeil.StructType{
 		Name: e.Name + "Private",
@@ -1206,6 +1188,38 @@ func (ctx *ctx) ensureClassNameDeclared(mod can.ModuleName, class string) qbeil.
 		"BUG codegen: encountered non-class type where a class is expected", mod, ".", class)
 
 	return ctx.ensureClassDeclared(ty)
+}
+
+func (ctx *ctx) ensureClassTypeDeclared(t *types.Class) qbeil.AggregateType {
+	ilTyName := string(t.Module) + "." + t.Name + "Class"
+	if tyClass, ok := ctx.userTypes[ilTyName]; ok {
+		return tyClass
+	}
+
+	parentClass := assert.Get(ctx.userTypes, "GObjectClass", "undefined parent class type?")
+	if len(t.Supers) > 0 {
+		// TODO: deal with interface-only supers
+		parentTy := assert.Cast[*types.Class](t.Supers[0], "BUG: super ", t.Supers[0],
+			" is not a class? NOTE: interface not yet supported")
+		if parentTy.Module == ctx.module {
+			return assert.Get(ctx.userTypes, parentTy.Name+"Class",
+				"BUG local class type", parentTy.Module, ".", parentTy.Name, " undeclared during codegen")
+		}
+
+		parentClass = ctx.ensureClassTypeDeclared(parentTy)
+	}
+
+	ct := qbeil.StructType{
+		Name: ilTyName,
+		Fields: []qbeil.RepeatType{
+			qbeil.SingleType(parentClass),
+		},
+		Align:   0,
+		Layouts: map[string]qbeil.FieldLayout{},
+	}
+	ctx.declareType(ilTyName, ct)
+
+	return ct
 }
 
 // like [ctx.toILType] but converts class type to its full [qbeil.AggregateType] instead of a pointer type
