@@ -103,6 +103,10 @@ func buildProgram(params buildParams) error {
 				errorf("%s: %s", e.Name, t[i].String())
 			case *parse.ObjectTypeDef:
 				errorf("%s: %s", e.Name, t[i].String())
+			case *parse.TypeAlias:
+				errorf("%s: %s", e.Name, t[i].String())
+			case *parse.EnumDef:
+				errorf("%s: %s", e.Name, t[i].String())
 			}
 		}
 	}
