@@ -513,7 +513,19 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 
 	switch callee := expr.Children[0].(type) {
 	case *parse.New:
-		classIL := ctx.userTypes[callee.Class]
+		ctorTy := ctx.simplify(callee.ID())
+		ctorFn := assert.Cast[*types.Func](ctorTy, "BUG: constructor not typed as a function?")
+
+		var classIL qbeil.AggregateType
+		switch classTy := ctorFn.Ret.(type) {
+		case *types.Class:
+			classIL = ctx.ensureClassDeclared(classTy)
+		case *types.Application:
+			classIL = ctx.ensureClassNameDeclared(classTy.Module, classTy.Name)
+		default:
+			panic("BUG: constructor returns a non Class or Application type? " + ctorFn.Ret.String())
+		}
+
 		bits, _ := ctx.sizeOf(classIL)
 
 		val := ctx.il.TempVar(false)
@@ -1148,6 +1160,8 @@ func (ctx *ctx) recordToILType(t *types.Record) qbeil.StructType {
 	return ilTyp
 }
 
+// ensures a class has a declared IL type, useful for imported types, which
+// we don't always want to include in the IL
 func (ctx *ctx) ensureClassDeclared(t *types.Class) qbeil.AggregateType {
 	if t.Module == ctx.module {
 		if ilTy, ok := ctx.userTypes[t.Name]; ok {
@@ -1159,12 +1173,13 @@ func (ctx *ctx) ensureClassDeclared(t *types.Class) qbeil.AggregateType {
 	ilTy := ctx.classToILType(t)
 	ilTyName := string(t.Module) + "." + t.Name
 	if _, ok := ctx.userTypes[ilTyName]; !ok {
-		ctx.userTypes[ilTyName] = ilTy
+		ctx.declareType(ilTyName, ilTy)
 	}
 
 	return ilTy
 }
 
+// like [ctx.ensureClassDeclared], but takes the type name
 func (ctx *ctx) ensureClassNameDeclared(mod can.ModuleName, class string) qbeil.AggregateType {
 	if mod == ctx.module {
 		if ilTy, ok := ctx.userTypes[class]; ok {
@@ -1191,22 +1206,16 @@ func (ctx *ctx) ensureClassNameDeclared(mod can.ModuleName, class string) qbeil.
 }
 
 func (ctx *ctx) ensureClassTypeDeclared(t *types.Class) qbeil.AggregateType {
-	ilTyName := string(t.Module) + "." + t.Name + "Class"
+	ilTyName := ilTypeName(t.Module, t.Name+"Class")
 	if tyClass, ok := ctx.userTypes[ilTyName]; ok {
 		return tyClass
 	}
 
-	parentClass := assert.Get(ctx.userTypes, "GObjectClass", "undefined parent class type?")
+	parentClass := assert.Get(ctx.userTypes, "GObjectClass", "undefined class type GObjectClass?")
 	if len(t.Supers) > 0 {
 		// TODO: deal with interface-only supers
-		parentTy := assert.Cast[*types.Class](t.Supers[0], "BUG: super ", t.Supers[0],
-			" is not a class? NOTE: interface not yet supported")
-		if parentTy.Module == ctx.module {
-			return assert.Get(ctx.userTypes, parentTy.Name+"Class",
-				"BUG local class type", parentTy.Module, ".", parentTy.Name, " undeclared during codegen")
-		}
-
-		parentClass = ctx.ensureClassTypeDeclared(parentTy)
+		parentTy := t.Supers[0]
+		parentClass = ctx.ensureClassTypeByNameDeclared(parentTy.Module, parentTy.Name)
 	}
 
 	ct := qbeil.StructType{
@@ -1220,6 +1229,28 @@ func (ctx *ctx) ensureClassTypeDeclared(t *types.Class) qbeil.AggregateType {
 	ctx.declareType(ilTyName, ct)
 
 	return ct
+}
+
+func (ctx *ctx) ensureClassTypeByNameDeclared(mod can.ModuleName, class string) qbeil.AggregateType {
+	ilTyName := ilTypeName(mod, class+"Class")
+	if ilTy, ok := ctx.userTypes[ilTyName]; ok {
+		return ilTy
+	}
+
+	module := assert.Get(ctx.allModules, mod,
+		"BUG codegen: encountered unresolved module", mod)
+	ts := assert.Get(module.Types, class,
+		"BUG unresolved imported type", mod, ".", class, "encountered during codegen")
+	st := assert.Cast[simplesub.SimpleType](ts,
+		"BUG codegen: encountered type scheme", mod, ".", class)
+	ty := assert.Cast[*types.Class](ctx.simplifyType(st),
+		"BUG codegen: encountered non-class type where a class is expected", mod, ".", class)
+
+	return ctx.ensureClassTypeDeclared(ty)
+}
+
+func ilTypeName(module can.ModuleName, class string) string {
+	return string(module) + "." + class
 }
 
 // like [ctx.toILType] but converts class type to its full [qbeil.AggregateType] instead of a pointer type
