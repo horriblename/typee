@@ -145,3 +145,8 @@ func (b *Builder) TempVar(global bool) Var {
 	b.tempID++
 	return Var{Global: global, Name: fmt.Sprintf("_tmp_%d", b.tempID)}
 }
+
+func (b *Builder) TempNamedVar(global bool, name string) Var {
+	b.tempID++
+	return Var{Global: global, Name: fmt.Sprintf("%s_%d", name, b.tempID)}
+}

@@ -346,7 +346,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		ilTy := ctx.toILType(ctx.simplify(e.ID()))
 		aggTy, ok := ilTy.(qbeil.StructType)
 		if !ok {
-			panic("Record literal has struct il type")
+			panic("BUG: Record literal is not a struct IL type but a " + aggTy.IL())
 		}
 		structBits, _ := ctx.sizeOf(ilTy)
 
@@ -359,11 +359,19 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 			offsetBits := layout.OffsetBits
 
 			fieldBits, _ := ctx.sizeOf(layout.Type)
-			fieldPtr := ctx.il.TempVar(false)
+			fieldPtr := ctx.il.TempNamedVar(false, "fieldPtr")
 			ctx.il.Arithmetic(fieldPtr.IL(), ctx.ptrType, "add", rcdPtr, qbeil.IntLiteral{Value: int64(offsetBits / 8)})
 
-			suffix := bitSizeToIntType(fieldBits).IL()
-			ctx.il.Command("store"+suffix, gen(ctx, field.Value), fieldPtr)
+			value := gen(ctx, field.Value)
+			intTy, ok := bitSizeToIntType(fieldBits)
+			if ok {
+				ctx.il.Command("store"+intTy.IL(), value, fieldPtr)
+			} else {
+				// TODO: gen returns a pointer right?
+				// TODO: memcpy is preferred for large sized copies
+				bytes := int64(bitsToBytesRoundedUp(fieldBits))
+				ctx.il.Command("blit", value, fieldPtr, qbeil.IntLiteral{Value: bytes})
+			}
 		}
 
 		return rcdPtr
@@ -1423,18 +1431,22 @@ func globals(program []parse.Expr) map[string]int {
 	return vars
 }
 
-func bitSizeToIntType(bits int) qbeil.Type {
+func bitSizeToIntType(bits int) (_ qbeil.Type, ok bool) {
 	switch bits {
 	case 8:
-		return qbeil.Byte
+		return qbeil.Byte, true
 	case 16:
-		return qbeil.HalfWord
+		return qbeil.HalfWord, true
 	case 32:
-		return qbeil.Word
+		return qbeil.Word, true
 	case 64:
-		return qbeil.Long
+		return qbeil.Long, true
 	}
-	panic(fmt.Sprintf("invalid bit size for int type: %d", bits))
+	return nil, false
+}
+
+func bitsToBytesRoundedUp(bits int) int {
+	return (bits + 7) / 8
 }
 
 func mapHas[K comparable, V any](m map[K]V, key K) bool {
