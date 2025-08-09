@@ -53,6 +53,7 @@ const (
 	Double                 // 64-bit float
 )
 
+// BaseType | ExtraType
 type ExtType interface {
 	extType()
 	IL() string

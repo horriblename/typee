@@ -363,14 +363,19 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 			ctx.il.Arithmetic(fieldPtr.IL(), ctx.ptrType, "add", rcdPtr, qbeil.IntLiteral{Value: int64(offsetBits / 8)})
 
 			value := gen(ctx, field.Value)
-			intTy, ok := bitSizeToIntType(fieldBits)
-			if ok {
-				ctx.il.Command("store"+intTy.IL(), value, fieldPtr)
-			} else {
+			ilTy := ctx.toILType(ctx.simplify(field.Value.ID()))
+			switch ilTy1 := ilTy.(type) {
+			case qbeil.BaseType:
+				ctx.il.Command("store"+ilTy1.IL(), value, fieldPtr)
+			case qbeil.ExtraType:
+				ctx.il.Command("store"+ilTy1.IL(), value, fieldPtr)
+			case qbeil.AggregateType: // struct or union type
 				// TODO: gen returns a pointer right?
 				// TODO: memcpy is preferred for large sized copies
 				bytes := int64(bitsToBytesRoundedUp(fieldBits))
 				ctx.il.Command("blit", value, fieldPtr, qbeil.IntLiteral{Value: bytes})
+			default:
+				panic(fmt.Sprintf("unexpected IL type: %v", ilTy))
 			}
 		}
 
@@ -654,13 +659,26 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 		ref := gen(ctx, expr.Children[1])
 		ilTy := ctx.toILType(dataTy)
 		bits, _ := ctx.sizeOf(ilTy)
-		stackPtr := ctx.il.TempVar(false)
 
-		ctx.il.Arithmetic(stackPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(bits / 8)})
-
-		ctx.il.Command("blit", ref, stackPtr, qbeil.IntLiteral{Value: int64(bits / 8)})
-
-		return stackPtr
+		switch ilTy1 := ilTy.(type) {
+		case qbeil.BaseType:
+			derefed := ctx.il.TempNamedVar(false, "derefed")
+			ctx.il.Arithmetic(derefed.IL(), ilTy1, "load"+ilTy1.IL(), ref)
+			return derefed
+		case qbeil.ExtraType:
+			// loadsh, loadsb, etc. returns long or word, can't use those
+			stackPtr := ctx.il.TempNamedVar(false, "derefedPtr")
+			ctx.il.Arithmetic(stackPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(bits / 8)})
+			ctx.il.Command("blit", ref, stackPtr, qbeil.IntLiteral{Value: int64(bits / 8)})
+			return stackPtr
+		case qbeil.AggregateType: // struct or union
+			stackPtr := ctx.il.TempNamedVar(false, "derefedPtr")
+			ctx.il.Arithmetic(stackPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(bits / 8)})
+			ctx.il.Command("blit", ref, stackPtr, qbeil.IntLiteral{Value: int64(bits / 8)})
+			return stackPtr
+		default:
+			panic(fmt.Sprintf("unknown IL type %v", ilTy))
+		}
 
 	default:
 		// TODO: local functions
