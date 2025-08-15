@@ -1,0 +1,14 @@
+{
+	"extra-types": {
+	},
+	"whitelist": {
+	},
+	"blacklist": {
+		"functions": [
+			"content_register_deserializer",
+			"content_register_serializer"
+		]
+	},
+	"method-blacklist": {
+	}
+}

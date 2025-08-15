@@ -1,9 +1,10 @@
 {
 	"extra-types": {
-		"Type": "Opaque"
+		"Type": "Opaque",
+		"Callback": "(Ref (fn [] {}))",
+        "ObjectClass": "Opaque"
 	},
 	"whitelist": {
-		"callbacks": []
 	},
 	"blacklist": {
 		"functions": [

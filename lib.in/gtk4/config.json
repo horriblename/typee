@@ -1,0 +1,11 @@
+{
+	"extra-types": {
+		"TempGHash": "Opaque"
+	},
+	"whitelist": {
+	},
+	"blacklist": {
+	},
+	"method-blacklist": {
+	}
+}

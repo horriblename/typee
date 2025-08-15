@@ -1,0 +1,10 @@
+{
+	"whitelist": {
+	},
+	"blacklist": {
+		"constants": ["LANGUAGE_INVALID"],
+		"functions": []
+	},
+	"method-blacklist": {
+	}
+}

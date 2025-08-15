@@ -1,17 +1,9 @@
 {
+    "extra-types": {
+        "TempGHash": "Opaque"
+    },
     "whitelist": {
         "objects": [],
-        "structs": [
-            "Error",
-            "Bytes",
-            "TimeVal",
-            "DateTime",
-            "TimeZone",
-            "KeyFile",
-            "Variant",
-            "VariantType",
-            "PollFD"
-        ],
         "functions": [
             "get_user_cache_dir",
             "get_user_config_dir",
@@ -54,6 +46,9 @@
             "get_data_as_bytes",
 
             "new_from_data"
+        ],
+        "Hook": [
+            "insert_sorted"
         ]
     }
 }
