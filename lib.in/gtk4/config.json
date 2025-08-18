@@ -5,6 +5,7 @@
 	"whitelist": {
 	},
 	"blacklist": {
+		"objects": ["CustomLayout"]
 	},
 	"method-blacklist": {
 	}
