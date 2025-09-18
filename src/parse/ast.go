@@ -646,3 +646,5 @@ func (self *EnumAccess) ChildNodes() []Expr   { return []Expr{} }
 func (self *TypeAlias) ChildNodes() []Expr    { return []Expr{} }
 func (self *ExternCall) ChildNodes() []Expr   { return append([]Expr{&self.Symbol}, self.Args...) }
 func (self *Import) ChildNodes() []Expr       { return []Expr{} }
+
+func (self *FuncDef) IsDeclaration() bool { return len(self.Body) == 0 }

@@ -253,7 +253,7 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	), rbracket)(in)
 	check(err)
 
-	in, body, err := combinator.Many(expr)(in)
+	in, body, err := combinator.Many0(expr)(in)
 	check(err)
 
 	in, _, err = rparen(in)
