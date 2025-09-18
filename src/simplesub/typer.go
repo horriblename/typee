@@ -470,6 +470,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		err = self.symbols.constrain(recordTy, ObjectType{
 			Module: "",
 			Name:   "",
+			// FIXME: what should Kind be?
 			Supers: []Application{},
 			Fields: []NamedMember{{
 				Name: expr.Field,
@@ -865,8 +866,12 @@ func (self *Typer) defClassMethods(classDef *parse.ObjectTypeDef) error {
 		// TODO: there might be a way to keep the "only top-levels can generalize" rule if
 		// we make methods "polymorphic except [a, b, c]", where a,b,c are explicitly written
 		// down generics at the class level
+		// Q1: can't we just add a flag to Variables that are top-level (therefore should be generalized)
+		// Q2: does the approach in Q1 cause problem when mixing class-bound generics and
+		//     method-bound generics? if that is the case we still only need 3 "levels"
 		if len(f.Func.Body) == 0 {
-			return fmt.Errorf("typing method %s.%s: %w", classDef.Name, f.Func.Name, ErrEmptyFuncBody)
+			// declaration, no body to type check
+			return nil
 		}
 		fn := parse.Fn{
 			Id:        f.Func.ID(),
@@ -987,6 +992,7 @@ func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Fo
 	err := self.symbols.constrain(oTy, ObjectType{
 		Module: "",
 		Name:   "",
+		// FIXME: what should kind be?
 		Supers: []Application{},
 		Fields: []NamedMember{},
 		Methods: []NamedMember{{
@@ -1586,6 +1592,7 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 		return ObjectType{
 			Module: t.Module,
 			Name:   t.Name,
+			Kind:   t.Kind,
 			Supers: t.Supers,
 			Fields: fun.Map(t.Fields, func(field NamedMember) NamedMember {
 				return NamedMember{

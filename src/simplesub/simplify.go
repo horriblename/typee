@@ -249,6 +249,7 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 
 		return &types.Class{
 			Module:  ty.Module,
+			Kind:    ty.Kind,
 			Name:    ty.Name,
 			Supers:  supers,
 			Fields:  fields,

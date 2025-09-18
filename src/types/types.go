@@ -53,6 +53,7 @@ type Enum struct {
 }
 type Class struct {
 	Module  can.ModuleName
+	Kind    parse.ObjectKind
 	Name    string
 	Supers  []*Application
 	Fields  map[string]Member

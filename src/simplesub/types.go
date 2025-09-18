@@ -386,8 +386,9 @@ func (self *symbols) glbUnnamedObjects(lhs ObjectType, rhs ObjectType) (Concrete
 	}
 
 	return ObjectType{
-		Module:  "",
-		Name:    "",
+		Module: "",
+		Name:   "",
+		// FIXME: what should kind be?
 		Supers:  []Application{},
 		Fields:  mapToNamedMembers(mergedFields),
 		Methods: mapToNamedMembers(mergedMeths),
@@ -627,8 +628,9 @@ func (self *symbols) lubUnnamedObjects(lhs ObjectType, rhs ObjectType) (Concrete
 		}
 	}
 	return ObjectType{
-		Module:  "",
-		Name:    "",
+		Module: "",
+		Name:   "",
+		// FIXME: what should Kind be?
 		Supers:  []Application{}, // TODO
 		Fields:  fields,
 		Methods: merged,
@@ -745,6 +747,7 @@ type Enum struct {
 }
 type ObjectType struct {
 	Module  can.ModuleName
+	Kind    parse.ObjectKind
 	Name    string
 	Supers  []Application
 	Fields  []NamedMember
