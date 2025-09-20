@@ -762,31 +762,45 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 	}
 	ctx.declareType(e.Name+"Private", private)
 
-	genClassBoilerplate(ctx, e.Name, class, classType, private)
+	genObjectTypeBoilerplate(ctx, objectTypeBoilerplateOpt{
+		className:     e.Name,
+		maybeInstance: class,
+		classType:     classType,
+		maybePrivate:  private,
+		ifaceParents:  []qbeil.AggregateType{},
+	})
+}
+
+type objectTypeBoilerplateOpt struct {
+	className     string
+	maybeInstance qbeil.AggregateType
+	classType     qbeil.AggregateType
+	maybePrivate  qbeil.AggregateType
+	ifaceParents  []qbeil.AggregateType
 }
 
 // generates functions that take care of initialization
 // e.g. function to retrieve the GType of the class
 // NOTE: only generate for types owned by ctx.module
-func genClassBoilerplate(
-	ctx *ctx,
-	className string,
-	class qbeil.AggregateType,
-	classType qbeil.AggregateType,
-	private qbeil.AggregateType,
-) {
-	classBits, _ := ctx.sizeOf(class)
-	classTypeBits, _ := ctx.sizeOf(classType)
-	privateBits, _ := ctx.sizeOf(private)
+func genObjectTypeBoilerplate(ctx *ctx, opt objectTypeBoilerplateOpt) {
+	classBits := 0
+	if opt.maybeInstance != nil {
+		classBits, _ = ctx.sizeOf(opt.maybeInstance)
+	}
+	classTypeBits, _ := ctx.sizeOf(opt.classType)
+	privateBits := 0
+	if opt.maybePrivate != nil {
+		privateBits, _ = ctx.sizeOf(opt.maybePrivate)
+	}
 
 	typeNameVar := ctx.il.StrData(qbeil.DataDef{
 		Linkage: qbeil.Linkage{},
 		VarName: mangleName(mangleOpts{
 			module: ctx.module,
-			class:  className,
+			class:  opt.className,
 			name:   "class_name",
 		}),
-	}, className)
+	}, opt.className)
 
 	// TODO: name collision?
 	typeIdVarOnce := ctx.il.Data(
@@ -794,7 +808,7 @@ func genClassBoilerplate(
 			Linkage: qbeil.Linkage{},
 			VarName: mangleName(mangleOpts{
 				module: ctx.module,
-				class:  className,
+				class:  opt.className,
 				name:   "_type_id__once",
 			}),
 			Align: 0,
@@ -805,19 +819,139 @@ func genClassBoilerplate(
 
 	typeIdTempVar := ctx.il.TempVar(false)
 
+	typeInfoConst := genConstDefineTypeInfo(ctx, typeInfoOpt{
+		className:    opt.className,
+		classSize:    uint16(classTypeBits / 8),
+		instanceSize: uint16(classBits / 8),
+	})
+
+	// get_type function
+
+	ctx.il.Func(
+		qbeil.Linkage{Type: qbeil.Export},
+		ctx.ptrType, /* GType */
+		"$"+mangledClassTypeGetter(ctx.module, opt.className),
+		[]qbeil.TypedVar{},
+	)
+
+	enterResultVar := ctx.il.TempVar(false)
+	ctx.il.Call(
+		&enterResultVar, // FIXME: boolean?
+		ctx.intType,
+		qbeil.Var{Global: true, Name: "g_once_init_enter"},
+		[]qbeil.ABITypedValue{{Type: ctx.ptrType, Value: typeIdVarOnce}},
+	)
+
+	for _, iface := range opt.ifaceParents {
+		// TODO: g_type_interface_add_prerequisite() interfaces
+		_ = iface
+	}
+
+	thenLabel := ctx.il.TempLabel("then_")
+	elseLabel := ctx.il.TempLabel("else_")
+	ctx.il.Jnz(enterResultVar, thenLabel, elseLabel)
+
+	ctx.il.InsertLabel(thenLabel)
+	{
+		ctx.il.Call(
+			&typeIdTempVar,
+			// return type is GType
+			ctx.ptrType,
+			qbeil.Var{Global: true, Name: "g_type_register_static"},
+			[]qbeil.ABITypedValue{
+				{Type: ctx.ptrType /* GType */, Value: qbeil.IntLiteral{Value: int64(G_TYPE_OBJECT)}},
+				{Type: ctx.ptrType, Value: typeNameVar},
+				{Type: ctx.ptrType, Value: typeInfoConst},
+				// TODO: this is an enum GTypeFlags, idk what type it should be
+				{Type: ctx.intType, Value: qbeil.IntLiteral{Value: 0}},
+			},
+		)
+
+		if privateBits > 0 {
+			privateOffset := ctx.il.Data(
+				qbeil.DataDef{
+					Linkage: qbeil.Linkage{},
+					VarName: opt.className + "_private_offset",
+				},
+				// gint
+				ctx.intType,
+				qbeil.IntLiteral{Value: 0},
+			)
+
+			privateOffsetTemp := ctx.il.TempVar(false)
+			ctx.il.Call(
+				&privateOffsetTemp,
+				ctx.intType,
+				qbeil.Var{Global: true, Name: "g_type_add_instance_private"},
+				[]qbeil.ABITypedValue{
+					{Type: ctx.ptrType /* GType */, Value: typeIdVarOnce},
+					{Type: ctx.ptrType /* size_t */, Value: qbeil.IntLiteral{Value: int64(privateBits / 8)}},
+				},
+			)
+
+			ctx.il.Command("store"+ctx.ptrType.IL(), privateOffsetTemp, privateOffset)
+		}
+
+		ctx.il.Call(nil, nil,
+			qbeil.Var{Global: true, Name: "g_once_init_leave"},
+			[]qbeil.ABITypedValue{
+				{Type: ctx.ptrType, Value: typeIdVarOnce},
+				{Type: ctx.ptrType, Value: typeIdTempVar},
+			},
+		)
+	}
+
+	ctx.il.InsertLabel(elseLabel)
+	ctx.il.Ret(typeIdVarOnce)
+
+	ctx.il.EndFunc()
+}
+
+
+type typeInfoOpt struct {
+	className    string
+	classSize    uint16
+	instanceSize uint16
+}
+
+// writes this block of C code:
+//
+//	static const GTypeInfo g_define_type_info = {
+//		.class_size = sizeof (FooIface),
+//
+//		.base_init = (GBaseInitFunc) NULL,
+//		.base_finalize = (GBaseFinalizeFunc) NULL,
+//
+//		/* interface types, classed types, instantiated types */
+//		.class_init = foo_default_init,
+//		.class_finalize = (GClassFinalizeFunc) NULL,
+//		.class_data = NULL,
+//
+//		/* instantiated types */
+//		.instance_size = 0,
+//		.n_preallocs = 0,
+//		.instance_init = (GInstanceInitFunc) NULL,
+//
+//		/* value handling */
+//		.value_table = NULL
+//	};
+func genConstDefineTypeInfo(
+	ctx *ctx,
+	typeInfo typeInfoOpt,
+) qbeil.Var {
 	typeInfoName := mangleName(mangleOpts{
 		module: ctx.module,
-		class:  className,
+		class:  typeInfo.className,
 		name:   "g_define_type_info",
 	})
-	typeInfoConst := ctx.il.CompositeData(
+	return ctx.il.CompositeData(
 		qbeil.DataDef{
 			Linkage: qbeil.Linkage{},
 			VarName: typeInfoName,
 			Align:   0,
 		},
 		qbeil.DataItems([]qbeil.TypedDataItem{
-			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: int64(classTypeBits / 8)}},
+			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: int64(typeInfo.classSize)}},
 
 			// padding TODO: pad automatically
 			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: 0}},
@@ -831,7 +965,7 @@ func genClassBoilerplate(
 			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
 			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
 
-			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: int64(classBits / 8)}},
+			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: int64(typeInfo.instanceSize)}},
 			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: 0}},
 
 			// padding TODO: pad automatically
@@ -843,81 +977,6 @@ func genClassBoilerplate(
 			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: 0}},
 		}),
 	)
-
-	// get_type function
-
-	ctx.il.Func(
-		qbeil.Linkage{Type: qbeil.Export},
-		ctx.ptrType, /* GType */
-		"$"+mangledClassTypeGetter(ctx.module, className),
-		[]qbeil.TypedVar{},
-	)
-
-	enterResultVar := ctx.il.TempVar(false)
-	ctx.il.Call(
-		&enterResultVar, // FIXME: boolean?
-		ctx.intType,
-		qbeil.Var{Global: true, Name: "g_once_init_enter"},
-		[]qbeil.ABITypedValue{{Type: ctx.ptrType, Value: typeIdVarOnce}},
-	)
-
-	thenLabel := ctx.il.TempLabel("then_")
-	elseLabel := ctx.il.TempLabel("else_")
-	ctx.il.Jnz(enterResultVar, thenLabel, elseLabel)
-
-	ctx.il.InsertLabel(thenLabel)
-
-	ctx.il.Call(
-		&typeIdTempVar,
-		// return type is GType
-		ctx.ptrType,
-		qbeil.Var{Global: true, Name: "g_type_register_static"},
-		[]qbeil.ABITypedValue{
-			{Type: ctx.ptrType /* GType */, Value: qbeil.IntLiteral{Value: int64(G_TYPE_OBJECT)}},
-			{Type: ctx.ptrType, Value: typeNameVar},
-			{Type: ctx.ptrType, Value: typeInfoConst},
-			// TODO: this is an enum GTypeFlags, idk what type it should be
-			{Type: ctx.intType, Value: qbeil.IntLiteral{Value: 0}},
-		},
-	)
-
-	if privateBits > 0 {
-		privateOffset := ctx.il.Data(
-			qbeil.DataDef{
-				Linkage: qbeil.Linkage{},
-				VarName: className + "_private_offset",
-			},
-			// gint
-			ctx.intType,
-			qbeil.IntLiteral{Value: 0},
-		)
-
-		privateOffsetTemp := ctx.il.TempVar(false)
-		ctx.il.Call(
-			&privateOffsetTemp,
-			ctx.intType,
-			qbeil.Var{Global: true, Name: "g_type_add_instance_private"},
-			[]qbeil.ABITypedValue{
-				{Type: ctx.ptrType /* GType */, Value: typeIdVarOnce},
-				{Type: ctx.ptrType /* size_t */, Value: qbeil.IntLiteral{Value: int64(privateBits / 8)}},
-			},
-		)
-
-		ctx.il.Command("store"+ctx.ptrType.IL(), privateOffsetTemp, privateOffset)
-	}
-
-	ctx.il.Call(nil, nil,
-		qbeil.Var{Global: true, Name: "g_once_init_leave"},
-		[]qbeil.ABITypedValue{
-			{Type: ctx.ptrType, Value: typeIdVarOnce},
-			{Type: ctx.ptrType, Value: typeIdTempVar},
-		},
-	)
-
-	ctx.il.InsertLabel(elseLabel)
-	ctx.il.Ret(typeIdVarOnce)
-
-	ctx.il.EndFunc()
 }
 
 func genUnionDef(ctx *ctx, e *parse.UnionDef) {
