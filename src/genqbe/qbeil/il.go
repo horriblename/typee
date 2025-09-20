@@ -27,16 +27,16 @@ type Builder struct {
 }
 
 type TypedVar struct {
-	typ  ABIType
-	name Var
+	Type ABIType
+	Name Var
 }
 
 func (v TypedVar) IL() string {
-	return fmt.Sprintf("%s %s", v.typ.IL(), v.name.IL())
+	return fmt.Sprintf("%s %s", v.Type.IL(), v.Name.IL())
 }
 
 func NewTypedVar(typ ABIType, name Var) TypedVar {
-	return TypedVar{typ: typ, name: name}
+	return TypedVar{Type: typ, Name: name}
 }
 
 func (b *Builder) indented(l []byte) error {
@@ -88,8 +88,12 @@ func (b *Builder) Label(name string) {
 	b.indented(fmt.Append(nil, "@", name, "\n"))
 }
 
-func (b *Builder) Ret(val Value) {
-	b.indented(fmt.Appendf(nil, "ret %s\n", val.IL()))
+func (b *Builder) Ret(maybeVal Value) {
+	if maybeVal == nil {
+		b.indented(fmt.Appendf(nil, "ret\n"))
+	} else {
+		b.indented(fmt.Appendf(nil, "ret %s\n", maybeVal.IL()))
+	}
 }
 func (b *Builder) Arithmetic(target string, ret Type, op string, args ...Value) {
 	retStr := ""

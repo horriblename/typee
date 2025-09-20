@@ -24,6 +24,7 @@ var ErrCannotCompilePolymorphicType = errors.New("tried to compile a polymorphic
 
 // copied from gtype.h, should replace with something less stupid
 const G_TYPE_OBJECT int = 20 << 2
+const G_TYPE_INTERFACE int = 2 << 2
 
 type ctx struct {
 	module can.ModuleName
@@ -99,13 +100,19 @@ func Gen(
 	//  GTypeClass* g_class;
 	// }
 	ctx.declareType("GObject", qbeil.StructType{
-		Name:    "GObject",
-		Layouts: map[string]qbeil.FieldLayout{},
+		Name: "GObject",
+		Layouts: map[string]qbeil.FieldLayout{
+			"g_class": {
+				Type:       ctx.ptrType,
+				OffsetBits: 0,
+			},
+		},
 		Fields: []qbeil.RepeatType{
 			qbeil.SingleType(ctx.ptrType),
 			qbeil.SingleType(ctx.intType),
 			qbeil.SingleType(ctx.ptrType),
 		},
+		Align: 0,
 	})
 
 	// struct _GTypeInfo {
@@ -771,6 +778,7 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 		maybeInstance: class,
 		classType:     classType,
 		maybePrivate:  private,
+		iface:         false,
 		ifaceParents:  []qbeil.AggregateType{},
 	})
 }
@@ -780,6 +788,7 @@ type objectTypeBoilerplateOpt struct {
 	maybeInstance qbeil.AggregateType
 	classType     qbeil.AggregateType
 	maybePrivate  qbeil.AggregateType
+	iface         bool
 	ifaceParents  []qbeil.AggregateType
 }
 
@@ -857,19 +866,31 @@ func genObjectTypeBoilerplate(ctx *ctx, opt objectTypeBoilerplateOpt) {
 
 	ctx.il.InsertLabel(thenLabel)
 	{
+		gtype := G_TYPE_OBJECT
+		if opt.iface {
+			gtype = G_TYPE_INTERFACE
+		}
 		ctx.il.Call(
 			&typeIdTempVar,
 			// return type is GType
 			ctx.ptrType,
 			qbeil.Var{Global: true, Name: "g_type_register_static"},
 			[]qbeil.ABITypedValue{
-				{Type: ctx.ptrType /* GType */, Value: qbeil.IntLiteral{Value: int64(G_TYPE_OBJECT)}},
+				{Type: ctx.ptrType /* GType */, Value: qbeil.IntLiteral{Value: int64(gtype)}},
 				{Type: ctx.ptrType, Value: typeNameVar},
 				{Type: ctx.ptrType, Value: typeInfoConst},
 				// TODO: this is an enum GTypeFlags, idk what type it should be
 				{Type: ctx.intType, Value: qbeil.IntLiteral{Value: 0}},
 			},
 		)
+
+		// register interfaces
+		// TODO: classes implementing interface?
+		addPrereq := qbeil.Var{Name: "g_type_interface_add_prerequisite", Global: true}
+		ctx.il.Call(nil, nil, addPrereq, []qbeil.ABITypedValue{
+			{Type: ctx.ptrType, Value: typeIdTempVar},
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: int64(G_TYPE_OBJECT)}},
+		})
 
 		if privateBits > 0 {
 			privateOffset := ctx.il.Data(
@@ -927,12 +948,129 @@ func genInterfaceDef(ctx *ctx, e *parse.ObjectTypeDef) {
 	if !ok {
 		panic(fmt.Sprintf("compiler bug: class definition yields non-class type %#v", ct))
 	}
-	ctx.ensureClassTypeDeclared(classTy)
-	genInterfaceMethodWrappers(ctx, e.Name, classTy)
+	ifaceType := ctx.ensureClassTypeDeclared(classTy)
+	genObjectTypeBoilerplate(ctx, objectTypeBoilerplateOpt{
+		className:     e.Name,
+		maybeInstance: nil,
+		classType:     ifaceType,
+		maybePrivate:  nil,
+		iface:         true,
+		ifaceParents:  []qbeil.AggregateType{},
+	})
+	genInterfaceMethodWrappers(ctx, e.Name, classTy, ifaceType)
 }
 
-func genInterfaceMethodWrappers(ctx *ctx, ifaceName string, ct *types.Class) {
-	// TODO
+// Generate functions that accept an object instance + args,
+// retrieves the vtable of the instance and calls the method with the args
+func genInterfaceMethodWrappers(
+	ctx *ctx,
+	ifaceName string,
+	ct *types.Class,
+	ifaceType qbeil.StructType,
+) {
+	for name, meth := range ct.Methods {
+		mangled := mangleName(mangleOpts{
+			module: ctx.module,
+			class:  ifaceName,
+			name:   name,
+		})
+		wrapperVar := qbeil.Var{Name: mangled, Global: true}
+		methTy := meth.Type.(*types.Func)
+		retTy := methTy.Ret
+		retIlTy := ctx.toABIType(retTy)
+		args := make([]qbeil.TypedVar, 0, len(methTy.Args))
+		args = append(args, qbeil.TypedVar{
+			Type: ctx.ptrType,
+			Name: qbeil.Var{Name: ctx.newTempName("self"), Global: false},
+		})
+		for _, arg := range methTy.Args {
+			args = append(args, qbeil.NewTypedVar(
+				ctx.toABIType(arg),
+				ctx.il.TempVar(false),
+			))
+		}
+
+		ctx.il.Func(qbeil.Linkage{}, retIlTy, wrapperVar.IL(), args)
+		{
+			argVals := fun.Map(args, func(v qbeil.TypedVar) qbeil.ABITypedValue {
+				return qbeil.ABITypedValue{
+					Type:  v.Type,
+					Value: v.Name,
+				}
+			})
+
+			self := argVals[0].Value
+
+			// g_type_interface_peek(((GTypeInstance*) ip)->g_class, gt)
+			gobjectType := assert.Cast[qbeil.StructType](ctx.userTypes["GObject"],
+				"BUG: Object qbe type is not a struct type")
+			// type_inst = ((GTypeInstance*) self)->g_class
+			type_inst := genGetStructPtrField(ctx, self, gobjectType, "g_class")
+
+			// ifaceType := animal_get_type()
+			ifaceTypeVar := qbeil.Var{Name: ctx.newTempName(ifaceName), Global: false}
+			getType := qbeil.Var{Name: mangledClassTypeGetter(ctx.module, ifaceName), Global: true}
+			ctx.il.Call(&ifaceTypeVar, ctx.ptrType, getType, []qbeil.ABITypedValue{})
+
+			vtableInst := qbeil.Var{Global: false, Name: ctx.newTempName(ct.Name + "_" + ifaceName + "_vtable")}
+			interfacePeek := qbeil.Var{Name: "g_type_interface_peek", Global: true}
+			// vtableInst = g_type_interface_peek(type_inst, ifaceTypeVar)
+			ctx.il.Call(&vtableInst, ctx.ptrType, interfacePeek, []qbeil.ABITypedValue{
+				{Type: ctx.ptrType, Value: type_inst},
+				{Type: ctx.ptrType, Value: ifaceTypeVar},
+			})
+
+			// should I check if the method is impl'd?
+			methPtr := genGetStructPtrField(ctx, vtableInst, ifaceType, name)
+			retVar := ctx.il.TempVar(false)
+			ctx.il.Call(&retVar, retIlTy, methPtr, argVals)
+
+			ctx.il.Ret(retVar)
+		}
+		ctx.il.EndFunc()
+	}
+}
+
+func genGetStructPtrField(
+	ctx *ctx,
+	structPtr qbeil.Value,
+	structTy qbeil.StructType,
+	field string,
+) qbeil.Var {
+	addr := qbeil.Var{
+		Name:   ctx.newTempName("ptrTo_" + structTy.Name + "." + field),
+		Global: false,
+	}
+	fieldLayout := assert.Get(structTy.Layouts, field)
+	ctx.il.Arithmetic(addr.IL(), ctx.ptrType, "add",
+		structPtr,
+		// FIXME: dividing 8 here looks extremely scuffed
+		qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits / 8)},
+	)
+
+	bt, ok := fieldLayout.Type.(qbeil.BaseType)
+	if !ok {
+		panic("TODO: getting non-base-typed struct field")
+	}
+
+	val := qbeil.Var{
+		Name:   ctx.newTempName("valOf_" + structTy.Name + "." + field),
+		Global: false,
+	}
+	switch bt {
+	case qbeil.Double:
+		ctx.il.Arithmetic(val.IL(), bt, "loadd", addr)
+	case qbeil.Long:
+		ctx.il.Arithmetic(val.IL(), bt, "loadl", addr)
+	case qbeil.Single:
+		ctx.il.Arithmetic(val.IL(), bt, "loads", addr)
+	case qbeil.Word:
+		ctx.il.Arithmetic(val.IL(), bt, "loadw", addr)
+	default:
+		panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", bt))
+	}
+
+	return val
 }
 
 type typeInfoOpt struct {
@@ -1034,39 +1172,12 @@ func genClassAccessByName(ctx *ctx, module can.ModuleName, class string, expr *p
 			ct, "from expr: ", expr)
 	}
 
-	fieldLayout, ok := classTy.Layouts[expr.Field]
-	if !ok {
-		panic(fmt.Sprintf("typer bug: tried to use a non-existent class field %s.%s", class, expr.Field))
-	}
-
-	// TODO: once we support structs, we can't just pass this around (can we?)
-	bt, ok := fieldLayout.Type.(qbeil.BaseType)
-	if !ok {
-		panic("unreachable: embedded struct types are currently invalid in classes")
-	}
-
-	// TODO: 32-bit system
-	addr := ctx.il.TempVar(false)
-	ctx.il.Arithmetic(addr.IL(), ctx.ptrType, "add",
+	return genGetStructPtrField(
+		ctx,
 		gen(ctx, expr.Record),
-		qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits)},
+		classTy,
+		expr.Field,
 	)
-
-	val := ctx.il.TempVar(false)
-	switch bt {
-	case qbeil.Double:
-		ctx.il.Arithmetic(val.IL(), bt, "loadd", addr)
-	case qbeil.Long:
-		ctx.il.Arithmetic(val.IL(), bt, "loadl", addr)
-	case qbeil.Single:
-		ctx.il.Arithmetic(val.IL(), bt, "loads", addr)
-	case qbeil.Word:
-		ctx.il.Arithmetic(val.IL(), bt, "loadw", addr)
-	default:
-		panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", bt))
-	}
-
-	return val
 }
 
 func genRecordAccess(ctx *ctx, expr *parse.RecordAccess, rcdTy qbeil.StructType) qbeil.Value {
@@ -1317,17 +1428,22 @@ func (ctx *ctx) ensureClassNameDeclared(mod can.ModuleName, class string) qbeil.
 	return ctx.ensureClassDeclared(ty)
 }
 
-func (ctx *ctx) ensureClassTypeDeclared(t *types.Class) qbeil.AggregateType {
+func (ctx *ctx) ensureClassTypeDeclared(t *types.Class) qbeil.StructType {
 	ilTyName := ilTypeName(t.Module, t.Name+"Class")
 	if tyClass, ok := ctx.userTypes[ilTyName]; ok {
-		return tyClass
+		return assert.Cast[qbeil.StructType](tyClass, "codegen: class/iface type is not a StructType?")
 	}
 
 	parentClass := assert.Get(ctx.userTypes, "GObjectClass", "undefined class type GObjectClass?")
-	if len(t.Supers) > 0 {
-		// TODO: deal with interface-only supers
-		parentTy := t.Supers[0]
-		parentClass = ctx.ensureClassTypeByNameDeclared(parentTy.Module, parentTy.Name)
+	for _, super := range t.Supers {
+		ty := assert.Cast[*types.Class](ctx.typeApplicationToType(super),
+			fmt.Sprintf("codegen: a super class of %s is not a class: %s.%s",
+				t.Name, super.Module, super.Name))
+		if ty.Kind == parse.Class {
+			parentClass = ctx.ensureClassTypeDeclared(ty)
+			// TODO: handle multiple class supers?
+			break
+		}
 	}
 
 	// virtual method pointers
@@ -1357,22 +1473,14 @@ func (ctx *ctx) ensureClassTypeDeclared(t *types.Class) qbeil.AggregateType {
 	return ct
 }
 
-func (ctx *ctx) ensureClassTypeByNameDeclared(mod can.ModuleName, class string) qbeil.AggregateType {
-	ilTyName := ilTypeName(mod, class+"Class")
-	if ilTy, ok := ctx.userTypes[ilTyName]; ok {
-		return ilTy
-	}
-
-	module := assert.Get(ctx.allModules, mod,
-		"BUG codegen: encountered unresolved module", mod)
-	ts := assert.Get(module.Types, class,
-		"BUG unresolved imported type", mod, ".", class, "encountered during codegen")
+func (ctx *ctx) typeApplicationToType(app *types.Application) types.Type {
+	module := assert.Get(ctx.allModules, app.Module,
+		"BUG codegen: encountered unresolved module", app.Module)
+	ts := assert.Get(module.Types, app.Name,
+		"BUG unresolved imported type", app.Module, ".", app.Name, "encountered during codegen")
 	st := assert.Cast[simplesub.SimpleType](ts,
-		"BUG codegen: encountered type scheme", mod, ".", class)
-	ty := assert.Cast[*types.Class](ctx.simplifyType(st),
-		"BUG codegen: encountered non-class type where a class is expected", mod, ".", class)
-
-	return ctx.ensureClassTypeDeclared(ty)
+		"BUG codegen: encountered type scheme", app.Module, ".", app.Name)
+	return ctx.simplifyType(st)
 }
 
 func ilTypeName(module can.ModuleName, class string) string {
