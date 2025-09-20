@@ -3,7 +3,7 @@ type :GObject = {l, l, l, }
 type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
 type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
 type :Foo = {:GObject, l, }
-type :MainModule.FooClass = {:GObjectClass, }
+type :MainModule.FooClass = {:GObjectClass, l, l, }
 type :FooPrivate = {}
 type :Record_1 = {}
 data $_tmp_1 = {b "foo"}
@@ -22,7 +22,7 @@ export function :Str $MainModule.Foo_name2(l %self) {
 }
 data $MainModule.Foo_class__name = {b "Foo", b 0}
 data $MainModule.Foo___type__id____once = {l 0}
-data $MainModule.Foo_g__define__type__info = {h 136, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 32, h 0, w 0, l 0, h 0, }
+data $MainModule.Foo_g__define__type__info = {h 152, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 32, h 0, w 0, l 0, h 0, }
 export function l $MainModule.Foo_get__type() {
 @start
 	%_tmp_6 =l call $g_once_init_enter (l $MainModule.Foo___type__id____once)

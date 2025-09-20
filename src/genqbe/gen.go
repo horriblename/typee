@@ -1244,13 +1244,27 @@ func (ctx *ctx) ensureClassTypeDeclared(t *types.Class) qbeil.AggregateType {
 		parentClass = ctx.ensureClassTypeByNameDeclared(parentTy.Module, parentTy.Name)
 	}
 
+	// virtual method pointers
+	// TODO: only include virtual methods
+	bits, _ := ctx.sizeOf(parentClass)
+	vtableOffset := bits
+	fields := []qbeil.RepeatType{qbeil.SingleType(parentClass)}
+	layouts := map[string]qbeil.FieldLayout{}
+	ptrBits, _ := ctx.sizeOf(ctx.ptrType)
+	for meth := range t.Methods {
+		fields = append(fields, qbeil.SingleType(ctx.ptrType))
+		layouts[meth] = qbeil.FieldLayout{
+			Type:       ctx.ptrType,
+			OffsetBits: vtableOffset,
+		}
+		vtableOffset += ptrBits
+	}
+
 	ct := qbeil.StructType{
-		Name: ilTyName,
-		Fields: []qbeil.RepeatType{
-			qbeil.SingleType(parentClass),
-		},
+		Name:    ilTyName,
+		Fields:  fields,
 		Align:   0,
-		Layouts: map[string]qbeil.FieldLayout{},
+		Layouts: layouts,
 	}
 	ctx.declareType(ilTyName, ct)
 
