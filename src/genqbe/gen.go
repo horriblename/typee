@@ -185,7 +185,11 @@ func Gen(
 	for _, expr := range typeDefsAst {
 		switch e := expr.(type) {
 		case *parse.ObjectTypeDef:
-			genClassDef(&ctx, e)
+			if e.Kind == parse.Class {
+				genClassDef(&ctx, e)
+			} else {
+				genInterfaceDef(&ctx, e)
+			}
 		case *parse.UnionDef:
 			genUnionDef(&ctx, e)
 		case *parse.EnumDef, *parse.TypeAlias:
@@ -907,6 +911,29 @@ func genObjectTypeBoilerplate(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	ctx.il.EndFunc()
 }
 
+func genInterfaceDef(ctx *ctx, e *parse.ObjectTypeDef) {
+	// dummy type
+	// interfaces are "opaque" and only passed around as pointers
+	// TODO: should names be canonicalized?
+	ctx.declareType(e.Name, qbeil.StructType{
+		Align:   0,
+		Name:    e.Name,
+		Layouts: map[string]qbeil.FieldLayout{},
+		Fields:  []qbeil.RepeatType{},
+	})
+
+	ct := ctx.simplify(e.ID())
+	classTy, ok := ct.(*types.Class)
+	if !ok {
+		panic(fmt.Sprintf("compiler bug: class definition yields non-class type %#v", ct))
+	}
+	ctx.ensureClassTypeDeclared(classTy)
+	genInterfaceMethodWrappers(ctx, e.Name, classTy)
+}
+
+func genInterfaceMethodWrappers(ctx *ctx, ifaceName string, ct *types.Class) {
+	// TODO
+}
 
 type typeInfoOpt struct {
 	className    string
@@ -1358,6 +1385,7 @@ func (ctx *ctx) classToILType(t *types.Class) qbeil.AggregateType {
 		// FIXME: generic support
 		panic("unnamed classes should be illegal at codegen")
 	}
+	assert.Eq(t.Kind, parse.Class, "BUG: classToILType called on an interface?")
 
 	ilName := t.Name
 	if t.Module != ctx.module {
