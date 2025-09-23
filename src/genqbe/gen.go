@@ -540,27 +540,29 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		ctorTy := ctx.simplify(callee.ID())
 		ctorFn := assert.Cast[*types.Func](ctorTy, "BUG: constructor not typed as a function?")
 
-		var classIL qbeil.AggregateType
-		switch classTy := ctorFn.Ret.(type) {
+		var classTy *types.Class
+		switch ty := ctorFn.Ret.(type) {
 		case *types.Class:
-			classIL = ctx.ensureClassDeclared(classTy)
+			classTy = ty
+			// classIL = ctx.ensureClassDeclared(ty)
 		case *types.Application:
-			classIL = ctx.ensureClassNameDeclared(classTy.Module, classTy.Name)
+			classTy = assert.Cast[*types.Class](ctx.typeApplicationToType(ty),
+				"codegen: new called with a non-class %s", ty)
+			// classIL = ctx.ensureClassDeclared(classTy)
 		default:
 			panic("BUG: constructor returns a non Class or Application type? " + ctorFn.Ret.String())
 		}
-
-		bits, _ := ctx.sizeOf(classIL)
 
 		val := ctx.il.TempVar(false)
 		ctx.il.Call(
 			&val,
 			ctx.ptrType,
-			qbeil.Var{Global: true, Name: "malloc"},
-			[]qbeil.ABITypedValue{{
-				Type:  ctx.intType,
-				Value: qbeil.IntLiteral{Value: int64(bits / 8)}},
-			},
+			qbeil.Var{Global: true, Name: mangleName(mangleOpts{
+				module: classTy.Module,
+				class:  classTy.Name,
+				name:   "new",
+			})},
+			[]qbeil.ABITypedValue{},
 		)
 
 		return val
@@ -765,6 +767,16 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 	}
 
 	classType := ctx.ensureClassTypeDeclared(classTy)
+	var parentClass *types.Class
+	if len(classTy.Supers) > 0 {
+		sup := classTy.Supers[0]
+		p := assert.Cast[*types.Class](ctx.typeApplicationToType(sup),
+			"codegen: a non-class/interface type %s.%s is used as a super of %s",
+			sup.Module, sup.Name, classTy.Name)
+		if p.Kind == parse.Class {
+			parentClass = p
+		}
+	}
 
 	private := qbeil.StructType{
 		Name: e.Name + "Private",
@@ -779,6 +791,7 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 		classType:     classType,
 		maybePrivate:  private,
 		iface:         false,
+		classParent:   parentClass,
 		ifaceParents:  []qbeil.AggregateType{},
 	})
 }
@@ -789,6 +802,7 @@ type objectTypeBoilerplateOpt struct {
 	classType     qbeil.AggregateType
 	maybePrivate  qbeil.AggregateType
 	iface         bool
+	classParent   *types.Class
 	ifaceParents  []qbeil.AggregateType
 }
 
@@ -796,6 +810,15 @@ type objectTypeBoilerplateOpt struct {
 // e.g. function to retrieve the GType of the class
 // NOTE: only generate for types owned by ctx.module
 func genObjectTypeBoilerplate(ctx *ctx, opt objectTypeBoilerplateOpt) {
+	genObjectTypeGetTypeFunc(ctx, opt)
+	if !opt.iface {
+		genClassConstructor(ctx, opt)
+		// TODO: skip new() on abstract classes
+		genClassNewFunc(ctx, opt)
+	}
+}
+
+func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	classBits := 0
 	if opt.maybeInstance != nil {
 		classBits, _ = ctx.sizeOf(opt.maybeInstance)
@@ -855,11 +878,6 @@ func genObjectTypeBoilerplate(ctx *ctx, opt objectTypeBoilerplateOpt) {
 		[]qbeil.ABITypedValue{{Type: ctx.ptrType, Value: typeIdVarOnce}},
 	)
 
-	for _, iface := range opt.ifaceParents {
-		// TODO: g_type_interface_add_prerequisite() interfaces
-		_ = iface
-	}
-
 	thenLabel := ctx.il.TempLabel("then_")
 	elseLabel := ctx.il.TempLabel("else_")
 	ctx.il.Jnz(enterResultVar, thenLabel, elseLabel)
@@ -885,12 +903,16 @@ func genObjectTypeBoilerplate(ctx *ctx, opt objectTypeBoilerplateOpt) {
 		)
 
 		// register interfaces
+		// TODO: interfaces extending other ifaces
+		if opt.iface {
+			addPrereq := qbeil.Var{Name: "g_type_interface_add_prerequisite", Global: true}
+			ctx.il.Call(nil, nil, addPrereq, []qbeil.ABITypedValue{
+				{Type: ctx.ptrType, Value: typeIdTempVar},
+				{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: int64(G_TYPE_OBJECT)}},
+			})
+		}
+
 		// TODO: classes implementing interface?
-		addPrereq := qbeil.Var{Name: "g_type_interface_add_prerequisite", Global: true}
-		ctx.il.Call(nil, nil, addPrereq, []qbeil.ABITypedValue{
-			{Type: ctx.ptrType, Value: typeIdTempVar},
-			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: int64(G_TYPE_OBJECT)}},
-		})
 
 		if privateBits > 0 {
 			privateOffset := ctx.il.Data(
@@ -929,6 +951,55 @@ func genObjectTypeBoilerplate(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	ctx.il.InsertLabel(elseLabel)
 	ctx.il.Ret(typeIdVarOnce)
 
+	ctx.il.EndFunc()
+}
+
+func genClassConstructor(ctx *ctx, opt objectTypeBoilerplateOpt) {
+	ctorName := mangleName(mangleOpts{
+		module: ctx.module,
+		class:  opt.className,
+		name:   "construct",
+	})
+	argObjType := qbeil.Var{Name: "object_type", Global: false}
+	ctx.il.Func(qbeil.Linkage{Type: qbeil.Export}, ctx.ptrType, "$"+ctorName, []qbeil.TypedVar{
+		{Type: /* GType */ ctx.ptrType, Name: argObjType},
+	})
+	obj := ctx.il.TempVar(false)
+	if opt.classParent == nil {
+		parentCtorName := "g_object_new"
+		ctx.il.Call(&obj, ctx.ptrType, qbeil.Var{Name: parentCtorName, Global: true}, []qbeil.ABITypedValue{
+			{Type: ctx.ptrType, Value: argObjType},
+			// TODO: install properties
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
+		})
+	} else {
+		parentCtorName := mangleName(mangleOpts{
+			module: opt.classParent.Module,
+			class:  opt.classParent.Name,
+			name:   "construct",
+		})
+		ctx.il.Call(&obj, ctx.ptrType, qbeil.Var{Name: parentCtorName, Global: true}, []qbeil.ABITypedValue{
+			{Type: ctx.ptrType, Value: argObjType},
+		})
+	}
+	ctx.il.Ret(obj)
+	ctx.il.EndFunc()
+}
+
+func genClassNewFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
+	newFuncName := mangleName(mangleOpts{
+		module: ctx.module,
+		class:  opt.className,
+		name:   "new",
+	})
+	getType := qbeil.Var{
+		Name:   mangledClassTypeGetter(ctx.module, opt.className),
+		Global: true,
+	}
+	ctx.il.Func(qbeil.Linkage{Type: qbeil.Export}, ctx.ptrType, "$"+newFuncName, []qbeil.TypedVar{})
+	typeVar := ctx.il.TempVar(false)
+	ctx.il.Call(&typeVar, ctx.ptrType, getType, []qbeil.ABITypedValue{})
+	ctx.il.Ret(typeVar)
 	ctx.il.EndFunc()
 }
 
@@ -1001,11 +1072,13 @@ func genInterfaceMethodWrappers(
 
 			self := argVals[0].Value
 
-			// g_type_interface_peek(((GTypeInstance*) ip)->g_class, gt)
-			gobjectType := assert.Cast[qbeil.StructType](ctx.userTypes["GObject"],
-				"BUG: Object qbe type is not a struct type")
-			// type_inst = ((GTypeInstance*) self)->g_class
-			type_inst := genGetStructPtrField(ctx, self, gobjectType, "g_class")
+			// FIXME: I'm still not sure if I need to pass self deref'd or just self
+			// to g_type_interface_peek
+			// // g_type_interface_peek(((GTypeInstance*) ip)->g_class, gt)
+			// gobjectType := assert.Cast[qbeil.StructType](ctx.userTypes["GObject"],
+			// 	"BUG: Object qbe type is not a struct type")
+			// // type_inst = ((GTypeInstance*) self)->g_class
+			// type_inst := genGetStructPtrField(ctx, self, gobjectType, "g_class")
 
 			// ifaceType := animal_get_type()
 			ifaceTypeVar := qbeil.Var{Name: ctx.newTempName(ifaceName), Global: false}
@@ -1016,7 +1089,7 @@ func genInterfaceMethodWrappers(
 			interfacePeek := qbeil.Var{Name: "g_type_interface_peek", Global: true}
 			// vtableInst = g_type_interface_peek(type_inst, ifaceTypeVar)
 			ctx.il.Call(&vtableInst, ctx.ptrType, interfacePeek, []qbeil.ABITypedValue{
-				{Type: ctx.ptrType, Value: type_inst},
+				{Type: ctx.ptrType, Value: self},
 				{Type: ctx.ptrType, Value: ifaceTypeVar},
 			})
 
