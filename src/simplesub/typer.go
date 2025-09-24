@@ -1421,18 +1421,16 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 			}
 			for _, sup := range ty.Supers {
 				// TODO: transient super type A <: B <: C
-				// TODO: canonical class names
-				// TODO: multiple supers
 				if sup.Module == bound.Module && sup.Name == bound.Name {
 					return nil
 				}
-				return fmt.Errorf("%w: %s.%s not a subclass of %s.%s",
-					ErrInvalidClassCoercion,
-					ty.Module,
-					ty.Name,
-					bound.Module,
-					bound.Name)
 			}
+			return fmt.Errorf("%w: %s.%s not a subclass of %s.%s",
+				ErrInvalidClassCoercion,
+				ty.Module,
+				ty.Name,
+				bound.Module,
+				bound.Name)
 		}
 		tyFields := namedMembersToMap(ty.Fields)
 		for _, boundField := range bound.Fields {
