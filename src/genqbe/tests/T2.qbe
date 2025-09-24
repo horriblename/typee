@@ -2,6 +2,7 @@ type :Str = {l, l, }
 type :GObject = {l, l, l, }
 type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
 type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
+type :GInterfaceInfo = {l, l, l, }
 type :Foo = {:GObject, l, }
 type :MainModule.FooClass = {:GObjectClass, l, l, }
 type :FooPrivate = {}
@@ -33,15 +34,25 @@ export function l $MainModule.Foo_get__type() {
 @else_8
 	ret $MainModule.Foo___type__id____once
 }
+export function l $MainModule.Foo_construct(l %object_type) {
+@start
+	%_tmp_9 =l call $g_object_new (l %object_type, l 0)
+	ret %_tmp_9
+}
+export function l $MainModule.Foo_new() {
+@start
+	%_tmp_10 =l call $MainModule.Foo_get__type ()
+	ret %_tmp_10
+}
 export function :Str $MainModule.bar(l %foo) {
 @start
-	%_tmp_9 =:Str call $MainModule.Foo_name (l %foo)
-	ret %_tmp_9
+	%_tmp_11 =:Str call $MainModule.Foo_name (l %foo)
+	ret %_tmp_11
 }
 export function w $main() {
 @start
-	%_tmp_11 =l call $malloc (l 32)
-	%_tmp_10 =:Str call $MainModule.bar (l %_tmp_11)
-	%_tmp_12 =l call $print (:Str %_tmp_10)
-	ret %_tmp_12
+	%_tmp_13 =l call $MainModule.Foo_new ()
+	%_tmp_12 =:Str call $MainModule.bar (l %_tmp_13)
+	%_tmp_14 =l call $print (:Str %_tmp_12)
+	ret %_tmp_14
 }

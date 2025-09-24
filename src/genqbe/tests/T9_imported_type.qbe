@@ -2,6 +2,7 @@ type :Str = {l, l, }
 type :GObject = {l, l, l, }
 type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
 type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
+type :GInterfaceInfo = {l, l, l, }
 type :Record_1 = {l, }
 type :Record_2 = {l, }
 type :Foo1 = {:GObject, l, l, }
@@ -13,7 +14,7 @@ export function l $MainModule.foo(:Record_1 %f) {
 }
 export function l $MainModule.foo1(l %f) {
 @start
-	%_tmp_3 =l add %f, 32
-	%_tmp_4 =l loadl %_tmp_3
-	ret %_tmp_4
+	%ptrTo_Foo1.x3 =l add %f, 4
+	%valOf_Foo1.x4 =l loadl %ptrTo_Foo1.x3
+	ret %valOf_Foo1.x4
 }
