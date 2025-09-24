@@ -2,6 +2,7 @@ package simplesub
 
 import (
 	"github.com/horriblename/typee/src/opt"
+	"github.com/horriblename/typee/src/parse"
 )
 
 var I64 = Int{true, 64}
@@ -20,20 +21,20 @@ func builtinVars() map[string]TypeScheme {
 	deref_t := freshVar()
 
 	_builtinVars = map[string]TypeScheme{
-		"+": intBinaryOptType,
-		"-": intBinaryOptType,
-		"*": intBinaryOptType,
-		"/": intBinaryOptType,
-		">": intComparatorType,
-		"<": intComparatorType,
-		"=": intComparatorType,
+		"+":     intBinaryOptType,
+		"-":     intBinaryOptType,
+		"*":     intBinaryOptType,
+		"/":     intBinaryOptType,
+		">":     intComparatorType,
+		"<":     intComparatorType,
+		"=":     intComparatorType,
 		"print": Func{Args: []SimpleType{Str{}}, Ret: Record{}},
-		"exit": Func{Args: []SimpleType{I64}, Ret: Bot{}},
+		"exit":  Func{Args: []SimpleType{I64}, Ret: Bot{}},
 		"at": PolymorphicType{
 			Body: Func{Args: []SimpleType{
-					SliceType{at_t},
-					I64,
-				}, Ret: at_t},
+				SliceType{at_t},
+				I64,
+			}, Ret: at_t},
 		},
 		"null": PolymorphicType{
 			Body: Ref{freshVar()},
@@ -55,6 +56,16 @@ func builtinVars() map[string]TypeScheme {
 }
 
 var _builtinTypes map[string]TypeScheme
+
+var gobject = ObjectType{
+	Module:  "",
+	Kind:    parse.Class,
+	Name:    "Object",
+	Supers:  []Application{},
+	Fields:  []NamedMember{},
+	Methods: []NamedMember{},
+	Top:     true,
+}
 
 func builtinTypes() map[string]TypeScheme {
 	if _builtinTypes != nil {
@@ -86,6 +97,7 @@ func builtinTypes() map[string]TypeScheme {
 			},
 			TypeParams: opt.Some([]uint{ref_t.Uid()}),
 		},
+		"Object": gobject,
 	}
 	return _builtinTypes
 }
