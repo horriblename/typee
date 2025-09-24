@@ -1035,7 +1035,7 @@ func genObjectTypeConstructor(ctx *ctx, opt objectTypeBoilerplateOpt) {
 		{Type: /* GType */ ctx.ptrType, Name: argObjType},
 	})
 	obj := ctx.il.TempVar(false)
-	if len(opt.parents) == 0 {
+	if len(opt.parents) == 0 || (opt.parents[0].Module == simplesub.StdModName && opt.parents[0].Name == "Object") {
 		parentCtorName := "g_object_new"
 		ctx.il.Call(&obj, ctx.ptrType, qbeil.Var{Name: parentCtorName, Global: true}, []qbeil.ABITypedValue{
 			{Type: ctx.ptrType, Value: argObjType},
@@ -1146,13 +1146,11 @@ func genInterfaceMethodWrappers(
 
 			self := argVals[0].Value
 
-			// FIXME: I'm still not sure if I need to pass self deref'd or just self
-			// to g_type_interface_peek
-			// // g_type_interface_peek(((GTypeInstance*) ip)->g_class, gt)
-			// gobjectType := assert.Cast[qbeil.StructType](ctx.userTypes["GObject"],
-			// 	"BUG: Object qbe type is not a struct type")
-			// // type_inst = ((GTypeInstance*) self)->g_class
-			// type_inst := genGetStructPtrField(ctx, self, gobjectType, "g_class")
+			// g_type_interface_peek(((GTypeInstance*) ip)->g_class, gt)
+			gobjectType := assert.Cast[qbeil.StructType](ctx.userTypes["GObject"],
+				"BUG: Object qbe type is not a struct type")
+			// type_inst = ((GTypeInstance*) self)->g_class
+			type_inst := genGetStructPtrField(ctx, self, gobjectType, "g_class")
 
 			// ifaceType := animal_get_type()
 			ifaceTypeVar := qbeil.Var{Name: ctx.newTempName(ifaceName), Global: false}
@@ -1163,7 +1161,7 @@ func genInterfaceMethodWrappers(
 			interfacePeek := qbeil.Var{Name: "g_type_interface_peek", Global: true}
 			// vtableInst = g_type_interface_peek(type_inst, ifaceTypeVar)
 			ctx.il.Call(&vtableInst, ctx.ptrType, interfacePeek, []qbeil.ABITypedValue{
-				{Type: ctx.ptrType, Value: self},
+				{Type: ctx.ptrType, Value: type_inst},
 				{Type: ctx.ptrType, Value: ifaceTypeVar},
 			})
 
