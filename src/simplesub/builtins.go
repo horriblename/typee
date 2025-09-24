@@ -1,6 +1,7 @@
 package simplesub
 
 import (
+	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
 )
@@ -57,8 +58,9 @@ func builtinVars() map[string]TypeScheme {
 
 var _builtinTypes map[string]TypeScheme
 
+var StdModName can.ModuleName = "Std"
 var gobject = ObjectType{
-	Module:  "",
+	Module:  StdModName,
 	Kind:    parse.Class,
 	Name:    "Object",
 	Supers:  []Application{},

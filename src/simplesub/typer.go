@@ -76,12 +76,23 @@ func NewTyper(mainModule can.ModuleName, debug bool) *Typer {
 	types.NewScope()
 	return &Typer{
 		symbols: symbols{
-			vars:        vars,
-			types:       types,
-			inferred:    map[int]TypeScheme{},
-			imports:     map[string]ModuleInfo{},
-			moduleCache: map[can.ModuleName]ModuleInfo{},
-			mainModule:  mainModule,
+			vars:     vars,
+			types:    types,
+			inferred: map[int]TypeScheme{},
+			imports:  map[string]ModuleInfo{},
+			moduleCache: map[can.ModuleName]ModuleInfo{
+				StdModName: {
+					Name:     StdModName,
+					Ast:      []parse.Expr{},
+					TypesAst: []parse.Expr{},
+					Types: map[string]TypeScheme{
+						"Object": gobject,
+					},
+					Globals:  map[string]TypeScheme{},
+					TypeTree: map[int]TypeScheme{},
+				},
+			},
+			mainModule: mainModule,
 		},
 		debug:      debug,
 		classScope: "",
@@ -707,7 +718,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 			}
 			modName = mod.Name
 		} else if s.Name == "Object" {
-			modName = ""
+			modName = StdModName
 		}
 
 		supers[i] = Application{
