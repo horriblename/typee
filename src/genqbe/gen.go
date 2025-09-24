@@ -182,6 +182,15 @@ func Gen(
 		},
 	})
 
+	ctx.declareType("GInterfaceInfo", qbeil.StructType{
+		Name: "GInterfaceInfo",
+		Fields: []qbeil.RepeatType{
+			qbeil.SingleType(ctx.ptrType), // init
+			qbeil.SingleType(ctx.ptrType), // finalize
+			qbeil.SingleType(ctx.ptrType), // data
+		},
+	})
+
 	for _, expr := range ast {
 		if fn, ok := expr.(*parse.FuncDef); ok && fn.Extern {
 			ctx.externs[fn.Name] = struct{}{}
@@ -767,16 +776,12 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 	}
 
 	classType := ctx.ensureClassTypeDeclared(classTy)
-	var parentClass *types.Class
-	if len(classTy.Supers) > 0 {
-		sup := classTy.Supers[0]
+	parents := fun.Map(classTy.Supers, func(sup *types.Application) *types.Class {
 		p := assert.Cast[*types.Class](ctx.typeApplicationToType(sup),
 			"codegen: a non-class/interface type %s.%s is used as a super of %s",
 			sup.Module, sup.Name, classTy.Name)
-		if p.Kind == parse.Class {
-			parentClass = p
-		}
-	}
+		return p
+	})
 
 	private := qbeil.StructType{
 		Name: e.Name + "Private",
@@ -791,8 +796,7 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 		classType:     classType,
 		maybePrivate:  private,
 		iface:         false,
-		classParent:   parentClass,
-		ifaceParents:  []qbeil.AggregateType{},
+		parents:       parents,
 	})
 }
 
@@ -802,8 +806,7 @@ type objectTypeBoilerplateOpt struct {
 	classType     qbeil.AggregateType
 	maybePrivate  qbeil.AggregateType
 	iface         bool
-	classParent   *types.Class
-	ifaceParents  []qbeil.AggregateType
+	parents       []*types.Class
 }
 
 // generates functions that take care of initialization
@@ -811,8 +814,8 @@ type objectTypeBoilerplateOpt struct {
 // NOTE: only generate for types owned by ctx.module
 func genObjectTypeBoilerplate(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	genObjectTypeGetTypeFunc(ctx, opt)
+	genObjectTypeConstructor(ctx, opt)
 	if !opt.iface {
-		genClassConstructor(ctx, opt)
 		// TODO: skip new() on abstract classes
 		genClassNewFunc(ctx, opt)
 	}
@@ -910,6 +913,35 @@ func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 				{Type: ctx.ptrType, Value: typeIdTempVar},
 				{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: int64(G_TYPE_OBJECT)}},
 			})
+		} else {
+			for _, parent := range opt.parents {
+				if parent.Kind != parse.Iface {
+					continue
+				}
+				// const static meower_info = GInterfaceInfo{...}
+				ifaceInfoData := genInterfaceInfo(ctx, gInterfaceInfo{
+					module:         parent.Module,
+					name:           parent.Name,
+					maybeInit:      qbeil.Var{},
+					maybeFinalize:  qbeil.Var{},
+					maybeIfaceData: qbeil.Var{},
+				})
+
+				typeInst := ctx.il.TempVar(false)
+				typeGetter := qbeil.Var{
+					Global: false,
+					Name:   mangledClassTypeGetter(parent.Module, parent.Name),
+				}
+				ctx.il.Call(&typeInst, ctx.ptrType, typeGetter, []qbeil.ABITypedValue{})
+
+				// g_type_add_interface_static (cat_type_id, TYPE_MEOWER, &meower_info);
+				addIface := qbeil.Var{Name: "g_type_add_interface_static", Global: true}
+				ctx.il.Call(nil, nil, addIface, []qbeil.ABITypedValue{
+					{Type: ctx.ptrType, Value: typeIdTempVar},
+					{Type: ctx.ptrType, Value: typeInst},
+					{Type: ctx.ptrType, Value: ifaceInfoData},
+				})
+			}
 		}
 
 		// TODO: classes implementing interface?
@@ -954,7 +986,45 @@ func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	ctx.il.EndFunc()
 }
 
-func genClassConstructor(ctx *ctx, opt objectTypeBoilerplateOpt) {
+type gInterfaceInfo struct {
+	module         can.ModuleName
+	name           string
+	maybeInit      qbeil.DataItem
+	maybeFinalize  qbeil.DataItem
+	maybeIfaceData qbeil.DataItem
+}
+
+// generates GInterfaceInfo
+func genInterfaceInfo(ctx *ctx, opt gInterfaceInfo) qbeil.Var {
+	// TODO: also take class name (+interface name) for mangling
+	if opt.maybeInit == nil {
+		opt.maybeInit = qbeil.IntLiteral{Value: 0}
+	}
+	if opt.maybeFinalize == nil {
+		opt.maybeFinalize = qbeil.IntLiteral{Value: 0}
+	}
+	if opt.maybeIfaceData == nil {
+		opt.maybeIfaceData = qbeil.IntLiteral{Value: 0}
+	}
+	name := mangleName(mangleOpts{
+		module: opt.module,
+		class:  opt.name,
+		name:   "iface_info",
+	})
+	ctx.il.CompositeData(qbeil.DataDef{
+		Linkage: qbeil.Linkage{},
+		VarName: name,
+		Align:   0,
+	}, qbeil.DataItems([]qbeil.TypedDataItem{
+		{Type: ctx.ptrType, Value: opt.maybeInit},
+		{Type: ctx.ptrType, Value: opt.maybeFinalize},
+		{Type: ctx.ptrType, Value: opt.maybeIfaceData},
+	}))
+
+	return qbeil.Var{Global: true, Name: name}
+}
+
+func genObjectTypeConstructor(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	ctorName := mangleName(mangleOpts{
 		module: ctx.module,
 		class:  opt.className,
@@ -965,7 +1035,7 @@ func genClassConstructor(ctx *ctx, opt objectTypeBoilerplateOpt) {
 		{Type: /* GType */ ctx.ptrType, Name: argObjType},
 	})
 	obj := ctx.il.TempVar(false)
-	if opt.classParent == nil {
+	if len(opt.parents) == 0 {
 		parentCtorName := "g_object_new"
 		ctx.il.Call(&obj, ctx.ptrType, qbeil.Var{Name: parentCtorName, Global: true}, []qbeil.ABITypedValue{
 			{Type: ctx.ptrType, Value: argObjType},
@@ -974,8 +1044,9 @@ func genClassConstructor(ctx *ctx, opt objectTypeBoilerplateOpt) {
 		})
 	} else {
 		parentCtorName := mangleName(mangleOpts{
-			module: opt.classParent.Module,
-			class:  opt.classParent.Name,
+			// FIXME: check not interface
+			module: opt.parents[0].Module,
+			class:  opt.parents[0].Name,
 			name:   "construct",
 		})
 		ctx.il.Call(&obj, ctx.ptrType, qbeil.Var{Name: parentCtorName, Global: true}, []qbeil.ABITypedValue{
@@ -1026,7 +1097,10 @@ func genInterfaceDef(ctx *ctx, e *parse.ObjectTypeDef) {
 		classType:     ifaceType,
 		maybePrivate:  nil,
 		iface:         true,
-		ifaceParents:  []qbeil.AggregateType{},
+		parents: fun.Map(classTy.Supers, func(app *types.Application) *types.Class {
+			return assert.Cast[*types.Class](ctx.typeApplicationToType(app),
+				"codegen: super %s.%s is not a class", app.Module, app.Name)
+		}),
 	})
 	genInterfaceMethodWrappers(ctx, e.Name, classTy, ifaceType)
 }
@@ -1093,12 +1167,19 @@ func genInterfaceMethodWrappers(
 				{Type: ctx.ptrType, Value: ifaceTypeVar},
 			})
 
-			// should I check if the method is impl'd?
-			methPtr := genGetStructPtrField(ctx, vtableInst, ifaceType, name)
-			retVar := ctx.il.TempVar(false)
-			ctx.il.Call(&retVar, retIlTy, methPtr, argVals)
+			thenLabel := ctx.il.TempLabel("then_")
+			elseLabel := ctx.il.TempLabel("else_")
+			ctx.il.Jnz(vtableInst, thenLabel, elseLabel)
+			{
+				ctx.il.InsertLabel(thenLabel)
+				methPtr := genGetStructPtrField(ctx, vtableInst, ifaceType, name)
+				retVar := ctx.il.TempVar(false)
+				ctx.il.Call(&retVar, retIlTy, methPtr, argVals)
+				ctx.il.Ret(retVar)
+			}
 
-			ctx.il.Ret(retVar)
+			ctx.il.InsertLabel(elseLabel)
+			ctx.il.Ret(qbeil.IntLiteral{Value: 0})
 		}
 		ctx.il.EndFunc()
 	}
@@ -1375,7 +1456,7 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 		}
 
 		elTy := ctx.toILType(t.Type)
-		name := ctx.newTempName(fmt.Sprintf("_array"))
+		name := ctx.newTempName("_array")
 		ilTyp := qbeil.StructType{
 			Align:   0,
 			Name:    name,
@@ -1582,15 +1663,10 @@ func (ctx *ctx) classToILType(t *types.Class) qbeil.AggregateType {
 		// TODO: assert super is class or something
 		// TODO: multi inheritence
 		sup := t.Supers[0]
-		supMod := assert.Get(ctx.allModules, sup.Module,
-			"BUG encountered unresolved module", sup.Module, "during codegen")
-		supTs := assert.Get(supMod.Types, sup.Name,
-			"BUG unresolved imported type", sup.Module, ".", sup.Name, "encountered during codegen")
-		supSt := assert.Cast[simplesub.SimpleType](supTs,
-			"BUG encountered type scheme super", sup.Module, ".", sup.Name, "during codegen")
-		supTy := assert.Cast[*types.Class](ctx.simplifyType(supSt),
+		supTy := ctx.typeApplicationToType(t.Supers[0])
+		supClass := assert.Cast[*types.Class](supTy,
 			"BUG encountered non-class super type", sup.Module, ".", sup.Name, "during codegen")
-		classParent = ctx.ensureClassDeclared(supTy) // TODO
+		classParent = ctx.ensureClassDeclared(supClass) // TODO
 	} else if !t.Top {
 		classParent = assert.Get(ctx.userTypes, "GObject", "BUG type Object not defined?")
 	}
