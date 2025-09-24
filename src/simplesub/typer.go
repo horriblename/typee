@@ -698,6 +698,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 
 	supers := make([]Application, len(classDef.Supers))
 	for i, s := range classDef.Supers {
+		// TODO: use parseType to "resolve" type names
 		modName := self.mainModule
 		if s.Module != "" {
 			mod, ok := self.imports[s.Module]
@@ -705,6 +706,8 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 				return nil, fmt.Errorf("%w: %s", ErrUndefinedModule, s.Module)
 			}
 			modName = mod.Name
+		} else if s.Name == "Object" {
+			modName = ""
 		}
 
 		supers[i] = Application{
