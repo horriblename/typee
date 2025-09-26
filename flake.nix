@@ -19,7 +19,6 @@
           overlays = [self.overlays.default];
         }
     );
-    goFixedVersion = "1.23.2";
   in {
     overlays = {
       default = final: _prev: {
@@ -28,14 +27,6 @@
           source = inputs.go-sumtype;
           version = "master";
         };
-        go123 = final.go_1_22.overrideAttrs (old: {
-          version = goFixedVersion;
-          src = final.runCommand "gowasi-version-hack" {} ''
-            mkdir -p $out
-            echo "go-${goFixedVersion}" > $out/VERSION
-            cp -vrf ${inputs.go123}/* $out
-          '';
-        });
       };
     };
 
@@ -48,13 +39,17 @@
     in {
       default = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [
-          go_1_23
+          go
+          pkg-config
           go-sumtype
           qbe
 
           pkg-config
           gobject-introspection
           glib
+
+          gtk4
+          gdk-pixbuf
         ];
         hardeningDisable = ["fortify" "fortify3"];
       };
