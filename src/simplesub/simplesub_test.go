@@ -945,6 +945,33 @@ func TestTypeProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc: "Std alias works in imported module",
+			input: `
+				(import TestModule.ImportedStdAlias)
+				(def doNothing (ImportedStdAlias.O Int) [x] 0)
+				; O is aliased to Object, this should work:
+				(def main [] (doNothing (Object.new)))
+			`,
+			typ: []types.Type{
+				&types.Func{
+					Args: []types.Type{
+						&types.Application{
+							Module: "TestModule.ImportedStdAlias",
+							Name:   "O",
+							Params: []types.Type{},
+						},
+					},
+					Ret:    &tI64,
+					Method: false,
+				},
+				&types.Func{
+					Args:   []types.Type{},
+					Ret:    &tI64,
+					Method: false,
+				},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

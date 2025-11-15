@@ -108,10 +108,6 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[can.Modu
 	}
 
 	self.inferred = map[int]TypeScheme{}
-	self.imports = map[string]ModuleInfo{
-		string(StdModName): assert.Get(self.moduleCache, StdModName,
-			"BUG Std missing; moduleCache not set up correctly?"),
-	}
 
 	t, typesAst, err := self.typeProgram(program)
 	if err != nil {
@@ -135,7 +131,11 @@ func (self *Typer) typeProgram(program []parse.Expr) (_ []TypeScheme, typesAst [
 	// 5. iterate through top-level nodes generating fresh type vars for each top level non-type-def node.
 	// 6. walk the AST, inferring types of all expressions
 	importCount := 0
-	self.imports = map[string]ModuleInfo{}
+	// FIXME: kinda confusing where to reset imports (and other per-module state)
+	self.imports = map[string]ModuleInfo{
+		string(StdModName): assert.Get(self.moduleCache, StdModName,
+			"BUG Std missing; moduleCache not set up correctly?"),
+	}
 	for i, expr := range program {
 		expr, ok := expr.(*parse.Import)
 		if !ok {

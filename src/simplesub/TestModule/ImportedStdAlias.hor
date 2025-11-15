@@ -1,0 +1,2 @@
+; Std alias works in imported module
+(type O Std.Object)
