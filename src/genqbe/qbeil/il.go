@@ -47,15 +47,15 @@ func (b *Builder) indented(l []byte) error {
 }
 
 // ret can be nil
-func (b *Builder) Func(linkage Linkage, ret ABIType, name string, args []TypedVar) error {
+func (b *Builder) Func(linkage Linkage, maybeRet ABIType, name string, args []TypedVar) error {
 	linkageStr := linkage.String()
 	if linkageStr != "" {
 		linkageStr += " "
 	}
 
 	returnType := ""
-	if ret != nil {
-		returnType = ret.IL() + " "
+	if maybeRet != nil {
+		returnType = maybeRet.IL() + " "
 	}
 
 	err := b.indented(fmt.Appendf(nil, "%sfunction %s%s(", linkageStr, returnType, name))

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -775,7 +776,7 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 		ctx.classInProcess = nil
 	}
 
-	classType := ctx.ensureClassTypeDeclared(classTy)
+	classType := ctx.ensureObjectTypeDeclared(classTy)
 	parents := fun.Map(classTy.Supers, func(sup *types.Application) *types.Class {
 		p := assert.Cast[*types.Class](ctx.typeApplicationToType(sup),
 			"codegen: a non-class/interface type %s.%s is used as a super of %s",
@@ -791,28 +792,32 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 	ctx.declareType(e.Name+"Private", private)
 
 	genObjectTypeBoilerplate(ctx, objectTypeBoilerplateOpt{
-		className:     e.Name,
-		maybeInstance: class,
-		classType:     classType,
-		maybePrivate:  private,
-		iface:         false,
-		parents:       parents,
+		class:             classTy,
+		maybeInstanceType: class,
+		classType:         classType,
+		maybePrivate:      private,
+		iface:             false,
+		parents:           parents,
 	})
 }
 
 type objectTypeBoilerplateOpt struct {
-	className     string
-	maybeInstance qbeil.AggregateType
-	classType     qbeil.AggregateType
-	maybePrivate  qbeil.AggregateType
-	iface         bool
-	parents       []*types.Class
+	class             *types.Class
+	maybeInstanceType qbeil.AggregateType
+	classType         qbeil.AggregateType
+	maybePrivate      qbeil.AggregateType
+	iface             bool // TODO: remove, use class.Kind instead
+	parents           []*types.Class
 }
 
 // generates functions that take care of initialization
 // e.g. function to retrieve the GType of the class
 // NOTE: only generate for types owned by ctx.module
 func genObjectTypeBoilerplate(ctx *ctx, opt objectTypeBoilerplateOpt) {
+	if !opt.iface {
+		genClassInitializeIfacesFuncs(ctx, opt.class, opt.parents)
+	}
+
 	genObjectTypeGetTypeFunc(ctx, opt)
 	genObjectTypeConstructor(ctx, opt)
 	if !opt.iface {
@@ -823,8 +828,8 @@ func genObjectTypeBoilerplate(ctx *ctx, opt objectTypeBoilerplateOpt) {
 
 func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	classBits := 0
-	if opt.maybeInstance != nil {
-		classBits, _ = ctx.sizeOf(opt.maybeInstance)
+	if opt.maybeInstanceType != nil {
+		classBits, _ = ctx.sizeOf(opt.maybeInstanceType)
 	}
 	classTypeBits, _ := ctx.sizeOf(opt.classType)
 	privateBits := 0
@@ -836,10 +841,10 @@ func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 		Linkage: qbeil.Linkage{},
 		VarName: mangleName(mangleOpts{
 			module: ctx.module,
-			class:  opt.className,
+			class:  opt.class.Name,
 			name:   "class_name",
 		}),
-	}, opt.className)
+	}, opt.class.Name)
 
 	// TODO: name collision?
 	typeIdVarOnce := ctx.il.Data(
@@ -847,7 +852,7 @@ func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 			Linkage: qbeil.Linkage{},
 			VarName: mangleName(mangleOpts{
 				module: ctx.module,
-				class:  opt.className,
+				class:  opt.class.Name,
 				name:   "_type_id__once",
 			}),
 			Align: 0,
@@ -859,7 +864,7 @@ func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	typeIdTempVar := ctx.il.TempVar(false)
 
 	typeInfoConst := genConstDefineTypeInfo(ctx, typeInfoOpt{
-		className:    opt.className,
+		className:    opt.class.Name,
 		classSize:    uint16(classTypeBits / 8),
 		instanceSize: uint16(classBits / 8),
 	})
@@ -869,7 +874,7 @@ func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	ctx.il.Func(
 		qbeil.Linkage{Type: qbeil.Export},
 		ctx.ptrType, /* GType */
-		"$"+mangledClassTypeGetter(ctx.module, opt.className),
+		"$"+mangledClassTypeGetter(ctx.module, opt.class.Name),
 		[]qbeil.TypedVar{},
 	)
 
@@ -915,32 +920,9 @@ func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 			})
 		} else {
 			for _, parent := range opt.parents {
-				if parent.Kind != parse.Iface {
-					continue
+				if parent.Kind == parse.Iface {
+					genObjectTypeIfaceInitFunc(ctx, typeIdTempVar, parent)
 				}
-				// const static meower_info = GInterfaceInfo{...}
-				ifaceInfoData := genInterfaceInfo(ctx, gInterfaceInfo{
-					module:         parent.Module,
-					name:           parent.Name,
-					maybeInit:      qbeil.Var{},
-					maybeFinalize:  qbeil.Var{},
-					maybeIfaceData: qbeil.Var{},
-				})
-
-				typeInst := ctx.il.TempVar(false)
-				typeGetter := qbeil.Var{
-					Global: false,
-					Name:   mangledClassTypeGetter(parent.Module, parent.Name),
-				}
-				ctx.il.Call(&typeInst, ctx.ptrType, typeGetter, []qbeil.ABITypedValue{})
-
-				// g_type_add_interface_static (cat_type_id, TYPE_MEOWER, &meower_info);
-				addIface := qbeil.Var{Name: "g_type_add_interface_static", Global: true}
-				ctx.il.Call(nil, nil, addIface, []qbeil.ABITypedValue{
-					{Type: ctx.ptrType, Value: typeIdTempVar},
-					{Type: ctx.ptrType, Value: typeInst},
-					{Type: ctx.ptrType, Value: ifaceInfoData},
-				})
 			}
 		}
 
@@ -950,7 +932,7 @@ func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 			privateOffset := ctx.il.Data(
 				qbeil.DataDef{
 					Linkage: qbeil.Linkage{},
-					VarName: opt.className + "_private_offset",
+					VarName: opt.class.Name + "_private_offset",
 				},
 				// gint
 				ctx.intType,
@@ -984,6 +966,96 @@ func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	ctx.il.Ret(typeIdVarOnce)
 
 	ctx.il.EndFunc()
+}
+
+func genClassInitializeIfacesFuncs(ctx *ctx, class *types.Class, parents []*types.Class) {
+	assert.Eq(class.Kind, parse.Class, "codegen", callerName(), ": class must not be an interface")
+	if class.Name == "Cat" {
+		print("debug")
+	}
+	className := typeName{class.Module, class.Name}
+
+	for _, parent := range parents {
+		if parent.Kind != parse.Iface {
+			continue
+		}
+
+		initName := mangledClassIfaceInit(className, typeName{parent.Module, parent.Name})
+
+		objParentIfaceName := fmt.Sprintf("%s%sIface", class.Name, parent.Name)
+		objParentIface := ctx.il.Data(qbeil.DataDef{
+			Linkage: qbeil.Linkage{},
+			VarName: objParentIfaceName,
+			Align:   0,
+		}, ctx.ptrType, qbeil.IntLiteral{Value: 0})
+
+		{
+			self := qbeil.Var{Name: "self"}
+			klass_data := qbeil.Var{Name: "klass_data"}
+			ctx.il.Func(qbeil.Linkage{Type: qbeil.Export}, nil, initName, []qbeil.TypedVar{
+				{Type: ctx.ptrType, Name: self},
+				{Type: ctx.ptrType, Name: klass_data},
+			})
+			interface_peek_parent := qbeil.Var{Global: true, Name: "g_type_interface_peek_parent"}
+			// TODO: what is this for?
+			ctx.il.Call(&objParentIface, ctx.ptrType, interface_peek_parent, []qbeil.ABITypedValue{
+				{Type: ctx.ptrType, Value: self},
+			})
+
+			// assign methods to vtable
+			for _, parent := range parents {
+				// TODO: all methods of ancestors of parent
+				ifaceType := ctx.ensureObjectTypeDeclared(parent)
+				for meth := range ifaceType.Layouts {
+					_, ok := class.Methods[meth]
+					if !ok {
+						continue // TODO: is this an error?
+					}
+
+					// TODO: do I need to handle different named mangling schemes? i.e. vala's
+					methPtr := qbeil.Var{
+						Global: true,
+						Name: mangleName(mangleOpts{
+							module: class.Module,
+							class:  class.Name,
+							name:   meth,
+						})}
+
+					genSetStructPtrField(ctx, self, ifaceType, meth, methPtr)
+				}
+			}
+
+			ctx.il.EndFunc()
+		}
+	}
+}
+
+func genObjectTypeIfaceInitFunc(ctx *ctx, objectTypeId qbeil.Var, parent *types.Class) {
+	assert.Eq(parent.Kind, parse.Iface, "codegen", callerName(), ": parent is not an interface?")
+
+	// const static meower_info = GInterfaceInfo{...}
+	ifaceInfoData := genInterfaceInfo(ctx, gInterfaceInfo{
+		module:         parent.Module,
+		name:           parent.Name,
+		maybeInit:      qbeil.Var{},
+		maybeFinalize:  qbeil.Var{},
+		maybeIfaceData: qbeil.Var{},
+	})
+
+	typeInst := ctx.il.TempVar(false)
+	typeGetter := qbeil.Var{
+		Global: false,
+		Name:   mangledClassTypeGetter(parent.Module, parent.Name),
+	}
+	ctx.il.Call(&typeInst, ctx.ptrType, typeGetter, []qbeil.ABITypedValue{})
+
+	// g_type_add_interface_static (cat_type_id, TYPE_MEOWER, &meower_info);
+	addIface := qbeil.Var{Name: "g_type_add_interface_static", Global: true}
+	ctx.il.Call(nil, nil, addIface, []qbeil.ABITypedValue{
+		{Type: ctx.ptrType, Value: objectTypeId},
+		{Type: ctx.ptrType, Value: typeInst},
+		{Type: ctx.ptrType, Value: ifaceInfoData},
+	})
 }
 
 type gInterfaceInfo struct {
@@ -1027,7 +1099,7 @@ func genInterfaceInfo(ctx *ctx, opt gInterfaceInfo) qbeil.Var {
 func genObjectTypeConstructor(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	ctorName := mangleName(mangleOpts{
 		module: ctx.module,
-		class:  opt.className,
+		class:  opt.class.Name,
 		name:   "construct",
 	})
 	argObjType := qbeil.Var{Name: "object_type", Global: false}
@@ -1060,11 +1132,11 @@ func genObjectTypeConstructor(ctx *ctx, opt objectTypeBoilerplateOpt) {
 func genClassNewFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	newFuncName := mangleName(mangleOpts{
 		module: ctx.module,
-		class:  opt.className,
-		name:   "new",
+		class:  opt.class.Name,
+		name:   "_hor_new",
 	})
 	getType := qbeil.Var{
-		Name:   mangledClassTypeGetter(ctx.module, opt.className),
+		Name:   mangledClassTypeGetter(ctx.module, opt.class.Name),
 		Global: true,
 	}
 	ctx.il.Func(qbeil.Linkage{Type: qbeil.Export}, ctx.ptrType, "$"+newFuncName, []qbeil.TypedVar{})
@@ -1090,13 +1162,13 @@ func genInterfaceDef(ctx *ctx, e *parse.ObjectTypeDef) {
 	if !ok {
 		panic(fmt.Sprintf("compiler bug: class definition yields non-class type %#v", ct))
 	}
-	ifaceType := ctx.ensureClassTypeDeclared(classTy)
+	ifaceType := ctx.ensureObjectTypeDeclared(classTy)
 	genObjectTypeBoilerplate(ctx, objectTypeBoilerplateOpt{
-		className:     e.Name,
-		maybeInstance: nil,
-		classType:     ifaceType,
-		maybePrivate:  nil,
-		iface:         true,
+		class:             classTy,
+		maybeInstanceType: nil,
+		classType:         ifaceType,
+		maybePrivate:      nil,
+		iface:             true,
 		parents: fun.Map(classTy.Supers, func(app *types.Application) *types.Class {
 			return assert.Cast[*types.Class](ctx.typeApplicationToType(app),
 				"codegen: super %s.%s is not a class", app.Module, app.Name)
@@ -1223,6 +1295,43 @@ func genGetStructPtrField(
 	}
 
 	return val
+}
+
+func genSetStructPtrField(
+	ctx *ctx,
+	structPtr qbeil.Value,
+	structTy qbeil.StructType,
+	field string,
+	value qbeil.Value,
+) {
+	addr := qbeil.Var{
+		Name:   ctx.newTempName("ptrTo_" + structTy.Name + "." + field),
+		Global: false,
+	}
+	fieldLayout := assert.Get(structTy.Layouts, field)
+	ctx.il.Arithmetic(addr.IL(), ctx.ptrType, "add",
+		structPtr,
+		// FIXME: dividing 8 here looks extremely scuffed
+		qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits / 8)},
+	)
+
+	bt, ok := fieldLayout.Type.(qbeil.BaseType)
+	if !ok {
+		panic("TODO: getting non-base-typed struct field")
+	}
+
+	switch bt {
+	case qbeil.Double:
+		ctx.il.Command("stored", value, addr)
+	case qbeil.Long:
+		ctx.il.Command("storel", value, addr)
+	case qbeil.Single:
+		ctx.il.Command("stores", value, addr)
+	case qbeil.Word:
+		ctx.il.Command("storew", value, addr)
+	default:
+		panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", bt))
+	}
 }
 
 type typeInfoOpt struct {
@@ -1580,7 +1689,7 @@ func (ctx *ctx) ensureClassNameDeclared(mod can.ModuleName, class string) qbeil.
 	return ctx.ensureClassDeclared(ty)
 }
 
-func (ctx *ctx) ensureClassTypeDeclared(t *types.Class) qbeil.StructType {
+func (ctx *ctx) ensureObjectTypeDeclared(t *types.Class) qbeil.StructType {
 	ilTyName := ilTypeName(t.Module, t.Name+"Class")
 	if tyClass, ok := ctx.userTypes[ilTyName]; ok {
 		return assert.Cast[qbeil.StructType](tyClass, "codegen: class/iface type is not a StructType?")
@@ -1592,7 +1701,7 @@ func (ctx *ctx) ensureClassTypeDeclared(t *types.Class) qbeil.StructType {
 			fmt.Sprintf("codegen: a super class of %s is not a class: %s.%s",
 				t.Name, super.Module, super.Name))
 		if ty.Kind == parse.Class {
-			parentClass = ctx.ensureClassTypeDeclared(ty)
+			parentClass = ctx.ensureObjectTypeDeclared(ty)
 			// TODO: handle multiple class supers?
 			break
 		}
@@ -1817,6 +1926,11 @@ func bitSizeToIntType(bits int) (_ qbeil.Type, ok bool) {
 		return qbeil.Long, true
 	}
 	return nil, false
+}
+
+func callerName() string {
+	pc, _, _, _ := runtime.Caller(1)
+	return runtime.FuncForPC(pc).Name()
 }
 
 func bitsToBytesRoundedUp(bits int) int {

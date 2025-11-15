@@ -38,3 +38,20 @@ func mangledClassTypeGetter(module can.ModuleName, className string) string {
 		name:   "get_type",
 	})
 }
+
+type typeName struct {
+	module can.ModuleName
+	name   string
+}
+
+func mangledClassIfaceInit(class typeName, iface typeName) string {
+	return mangleName(mangleOpts{
+		module: class.module,
+		class:  class.name,
+		name:   "_",
+	}) + mangleName(mangleOpts{
+		module: iface.module,
+		class:  iface.name,
+		name:   "init",
+	})
+}
