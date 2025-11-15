@@ -1,0 +1,7 @@
+{
+	"blacklist": {
+		"constants": [
+			"VERSION_STRING"
+		]
+	}
+}
