@@ -543,6 +543,11 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 	self.methodOwner = append(self.methodOwner, oi.Name())
 	defer func() { popDelete(&self.methodOwner) }()
 
+	if self.namespace == "GObject" && oi.Name() == "Object" {
+		fmt.Fprintln(&self.goBindings, "(type Object Std.Object)")
+		return
+	}
+
 	name := oi.Name()
 	p := printerTo(&self.goBindings)
 
