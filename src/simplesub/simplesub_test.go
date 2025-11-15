@@ -155,6 +155,19 @@ func TestTypeExpr(t *testing.T) {
 		// 	input: "(fn ((Int Str) Str) [x] x)",
 		// 	err:   ErrUnparameterizedTypePassedParams,
 		// },
+		{
+			desc:  "builtin types accessible via Std namespace",
+			input: "(fn (Std.Object Int) [x] 0)",
+			typ: &types.Func{
+				Args: []types.Type{&types.Application{
+					Module: "Std",
+					Name:   "Object",
+					Params: []types.Type{},
+				}},
+				Ret:    &tI64,
+				Method: false,
+			},
+		},
 	}
 	for _, tC := range testCases {
 		EnableTrace = true

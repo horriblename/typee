@@ -74,23 +74,26 @@ func NewTyper(mainModule can.ModuleName, debug bool) *Typer {
 	vars.NewScope()
 	types := scope.ScopedMapWithGlobals(builtinTypes())
 	types.NewScope()
+	stdMod := ModuleInfo{
+		Name:     StdModName,
+		Ast:      []parse.Expr{},
+		TypesAst: []parse.Expr{},
+		Types: map[string]TypeScheme{
+			"Object": gobject,
+		},
+		Globals:  map[string]TypeScheme{},
+		TypeTree: map[int]TypeScheme{},
+	}
 	return &Typer{
 		symbols: symbols{
 			vars:     vars,
 			types:    types,
 			inferred: map[int]TypeScheme{},
-			imports:  map[string]ModuleInfo{},
+			imports: map[string]ModuleInfo{
+				string(StdModName): stdMod,
+			},
 			moduleCache: map[can.ModuleName]ModuleInfo{
-				StdModName: {
-					Name:     StdModName,
-					Ast:      []parse.Expr{},
-					TypesAst: []parse.Expr{},
-					Types: map[string]TypeScheme{
-						"Object": gobject,
-					},
-					Globals:  map[string]TypeScheme{},
-					TypeTree: map[int]TypeScheme{},
-				},
+				StdModName: stdMod,
 			},
 			mainModule: mainModule,
 		},
@@ -105,7 +108,10 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[can.Modu
 	}
 
 	self.inferred = map[int]TypeScheme{}
-	self.imports = map[string]ModuleInfo{}
+	self.imports = map[string]ModuleInfo{
+		string(StdModName): assert.Get(self.moduleCache, StdModName,
+			"BUG Std missing; moduleCache not set up correctly?"),
+	}
 
 	t, typesAst, err := self.typeProgram(program)
 	if err != nil {
