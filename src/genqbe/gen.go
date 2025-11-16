@@ -567,11 +567,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		ctx.il.Call(
 			&val,
 			ctx.ptrType,
-			qbeil.Var{Global: true, Name: mangleName(mangleOpts{
-				module: classTy.Module,
-				class:  classTy.Name,
-				name:   "new",
-			})},
+			qbeil.Var{Global: true, Name: mangledNew(classTy.Module, classTy.Name)},
 			[]qbeil.ABITypedValue{},
 		)
 
@@ -1130,11 +1126,7 @@ func genObjectTypeConstructor(ctx *ctx, opt objectTypeBoilerplateOpt) {
 }
 
 func genClassNewFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
-	newFuncName := mangleName(mangleOpts{
-		module: ctx.module,
-		class:  opt.class.Name,
-		name:   "_hor_new",
-	})
+	newFuncName := mangledNew(opt.class.Module, opt.class.Name)
 	getType := qbeil.Var{
 		Name:   mangledClassTypeGetter(ctx.module, opt.class.Name),
 		Global: true,

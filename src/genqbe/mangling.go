@@ -39,6 +39,14 @@ func mangledClassTypeGetter(module can.ModuleName, className string) string {
 	})
 }
 
+func mangledNew(module can.ModuleName, className string) string {
+	return mangleName(mangleOpts{
+		module: module,
+		class:  className,
+		name:   "_hor_new",
+	})
+}
+
 type typeName struct {
 	module can.ModuleName
 	name   string
