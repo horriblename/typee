@@ -575,16 +575,19 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 
 	case *parse.MethodAccess:
 		ty := ctx.simplify(callee.Obj.ID())
+		var mod can.ModuleName
 		var class string
 		switch t := ty.(type) {
 		case *types.Class:
+			mod = t.Module
 			class = t.Name
 		case *types.Application:
+			mod = t.Module
 			class = t.Name
 			assert.Eq(len(t.Params), 0, "parameterized function call not supported yet")
 		}
 		assert.Neq(class, "", "unnamed class not yet supported")
-		return genCallWithFuncName(ctx, ctx.module, class, callee.Method, expr)
+		return genCallWithFuncName(ctx, mod, class, callee.Method, expr)
 
 	case *parse.RecordAccess:
 		// TODO: currently only module access supported
