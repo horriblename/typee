@@ -551,7 +551,7 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 	name := oi.Name()
 	p := printerTo(&self.goBindings)
 
-	p("(class %s (", snake_case_to_PascalCase(name))
+	p("(class extern %s (", snake_case_to_PascalCase(name))
 
 	if self.namespace == "GObject" && oi.Name() == "Object" {
 		p("{}")
