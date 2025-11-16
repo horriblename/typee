@@ -99,7 +99,19 @@ func TestSortTypeDefs(t *testing.T) {
 				(class T6 (T5) {z Int})
 				(class T5 {(def foo (T4) [] (T4.new))})
 			`,
-			groups:         [][]string{{"Int"}, {"T1"}, {"T3"}, {"T2"}, {"T4"}, {"T5"}, {"T6"}},
+			// first group is empty cuz builtins are filtered out
+			groups:         [][]string{{}, {"T1"}, {"T3"}, {"T2"}, {"T4"}, {"T5"}, {"T6"}},
+			selfRecursives: map[string]unit{},
+		},
+		{
+			desc: "subclasses within a group are ordered in order of dependency (super class first)",
+			input: `
+				(type T2 (fn [] Int))
+				(class T4 (T6) {x T2})
+				(class T5 {(def foo (T4) [] (T4.new))})
+				(class T6 (T5) {z T5})
+			`,
+			groups:         [][]string{{}, {"T2"}, {"T5", "T6", "T4"}},
 			selfRecursives: map[string]unit{},
 		},
 		{
@@ -110,8 +122,8 @@ func TestSortTypeDefs(t *testing.T) {
 					(def foo (Int T1) [x] (T1.new))
 				})
 			`,
-			groups:         [][]string{{"Int"}, {"T1"}},
-			selfRecursives: map[string]unit{"T1": unit{}},
+			groups:         [][]string{{}, {"T1"}},
+			selfRecursives: map[string]unit{"T1": {}},
 		},
 	}
 	for _, tC := range testCases {
@@ -128,8 +140,8 @@ func TestSortTypeDefs(t *testing.T) {
 			// functions e.g. (foo [x] (+ x 1)) and (bar [x] x) have no relation to each
 			// other, there's no guarantee which will appear first.
 			assert.DeepEq(
-				fun.Map(tC.groups, sliceToSet),
-				fun.Map(groups, sliceToSet),
+				tC.groups,
+				groups,
 				"different groups?",
 			)
 			assert.DeepEq(tC.selfRecursives, selfRecs, "different self recursives")

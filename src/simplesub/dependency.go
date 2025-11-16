@@ -6,6 +6,7 @@ import (
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/fun"
+	"github.com/horriblename/typee/src/graph"
 	"github.com/horriblename/typee/src/graph/tarjan"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/internal/scope"
@@ -76,7 +77,11 @@ func groupRecursives(ast []parse.Expr) (groups [][]string, selfRecursive map[str
 	return tarjan.Connections(depGraph), selfRecursive
 }
 
-func sortTypeDefs(ast []parse.Expr) (order [][]string, astLookup map[string]parse.Expr, selfRecs map[string]struct{}) {
+func sortTypeDefs(ast []parse.Expr) (
+	order [][]string,
+	astLookup map[string]parse.Expr,
+	selfRecs map[string]struct{},
+) {
 	allDeps := map[string]map[string]unit{}
 	astLookup = map[string]parse.Expr{}
 	selfRecs = map[string]struct{}{}
@@ -137,7 +142,68 @@ func sortTypeDefs(ast []parse.Expr) (order [][]string, astLookup map[string]pars
 		return fun.Collect(maps.Keys(d))
 	})
 
-	return tarjan.Connections(adjacencyList), astLookup, selfRecs
+	conn := tarjan.Connections(adjacencyList)
+	sortInnerGroupsBySubtype(conn, astLookup)
+
+	return conn, astLookup, selfRecs
+}
+
+// HACK: sort entries in each group by subclassing relationship only,
+// since codegen backend needs superclass to be defined before defining
+// the subclass
+func sortInnerGroupsBySubtype(conn [][]string, astLookup map[string]parse.Expr) {
+	for i := range conn {
+		group := conn[i]
+		nonObjTypes := []string{}
+		subtypeGraph := graph.AdjacencyList{}
+
+		// record subtype relations, and separate non-classes/imported types
+		for _, name := range group {
+			// builtins don't have an AST lookup, skip them
+			ast, ok := astLookup[name]
+			if !ok {
+				continue
+			}
+
+			def, ok := ast.(*parse.ObjectTypeDef)
+			if !ok {
+				nonObjTypes = append(nonObjTypes, name)
+				continue
+			}
+
+			// record supers
+			sups := []string{}
+			for _, sup := range def.Supers {
+				// FIXME: proper check of local var, canonicalize first?
+				if sup.Module != "" {
+					continue
+				}
+
+				// skip builtins
+				if _, ok := astLookup[sup.Name]; !ok {
+					continue
+				}
+
+				sups = append(sups, sup.Name)
+			}
+
+			subtypeGraph[name] = sups
+		}
+
+		sorted, err := graph.Toposort(subtypeGraph)
+		if err != nil {
+			// uh, I think I checked for this before, idk
+			panic("BUG cycle in subclass relationship? " + err.Error())
+		}
+
+		s := nonObjTypes
+		for _, item := range sorted {
+			if _, ok := subtypeGraph[item]; ok {
+				s = append(s, item)
+			}
+		}
+		conn[i] = s
+	}
 }
 
 func markTypeDeps(x parse.TypeRepr, deps map[string]unit, self string) (selfRecursive bool) {
