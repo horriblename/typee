@@ -170,6 +170,7 @@ type ObjectTypeDef struct {
 	Supers []TypeName
 	Fields []ClassMember
 	Base   bool // base class: A class with no super type
+	Extern bool
 }
 
 type MethodAccess struct {

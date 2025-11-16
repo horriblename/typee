@@ -157,25 +157,27 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 		combinator.WithPrefix(
 			kwClass,
 			combinator.Then(
-				// class name
-				symbolName,
+				combinator.Maybe(kwExtern),
 				combinator.Then(
-					// super classes
-					combinator.Maybe(combinator.Surround(
-						lparen,
-						combinator.Or(
-							combinator.WithPrefix(lbrace, rbrace),
-							combinator.Many0(typeName),
+					// class name
+					symbolName,
+					combinator.Then(
+						// super classes
+						combinator.Maybe(combinator.Surround(
+							lparen,
+							combinator.Or(
+								combinator.WithPrefix(lbrace, rbrace),
+								combinator.Many0(typeName),
+							),
+							rparen),
 						),
-						rparen),
+						combinator.Surround(
+							lbrace,
+							combinator.Delimited(classMember, comma),
+							rbrace,
+						),
 					),
-					combinator.Surround(
-						lbrace,
-						combinator.Delimited(classMember, comma),
-						rbrace,
-					),
-				),
-			),
+				)),
 		),
 		rparen)(in)
 
@@ -185,7 +187,7 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 
 	var sups []TypeName
 	derived := true
-	if super, ok := res.Two.One.Unwrap(); ok {
+	if super, ok := res.Two.Two.One.Unwrap(); ok {
 		sups, derived = super.Right()
 		if !derived {
 			sups = []TypeName{}
@@ -197,10 +199,11 @@ func classDef(in []lex.Token) ([]lex.Token, Expr, error) {
 	t := ObjectTypeDef{
 		id:     newId(),
 		Kind:   Class,
-		Name:   res.One,
+		Name:   res.Two.One,
 		Supers: sups,
-		Fields: res.Two.Two,
+		Fields: res.Two.Two.Two,
 		Base:   !derived,
+		Extern: res.One.IsSome(),
 	}
 	return in, &t, nil
 }

@@ -285,6 +285,17 @@ func TestParse(t *testing.T) {
 			}},
 		},
 		{
+			desc:  "extern class def",
+			input: `(class extern Foo {})`,
+			output: []Expr{&ObjectTypeDef{
+				id:     1,
+				Supers: []TypeName{},
+				Name:   "Foo",
+				Fields: []ClassMember{},
+				Extern: true,
+			}},
+		},
+		{
 			desc:  "type annotated method",
 			input: `(def meth (Self Int Int) [self n] n)`,
 			output: []Expr{&FuncDef{
