@@ -297,11 +297,15 @@ const flagGlueConfig = "config"
 const helpGlueConfig = "path to config.json"
 const flagDbgPrintConfig = "dbg-print-config"
 const helpDbgPrintConfig = "for debugging: print config"
+const flagAutoOut = "O"
+const helpAutoOut = `Infer output file name from input file name, or "out.hor"`
 
 func cmdGlueGir() error {
 	configFile := flag.String(flagGlueConfig, "config.json", helpGlueConfig)
+	const helpOut = helpOut + " (default stdout)"
 	out := flag.String(flagOut, "", helpOut)
 	outLong := flag.String(flagOutLong, "", helpOut)
+	autoOut := flag.Bool(flagAutoOut, false, helpAutoOut)
 	dbgConfig := flag.Bool(flagDbgPrintConfig, false, helpDbgPrintConfig)
 	flag.Parse()
 	prof := maybeProfileCpu()
@@ -313,8 +317,12 @@ func cmdGlueGir() error {
 		os.Exit(2)
 	}
 
+	inputMod := flag.Arg(0)
 	if *outLong != "" {
 		*out = *outLong
+	}
+	if *autoOut {
+		*out = inputMod + ".hor"
 	}
 	var outFile *os.File = os.Stdout
 	if *out != "" {
@@ -339,7 +347,7 @@ func cmdGlueGir() error {
 		errorf("config: %#v", config)
 	}
 
-	o, err := gir.New(flag.Arg(0), "", config)
+	o, err := gir.Gen(inputMod, "", config)
 	if err != nil {
 		return err
 	}
