@@ -627,7 +627,7 @@ func TestParseType(t *testing.T) {
 			tokens, err := lex.LexString(tC.input)
 			assert.Ok(err)
 
-			r1, got, err := type_(tokens)
+			r1, got, err := typeRepr(tokens)
 			assert.Ok(err)
 			assert.Eq(len(r1), 0)
 

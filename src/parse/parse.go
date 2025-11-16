@@ -241,7 +241,7 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	// optional (T1 T2 ...)
 	in, sig, err := combinator.Maybe(combinator.Surround(
 		lparen,
-		combinator.Many(type_),
+		combinator.Many(typeRepr),
 		rparen,
 	))(in)
 	check(err)
@@ -293,7 +293,7 @@ func defExtern(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 					combinator.Then(
 						combinator.Surround(
 							lparen,
-							combinator.Many0(type_),
+							combinator.Many0(typeRepr),
 							rparen,
 						),
 						combinator.Surround(
@@ -463,7 +463,7 @@ func fnExpr(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 
 	in, sig, err := combinator.Maybe(combinator.Surround(
 		lparen,
-		combinator.Many0(type_),
+		combinator.Many0(typeRepr),
 		rparen,
 	))(in)
 

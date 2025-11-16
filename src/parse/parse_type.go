@@ -8,7 +8,7 @@ import (
 	"github.com/horriblename/typee/src/opt"
 )
 
-func type_(in []lex.Token) ([]lex.Token, TypeRepr, error) {
+func typeRepr(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 	return combinator.Any(
 		typeNameRepr,
 		selfType,
@@ -57,7 +57,7 @@ func recordType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 				symbolName,
 				combinator.WithPrefix(
 					colon,
-					type_,
+					typeRepr,
 				),
 			),
 			comma,
@@ -84,7 +84,7 @@ func arrayType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 	in, out, err := combinator.Surround(
 		lbracket,
 		combinator.Then(
-			type_,
+			typeRepr,
 			combinator.Maybe(
 				intNumber,
 			),
@@ -111,10 +111,10 @@ func fnType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 			combinator.Then(
 				combinator.Surround(
 					lbracket,
-					combinator.Many0(type_),
+					combinator.Many0(typeRepr),
 					rbracket,
 				),
-				type_,
+				typeRepr,
 			),
 		),
 		rparen,
@@ -136,7 +136,7 @@ func instantiatedType(in []lex.Token) ([]lex.Token, TypeRepr, error) {
 		lparen,
 		combinator.Then(
 			typeNameRepr,
-			combinator.Many(type_),
+			combinator.Many(typeRepr),
 		),
 		rparen,
 	)(in)
@@ -221,7 +221,7 @@ func classMember(in []lex.Token) ([]lex.Token, ClassMember, error) {
 func classField(in []lex.Token, visibility AccessLvl) ([]lex.Token, ClassField, error) {
 	in, res, err := combinator.Then(
 		symbolName,
-		type_,
+		typeRepr,
 	)(in)
 	if err != nil {
 		return nil, ClassField{}, err
@@ -348,7 +348,7 @@ func unionDef(in []lex.Token) ([]lex.Token, Expr, error) {
 			combinator.Then(
 				symbolName,
 				combinator.Surround(lbrace,
-					combinator.Many(type_),
+					combinator.Many(typeRepr),
 					rbrace),
 			),
 		),
@@ -372,7 +372,7 @@ func typeAlias(in []lex.Token) ([]lex.Token, Expr, error) {
 			kwType,
 			combinator.Then(
 				symbolName,
-				type_,
+				typeRepr,
 			),
 		),
 		rparen,

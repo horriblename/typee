@@ -10,6 +10,8 @@ import (
 
 //go-sumtype:decl TypeRepr
 
+// Textual representation of types
+// e.g. Int, (Foo Bar), {foo: Int}, (fn ), etc.
 type TypeRepr interface {
 	type_()
 	String() string
