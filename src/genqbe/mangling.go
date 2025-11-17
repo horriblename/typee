@@ -43,7 +43,7 @@ func mangledNew(module can.ModuleName, className string) string {
 	return mangleName(mangleOpts{
 		module: module,
 		class:  className,
-		name:   "_hor_new",
+		name:   "new",
 	})
 }
 

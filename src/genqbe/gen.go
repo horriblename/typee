@@ -798,6 +798,7 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 		classType:         classType,
 		maybePrivate:      private,
 		iface:             false,
+		extern:            e.Extern,
 		parents:           parents,
 	})
 }
@@ -822,6 +823,7 @@ type objectTypeBoilerplateOpt struct {
 	classType         qbeil.AggregateType
 	maybePrivate      qbeil.AggregateType
 	iface             bool // TODO: remove, use class.Kind instead
+	extern            bool
 	parents           []*types.Class
 }
 
@@ -835,7 +837,7 @@ func genObjectTypeBoilerplate(ctx *ctx, opt objectTypeBoilerplateOpt) {
 
 	genObjectTypeGetTypeFunc(ctx, opt)
 	genObjectTypeConstructor(ctx, opt)
-	if !opt.iface {
+	if !opt.iface && !opt.extern {
 		// TODO: skip new() on abstract classes
 		genClassNewFunc(ctx, opt)
 	}
@@ -1180,6 +1182,7 @@ func genInterfaceDef(ctx *ctx, e *parse.ObjectTypeDef) {
 		classType:         ifaceType,
 		maybePrivate:      nil,
 		iface:             true,
+		extern:            e.Extern,
 		parents: fun.Map(classTy.Supers, func(app *types.Application) *types.Class {
 			return assert.Cast[*types.Class](ctx.typeApplicationToType(app),
 				"codegen: super %s.%s is not a class", app.Module, app.Name)
