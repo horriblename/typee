@@ -392,7 +392,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	if needSelfArg && len(self.methodOwner) == 0 {
 		panic(fmt.Sprintf("tried processing a method %s but no current class", name))
 	}
-	// container := fi.Container()
+	container := fi.Container()
 	fb := newFunctionBuilder(fi)
 
 	if self.inStruct {
@@ -435,12 +435,15 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		p("{}")
 
 	case 1:
-		// // why tf did I use container???
-		// if flags&gi.FUNCTION_IS_CONSTRUCTOR != 0 {
-		// 	p("(Ref %s)", container.Name())
-		// } else {
-		p("%s", horType(fb.rets[0].typeInfo, typeConfig{typeNone, self.namespace}))
-		// }
+		if flags&gi.FUNCTION_IS_CONSTRUCTOR != 0 {
+			if self.inStruct { // I'm not 100% sure this is correct
+				p("(Ref %s)", container.Name())
+			} else {
+				p("%s", container.Name())
+			}
+		} else {
+			p("%s", horType(fb.rets[0].typeInfo, typeConfig{typeNone, self.namespace}))
+		}
 
 	default:
 		p("{")
@@ -570,12 +573,16 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		// non-pointer void return
 		extern("{}) [")
 	} else {
-		// // why tf was I using container name
-		// if flags&gi.FUNCTION_IS_CONSTRUCTOR != 0 {
-		// 	extern("(Ref %s)) [", container.Name())
-		// } else {
-		extern("%s) [", horType(fi.ReturnType(), typeConfig{typeNone, self.namespace}))
-		// }
+		// why tf was I using container name
+		if flags&gi.FUNCTION_IS_CONSTRUCTOR != 0 {
+			if self.inStruct {
+				extern("(Ref %s)) [", container.Name())
+			} else {
+				extern("%s) [", container.Name())
+			}
+		} else {
+			extern("%s) [", horType(fi.ReturnType(), typeConfig{typeNone, self.namespace}))
+		}
 	}
 
 	// extern arguments
