@@ -353,7 +353,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		// the Str struct on stack
 		strPtr := ctx.il.TempVar(false)
 
-		ctx.il.Arithmetic(strPtr.IL(), qbeil.Long, "alloc4", qbeil.IntLiteral{Value: 16 + 8})
+		ctx.il.Arithmetic(strPtr.IL(), qbeil.Long, "alloc4", qbeil.IntLiteral{Value: 16})
 		ctx.il.Command("storel", dataGlobal, strPtr)
 
 		lenPtr := ctx.il.TempVar(false)
