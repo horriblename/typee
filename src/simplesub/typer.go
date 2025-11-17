@@ -473,36 +473,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		return Record{Fields: fields}, nil
 
 	case *parse.RecordAccess:
-		if sym, ok := expr.Record.(*parse.Symbol); ok {
-			if ty, ok := self.types.Get(sym.Name).Unwrap(); ok {
-				return self.typeStaticMethodCall(expr, ty)
-			}
-		}
-		recordTy, err := self.TypeTerm(expr.Record)
-		if err != nil {
-			return nil, err
-		}
-
-		ret := freshVar()
-		err = self.symbols.constrain(recordTy, ObjectType{
-			Module: "",
-			Name:   "",
-			// FIXME: what should Kind be?
-			Supers: []Application{},
-			Fields: []NamedMember{{
-				Name: expr.Field,
-				Member: Member{
-					Type:   ret,
-					Access: parse.AccessPublic, // TODO: protected/private if in class
-				},
-			}},
-			Methods: []NamedMember{},
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		return ret, nil
+		return self.typeRecordAccess(expr)
 
 	case *parse.MethodAccess:
 		panic("illegal use of method access, methods must be called: " + expr.Pretty())
@@ -966,6 +937,39 @@ func (self *Typer) typeFunctionCall(expr *parse.Form) (SimpleType, error) {
 
 	ret := freshVar()
 	if err := self.symbols.constrain(funcTy, Func{argTys, ret, false}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
+func (self *Typer) typeRecordAccess(expr *parse.RecordAccess) (SimpleType, error) {
+	if sym, ok := expr.Record.(*parse.Symbol); ok {
+		if ty, ok := self.types.Get(sym.Name).Unwrap(); ok {
+			return self.typeStaticMethodCall(expr, ty)
+		}
+	}
+	recordTy, err := self.TypeTerm(expr.Record)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := freshVar()
+	err = self.symbols.constrain(recordTy, ObjectType{
+		Module: "",
+		Name:   "",
+		// FIXME: what should Kind be?
+		Supers: []Application{},
+		Fields: []NamedMember{{
+			Name: expr.Field,
+			Member: Member{
+				Type:   ret,
+				Access: parse.AccessPublic, // TODO: protected/private if in class
+			},
+		}},
+		Methods: []NamedMember{},
+	})
+	if err != nil {
 		return nil, err
 	}
 
