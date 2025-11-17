@@ -78,10 +78,8 @@ func NewTyper(mainModule can.ModuleName, debug bool) *Typer {
 		Name:     StdModName,
 		Ast:      []parse.Expr{},
 		TypesAst: []parse.Expr{},
-		Types: map[string]TypeScheme{
-			"Object": gobject,
-		},
-		Globals:  map[string]TypeScheme{},
+		Types:    builtinTypes(),
+		Globals:  builtinVars(),
 		TypeTree: map[int]TypeScheme{},
 	}
 	return &Typer{
