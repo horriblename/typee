@@ -751,7 +751,6 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 }
 
 func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
-
 	// TODO: support generics
 	ct := ctx.simplify(e.ID())
 	classTy, ok := ct.(*types.Class)
@@ -762,17 +761,20 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 	class := ctx.classToILType(classTy)
 	ctx.declareType(e.Name, class)
 
-	{
-		ctx.classInProcess = classTy // TODO: refactor this out somehow
-		for _, field := range e.Fields {
-			method, ok := field.(parse.ClassMethod)
-			if !ok {
-				continue
-			}
+	genMethodDefs(ctx, e, classTy)
 
-			genFunc(ctx, classTy.Name, method.Func)
-		}
-		ctx.classInProcess = nil
+	if e.Extern {
+		// external type, just treat as pointer
+		// TODO: ok, this isn't exactly a pointer but I promise I will fix later
+		ctx.declareType(e.Name, qbeil.StructType{
+			Align:   0,
+			Name:    e.Name,
+			Layouts: map[string]qbeil.FieldLayout{},
+			Fields: []qbeil.RepeatType{
+				qbeil.SingleType(ctx.ptrType),
+			},
+		})
+		return
 	}
 
 	classType := ctx.ensureObjectTypeDeclared(classTy)
@@ -798,6 +800,20 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 		iface:             false,
 		parents:           parents,
 	})
+}
+
+func genMethodDefs(ctx *ctx, e *parse.ObjectTypeDef, classTy *types.Class) {
+	ctx.classInProcess = classTy // TODO: refactor this out somehow
+	defer func() { ctx.classInProcess = nil }()
+
+	for _, field := range e.Fields {
+		method, ok := field.(parse.ClassMethod)
+		if !ok {
+			continue
+		}
+
+		genFunc(ctx, classTy.Name, method.Func)
+	}
 }
 
 type objectTypeBoilerplateOpt struct {
