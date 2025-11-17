@@ -3,6 +3,7 @@ package simplesub
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/horriblename/typee/src/assert"
@@ -34,6 +35,7 @@ type Typer struct {
 var ErrUndefinedVariable = errors.New("undefined variable")
 var ErrUndefinedTypeName = errors.New("undefined type")
 var ErrUndefinedModule = errors.New("undefined module. missing import?")
+var ErrTypeUsedAsValue = errors.New("tried to use type as value")
 var ErrSelfUnbound = errors.New("keyword self used outside of a method")
 var ErrSelfTypeUnbound = errors.New("keyword Self used outside of a class definition")
 var ErrWrongArgCount = errors.New("wrong argument count")
@@ -942,24 +944,93 @@ func (self *Typer) typeFunctionCall(expr *parse.Form) (SimpleType, error) {
 }
 
 func (self *Typer) typeRecordAccess(expr *parse.RecordAccess) (SimpleType, error) {
-	if sym, ok := expr.Record.(*parse.Symbol); ok {
-		if ty, ok := self.types.Get(sym.Name).Unwrap(); ok {
-			return self.typeStaticMethodCall(expr, ty)
+	lhs, path := flattenRecordAccessPath(expr)
+	lhsSym, ok := lhs.(*parse.Symbol)
+	if !ok {
+		lhsTy, err := self.TypeTerm(lhs)
+		if err != nil {
+			return nil, err
 		}
+
+		return self.typeRecordAccessOnExpr(lhsTy, path)
 	}
-	recordTy, err := self.TypeTerm(expr.Record)
+
+	assert.GreaterThan(len(path), 0, "BUG path too short to be an actual record access?")
+
+	// path is in reverse order
+	second := path[len(path)-1]
+
+	if mod, ok := self.imports[lhsSym.Name]; ok {
+		// lhs is a module
+		modName := mod.Name
+
+		// Try using the next part as a type name, i.e. Module.SomeType.bla.bla
+		if importedTy, err := self.lookupType(modName, second); err == nil {
+			// Module.SomeType.staticMember
+			if len(path) == 1 {
+				return nil, fmt.Errorf("%w: %s.%s is a type", ErrTypeUsedAsValue, mod.Name, second)
+			}
+
+			third := path[len(path)-2]
+			member, err := self.getStaticMemberType(importedTy, third)
+			if err != nil {
+				return nil, err
+			}
+
+			return self.typeRecordAccessOnExpr(member, path[:len(path)-2])
+		}
+
+		// Module.someVariable
+		if val, ok := mod.Globals[second]; ok {
+			return val.instantiate(), nil
+		}
+
+		return nil, fmt.Errorf("%w: %s.%s", ErrUndefinedVariable, lhsSym.Name, second)
+	}
+
+	// Try using left-most Symbol as a local type
+	if staticTy, err := self.lookupType(self.mainModule, lhsSym.Name); err == nil {
+		member, err := self.getStaticMemberType(staticTy.instantiate(), second)
+		if err != nil {
+			return nil, err
+		}
+
+		return self.typeRecordAccessOnExpr(member, path[:len(path)-1])
+	}
+
+	// leftMost is an expression!
+	lhsTy, err := self.TypeTerm(lhs)
 	if err != nil {
 		return nil, err
 	}
 
+	return self.typeRecordAccessOnExpr(lhsTy, path)
+}
+
+// type something like `foo.bar.baz`.
+// lhsTy would be the type of `foo`, path is `{bar, baz}`
+func (self *Typer) typeRecordAccessOnExpr(lhsTy SimpleType, path []string) (SimpleType, error) {
+	// note that path is in reverse,
+	// e.g. The expression `a.b.c` has path []string{"c", "b", "a"}
+	var err error
+	for _, field := range slices.Backward(path) {
+		if lhsTy, err = self.typeRecordAccessField(lhsTy, field); err != nil {
+			return nil, err
+		}
+	}
+
+	return lhsTy, nil
+}
+
+func (self *Typer) typeRecordAccessField(lhs SimpleType, field string) (SimpleType, error) {
 	ret := freshVar()
-	err = self.symbols.constrain(recordTy, ObjectType{
+	err := self.symbols.constrain(lhs, ObjectType{
 		Module: "",
 		Name:   "",
 		// FIXME: what should Kind be?
 		Supers: []Application{},
 		Fields: []NamedMember{{
-			Name: expr.Field,
+			Name: field,
 			Member: Member{
 				Type:   ret,
 				Access: parse.AccessPublic, // TODO: protected/private if in class
@@ -972,6 +1043,38 @@ func (self *Typer) typeRecordAccess(expr *parse.RecordAccess) (SimpleType, error
 	}
 
 	return ret, nil
+}
+
+// access SomeType.something
+func (self *Typer) getStaticMemberType(lhs TypeScheme, field string) (SimpleType, error) {
+	switch t := lhs.(type) {
+	case ObjectType:
+		if meth, found := t.FindMethod(field); found {
+			return meth.Type, nil
+		}
+		return nil, fmt.Errorf("%w: %s.%s.%s", ErrMissingStaticMethod, t.Module, t.Name, field)
+	case Application:
+		panic("TODO")
+	default:
+		return nil, fmt.Errorf("tried to access field %s on type %s", field, lhs)
+	}
+}
+
+// Flattens a [*parse.RecordAccess] into a lhs Expr and a path in reverse order
+func flattenRecordAccessPath(expr *parse.RecordAccess) (
+	lhs parse.Expr,
+	path []string,
+) {
+	path = []string{expr.Field}
+	for {
+		switch e := expr.Record.(type) {
+		case *parse.RecordAccess:
+			path = append(path, e.Field)
+			expr = e
+		default:
+			return e, path
+		}
+	}
 }
 
 func (self *Typer) typeMethodCall(methAccess *parse.MethodAccess, form *parse.Form) (SimpleType, error) {
