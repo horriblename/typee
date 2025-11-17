@@ -52,6 +52,9 @@ func builtinVars() map[string]TypeScheme {
 		"strFromCStr": PolymorphicType{
 			Body: Func{Args: []SimpleType{Primitive{PrimitiveOpaque}}, Ret: Str{}},
 		},
+		"strToCStr": PolymorphicType{
+			Body: Func{Args: []SimpleType{Str{}}, Ret: Primitive{PrimitiveOpaque}},
+		},
 	}
 	return _builtinVars
 }
