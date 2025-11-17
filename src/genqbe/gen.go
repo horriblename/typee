@@ -352,13 +352,15 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 
 		// the Str struct on stack
 		strPtr := ctx.il.TempVar(false)
+		strSizeBits, _ := ctx.sizeOf(assert.Get(ctx.userTypes, "Str",
+			"genqbe: BUG missing definition of Str"))
+		ptrSizeBits, _ := ctx.sizeOf(ctx.ptrType)
 
-		ctx.il.Arithmetic(strPtr.IL(), qbeil.Long, "alloc4", qbeil.IntLiteral{Value: 16})
+		ctx.il.Arithmetic(strPtr.IL(), qbeil.Long, "alloc4", qbeil.IntLiteral{Value: int64(strSizeBits / 8)})
 		ctx.il.Command("storel", dataGlobal, strPtr)
 
 		lenPtr := ctx.il.TempVar(false)
-		// 64-bit system
-		ctx.il.Arithmetic(lenPtr.IL(), qbeil.Long, "add", strPtr, qbeil.IntLiteral{Value: 8})
+		ctx.il.Arithmetic(lenPtr.IL(), qbeil.Long, "add", strPtr, qbeil.IntLiteral{Value: int64(ptrSizeBits / 8)})
 		ctx.il.Command("storel", qbeil.IntLiteral{Value: int64(len(e.Content))}, lenPtr)
 
 		return strPtr
