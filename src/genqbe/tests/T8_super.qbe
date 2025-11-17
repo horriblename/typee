@@ -83,7 +83,7 @@ export function l $MainModule.Baz_new() {
 }
 export function w $main() {
 @start
-	%_tmp_19 =l call $Baz.new ()
+	%_tmp_19 =l call $MainModule.Baz_new ()
 	%ptrTo_Baz.a1 =l add %_tmp_19, 9
 	%valOf_Baz.a2 =l loadl %ptrTo_Baz.a1
 	ret %valOf_Baz.a2

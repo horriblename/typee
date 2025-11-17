@@ -7,7 +7,7 @@ type :Record_1 = {}
 type :Record_2 = {}
 export function l $MainModule.inc(l %x) {
 @start
-	%_tmp_1 =l call $AddOne.addOne (l %x)
+	%_tmp_1 =l call $TestModule.AddOne.addOne (l %x)
 	ret %_tmp_1
 }
 export function w $main() {

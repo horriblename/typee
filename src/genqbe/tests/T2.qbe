@@ -51,7 +51,7 @@ export function :Str $MainModule.bar(l %foo) {
 }
 export function w $main() {
 @start
-	%_tmp_13 =l call $Foo.new ()
+	%_tmp_13 =l call $MainModule.Foo_new ()
 	%_tmp_12 =:Str call $MainModule.bar (l %_tmp_13)
 	%_tmp_14 =l call $print (:Str %_tmp_12)
 	ret %_tmp_14
