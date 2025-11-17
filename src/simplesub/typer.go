@@ -1406,7 +1406,17 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 			return nil
 		}
 
-		return fmt.Errorf("TODO not implemented: constrain between different Application types")
+		lhs, err := self.concretizeApplication(lhs)
+		if err != nil {
+			return err
+		}
+
+		rhs, err := self.concretizeApplication(rhs)
+		if err != nil {
+			return err
+		}
+
+		return self.constrain(lhs, rhs)
 	} else if lhs, _, ok := matchPair[Application, SimpleType](ty0, bound0); ok {
 		lhs, err := self.concretizeApplication(lhs)
 		if err != nil {
