@@ -949,16 +949,15 @@ func TestTypeProgram(t *testing.T) {
 			desc: "Std alias works in imported module",
 			input: `
 				(import TestModule.ImportedStdAlias)
-				(def doNothing (ImportedStdAlias.O Int) [x] 0)
-				; O is aliased to Object, this should work:
-				(def main [] (doNothing (Object.new)))
+				(def doNothing (ImportedStdAlias.Int Int) [x] 0)
+				(def main [] (doNothing 5))
 			`,
 			typ: []types.Type{
 				&types.Func{
 					Args: []types.Type{
 						&types.Application{
 							Module: "TestModule.ImportedStdAlias",
-							Name:   "O",
+							Name:   "Int",
 							Params: []types.Type{},
 						},
 					},
