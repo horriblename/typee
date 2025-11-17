@@ -729,7 +729,11 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 				Value: gen(ctx, meth.Obj),
 			}}
 		}
-		for arg, typ := range fun.ZipSlices(expr.Children[1:], realArgTys) {
+		// skip callee expression
+		argExprs := expr.Children[1:]
+		// skip type of self, if applicable
+		nonSelfTys := realArgTys[len(args):]
+		for arg, typ := range fun.ZipSlices(argExprs, nonSelfTys) {
 			args = append(args, qbeil.ABITypedValue{Type: ctx.toABIType(typ), Value: gen(ctx, arg)})
 		}
 		funcVar := qbeil.Var{Global: true, Name: mangled}
@@ -1598,6 +1602,8 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	}
 }
 
+// used in function arg type and return type, see qbe docs
+// TODO: explain difference to [ctx.toILType]
 func (ctx *ctx) toABIType(typ types.Type) qbeil.ABIType {
 	switch t := typ.(type) {
 	case *types.Int:
