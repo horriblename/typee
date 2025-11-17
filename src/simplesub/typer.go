@@ -716,6 +716,7 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 
 	fields := []NamedMember{}
 	methods := []NamedMember{}
+	hasNew := false
 
 	// TODO: let recursive + generalize
 	for _, field := range classDef.Fields {
@@ -763,6 +764,9 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 				return nil, fmt.Errorf("typing %s.%s: %w", classDef.Name, f.Func.Name, err)
 			}
 
+			if f.Name() == "new" {
+				hasNew = true
+			}
 			methods = append(methods, NamedMember{
 				Name: f.Name(),
 				Member: Member{
@@ -774,6 +778,21 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 		default:
 			panic(fmt.Sprintf("unexpected parse.ClassMember: %#v", field))
 		}
+	}
+
+	// TODO: ignore abstract class
+	if !hasNew {
+		methods = append(methods, NamedMember{
+			Name: "new",
+			Member: Member{
+				Type: Func{
+					Args:   []SimpleType{},
+					Ret:    selfTy,
+					Method: false,
+				},
+				Access: parse.AccessPublic,
+			},
+		})
 	}
 
 	t := ObjectType{
@@ -944,7 +963,7 @@ func (self *Typer) typeFunctionCall(expr *parse.Form) (SimpleType, error) {
 }
 
 func (self *Typer) typeRecordAccess(expr *parse.RecordAccess) (SimpleType, error) {
-	lhs, path := flattenRecordAccessPath(expr)
+	lhs, path := FlattenRecordAccessPath(expr)
 	lhsSym, ok := lhs.(*parse.Symbol)
 	if !ok {
 		lhsTy, err := self.TypeTerm(lhs)
@@ -1061,7 +1080,7 @@ func (self *Typer) getStaticMemberType(lhs TypeScheme, field string) (SimpleType
 }
 
 // Flattens a [*parse.RecordAccess] into a lhs Expr and a path in reverse order
-func flattenRecordAccessPath(expr *parse.RecordAccess) (
+func FlattenRecordAccessPath(expr *parse.RecordAccess) (
 	lhs parse.Expr,
 	path []string,
 ) {
@@ -1573,6 +1592,7 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 					return err
 				}
 			} else {
+				fmt.Printf("available methods %v\n\n", tyMembers)
 				return fmt.Errorf("%w %s: %v\nactual type: %v",
 					ErrMissingMethod, boundMember.Name, boundMember.Type,
 					ty,
