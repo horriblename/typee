@@ -299,6 +299,9 @@ const flagDbgPrintConfig = "dbg-print-config"
 const helpDbgPrintConfig = "for debugging: print config"
 const flagAutoOut = "O"
 const helpAutoOut = `Infer output file name from input file name, or "out.hor"`
+const flagRecursive = "r"
+const flagRecursiveLong = "recursive"
+const helpRecursive = "Generate recursively to the target directory provided by -o (or current working directory)"
 
 func cmdGlueGir() error {
 	configFile := flag.String(flagGlueConfig, "config.json", helpGlueConfig)
@@ -306,6 +309,8 @@ func cmdGlueGir() error {
 	out := flag.String(flagOut, "", helpOut)
 	outLong := flag.String(flagOutLong, "", helpOut)
 	autoOut := flag.Bool(flagAutoOut, false, helpAutoOut)
+	recursive := flag.String(flagRecursive, "", helpRecursive)
+	recLong := flag.String(flagRecursiveLong, "", helpRecursive)
 	dbgConfig := flag.Bool(flagDbgPrintConfig, false, helpDbgPrintConfig)
 	flag.Parse()
 	prof := maybeProfileCpu()
@@ -324,37 +329,48 @@ func cmdGlueGir() error {
 	if *autoOut {
 		*out = inputMod + ".hor"
 	}
-	var outFile *os.File = os.Stdout
-	if *out != "" {
-		var err error
-		outFile, err = os.Create(*out)
+	if *recLong != "" {
+		*recursive = *recLong
+	}
+
+	if *recursive == "" {
+		var outFile *os.File = os.Stdout
+		if *out != "" {
+			var err error
+			outFile, err = os.Create(*out)
+			if err != nil {
+				return err
+			}
+		}
+
+		file, err := os.Open(*configFile)
+		if err != nil {
+			return fmt.Errorf("opening glue config file: %w", err)
+		}
+		defer file.Close()
+
+		config, err := gir.ParseConfig(file)
+		if err != nil {
+			return fmt.Errorf("parsing glue config file: %w", err)
+		}
+
+		if *dbgConfig {
+			errorf("config: %#v", config)
+		}
+
+		o, err := gir.Gen(inputMod, "", config)
 		if err != nil {
 			return err
 		}
-	}
 
-	file, err := os.Open(*configFile)
-	if err != nil {
-		return fmt.Errorf("opening glue config file: %w", err)
-	}
-
-	config, err := gir.ParseConfig(file)
-	if err != nil {
-		return fmt.Errorf("parsing glue config file: %w", err)
-	}
-
-	if *dbgConfig {
-		errorf("config: %#v", config)
-	}
-
-	o, err := gir.Gen(inputMod, "", config)
-	if err != nil {
-		return err
-	}
-
-	_, err = outFile.Write(o)
-	if err != nil {
-		return err
+		_, err = outFile.Write(o)
+		if err != nil {
+			return err
+		}
+	} else {
+		if err := gir.GenRecursively(inputMod, "", *configFile, *out); err != nil {
+			return err
+		}
 	}
 
 	return nil

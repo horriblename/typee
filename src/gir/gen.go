@@ -2,8 +2,11 @@ package gir
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path"
 	"slices"
 	"strconv"
 	"strings"
@@ -22,7 +25,7 @@ type Generator struct {
 	externs     bytes.Buffer
 }
 
-func New(lib string, version string, config Config) ([]byte, error) {
+func Gen(lib string, version string, config Config) ([]byte, error) {
 	g := Generator{config, lib, false, []string{}, bytes.Buffer{}, bytes.Buffer{}}
 	g.externs.WriteString("\n;; extern declarations\n")
 	err := g.Gen(lib, version)
@@ -44,14 +47,7 @@ func (self *Generator) Gen(lib string, version string) error {
 
 	deps := repo.Dependencies(self.namespace)
 	for _, dep := range deps {
-		i := 0
-		for ; i < len(dep); i++ {
-			if dep[i] == '-' {
-				break
-			}
-		}
-
-		name := dep[:i]
+		name, _, _ := strings.Cut(dep, "-")
 		fmt.Fprintf(&self.externs, "(import %s)\n", name)
 	}
 	for i, n := 0, repo.NumInfo(self.namespace); i < n; i++ {
@@ -59,6 +55,93 @@ func (self *Generator) Gen(lib string, version string) error {
 	}
 
 	return nil
+}
+
+const rw_r__r__ os.FileMode = 0644
+
+func GenRecursively(lib string, version string, configDir string, destDir string) error {
+	repo := gi.DefaultRepository()
+	_, err := repo.Require(lib, version, 0)
+	if err != nil {
+		return err
+	}
+
+	ctx := recursiveCtx{
+		repo:             repo,
+		configDir:        configDir,
+		destDir:          destDir,
+		generatedVersion: map[string]string{},
+	}
+	return genRecursively(&ctx, lib, version)
+}
+
+type recursiveCtx struct {
+	repo             *gi.Repository
+	configDir        string
+	destDir          string
+	generatedVersion map[string]string
+}
+
+func genRecursively(ctx *recursiveCtx, lib string, version string) error {
+	// TODO: check name conflict of different-versioned dependencies?
+	deps := ctx.repo.Dependencies(lib)
+	for _, dep := range deps {
+		name, ver, _ := strings.Cut(dep, "-")
+		if err := genRecursively(ctx, name, ver); err != nil {
+			return err
+		}
+	}
+
+	if hasVer, ok := ctx.generatedVersion[lib]; ok {
+		if hasVer != version {
+			return fmt.Errorf(
+				"%s requires two different versions: %s and %s",
+				lib, version, hasVer,
+			)
+		}
+		return nil
+	}
+	ctx.generatedVersion[lib] = version
+
+	wrap := func(e error) error {
+		if e == nil {
+			return e
+		}
+		return fmt.Errorf("generating %s.hor: %w", lib, e)
+	}
+
+	configPath := path.Join(ctx.configDir, lib, "config.json")
+	destPath := path.Join(ctx.destDir, lib+".hor")
+
+	file, err := os.Open(configPath)
+	var config Config
+	if err == nil {
+		defer file.Close()
+		config, err = ParseConfig(file)
+		if err != nil {
+			return wrap(err)
+		}
+		fmt.Fprintln(os.Stderr, "Generating", destPath, "with config file", configPath)
+	} else if errors.Is(err, os.ErrNotExist) {
+		config = Config{
+			Blacklist:       map[string]map[string]bool{},
+			Whitelist:       map[string]map[string]bool{},
+			MethodBlacklist: map[string]map[string]bool{},
+			MethodWhitelist: map[string]map[string]bool{},
+			ExtraTypes:      map[string]string{},
+		}
+		fmt.Fprintln(os.Stderr, "Generating", destPath, "with default config (no config file found)")
+	} else {
+		return wrap(err)
+	}
+
+	data, err := Gen(lib, version, config)
+	if err != nil {
+		return wrap(err)
+	}
+
+	// TODO: mkdir parents?
+	return wrap(os.WriteFile(destPath, data, rw_r__r__))
 }
 
 func (self *Generator) process_base_info(bi *gi.BaseInfo) {
