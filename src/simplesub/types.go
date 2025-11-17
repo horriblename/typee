@@ -855,7 +855,10 @@ func (self Record) String() string {
 	}), ", "))
 }
 func (self ObjectType) String() string {
-	return DeepPrint(self)
+	if self.Name != "" {
+		return fmt.Sprintf("%s.%s", self.Module, self.Name)
+	}
+	return DeepPrint(self, false)
 }
 func (self ArrayType) String() string { return fmt.Sprintf("[%s %d]", self.ElType, self.Size) }
 func (self SliceType) String() string { return fmt.Sprintf("[%s]", self.ElType) }
@@ -908,10 +911,15 @@ func (self Application) String() string {
 type deepPrintCtx struct {
 	visited map[string]bool
 	buf     strings.Builder
+
+	recurseNamed bool
 }
 
-func DeepPrint(ty TypeScheme) string {
-	ctx := deepPrintCtx{visited: map[string]bool{}}
+func DeepPrint(ty TypeScheme, recurseNamed bool) string {
+	ctx := deepPrintCtx{
+		visited:      map[string]bool{},
+		recurseNamed: recurseNamed,
+	}
 	ctx.print(ty)
 	return ctx.buf.String()
 }
@@ -931,7 +939,11 @@ func (self *deepPrintCtx) print(ty TypeScheme) {
 		self.buf.WriteString(" -> ")
 		self.print(t.Ret)
 	case ObjectType:
-		self.printObjectType(t)
+		if !self.recurseNamed && t.Name != "" {
+			self.buf.WriteString(t.String())
+		} else {
+			self.printObjectType(t)
+		}
 	case ArrayType:
 	case PolymorphicType:
 		self.buf.WriteString("polymorphic{")
