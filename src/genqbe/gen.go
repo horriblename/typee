@@ -45,6 +45,7 @@ type ctx struct {
 	userTypes      map[string]qbeil.AggregateType
 	recordTypes    map[int]qbeil.AggregateType
 	externs        map[string]struct{}
+	imports        map[string]can.ModuleName
 	vars           scope.ScopedMap[qbeil.Value]
 	classInProcess *types.Class
 
@@ -76,6 +77,7 @@ func Gen(
 		userTypes:            map[string]qbeil.AggregateType{},
 		recordTypes:          map[int]qbeil.AggregateType{},
 		externs:              map[string]struct{}{},
+		imports:              map[string]can.ModuleName{},
 		vars:                 scope.NewScopedMap[qbeil.Value](),
 		idGenerator:          0,
 		generatedTranslation: map[types.Type]qbeil.AggregateType{},
@@ -192,9 +194,19 @@ func Gen(
 		},
 	})
 
+	// Map imports and write extern functions
 	for _, expr := range ast {
-		if fn, ok := expr.(*parse.FuncDef); ok && fn.Extern {
-			ctx.externs[fn.Name] = struct{}{}
+		switch e := expr.(type) {
+		case *parse.FuncDef:
+			if e.Extern {
+				ctx.externs[e.Name] = struct{}{}
+			}
+		case *parse.Import:
+			// I really should find a way to not do this.
+			// Canonicalization will most likely help.
+			mod := can.ModuleName(strings.Join(e.Module, "."))
+			alias := e.Module[len(e.Module)-1]
+			ctx.imports[alias] = mod
 		}
 	}
 
@@ -290,61 +302,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		return target
 
 	case *parse.RecordAccess:
-		lhsTy := ctx.simplify(e.Record.ID())
-		if lhs, ok := e.Record.(*parse.RecordAccess); ok {
-			// TODO: right now we just assume a module path, but we need to handle records too
-			module := flattenRecordAccessPath(lhs)
-			mangled := mangleName(mangleOpts{
-				module: module,
-				class:  "",
-				name:   e.Field,
-			})
-
-			return qbeil.Var{Global: true, Name: mangled}
-		}
-
-		switch lhsTy := lhsTy.(type) {
-		case *types.Class:
-			mod := lhsTy.Module
-			if mod == "" {
-				mod = ctx.module
-			}
-			return genClassAccessByName(ctx, mod, lhsTy.Name, e)
-		case *types.Record:
-			// TODO: right now we just assume a module path, but we need to handle records too
-			// should be unreachable currently
-			if lhs, ok := e.Record.(*parse.Symbol); ok {
-				mangled := mangleName(mangleOpts{
-					module: can.ModuleName(lhs.Name),
-					class:  "",
-					name:   e.Field,
-				})
-				return qbeil.Var{Global: true, Name: mangled}
-			}
-			panic("TODO record access with non-symbol record-typed lhs")
-		case *types.Application:
-			if len(lhsTy.Params) != 0 {
-				panic(fmt.Sprintf("use of polymorphic type on left hand side of %s not yet supported", e.Pretty()))
-			}
-			lhsTs := ctx.findType(lhsTy.Module, lhsTy.Name)
-			switch lhsConcrete := lhsTs.(type) {
-			case simplesub.ObjectType:
-				return genClassAccessByName(ctx, lhsConcrete.Module, lhsConcrete.Name, e)
-			case simplesub.Record:
-				ilTy := ctx.toILType(lhsTy)
-
-				structTy, ok := ilTy.(qbeil.StructType)
-				assert.True(ok, fmt.Sprintf(
-					"BUG: expected %s to be a struct type but is a %T",
-					lhsTy.Name, ilTy))
-				return genRecordAccess(ctx, e, structTy)
-			default:
-				panic("TODO Application resulting in unhandled type: " + lhsTs.String())
-			}
-
-		default:
-			panic(fmt.Sprintf("unexpected types.Type: %#v", lhsTy))
-		}
+		return genDotAccessOnAny(ctx, e)
 
 	case *parse.StrLiteral:
 		dataGlobal := ctx.il.TempVar(true)
@@ -592,18 +550,37 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		return genCallWithFuncName(ctx, mod, class, callee.Method, expr)
 
 	case *parse.RecordAccess:
-		// TODO: currently only module access supported
-		var modulePath can.ModuleName
+		// currently supports:
+		// 1. (Module.Type.staticMethod x y z)
+		// 2. (Module.function x y z)
+		// 3. (LocalClass.staticMethod x y z)
+		modulePath := ctx.module
+		var class string
 		switch lhs := callee.Record.(type) {
 		case *parse.Symbol:
-			modulePath = can.ModuleName(lhs.Name)
+			if modName, ok := ctx.imports[lhs.Name]; ok {
+				// Module.function
+				modulePath = modName
+			} else {
+				// LocalClass.staticMethod
+				class = lhs.Name
+			}
 		case *parse.RecordAccess:
-			modulePath = flattenRecordAccessPath(lhs)
+			// Module.Type.staticMethod
+			llhs := assert.Cast[*parse.Symbol](lhs.Record,
+				"Currently does not support calling record fields. How did you get here?")
+			modulePath = can.ModuleName(llhs.Name)
+			modName := assert.Get(ctx.imports, llhs.Name,
+				"Only module name is allowed here, did you try to call a record field?")
+			class = lhs.Field
+			mod := assert.Get(ctx.allModules, modName, "BUG imported module is missing")
+			assert.Get(mod.Types, class,
+				"Only static method call on imported type allowed here, did you try to call a record field?")
 		default:
 			panic(fmt.Sprintf("unexpected lhs of record accessor %T in: %s", callee.Record, callee))
 		}
 
-		return genCallWithFuncName(ctx, modulePath, "", callee.Field, expr)
+		return genCallWithFuncName(ctx, modulePath, class, callee.Field, expr)
 
 	case *parse.Symbol:
 		return genCallWithFuncName(ctx, ctx.module, "", callee.Name, expr)
@@ -1435,6 +1412,49 @@ func genUnionDef(ctx *ctx, e *parse.UnionDef) {
 	ctx.declareType(e.Name, ctx.unionDefIL(unionTy, e))
 }
 
+func genDotAccessOnAny(ctx *ctx, e *parse.RecordAccess) qbeil.Value {
+	// supports:
+	// 1. var1.field.moreFields
+	// 2. Module.var1.field.moreFields
+	// class static variables not supported
+	if lhsSym, ok := e.Record.(*parse.Symbol); ok {
+		if modName, ok := ctx.imports[lhsSym.Name]; ok {
+			return qbeil.Var{
+				Global: true,
+				Name: mangleName(mangleOpts{
+					module: modName,
+					class:  "",
+					name:   e.Field,
+				}),
+			}
+		}
+	}
+	st := ctx.simplify(e.Record.ID())
+	return genDotAccessOnExpr(ctx, st, e)
+}
+
+func genDotAccessOnExpr(ctx *ctx, lhsTy types.Type, e *parse.RecordAccess) qbeil.Value {
+	switch lhsTy := ctx.resolveTypeApplications(lhsTy).(type) {
+	case *types.Class:
+		mod := lhsTy.Module
+		if mod == "" {
+			mod = ctx.module
+		}
+		return genClassAccessByName(ctx, mod, lhsTy.Name, e)
+	case *types.Record:
+		ilTy := ctx.toILType(lhsTy)
+
+		structTy, ok := ilTy.(qbeil.StructType)
+		assert.True(ok, fmt.Sprintf(
+			"BUG: expected LHS to be a struct type but is a %T:\n  %v",
+			ilTy, e.Record))
+		return genRecordAccess(ctx, e, structTy)
+
+	default:
+		panic(fmt.Sprintf("unexpected types.Type: %#v, at %v", lhsTy, e))
+	}
+}
+
 func genClassAccessByName(ctx *ctx, module can.ModuleName, class string, expr *parse.RecordAccess) qbeil.Value {
 	assert.Neq(class, "", "unnamed class in class access not yet supported")
 	assert.Neq(module, "", "unnamed module of class", class)
@@ -1756,6 +1776,7 @@ func (ctx *ctx) ensureObjectTypeDeclared(t *types.Class) qbeil.StructType {
 	return ct
 }
 
+// Recursively resolves *types.Application
 func (ctx *ctx) typeApplicationToType(app *types.Application) types.Type {
 	module := assert.Get(ctx.allModules, app.Module,
 		"BUG codegen: encountered unresolved module", app.Module)
@@ -1763,7 +1784,18 @@ func (ctx *ctx) typeApplicationToType(app *types.Application) types.Type {
 		"BUG unresolved imported type", app.Module, ".", app.Name, "encountered during codegen")
 	st := assert.Cast[simplesub.SimpleType](ts,
 		"BUG codegen: encountered type scheme", app.Module, ".", app.Name)
-	return ctx.simplifyType(st)
+	ty := ctx.simplifyType(st)
+	if app, ok := ty.(*types.Application); ok {
+		return ctx.typeApplicationToType(app)
+	}
+	return ty
+}
+
+func (ctx *ctx) resolveTypeApplications(t types.Type) types.Type {
+	if app, ok := t.(*types.Application); ok {
+		return ctx.typeApplicationToType(app)
+	}
+	return t
 }
 
 func ilTypeName(module can.ModuleName, class string) string {
@@ -1899,7 +1931,7 @@ func (self *ctx) sizeOf(t qbeil.Type) (bits int, alignBits int) {
 	return qbeil.SizeOf(self.defaultAlign, t)
 }
 
-func flattenRecordAccessPath(expr *parse.RecordAccess) can.ModuleName {
+func flattenModuleAccessPath(expr *parse.RecordAccess) can.ModuleName {
 	lhs := expr.Record
 	modulePath := []string{}
 	for {
