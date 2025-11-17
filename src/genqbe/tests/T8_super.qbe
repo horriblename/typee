@@ -4,17 +4,17 @@ type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
 type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
 type :GInterfaceInfo = {l, l, l, }
 type :Foo = {:GObject, l, l, l, }
-type :MainModule.FooClass = {:GObjectClass, }
+type :MainModule.FooClass = {:GObjectClass, l, }
 type :FooPrivate = {}
 type :Bar = {:Foo, l, l, }
-type :MainModule.BarClass = {:MainModule.FooClass, }
+type :MainModule.BarClass = {:MainModule.FooClass, l, }
 type :BarPrivate = {}
 type :Baz = {:Bar, l, l, }
-type :MainModule.BazClass = {:MainModule.BarClass, }
+type :MainModule.BazClass = {:MainModule.BarClass, l, }
 type :BazPrivate = {}
 data $MainModule.Foo_class__name = {b "Foo", b 0}
 data $MainModule.Foo___type__id____once = {l 0}
-data $MainModule.Foo_g__define__type__info = {h 136, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 48, h 0, w 0, l 0, h 0, }
+data $MainModule.Foo_g__define__type__info = {h 144, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 48, h 0, w 0, l 0, h 0, }
 export function l $MainModule.Foo_get__type() {
 @start
 	%_tmp_2 =l call $g_once_init_enter (l $MainModule.Foo___type__id____once)
@@ -37,7 +37,7 @@ export function l $MainModule.Foo_new() {
 }
 data $MainModule.Bar_class__name = {b "Bar", b 0}
 data $MainModule.Bar___type__id____once = {l 0}
-data $MainModule.Bar_g__define__type__info = {h 136, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 64, h 0, w 0, l 0, h 0, }
+data $MainModule.Bar_g__define__type__info = {h 152, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 64, h 0, w 0, l 0, h 0, }
 export function l $MainModule.Bar_get__type() {
 @start
 	%_tmp_8 =l call $g_once_init_enter (l $MainModule.Bar___type__id____once)
@@ -60,7 +60,7 @@ export function l $MainModule.Bar_new() {
 }
 data $MainModule.Baz_class__name = {b "Baz", b 0}
 data $MainModule.Baz___type__id____once = {l 0}
-data $MainModule.Baz_g__define__type__info = {h 136, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 80, h 0, w 0, l 0, h 0, }
+data $MainModule.Baz_g__define__type__info = {h 160, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 80, h 0, w 0, l 0, h 0, }
 export function l $MainModule.Baz_get__type() {
 @start
 	%_tmp_14 =l call $g_once_init_enter (l $MainModule.Baz___type__id____once)
@@ -83,7 +83,7 @@ export function l $MainModule.Baz_new() {
 }
 export function w $main() {
 @start
-	%_tmp_19 =l call $MainModule.Baz_new ()
+	%_tmp_19 =l call $Baz.new ()
 	%ptrTo_Baz.a1 =l add %_tmp_19, 9
 	%valOf_Baz.a2 =l loadl %ptrTo_Baz.a1
 	ret %valOf_Baz.a2
