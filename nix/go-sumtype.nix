@@ -8,5 +8,5 @@ buildGoModule {
   inherit version;
   src = source;
 
-  vendorHash = "sha256-EFcvb2heqBHSlRFHWaD3NT3fGhQp5BGzqAUosEiTMYY=";
+  vendorHash = "sha256-H/xcidXJdc+ahuJ2+2yinFMC8WlNVIm69qMh5gojlFw=";
 }
