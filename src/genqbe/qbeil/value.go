@@ -44,3 +44,5 @@ func (i IntLiteral) IL() string {
 func (i FloatLiteral) IL() string {
 	return fmt.Sprintf("d_%f", i.Value)
 }
+
+func (v Var) String() string { return v.IL() }

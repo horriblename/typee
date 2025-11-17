@@ -142,6 +142,9 @@ func (t SubWordType) IL() string {
 	}
 }
 
+func (t BaseType) String() string   { return t.IL() }
+func (t StructType) String() string { return t.IL() }
+
 func (t StructType) Define() string {
 	var b strings.Builder
 	_, err := b.WriteString("type :")
