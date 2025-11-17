@@ -162,6 +162,14 @@ func buildProgram(params buildParams) error {
 	}
 
 	executable := params.outFile
+	if !path.IsAbs(params.outFile) {
+		pwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+
+		executable = path.Join(pwd, executable)
+	}
 	if len(params.outFile) > 0 && params.outFile[0] != '/' && params.outFile[:2] != "./" {
 		executable = "./" + params.outFile
 	}
