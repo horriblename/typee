@@ -190,7 +190,10 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		return lhs, nil
 	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
 		args := make([]SimpleType, 0, len(lhs.Args))
-		argPairs := fun.ZipIter(slices.Values(lhs.Args), slices.Values(rhs.Args))
+		assert.Eq(len(lhs.Args), len(rhs.Args),
+			"BUG mismatched arg count detected in glb for types: ", lhs, rhs)
+
+		argPairs := fun.ZipIterStrict(slices.Values(lhs.Args), slices.Values(rhs.Args))
 		for larg, rarg := range argPairs {
 			arg, err := self.lub(larg, rarg)
 			if err != nil {
@@ -1140,7 +1143,7 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 			return false
 		}
 
-		for larg, rarg := range fun.ZipIter(slices.Values(left.Args), slices.Values(right.Args)) {
+		for larg, rarg := range fun.ZipIterStrict(slices.Values(left.Args), slices.Values(right.Args)) {
 			if !concreteEq_(larg, rarg) {
 				return false
 			}

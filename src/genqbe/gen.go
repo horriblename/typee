@@ -733,7 +733,7 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 		argExprs := expr.Children[1:]
 		// skip type of self, if applicable
 		nonSelfTys := realArgTys[len(args):]
-		for arg, typ := range fun.ZipSlices(argExprs, nonSelfTys) {
+		for arg, typ := range fun.ZipSlicesStrict(argExprs, nonSelfTys) {
 			args = append(args, qbeil.ABITypedValue{Type: ctx.toABIType(typ), Value: gen(ctx, arg)})
 		}
 		funcVar := qbeil.Var{Global: true, Name: mangled}

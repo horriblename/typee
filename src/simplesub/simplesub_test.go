@@ -1003,7 +1003,7 @@ func TestTypeProgram(t *testing.T) {
 			if len(tC.typ) != len(typ) {
 				t.Errorf("expected %d results, got %d", len(tC.typ), len(typ))
 			}
-			for expect, got := range fun.ZipIter(slices.Values(tC.typ), slices.Values(typ)) {
+			for expect, got := range fun.ZipIterStrict(slices.Values(tC.typ), slices.Values(typ)) {
 				if !types.StructuralEq(expect, got) {
 					t.Errorf("expected type\n  %v\ngot:\n  %v", types.DeepPrint(expect), types.DeepPrint(got))
 				}

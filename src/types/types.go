@@ -283,7 +283,7 @@ func (self *Application) Eq(other Type) bool {
 		return false
 	}
 
-	for a, b := range fun.ZipSlices(self.Params, o.Params) {
+	for a, b := range fun.ZipSlicesStrict(self.Params, o.Params) {
 		if !a.Eq(b) {
 			return false
 		}
@@ -771,7 +771,7 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 			return false
 		}
 
-		for pa, pb := range fun.ZipSlices(a.Params, b.Params) {
+		for pa, pb := range fun.ZipSlicesStrict(a.Params, b.Params) {
 			if !structuralEq(ctx, pa, pb) {
 				return false
 			}

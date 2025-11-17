@@ -2,6 +2,7 @@
 package fun
 
 import (
+	"fmt"
 	"iter"
 	"slices"
 )
@@ -48,7 +49,8 @@ type Pair[T, U any] struct {
 	Two U
 }
 
-func ZipIter[T, U any](i1 iter.Seq[T], i2 iter.Seq[U]) iter.Seq2[T, U] {
+// panics if given iterators have different size
+func ZipIterStrict[T, U any](i1 iter.Seq[T], i2 iter.Seq[U]) iter.Seq2[T, U] {
 	return func(yield func(T, U) bool) {
 		pull2, stop2 := iter.Pull(i2)
 		defer stop2()
@@ -56,18 +58,23 @@ func ZipIter[T, U any](i1 iter.Seq[T], i2 iter.Seq[U]) iter.Seq2[T, U] {
 		for item1 := range i1 {
 			item2, ok2 := pull2()
 			if !ok2 {
-				return
+				panic(fmt.Sprintf("ZipIter: leftover elements in first iterator: %v", item1))
 			}
 
 			if !yield(item1, item2) {
 				return
 			}
 		}
+		item2, ok2 := pull2()
+		if ok2 {
+			panic(fmt.Sprintf("ZipIter: leftover elements in second iterator: %v", item2))
+		}
 	}
 }
 
-func ZipSlices[T, U any](a []T, b []U) iter.Seq2[T, U] {
-	return ZipIter(slices.Values(a), slices.Values(b))
+// panics if given iterators have different size
+func ZipSlicesStrict[T, U any](a []T, b []U) iter.Seq2[T, U] {
+	return ZipIterStrict(slices.Values(a), slices.Values(b))
 }
 
 func Collect[T any](s iter.Seq[T]) []T {
