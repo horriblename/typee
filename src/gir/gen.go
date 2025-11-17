@@ -388,7 +388,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	flags := fi.Flags()
 	name := fi.Name()
 
-	needSelfArg := flags&gi.FUNCTION_IS_METHOD != 0 || flags&gi.FUNCTION_IS_CONSTRUCTOR != 0
+	needSelfArg := flags&gi.FUNCTION_IS_METHOD != 0
 	if needSelfArg && len(self.methodOwner) == 0 {
 		panic(fmt.Sprintf("tried processing a method %s but no current class", name))
 	}
