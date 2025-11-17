@@ -48,7 +48,7 @@ func TestLex(t *testing.T) {
 			output: []Token{&tokDef, &tokSet, &Symbol{Name: "defoo"},
 				&Symbol{Name: "bar"}, &TrueLiteral{}, &FalseLiteral{}, &If{},
 				&Let{}, &Fn{}, &Case{}, &LetRec{}, &Class{}, &Priv{}, &Pub{},
-				&Protected{}, &Self{}, &Interface{}, &New{}, &Union{}, &Enum{},
+				&Protected{}, &Self{}, &Interface{}, &Symbol{Name: "new"}, &Union{}, &Enum{},
 				&Type{}, &CallExtern{}, &Import{}, &Extern{},
 			},
 		},

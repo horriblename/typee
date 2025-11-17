@@ -394,7 +394,11 @@ func TestParse(t *testing.T) {
 			output: []Expr{&Form{
 				id: 3,
 				Children: []Expr{
-					&New{id: 2, Class: TypeName{"", "Foo"}},
+					&RecordAccess{
+						id:     2,
+						Record: &Symbol{"Foo", 1},
+						Field:  "new",
+					},
 				},
 			}},
 		},
@@ -404,8 +408,15 @@ func TestParse(t *testing.T) {
 			output: []Expr{&Form{
 				id: 4,
 				Children: []Expr{
-					&New{id: 3, Class: TypeName{"Foo", "Bar"}},
-				},
+					&RecordAccess{
+						id: 3,
+						Record: &RecordAccess{
+							id:     2,
+							Record: &Symbol{"Foo", 1},
+							Field:  "Bar",
+						},
+						Field: "new",
+					}},
 			}},
 		},
 		{
