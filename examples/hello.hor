@@ -4,7 +4,7 @@
 (class Foo {
 	pub name Str,
 	pub age Int,
-	pub (def hello (Str Str) [name] name),
+	pub (def hello (Self Str Str) [self name] name),
 })
 
 (def bar (Foo Str) [foo] (foo#hello "world"))
