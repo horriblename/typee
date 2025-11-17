@@ -1,0 +1,10 @@
+{
+	"extra-types": {},
+	"whitelist": {},
+	"blacklist": {},
+	"method-blacklist": {
+		"IOModule": [
+			"query"
+		]
+	}
+}

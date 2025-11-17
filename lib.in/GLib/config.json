@@ -49,6 +49,9 @@
         ],
         "Hook": [
             "insert_sorted"
+        ],
+        "MainContext": [
+            "pusher_new"
         ]
     }
 }
