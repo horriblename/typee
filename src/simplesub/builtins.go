@@ -55,6 +55,19 @@ func builtinVars() map[string]TypeScheme {
 		"strToCStr": PolymorphicType{
 			Body: Func{Args: []SimpleType{Str{}}, Ret: Primitive{PrimitiveOpaque}},
 		},
+		"typeOf": PolymorphicType{
+			Body: Func{Args: []SimpleType{Primitive{PrimitiveOpaque}}, Ret: Primitive{PrimitiveOpaque}},
+		},
+		"i64ToI32": PolymorphicType{
+			Body: Func{Args: []SimpleType{I64}, Ret: Int{true, 32}},
+		},
+		"emptyList": PolymorphicType{
+			Body: Func{
+				Args:   []SimpleType{},
+				Ret:    SliceType{freshVar()},
+				Method: false,
+			},
+		},
 	}
 	return _builtinVars
 }
@@ -95,6 +108,7 @@ func builtinTypes() map[string]TypeScheme {
 		"F32":    Primitive{PrimitiveFloat},
 		"Bool":   Primitive{PrimitiveBool},
 		"Opaque": Primitive{PrimitiveOpaque},
+		"GType":  Primitive{PrimitiveOpaque}, // this should be a guintptr
 
 		"Ref": PolymorphicType{
 			Body: Ref{
