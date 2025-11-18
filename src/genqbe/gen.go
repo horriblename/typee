@@ -1144,8 +1144,20 @@ func genClassNewFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	}
 	ctx.il.Func(qbeil.Linkage{Type: qbeil.Export}, ctx.ptrType, "$"+newFuncName, []qbeil.TypedVar{})
 	typeVar := ctx.il.TempVar(false)
-	ctx.il.Call(&typeVar, ctx.ptrType, getType, []qbeil.ABITypedValue{})
-	ctx.il.Ret(typeVar)
+	ctx.il.Call(&typeVar, ctx.ptrType /*GType*/, getType, []qbeil.ABITypedValue{})
+
+	constructName := mangleName(mangleOpts{
+		module: opt.class.Module,
+		class:  opt.class.Name,
+		name:   "construct",
+	})
+	construct := qbeil.Var{Global: true, Name: constructName}
+	ret := ctx.il.TempVar(false)
+	ctx.il.Call(&ret, ctx.ptrType, construct, []qbeil.ABITypedValue{
+		{Type: ctx.ptrType, Value: typeVar},
+	})
+
+	ctx.il.Ret(ret)
 	ctx.il.EndFunc()
 }
 
