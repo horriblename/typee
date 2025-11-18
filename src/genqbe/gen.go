@@ -1107,7 +1107,14 @@ func genObjectTypeConstructor(ctx *ctx, opt objectTypeBoilerplateOpt) {
 		{Type: /* GType */ ctx.ptrType, Name: argObjType},
 	})
 	obj := ctx.il.TempVar(false)
-	if len(opt.parents) == 0 || (opt.parents[0].Module == simplesub.StdModName && opt.parents[0].Name == "Object") {
+
+	// TODO: I'm not really sure how to tell if a class has a construct()
+	// extern ones (almost?) certainly don't have, but I'll have to expose that...
+	parentLacksConstruct := len(opt.parents) == 0 ||
+		opt.parents[0].Module != ctx.module ||
+		(opt.parents[0].Module == simplesub.StdModName &&
+			opt.parents[0].Name == "Object")
+	if parentLacksConstruct {
 		parentCtorName := "g_object_new"
 		ctx.il.Call(&obj, ctx.ptrType, qbeil.Var{Name: parentCtorName, Global: true}, []qbeil.ABITypedValue{
 			{Type: ctx.ptrType, Value: argObjType},
