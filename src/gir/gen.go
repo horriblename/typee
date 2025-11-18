@@ -647,6 +647,15 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 		p("{}")
 	}
 
+	if oi.Parent() != nil {
+		name := oi.Parent().Name()
+		ns := oi.Parent().Namespace()
+		if ns != self.namespace {
+			p("%s.", snake_case_to_PascalCase(ns))
+		}
+		p("%s ", snake_case_to_PascalCase(name))
+	}
+
 	for i, n := 0, oi.NumInterface(); i < n; i++ {
 		ii := oi.Interface(i)
 		name := ii.Name()
