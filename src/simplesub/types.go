@@ -324,6 +324,16 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		}
 
 		return Ref{content}, nil
+	} else if _, rhs, ok := matchPair[ObjectType, Primitive](lhs0, rhs0); ok {
+		if rhs.Kind == PrimitiveOpaque {
+			return rhs, nil
+		}
+		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
+	} else if lhs, _, ok := matchPair[Primitive, ObjectType](lhs0, rhs0); ok {
+		if lhs.Kind == PrimitiveOpaque {
+			return lhs, nil
+		}
+		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
 	} else if lhs, rhs, ok := matchPair[Enum, Enum](lhs0, rhs0); ok {
 		// same non-empty name
 		if lhs.Name == rhs.Name && lhs.Name != "" {
@@ -583,6 +593,16 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		}
 
 		return Ref{content}, nil
+	} else if lhs, rhs, ok := matchPair[ObjectType, Primitive](lhs0, rhs0); ok {
+		if rhs.Kind == PrimitiveOpaque {
+			return lhs, nil
+		}
+		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
+	} else if lhs, rhs, ok := matchPair[Primitive, ObjectType](lhs0, rhs0); ok {
+		if lhs.Kind == PrimitiveOpaque {
+			return rhs, nil
+		}
+		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
 	} else {
 		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
 	}

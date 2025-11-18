@@ -1601,6 +1601,11 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 		}
 
 		return nil
+	} else if _, bound, ok := matchPair[ObjectType, Primitive](ty0, bound0); ok {
+		if bound.Kind == PrimitiveOpaque {
+			return nil
+		}
+		return fmt.Errorf("%w object %v <: %v", ErrCannotConstrain, ty0, bound0)
 	} else if ty, bound, ok := matchPair[*Variable, *Variable](ty0, bound0); ok {
 		return self.unify(ty, bound)
 	} else if ty, bound, ok := matchPair[*Variable, ConcreteType](ty0, bound0); ok {
