@@ -320,66 +320,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		defer func() { ctx.funcInProcess = "" }()
 		return genFunc(ctx, "", e, nil)
 	case *parse.Fn:
-		assert.Neq(ctx.funcInProcess, "",
-			"Empty ctx.funcInProcess. Top-level fn (i.e. outside of a def) is not allowed")
-		name := ctx.newTempName(ctx.funcInProcess + ".fn")
-		className := ""
-		if ctx.classInProcess != nil {
-			className = ctx.classInProcess.Name
-		}
-
-		// assign capture block
-		captures := assert.Get(ctx.allModules[ctx.module].Captures, e.ID(),
-			"BUG codegen: a closure has no capture group: ", e.String())
-		blockFields := map[string]types.Type{}
-		for _, capture := range captures {
-			blockFields[capture.Name] = ctx.simplify(capture.ID)
-		}
-		fields := fun.Map(captures, func(c simplesub.Capture) recordAssignment {
-			val, ok := ctx.vars.Get(c.Name).Unwrap()
-			assert.True(ok,
-				"could not find local variable", c.Name, "while building capture block")
-			return recordAssignment{
-				name:  c.Name,
-				typ:   ctx.toILType(ctx.simplify(c.ID)),
-				value: val,
-			}
-		})
-		captureBlockTy := types.Record{
-			Fields: blockFields,
-		}
-		captureBlockIlTy := ctx.recordToILType(&captureBlockTy)
-
-		// TODO: should be on the heap but, uh yeah
-		captureBlock := genRecordLiteral(ctx, captureBlockIlTy, fields)
-
-		funcPtr := qbeil.Var{
-			Global: true,
-			Name: mangleName(mangleOpts{
-				module: ctx.module,
-				class:  className,
-				name:   name,
-			}),
-		}
-
-		// assemble ClosureComponents struct
-		closureTy := assert.Get(ctx.userTypes, "ClosureComponents",
-			"BUG codegen: ClosureComponents not declared?")
-		closureSTy := assert.Cast[qbeil.StructType](closureTy,
-			"BUG codegen: ClosureComponents is not a StructType?")
-		genRecordLiteral(ctx, closureSTy, []recordAssignment{
-			{name: "func", typ: ctx.ptrType, value: funcPtr},
-			{name: "data", typ: ctx.ptrType, value: captureBlock},
-			// TODO
-			{name: "cleanup", typ: ctx.ptrType, value: qbeil.IntLiteral{Value: 0}},
-		})
-
-		ctx.unprocessedClosures = append(ctx.unprocessedClosures, closure{
-			name:        funcPtr,
-			expr:        e,
-			captureData: captureBlockIlTy,
-		})
-		return funcPtr
+		return genClosure(ctx, e)
 	case *parse.Form:
 		return genCall(ctx, e)
 	case *parse.EnumAccess:
@@ -869,6 +810,69 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 
 		return target
 	}
+}
+
+func genClosure(ctx *ctx, e *parse.Fn) qbeil.Value {
+	assert.Neq(ctx.funcInProcess, "",
+		"Empty ctx.funcInProcess. Top-level fn (i.e. outside of a def) is not allowed")
+	name := ctx.newTempName(ctx.funcInProcess + ".fn")
+	className := ""
+	if ctx.classInProcess != nil {
+		className = ctx.classInProcess.Name
+	}
+
+	// assign capture block
+	captures := assert.Get(ctx.allModules[ctx.module].Captures, e.ID(),
+		"BUG codegen: a closure has no capture group: ", e.String())
+	blockFields := map[string]types.Type{}
+	for _, capture := range captures {
+		blockFields[capture.Name] = ctx.simplify(capture.ID)
+	}
+	fields := fun.Map(captures, func(c simplesub.Capture) recordAssignment {
+		val, ok := ctx.vars.Get(c.Name).Unwrap()
+		assert.True(ok,
+			"could not find local variable", c.Name, "while building capture block")
+		return recordAssignment{
+			name:  c.Name,
+			typ:   ctx.toILType(ctx.simplify(c.ID)),
+			value: val,
+		}
+	})
+	captureBlockTy := types.Record{
+		Fields: blockFields,
+	}
+	captureBlockIlTy := ctx.recordToILType(&captureBlockTy)
+
+	// TODO: should be on the heap but, uh yeah
+	captureBlock := genRecordLiteral(ctx, captureBlockIlTy, fields)
+
+	funcPtr := qbeil.Var{
+		Global: true,
+		Name: mangleName(mangleOpts{
+			module: ctx.module,
+			class:  className,
+			name:   name,
+		}),
+	}
+
+	// assemble ClosureComponents struct
+	closureTy := assert.Get(ctx.userTypes, "ClosureComponents",
+		"BUG codegen: ClosureComponents not declared?")
+	closureSTy := assert.Cast[qbeil.StructType](closureTy,
+		"BUG codegen: ClosureComponents is not a StructType?")
+	genRecordLiteral(ctx, closureSTy, []recordAssignment{
+		{name: "func", typ: ctx.ptrType, value: funcPtr},
+		{name: "data", typ: ctx.ptrType, value: captureBlock},
+		// TODO
+		{name: "cleanup", typ: ctx.ptrType, value: qbeil.IntLiteral{Value: 0}},
+	})
+
+	ctx.unprocessedClosures = append(ctx.unprocessedClosures, closure{
+		name:        funcPtr,
+		expr:        e,
+		captureData: captureBlockIlTy,
+	})
+	return funcPtr
 }
 
 func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
