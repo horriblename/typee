@@ -92,6 +92,7 @@ func captureClosures(ctx *findClosureCtx, expr parse.Expr) {
 			ctx.vars.Insert(ass.Var, ctx.vars.ScopeLevel())
 			captureClosures(ctx, ass.Value)
 		}
+		captureClosures(ctx, e.Body)
 		ctx.vars.PopScope()
 	case *parse.MethodAccess:
 		captureClosures(ctx, e.Obj)

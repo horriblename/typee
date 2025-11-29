@@ -1057,14 +1057,15 @@ func TestClosureCapture(t *testing.T) {
 							(- (+ x y) o))
 						g (fn [o]
 							((fn []
-								(- (+ o y) 10)))) 
+								(- (+ o y) 10))))
 					]
-						(f 3)))
+						(fn [] f)))
 			`,
 			captures: []map[string]unit{
 				newSet("x", "y"),
 				newSet("y", "o"),
 				newSet("y"),
+				newSet("f"),
 			},
 		},
 	}
