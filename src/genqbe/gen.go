@@ -59,7 +59,7 @@ type ctx struct {
 }
 
 type closure struct {
-	name qbeil.Var
+	name string
 	expr *parse.Fn
 
 	captureData qbeil.StructType
@@ -280,7 +280,7 @@ func Gen(
 			// reassign captured values to their original names
 			def := parse.FuncDef{
 				Id:        closure.expr.ID(),
-				Name:      closure.name.Name,
+				Name:      closure.name,
 				Signature: closure.expr.Signature,
 				Args:      closure.expr.Args,
 				Body:      []parse.Expr{closure.expr.Body},
@@ -559,7 +559,6 @@ func genFunc(
 				name:   field,
 				offset: layout.OffsetBits,
 			})
-			ctx.vars.Insert(field, qbeil.Var{Global: false, Name: field})
 		}
 		slices.SortFunc(fields, func(a layoutInfo, b layoutInfo) int {
 			if d := cmp.Compare(a.offset, b.offset); d != 0 {
@@ -570,7 +569,8 @@ func genFunc(
 		})
 
 		for _, field := range fields {
-			genRecordAccess(ctx, capturesArg, field.name, captureBlock.Layouts)
+			val := genRecordAccess(ctx, capturesArg, field.name, captureBlock.Layouts)
+			ctx.vars.Insert(field.name, val)
 		}
 	}
 
@@ -868,7 +868,7 @@ func genClosure(ctx *ctx, e *parse.Fn) qbeil.Value {
 	})
 
 	ctx.unprocessedClosures = append(ctx.unprocessedClosures, closure{
-		name:        funcPtr,
+		name:        name,
 		expr:        e,
 		captureData: captureBlockIlTy,
 	})
