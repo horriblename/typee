@@ -83,6 +83,7 @@ func NewTyper(mainModule can.ModuleName, debug bool) *Typer {
 		Types:    builtinTypes(),
 		Globals:  builtinVars(),
 		TypeTree: map[int]TypeScheme{},
+		Captures: map[int][]string{},
 	}
 	return &Typer{
 		symbols: symbols{
@@ -102,7 +103,9 @@ func NewTyper(mainModule can.ModuleName, debug bool) *Typer {
 	}
 }
 
-func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[can.ModuleName]ModuleInfo, error) {
+func (self *Typer) TypeProgram(program []parse.Expr) (
+	[]TypeScheme, map[can.ModuleName]ModuleInfo, error,
+) {
 	if err := self.typeDeps(program); err != nil {
 		return nil, nil, err
 	}
@@ -114,7 +117,7 @@ func (self *Typer) TypeProgram(program []parse.Expr) ([]TypeScheme, map[can.Modu
 		return nil, nil, err
 	}
 
-	self.moduleCache[self.mainModule], err = typeTableToSymbolMap(self.mainModule, program, typesAst, self.inferred)
+	self.moduleCache[self.mainModule], err = buildModuleInfo(self.mainModule, program, typesAst, self.inferred)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/can"
+	"github.com/horriblename/typee/src/internal/scope"
 	"github.com/horriblename/typee/src/parse"
 )
 
@@ -19,6 +20,7 @@ type ModuleInfo struct {
 	Types    map[string]TypeScheme
 	Globals  map[string]TypeScheme
 	TypeTree map[int]TypeScheme
+	Captures map[int][]string
 }
 
 var (
@@ -72,12 +74,24 @@ func parseModule(name can.ModuleName) ([]parse.Expr, error) {
 // sorts a map[nodes]outgoingNodes
 // leaf nodes go first, root goes last
 
-func typeTableToSymbolMap(
+func buildModuleInfo(
 	mod can.ModuleName,
 	program []parse.Expr,
 	typesAst []parse.Expr,
 	typTable map[int]TypeScheme,
 ) (ModuleInfo, error) {
+	// Captures
+	capturesCtx := findClosureCtx{
+		vars:               scope.NewScopedMap[int](),
+		outOfScopeAccesses: []outsideAccesses{},
+		innerMostFnLevel:   0,
+		Captures:           map[int][]string{},
+	}
+	for _, expr := range program {
+		captureClosures(&capturesCtx, expr)
+	}
+
+	// Globals and Types
 	symbols := ModuleInfo{
 		Name:     mod,
 		Ast:      program,
@@ -85,6 +99,7 @@ func typeTableToSymbolMap(
 		Types:    map[string]TypeScheme{},
 		Globals:  map[string]TypeScheme{},
 		TypeTree: typTable,
+		Captures: capturesCtx.Captures,
 	}
 	for _, expr := range program {
 		switch e := expr.(type) {

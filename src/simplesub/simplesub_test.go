@@ -2,6 +2,7 @@ package simplesub
 
 import (
 	"errors"
+	"maps"
 	"slices"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/fun"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
+	"github.com/horriblename/typee/src/internal/scope"
 	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/types"
@@ -1037,4 +1039,66 @@ func TestTypeProgram(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClosureCapture(t *testing.T) {
+	testCases := []struct {
+		desc     string
+		input    string
+		captures []map[string]unit
+	}{
+		{
+			desc: "",
+			input: `
+				(def foo [x]
+					(let [
+						y 10
+						f (fn [o]
+							(- (+ x y) o))
+						g (fn [o]
+							((fn []
+								(- (+ o y) 10)))) 
+					]
+						(f 3)))
+			`,
+			captures: []map[string]unit{
+				newSet("x", "y"),
+				newSet("y", "o"),
+				newSet("y"),
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			assert := assert.NewTestAsserts(t)
+			ast, err := parse.ParseString(tC.input)
+			assert.Ok(err, "parse error")
+
+			ctx := findClosureCtx{
+				vars:               scope.NewScopedMap[int](),
+				outOfScopeAccesses: []outsideAccesses{},
+				innerMostFnLevel:   0,
+				Captures:           map[int][]string{},
+			}
+
+			for _, expr := range ast {
+				captureClosures(&ctx, expr)
+			}
+
+			astIds := slices.Sorted(maps.Keys(ctx.Captures))
+			got := fun.Map(astIds, func(id int) map[string]unit {
+				return sliceToSet(ctx.Captures[id])
+			})
+
+			assert.DeepEq(tC.captures, got)
+		})
+	}
+}
+
+func newSet[T comparable](xs ...T) map[T]unit {
+	s := map[T]unit{}
+	for _, el := range xs {
+		s[el] = unit{}
+	}
+	return s
 }
