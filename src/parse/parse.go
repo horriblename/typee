@@ -13,6 +13,8 @@ var ErrParse = errors.New("parse error")
 var LexError = errors.New("error in lex")
 var ErrExpectEOF = errors.New("expected EOF")
 
+type ID = int
+
 type internalError struct{ error }
 
 var gIdCounter = 1
@@ -270,7 +272,7 @@ func defForm(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	}
 
 	def := FuncDef{
-		id:        newId(),
+		Id:        newId(),
 		Name:      name,
 		Signature: sig,
 		Args:      realArgs,
@@ -312,7 +314,7 @@ func defExtern(in []lex.Token) (_ []lex.Token, _ Expr, err error) {
 	}
 
 	fn := FuncDef{
-		id:        newId(),
+		Id:        newId(),
 		Name:      out.Two.One,
 		Signature: opt.Some(out.Two.Two.One),
 		Args:      out.Two.Two.Two,

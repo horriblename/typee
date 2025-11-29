@@ -2,11 +2,13 @@ package genqbe
 
 import (
 	"bytes"
+	"cmp"
 	_ "embed"
 	"errors"
 	"fmt"
 	"io"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -49,8 +51,18 @@ type ctx struct {
 	vars           scope.ScopedMap[qbeil.Value]
 	classInProcess *types.Class
 
+	funcInProcess       string
+	unprocessedClosures []closure
+
 	idGenerator          int64
 	generatedTranslation map[types.Type]qbeil.AggregateType
+}
+
+type closure struct {
+	name qbeil.Var
+	expr *parse.Fn
+
+	captureData qbeil.StructType
 }
 
 func Gen(
@@ -82,6 +94,7 @@ func Gen(
 		idGenerator:          0,
 		generatedTranslation: map[types.Type]qbeil.AggregateType{},
 	}
+	ptrSizeBits, _ := ctx.sizeOf(ctx.ptrType)
 
 	ctx.declareType("Str", qbeil.StructType{
 		Align:   0,
@@ -194,6 +207,39 @@ func Gen(
 		},
 	})
 
+	ctx.declareType("ClosureComponents", qbeil.StructType{
+		Align: 0,
+		Name:  "ClosureComponents",
+		Fields: []qbeil.RepeatType{{
+			Type:  ctx.ptrType,
+			Count: 3,
+		}},
+		Layouts: map[string]qbeil.FieldLayout{
+			"func":    {Type: ctx.ptrType, OffsetBits: 0},
+			"data":    {Type: ctx.ptrType, OffsetBits: ptrSizeBits},
+			"cleanup": {Type: ctx.ptrType, OffsetBits: ptrSizeBits * 2},
+		},
+	})
+
+	// partial structure of Box<T>, only covering the ref count
+	// Box should be passed around as pointers so this should be fine?
+	ctx.declareType("BoxPartial", qbeil.StructType{
+		Name: "BoxPartial",
+		Fields: []qbeil.RepeatType{
+			qbeil.SingleType(ctx.ptrType),
+		},
+		Align: 0,
+		Layouts: map[string]qbeil.FieldLayout{
+			"refCount": {
+				Type:       ctx.ptrType,
+				OffsetBits: 0,
+			},
+			"data": {
+				Type: ctx.ptrType,
+			},
+		},
+	})
+
 	// Map imports and write extern functions
 	for _, expr := range ast {
 		switch e := expr.(type) {
@@ -230,6 +276,19 @@ func Gen(
 	// generate functions and global vars
 	for _, expr := range ast {
 		genTopLevel(&ctx, expr)
+		for _, closure := range ctx.unprocessedClosures {
+			// reassign captured values to their original names
+			def := parse.FuncDef{
+				Id:        closure.expr.ID(),
+				Name:      closure.name.Name,
+				Signature: closure.expr.Signature,
+				Args:      closure.expr.Args,
+				Body:      []parse.Expr{closure.expr.Body},
+				Extern:    false,
+				Synth:     true,
+			}
+			genFunc(&ctx, "", &def, &closure.captureData)
+		}
 	}
 
 	ctx.finish()
@@ -257,7 +316,70 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 	case *parse.IntLiteral:
 		return qbeil.IntLiteral{Value: e.Number}
 	case *parse.FuncDef:
-		return genFunc(ctx, "", e)
+		ctx.funcInProcess = e.Name
+		defer func() { ctx.funcInProcess = "" }()
+		return genFunc(ctx, "", e, nil)
+	case *parse.Fn:
+		assert.Neq(ctx.funcInProcess, "",
+			"Empty ctx.funcInProcess. Top-level fn (i.e. outside of a def) is not allowed")
+		name := ctx.newTempName(ctx.funcInProcess + ".fn")
+		className := ""
+		if ctx.classInProcess != nil {
+			className = ctx.classInProcess.Name
+		}
+
+		// assign capture block
+		captures := assert.Get(ctx.allModules[ctx.module].Captures, e.ID(),
+			"BUG codegen: a closure has no capture group: ", e.String())
+		blockFields := map[string]types.Type{}
+		for _, capture := range captures {
+			blockFields[capture.Name] = ctx.simplify(capture.ID)
+		}
+		fields := fun.Map(captures, func(c simplesub.Capture) recordAssignment {
+			val, ok := ctx.vars.Get(c.Name).Unwrap()
+			assert.True(ok,
+				"could not find local variable", c.Name, "while building capture block")
+			return recordAssignment{
+				name:  c.Name,
+				typ:   ctx.toILType(ctx.simplify(c.ID)),
+				value: val,
+			}
+		})
+		captureBlockTy := types.Record{
+			Fields: blockFields,
+		}
+		captureBlockIlTy := ctx.recordToILType(&captureBlockTy)
+
+		// TODO: should be on the heap but, uh yeah
+		captureBlock := genRecordLiteral(ctx, captureBlockIlTy, fields)
+
+		funcPtr := qbeil.Var{
+			Global: true,
+			Name: mangleName(mangleOpts{
+				module: ctx.module,
+				class:  className,
+				name:   name,
+			}),
+		}
+
+		// assemble ClosureComponents struct
+		closureTy := assert.Get(ctx.userTypes, "ClosureComponents",
+			"BUG codegen: ClosureComponents not declared?")
+		closureSTy := assert.Cast[qbeil.StructType](closureTy,
+			"BUG codegen: ClosureComponents is not a StructType?")
+		genRecordLiteral(ctx, closureSTy, []recordAssignment{
+			{name: "func", typ: ctx.ptrType, value: funcPtr},
+			{name: "data", typ: ctx.ptrType, value: captureBlock},
+			// TODO
+			{name: "cleanup", typ: ctx.ptrType, value: qbeil.IntLiteral{Value: 0}},
+		})
+
+		ctx.unprocessedClosures = append(ctx.unprocessedClosures, closure{
+			name:        funcPtr,
+			expr:        e,
+			captureData: captureBlockIlTy,
+		})
+		return funcPtr
 	case *parse.Form:
 		return genCall(ctx, e)
 	case *parse.EnumAccess:
@@ -329,38 +451,14 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		if !ok {
 			panic("BUG: Record literal is not a struct IL type but a " + aggTy.IL())
 		}
-		structBits, _ := ctx.sizeOf(ilTy)
-
-		rcdPtr := ctx.il.TempVar(false)
-
-		ctx.il.Arithmetic(rcdPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(structBits / 8)})
-
-		for _, field := range e.Fields {
-			layout := aggTy.Layouts[field.Name]
-			offsetBits := layout.OffsetBits
-
-			fieldBits, _ := ctx.sizeOf(layout.Type)
-			fieldPtr := ctx.il.TempNamedVar(false, "fieldPtr")
-			ctx.il.Arithmetic(fieldPtr.IL(), ctx.ptrType, "add", rcdPtr, qbeil.IntLiteral{Value: int64(offsetBits / 8)})
-
-			value := gen(ctx, field.Value)
-			ilTy := ctx.toILType(ctx.simplify(field.Value.ID()))
-			switch ilTy1 := ilTy.(type) {
-			case qbeil.BaseType:
-				ctx.il.Command("store"+ilTy1.IL(), value, fieldPtr)
-			case qbeil.ExtraType:
-				ctx.il.Command("store"+ilTy1.IL(), value, fieldPtr)
-			case qbeil.AggregateType: // struct or union type
-				// TODO: gen returns a pointer right?
-				// TODO: memcpy is preferred for large sized copies
-				bytes := int64(bitsToBytesRoundedUp(fieldBits))
-				ctx.il.Command("blit", value, fieldPtr, qbeil.IntLiteral{Value: bytes})
-			default:
-				panic(fmt.Sprintf("unexpected IL type: %v", ilTy))
+		ass := fun.Map(e.Fields, func(field parse.RecordField) recordAssignment {
+			return recordAssignment{
+				name:  field.Name,
+				typ:   ctx.toILType(ctx.simplify(field.Value.ID())),
+				value: gen(ctx, field.Value),
 			}
-		}
-
-		return rcdPtr
+		})
+		return genRecordLiteral(ctx, aggTy, ass)
 
 	case *parse.LetExpr:
 		return genLet(ctx, e)
@@ -433,7 +531,12 @@ func (ctx *ctx) findType(module can.ModuleName, name string) simplesub.TypeSchem
 }
 
 // class should be empty string for non-methods
-func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
+func genFunc(
+	ctx *ctx,
+	class string,
+	expr *parse.FuncDef,
+	captureBlock *qbeil.StructType,
+) (val qbeil.Value) {
 	defer func() {
 		if e := recover(); e != nil {
 			if class != "" {
@@ -480,6 +583,13 @@ func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
 		))
 		ctx.vars.Insert(expr.Args[i], val)
 	}
+	// closures take an extra void* for captures
+	if captureBlock != nil {
+		argTyps = append(argTyps, qbeil.NewTypedVar(ctx.ptrType, qbeil.Var{
+			Global: false,
+			Name:   "_captures",
+		}))
+	}
 
 	// TODO: don't export all symbols
 	linkage := qbeil.Linkage{Type: qbeil.Export}
@@ -490,6 +600,38 @@ func genFunc(ctx *ctx, class string, expr *parse.FuncDef) (val qbeil.Value) {
 	}
 
 	assert.Ok(ctx.il.Func(linkage, retTyp, thisFunc.IL(), argTyps))
+
+	// re-expose captures as normal variables by emulating let bindings
+	// TODO: can we merge into gen(LetExpr) code?
+	if captureBlock != nil {
+		ctx.vars.NewScope()
+		defer ctx.vars.PopScope()
+
+		capturesArg := qbeil.Var{Global: false, Name: "_captures"}
+		type layoutInfo struct {
+			name   string
+			offset int
+		}
+		fields := make([]layoutInfo, 0, len(captureBlock.Layouts))
+		for field, layout := range captureBlock.Layouts {
+			fields = append(fields, layoutInfo{
+				name:   field,
+				offset: layout.OffsetBits,
+			})
+			ctx.vars.Insert(field, qbeil.Var{Global: false, Name: field})
+		}
+		slices.SortFunc(fields, func(a layoutInfo, b layoutInfo) int {
+			if d := cmp.Compare(a.offset, b.offset); d != 0 {
+				return d
+			}
+			// probably not possible but just in case
+			return cmp.Compare(a.name, b.name)
+		})
+
+		for _, field := range fields {
+			genRecordAccess(ctx, capturesArg, field.name, captureBlock.Layouts)
+		}
+	}
 
 	for _, stmt := range expr.Body[:len(expr.Body)-1] {
 		gen(ctx, stmt)
@@ -804,7 +946,7 @@ func genMethodDefs(ctx *ctx, e *parse.ObjectTypeDef, classTy *types.Class) {
 			continue
 		}
 
-		genFunc(ctx, classTy.Name, method.Func)
+		genFunc(ctx, classTy.Name, method.Func, nil)
 	}
 }
 
@@ -1475,7 +1617,8 @@ func genDotAccessOnExpr(ctx *ctx, lhsTy types.Type, e *parse.RecordAccess) qbeil
 		assert.True(ok, fmt.Sprintf(
 			"BUG: expected LHS to be a struct type but is a %T:\n  %v",
 			ilTy, e.Record))
-		return genRecordAccess(ctx, e, structTy)
+		lhs := gen(ctx, e.Record)
+		return genRecordAccess(ctx, lhs, e.Field, structTy.Layouts)
 
 	default:
 		panic(fmt.Sprintf("unexpected types.Type: %#v, at %v", lhsTy, e))
@@ -1508,10 +1651,11 @@ func genClassAccessByName(ctx *ctx, module can.ModuleName, class string, expr *p
 	)
 }
 
-func genRecordAccess(ctx *ctx, expr *parse.RecordAccess, rcdTy qbeil.StructType) qbeil.Value {
-	fieldLayout, ok := rcdTy.Layouts[expr.Field]
+// Get `layouts` from [qbeil.StructType.Layouts]
+func genRecordAccess(ctx *ctx, lhs qbeil.Value, field string, layouts map[string]qbeil.FieldLayout) qbeil.Value {
+	fieldLayout, ok := layouts[field]
 	if !ok {
-		panic(fmt.Sprintf("typer bug: uncaught use of non-existent record field %s", expr.Field))
+		panic(fmt.Sprintf("typer bug: uncaught use of non-existent record field %s", field))
 	}
 
 	bt, ok := fieldLayout.Type.(qbeil.BaseType)
@@ -1522,7 +1666,7 @@ func genRecordAccess(ctx *ctx, expr *parse.RecordAccess, rcdTy qbeil.StructType)
 	// TODO: 32-bit system
 	addr := ctx.il.TempVar(false)
 	ctx.il.Arithmetic(addr.IL(), ctx.ptrType, "add",
-		gen(ctx, expr.Record),
+		lhs,
 		qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits)},
 	)
 
@@ -1541,6 +1685,45 @@ func genRecordAccess(ctx *ctx, expr *parse.RecordAccess, rcdTy qbeil.StructType)
 	}
 
 	return val
+}
+
+type recordAssignment struct {
+	name  string
+	typ   qbeil.Type
+	value qbeil.Value
+}
+
+func genRecordLiteral(ctx *ctx, ilTy qbeil.StructType, fields []recordAssignment) qbeil.Var {
+	structBits, _ := ctx.sizeOf(ilTy)
+
+	rcdPtr := ctx.il.TempVar(false)
+
+	ctx.il.Arithmetic(rcdPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(structBits / 8)})
+
+	for _, field := range fields {
+		layout := ilTy.Layouts[field.name]
+		offsetBits := layout.OffsetBits
+
+		fieldBits, _ := ctx.sizeOf(layout.Type)
+		fieldPtr := ctx.il.TempNamedVar(false, "fieldPtr")
+		ctx.il.Arithmetic(fieldPtr.IL(), ctx.ptrType, "add", rcdPtr, qbeil.IntLiteral{Value: int64(offsetBits / 8)})
+
+		switch ilTy1 := field.typ.(type) {
+		case qbeil.BaseType:
+			ctx.il.Command("store"+ilTy1.IL(), field.value, fieldPtr)
+		case qbeil.ExtraType:
+			ctx.il.Command("store"+ilTy1.IL(), field.value, fieldPtr)
+		case qbeil.AggregateType: // struct or union type
+			// TODO: gen returns a pointer right?
+			// TODO: memcpy is preferred for large sized copies
+			bytes := int64(bitsToBytesRoundedUp(fieldBits))
+			ctx.il.Command("blit", field.value, fieldPtr, qbeil.IntLiteral{Value: bytes})
+		default:
+			panic(fmt.Sprintf("unexpected IL type: %v", ilTy))
+		}
+	}
+
+	return rcdPtr
 }
 
 func (ctx *ctx) finish() {
@@ -1609,6 +1792,10 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 		return ctx.ptrType
 	case *types.Record:
 		return ctx.recordToILType(t)
+
+	case *types.Func:
+		return assert.Get(ctx.userTypes, "ClosureComponents",
+			"BUG codegen: ClosureComponents not declared?")
 
 	case *types.Ref:
 		return ctx.ptrType

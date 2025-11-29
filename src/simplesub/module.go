@@ -20,6 +20,8 @@ type ModuleInfo struct {
 	Types    map[string]TypeScheme
 	Globals  map[string]TypeScheme
 	TypeTree map[int]TypeScheme
+
+	// maps Fn.ID() to their captures
 	Captures map[int][]Capture
 }
 

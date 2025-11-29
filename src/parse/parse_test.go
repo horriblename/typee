@@ -30,7 +30,7 @@ func TestParse(t *testing.T) {
 			desc:  "def",
 			input: "(def foo (Str Int Str) [x y] (foo x y))",
 			output: []Expr{&FuncDef{
-				id:   5,
+				Id:   5,
 				Name: "foo",
 				Signature: opt.Some([]TypeRepr{
 					TypeName{"", "Str"},
@@ -52,7 +52,7 @@ func TestParse(t *testing.T) {
 			desc:  "def no function signature",
 			input: "(def foo [x y] (foo x.bar y))",
 			output: []Expr{&FuncDef{
-				id:        6,
+				Id:        6,
 				Name:      "foo",
 				Signature: opt.None[[]TypeRepr](),
 				Args:      []string{"x", "y"},
@@ -299,7 +299,7 @@ func TestParse(t *testing.T) {
 			desc:  "type annotated method",
 			input: `(def meth (Self Int Int) [self n] n)`,
 			output: []Expr{&FuncDef{
-				id:        2,
+				Id:        2,
 				Name:      "meth",
 				Signature: opt.Some([]TypeRepr{SelfType{}, TypeName{"", "Int"}, TypeName{"", "Int"}}),
 				Args:      []string{"self", "n"},
@@ -356,7 +356,7 @@ func TestParse(t *testing.T) {
 					ClassMethod{
 						Access_: AccessProtected,
 						Func: &FuncDef{
-							id:        2,
+							Id:        2,
 							Name:      "foo",
 							Signature: opt.Option[[]TypeRepr]{},
 							Args:      []string{"x"},
@@ -423,7 +423,7 @@ func TestParse(t *testing.T) {
 			desc:  "self",
 			input: `(def meth (Self {}) [self] (self#meth self.x self))`,
 			output: []Expr{&FuncDef{
-				id:        7,
+				Id:        7,
 				Name:      "meth",
 				Signature: opt.Some([]TypeRepr{SelfType{}, RecordType{Fields: []RecordTypeField{}}}),
 				Args:      []string{"self"},
@@ -533,7 +533,7 @@ func TestParse(t *testing.T) {
 			desc:  "extern declaration",
 			input: "(extern def thing (Foo Str) [foo])",
 			output: []Expr{&FuncDef{
-				id:   1,
+				Id:   1,
 				Name: "thing",
 				Signature: opt.Some([]TypeRepr{
 					TypeName{"", "Foo"},

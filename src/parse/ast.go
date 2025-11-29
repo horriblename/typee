@@ -57,12 +57,14 @@ type Symbol struct {
 	id   int
 }
 type FuncDef struct {
-	id        int
+	Id        int
 	Name      string
 	Signature opt.Option[[]TypeRepr]
 	Args      []string
 	Body      []Expr
 	Extern    bool
+	// Synthesized, not really used rn
+	Synth bool
 }
 type Set struct {
 	id    int
@@ -255,7 +257,7 @@ func (*Import) ast()        {}
 
 func (self *Form) ID() int          { return self.id }
 func (self *Symbol) ID() int        { return self.id }
-func (self *FuncDef) ID() int       { return self.id }
+func (self *FuncDef) ID() int       { return self.Id }
 func (self *Set) ID() int           { return self.id }
 func (self *VarDef) ID() int        { return self.id }
 func (self *IfExpr) ID() int        { return self.id }
@@ -292,7 +294,7 @@ func (self *FuncDef) String() string {
 	if self.Extern {
 		extern = "extern "
 	}
-	return fmt.Sprintf("#%d (%sdef %s%s [%+v] %+v)", self.id, extern, self.Name, sigStr, self.Args, self.Body)
+	return fmt.Sprintf("#%d (%sdef %s%s [%+v] %+v)", self.Id, extern, self.Name, sigStr, self.Args, self.Body)
 }
 func (self *Set) String() string {
 	return fmt.Sprintf("#%d (set %s %+v)", self.id, self.Name, self.Value)
