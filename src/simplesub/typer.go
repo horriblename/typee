@@ -83,7 +83,7 @@ func NewTyper(mainModule can.ModuleName, debug bool) *Typer {
 		Types:    builtinTypes(),
 		Globals:  builtinVars(),
 		TypeTree: map[int]TypeScheme{},
-		Captures: map[int][]string{},
+		Captures: map[int][]Capture{},
 	}
 	return &Typer{
 		symbols: symbols{

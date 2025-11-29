@@ -1078,7 +1078,7 @@ func TestClosureCapture(t *testing.T) {
 				vars:               scope.NewScopedMap[int](),
 				outOfScopeAccesses: []outsideAccesses{},
 				innerMostFnLevel:   0,
-				Captures:           map[int][]string{},
+				Captures:           map[int][]Capture{},
 			}
 
 			for _, expr := range ast {
@@ -1087,7 +1087,9 @@ func TestClosureCapture(t *testing.T) {
 
 			astIds := slices.Sorted(maps.Keys(ctx.Captures))
 			got := fun.Map(astIds, func(id int) map[string]unit {
-				return sliceToSet(ctx.Captures[id])
+				return sliceToSet(fun.Map(ctx.Captures[id], func(c Capture) string {
+					return c.Name
+				}))
 			})
 
 			assert.DeepEq(tC.captures, got)

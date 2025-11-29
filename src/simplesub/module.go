@@ -20,7 +20,7 @@ type ModuleInfo struct {
 	Types    map[string]TypeScheme
 	Globals  map[string]TypeScheme
 	TypeTree map[int]TypeScheme
-	Captures map[int][]string
+	Captures map[int][]Capture
 }
 
 var (
@@ -85,7 +85,7 @@ func buildModuleInfo(
 		vars:               scope.NewScopedMap[int](),
 		outOfScopeAccesses: []outsideAccesses{},
 		innerMostFnLevel:   0,
-		Captures:           map[int][]string{},
+		Captures:           map[int][]Capture{},
 	}
 	for _, expr := range program {
 		captureClosures(&capturesCtx, expr)

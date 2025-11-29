@@ -19,12 +19,17 @@ type findClosureCtx struct {
 
 	innerMostFnLevel int
 
-	Captures map[int][]string
+	Captures map[int][]Capture
+}
+
+type Capture struct {
+	Name string
+	ID   parse.ID
 }
 
 type outsideAccesses struct {
 	lvl      int
-	accesses map[string]unit
+	accesses map[string]parse.ID
 }
 
 func captureClosures(ctx *findClosureCtx, expr parse.Expr) {
@@ -48,7 +53,7 @@ func captureClosures(ctx *findClosureCtx, expr parse.Expr) {
 		ctx.innerMostFnLevel = ctx.vars.ScopeLevel()
 		ctx.outOfScopeAccesses = append(ctx.outOfScopeAccesses, outsideAccesses{
 			lvl:      ctx.vars.ScopeLevel(),
-			accesses: map[string]unit{},
+			accesses: map[string]parse.ID{},
 		})
 
 		for _, arg := range e.Args {
@@ -59,7 +64,9 @@ func captureClosures(ctx *findClosureCtx, expr parse.Expr) {
 
 		captures, ok := popSlice(&ctx.outOfScopeAccesses).Unwrap()
 		assert.True(ok, "BUG corrupted outOfScopeAccesses")
-		ctx.Captures[e.ID()] = fun.Collect(maps.Keys(captures.accesses))
+
+		ctx.Captures[e.ID()] = fun.Collect(maps.Values(
+			fun.MapMapWithKeys(captures.accesses, newCapture)))
 		ctx.innerMostFnLevel = prevLvl
 		ctx.vars.PopScope()
 	case *parse.Form:
@@ -95,11 +102,11 @@ func captureClosures(ctx *findClosureCtx, expr parse.Expr) {
 	case *parse.RecordAccess:
 		captureClosures(ctx, e.Record)
 	case *parse.Set:
-		ctx.checkOutOfScopeAccess(e.Name)
+		ctx.checkOutOfScopeAccess(e.Name, e.Value.ID())
 		captureClosures(ctx, e.Value)
 	case *parse.Symbol:
 		// TODO: should I check this is actually a variable?
-		ctx.checkOutOfScopeAccess(e.Name)
+		ctx.checkOutOfScopeAccess(e.Name, e.ID())
 	case *parse.TaggedExpr:
 		panic("TODO tagged expression capture analysis")
 	case *parse.VarDef: // ok did I ever implement var
@@ -108,7 +115,8 @@ func captureClosures(ctx *findClosureCtx, expr parse.Expr) {
 	}
 }
 
-func (self *findClosureCtx) checkOutOfScopeAccess(name string) {
+// id is the AST node ID we can use to lookup the type later
+func (self *findClosureCtx) checkOutOfScopeAccess(name string, id parse.ID) {
 	if lvl, ok := self.vars.Get(name).Unwrap(); ok {
 		if lvl >= self.innerMostFnLevel {
 			// variable is declared within the scope of the innermost
@@ -121,9 +129,13 @@ func (self *findClosureCtx) checkOutOfScopeAccess(name string) {
 			if acc.lvl <= lvl {
 				break
 			}
-			acc.accesses[name] = unit{}
+			acc.accesses[name] = id
 		}
 
 		// ctx.accessed[]
 	}
+}
+
+func newCapture(name string, id parse.ID) Capture {
+	return Capture{Name: name, ID: id}
 }
