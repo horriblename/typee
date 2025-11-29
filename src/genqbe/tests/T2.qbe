@@ -42,17 +42,18 @@ export function l $MainModule.Foo_construct(l %object_type) {
 export function l $MainModule.Foo_new() {
 @start
 	%_tmp_10 =l call $MainModule.Foo_get__type ()
-	ret %_tmp_10
+	%_tmp_11 =l call $MainModule.Foo_construct (l %_tmp_10)
+	ret %_tmp_11
 }
 export function :Str $MainModule.bar(l %foo) {
 @start
-	%_tmp_11 =:Str call $MainModule.Foo_name (l %foo)
-	ret %_tmp_11
+	%_tmp_12 =:Str call $MainModule.Foo_name (l %foo)
+	ret %_tmp_12
 }
 export function w $main() {
 @start
-	%_tmp_13 =l call $MainModule.Foo_new ()
-	%_tmp_12 =:Str call $MainModule.bar (l %_tmp_13)
-	%_tmp_14 =l call $print (:Str %_tmp_12)
-	ret %_tmp_14
+	%_tmp_14 =l call $MainModule.Foo_new ()
+	%_tmp_13 =:Str call $MainModule.bar (l %_tmp_14)
+	%_tmp_15 =l call $print (:Str %_tmp_13)
+	ret %_tmp_15
 }
