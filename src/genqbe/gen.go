@@ -1705,7 +1705,7 @@ func genRecordAccess(ctx *ctx, lhs qbeil.Value, field string, layouts map[string
 	addr := ctx.il.TempVar(false)
 	ctx.il.Arithmetic(addr.IL(), ctx.ptrType, "add",
 		lhs,
-		qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits)},
+		qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits / 8)},
 	)
 
 	val := ctx.il.TempVar(false)
