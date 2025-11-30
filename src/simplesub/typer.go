@@ -951,6 +951,9 @@ func (self *Typer) typeFunctionCall(expr *parse.Form) (SimpleType, error) {
 				ErrWrongArgCount, len(expr.Children)-1)
 		}
 
+		if _, err := self.TypeTerm(expr.Children[1]); err != nil {
+			return nil, err
+		}
 		t := assert.Get(builtinTypes(), "CClosure", "BUG builtin type CClosure missing")
 		return t.instantiate(), nil
 	}
