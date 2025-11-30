@@ -491,6 +491,12 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 			destroy := arg.Destroy()
 			name := sanitize(snake_case_to_camelCase(arg.Name()))
 			cclosureName := name + "_closure"
+			if _, ok := conversionArgs[i]; ok {
+				// cleanup functions also (sometimes?) count as calllbacks,
+				// we skip those or it will override the actual cleanup function
+				continue
+			}
+
 			p("    %s (toCClosure %s)\n", cclosureName, name)
 			conversionArgs[i] = cclosureName + ".func"
 			if closure != -1 {
