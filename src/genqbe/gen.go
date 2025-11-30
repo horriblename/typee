@@ -666,6 +666,10 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		return genCallWithFuncName(ctx, modulePath, class, callee.Field, expr)
 
 	case *parse.Symbol:
+		if closure, ok := ctx.vars.Get(callee.Name).Unwrap(); ok {
+			// TODO: is it always a closure?
+			return genCallClosure(ctx, closure, expr)
+		}
 		return genCallWithFuncName(ctx, ctx.module, "", callee.Name, expr)
 
 	default:
@@ -873,6 +877,36 @@ func genClosure(ctx *ctx, e *parse.Fn) qbeil.Value {
 		captureData: captureBlockIlTy,
 	})
 	return funcPtr
+}
+
+func genCallClosure(ctx *ctx, closureComponents qbeil.Value, expr *parse.Form) qbeil.Value {
+	// TODO: merge with default case of genCallWithFuncName
+	ilTy := assert.Get(ctx.userTypes, "ClosureComponents",
+		"BUG codegen ClosureComponents not declared")
+	structTy := ilTy.(qbeil.StructType)
+	funcPtr := genRecordAccess(ctx, closureComponents, "func", structTy.Layouts)
+
+	args := make([]qbeil.ABITypedValue, 0, len(expr.Children))
+	for _, arg := range expr.Children[1:] {
+		argVal := gen(ctx, arg)
+		argTy := ctx.toABIType(ctx.simplify(arg.ID()))
+		args = append(args, qbeil.ABITypedValue{
+			Type:  argTy,
+			Value: argVal,
+		})
+	}
+
+	// pass captures as the last argument
+	captures := genRecordAccess(ctx, closureComponents, "data", structTy.Layouts)
+	args = append(args, qbeil.ABITypedValue{
+		Type:  ctx.ptrType,
+		Value: captures,
+	})
+
+	ret := ctx.il.TempVar(false)
+	retType := ctx.toABIType(ctx.simplify(expr.ID()))
+	ctx.il.Call(&ret, retType, funcPtr.(qbeil.Var), args)
+	return ret
 }
 
 func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
