@@ -345,7 +345,7 @@ func (self *Generator) processCallbackInfo(ci *gi.CallableInfo) {
 	name := ci.Name()
 	// feels terrible forcing Ref on all callbacks, maybe I should just allow coercing
 	// null/Ref to function types
-	p("(type %s (Ref (fn [", name)
+	p("(type %s (fn [", name)
 	for i, ri, n := 0, 0, len(args); i < n; i++ {
 		if i == userdata {
 			continue
@@ -368,9 +368,9 @@ func (self *Generator) processCallbackInfo(ci *gi.CallableInfo) {
 	}
 	ret := ci.ReturnType()
 	if ret.Tag() == gi.TYPE_TAG_VOID && !ret.IsPointer() {
-		p("] {})))\n")
+		p("] {}))\n")
 	} else {
-		p("] %s)))\n", horType(ci.ReturnType(), typeConfig{namespace: self.namespace}))
+		p("] %s))\n", horType(ci.ReturnType(), typeConfig{namespace: self.namespace}))
 	}
 
 	if userdata == -1 {
@@ -483,9 +483,23 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 
 	p("] ")
 
+	conversionArgs := map[int]string{}
 	p("(let [\n")
-	for _, arg := range fb.orig_args {
-		if arg.Direction() == gi.DIRECTION_OUT || arg.Direction() == gi.DIRECTION_INOUT {
+	for i, arg := range fb.orig_args {
+		if arg.Type().Tag() == gi.TYPE_TAG_INTERFACE && arg.Type().Interface().Type() == gi.INFO_TYPE_CALLBACK {
+			closure := arg.Closure()
+			destroy := arg.Destroy()
+			name := sanitize(snake_case_to_camelCase(arg.Name()))
+			cclosureName := name + "_closure"
+			p("    %s (toCClosure %s)\n", cclosureName, name)
+			conversionArgs[i] = cclosureName + ".func"
+			if closure != -1 {
+				conversionArgs[closure] = cclosureName + ".data"
+			}
+			if destroy != -1 {
+				conversionArgs[destroy] = cclosureName + ".cleanup"
+			}
+		} else if arg.Direction() == gi.DIRECTION_OUT || arg.Direction() == gi.DIRECTION_INOUT {
 			p("    %s (stackAlloc)\n", sanitize(snake_case_to_camelCase(arg.Name())))
 		}
 	}
@@ -501,7 +515,9 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	}
 	for i, arg := range fb.orig_args {
 		// TODO: does this work for all types skipped?
-		if slices.Contains(fb.skiplist, i) {
+		if conversion, ok := conversionArgs[i]; ok {
+			p(" %s", conversion)
+		} else if slices.Contains(fb.skiplist, i) {
 			p(" null")
 		} else {
 			p(" %s", sanitize(snake_case_to_camelCase(arg.Name())))
@@ -566,7 +582,7 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 			// maybe (Ref (Ref _)) types
 			extern("(Ref %s) ", horType(arg.Type(), typeConfig{typeNone, self.namespace}))
 		} else {
-			extern("%s ", horType(arg.Type(), typeConfig{typeNone, self.namespace}))
+			extern("%s ", horType(arg.Type(), typeConfig{typeExact, self.namespace}))
 		}
 	}
 	if fi.ReturnType().Tag() == gi.TYPE_TAG_VOID && !fi.ReturnType().IsPointer() {

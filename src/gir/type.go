@@ -16,6 +16,10 @@ const (
 	typeReturn
 	typeListMember
 	typeReceiver
+
+	// typeExact is used to for extern type signatures, i.e.
+	// the C type (or a representation in hor that is ABI
+	// compatible)
 	typeExact
 )
 
@@ -100,7 +104,10 @@ func horTypeForTag(tag gi.TypeTag, cfg typeConfig) string {
 	if cfg.flags&typeExact != 0 {
 		switch tag {
 		case gi.TYPE_TAG_BOOLEAN:
-			p("I32") // sadly
+			// TODO: this should be gint, or maybe it
+			// doesn't matter if I fix the codegen to output
+			// the right size
+			p("Bool")
 		case gi.TYPE_TAG_INT8:
 			p("I8")
 		case gi.TYPE_TAG_UINT8:
@@ -192,12 +199,6 @@ func horTypeForInterface(bi *gi.BaseInfo, cfg typeConfig) string {
 
 	switch t := bi.Type(); t {
 	case gi.INFO_TYPE_OBJECT, gi.INFO_TYPE_INTERFACE:
-		if cfg.flags&typeExact != 0 {
-			// exact type for object/interface is always an unsafe.Pointer
-			p("Opaque")
-			break
-		}
-
 		if cfg.flags&(typeReturn|typeReceiver) != 0 && cfg.flags&typePointer != 0 {
 			// receivers and return values are actual types,
 			// and a pointer most likely
@@ -208,6 +209,9 @@ func horTypeForInterface(bi *gi.BaseInfo, cfg typeConfig) string {
 			p("%s.", ns)
 		}
 
+		// NOTE: objects are pointers in hor ABI-wise so we
+		// just use the original type name even with
+		// [typeExact] for readability
 		p(bi.Name())
 
 	case gi.INFO_TYPE_CALLBACK:
