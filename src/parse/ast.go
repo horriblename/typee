@@ -294,7 +294,7 @@ func (self *FuncDef) String() string {
 	if self.Extern {
 		extern = "extern "
 	}
-	return fmt.Sprintf("#%d (%sdef %s%s [%+v] %+v)", self.Id, extern, self.Name, sigStr, self.Args, self.Body)
+	return fmt.Sprintf("#%d (%sdef %s%s [%+v]\n  %+v)", self.Id, extern, self.Name, sigStr, self.Args, self.Body)
 }
 func (self *Set) String() string {
 	return fmt.Sprintf("#%d (set %s %+v)", self.id, self.Name, self.Value)
@@ -325,7 +325,10 @@ func (self *LetExpr) String() string {
 	if self.Recursive {
 		keyword = "letrec"
 	}
-	return fmt.Sprintf("#%d (%s %v %v)", self.id, keyword, self.Assignments, self.Body)
+	ass := strings.Join(fun.Map(self.Assignments, func(a Assignment) string {
+		return fmt.Sprintf("%s %s", a.Var, a.Value)
+	}), "\n      ")
+	return fmt.Sprintf("#%d (%s [%v]\n  %v)", self.id, keyword, ass, self.Body)
 }
 func (self *TaggedExpr) String() string {
 	return fmt.Sprintf("#%d ('%s %v)", self.id, self.Tag, self.Body)
@@ -342,7 +345,10 @@ func (self *CaseBranch) String() string {
 	return fmt.Sprintf("('%s %s) %v", self.Pattern.Tag, self.Pattern.Pattern, self.Body)
 }
 func (self *Record) String() string {
-	return fmt.Sprintf("#%d %v", self.id, self.Fields)
+	fields := strings.Join(fun.Map(self.Fields, func(f RecordField) string {
+		return f.String()
+	}), "\n")
+	return fmt.Sprintf("#%d {%s}", self.id, fields)
 }
 func (self *ArrayLiteral) String() string {
 	return fmt.Sprintf("#%d %+v", self.id, self.Elements)
