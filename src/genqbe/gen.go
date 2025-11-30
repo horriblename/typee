@@ -864,7 +864,7 @@ func genClosure(ctx *ctx, e *parse.Fn) qbeil.Value {
 		"BUG codegen: ClosureComponents not declared?")
 	closureSTy := assert.Cast[qbeil.StructType](closureTy,
 		"BUG codegen: ClosureComponents is not a StructType?")
-	genRecordLiteral(ctx, closureSTy, []recordAssignment{
+	closureComponents := genRecordLiteral(ctx, closureSTy, []recordAssignment{
 		{name: "func", typ: ctx.ptrType, value: funcPtr},
 		{name: "data", typ: ctx.ptrType, value: captureBlock},
 		// TODO
@@ -876,7 +876,7 @@ func genClosure(ctx *ctx, e *parse.Fn) qbeil.Value {
 		expr:        e,
 		captureData: captureBlockIlTy,
 	})
-	return funcPtr
+	return closureComponents
 }
 
 func genCallClosure(ctx *ctx, closureComponents qbeil.Value, expr *parse.Form) qbeil.Value {
