@@ -16,7 +16,7 @@ Str strFromCStr(char *data) {
 char *strToCStr(Str s) {
   char *dest = calloc(sizeof(char), s.size + 1);
   strncpy(dest, s.data, s.size);
-  return s.data;
+  return dest;
 }
 
 void print(Str s) { fwrite(s.data, 1, s.size, stdout); }
