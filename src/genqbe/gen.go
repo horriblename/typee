@@ -76,7 +76,7 @@ func Gen(
 	ctx := ctx{
 		module:               module,
 		ptrType:              qbeil.Long, // TODO: infer ptr & int size + manual options
-		intType:              qbeil.Long,
+		intType:              qbeil.Long, // TODO: wtf should I put here
 		defaultAlign:         64,
 		typeDecl:             bytes.Buffer{},
 		il:                   qbeil.Builder{OutFile: w},
@@ -775,6 +775,10 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 		default:
 			panic(fmt.Sprintf("unknown IL type %v", ilTy))
 		}
+
+	case "toCClosure":
+		assert.Eq(len(expr.Children), 2, "BUG toCClosure: wrong arg count at code gen")
+		return gen(ctx, expr.Children[1])
 
 	default:
 		// TODO: local functions
