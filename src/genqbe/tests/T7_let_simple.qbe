@@ -7,7 +7,9 @@ type :ClosureComponents = {l 3, }
 type :BoxPartial = {l, }
 export function w $main() {
 @start
+# let assignment of x = ([+ 2 3])
 	%_tmp_1 =l add 2, 3
+# let body
 	call $exit (l %_tmp_1)
 	ret 0
 }

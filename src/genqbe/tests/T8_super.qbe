@@ -88,7 +88,9 @@ export function l $MainModule.Baz_new() {
 }
 export function w $main() {
 @start
+# let assignment of baz = ([Baz.new])
 	%_tmp_22 =l call $MainModule.Baz_new ()
+# let body
 	%ptrTo_Baz.a1 =l add %_tmp_22, 9
 	%valOf_Baz.a2 =l loadl %ptrTo_Baz.a1
 	ret %valOf_Baz.a2

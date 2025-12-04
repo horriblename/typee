@@ -11,12 +11,12 @@ type :Foo1 = {:GObject, l, l, }
 export function l $MainModule.foo(:Record_1 %f) {
 @start
 	%_tmp_1 =l add %f, 0
-	%_tmp_2 =l loadl %_tmp_1
-	ret %_tmp_2
+	%value_of_field_x3 =l loadl %_tmp_1
+	ret %value_of_field_x3
 }
 export function l $MainModule.foo1(l %f) {
 @start
-	%ptrTo_Foo1.x3 =l add %f, 4
-	%valOf_Foo1.x4 =l loadl %ptrTo_Foo1.x3
-	ret %valOf_Foo1.x4
+	%ptrTo_Foo1.x4 =l add %f, 4
+	%valOf_Foo1.x5 =l loadl %ptrTo_Foo1.x4
+	ret %valOf_Foo1.x5
 }

@@ -8,7 +8,6 @@ type :BoxPartial = {l, }
 type :Foo = {:GObject, l, }
 type :MainModule.FooClass = {:GObjectClass, l, l, l, }
 type :FooPrivate = {}
-type :Record_1 = {}
 data $_tmp_1 = {b "foo"}
 export function :Str $MainModule.Foo_name(l %self) {
 @start

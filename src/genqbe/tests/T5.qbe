@@ -5,17 +5,13 @@ type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
 type :GInterfaceInfo = {l, l, l, }
 type :ClosureComponents = {l 3, }
 type :BoxPartial = {l, }
-type :Record_1 = {}
-type :Record_2 = {}
-type :Record_3 = {}
-type :Record_4 = {}
-export function :Record_1 $MainModule.die() {
+export function l $MainModule.die() {
 @start
-	%_tmp_1 =:Record_2 call $exit (l 3)
+	%_tmp_1 =l call $exit (l 3)
 	ret %_tmp_1
 }
 export function w $main() {
 @start
-	%_tmp_2 =:Record_4 call $MainModule.die ()
+	%_tmp_2 =l call $MainModule.die ()
 	ret %_tmp_2
 }
