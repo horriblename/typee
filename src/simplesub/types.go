@@ -231,16 +231,12 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		return self.glbCrossObject(rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
 		if lhs.Name != "" && rhs.Name != "" {
-			if lhs.Module == rhs.Module && lhs.Name == rhs.Name {
-				// TODO: will this cause problems in polymorphic classes?
-				return lhs, nil
-			}
-			return nil, fmt.Errorf("class glb of named classes unimplemented: %v and %v", lhs, rhs)
+			return self.glbNamedObjects(lhs, rhs)
 		}
 
-		// return the named class if named :> unnamed
+		// return the named class if named <: unnamed
 		if lhs.Name != "" {
-			if err := self.constrain(rhs, lhs); err != nil {
+			if err := self.constrain(lhs, rhs); err != nil {
 				// TODO: how should I handle this
 				return nil, fmt.Errorf("unimplemented: glb(named_class, unnamed_class): constrain result: %v", err)
 			}
@@ -248,9 +244,9 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 			return lhs, nil
 		}
 
-		// return the named class if named :> unnamed
+		// return the named class if named <: unnamed
 		if rhs.Name != "" {
-			if err := self.constrain(lhs, rhs); err != nil {
+			if err := self.constrain(rhs, lhs); err != nil {
 				// TODO: how should I handle this
 				return nil, fmt.Errorf("unimplemented: glb(named_class, unnamed_class): constrain result: %v", err)
 			}
@@ -425,6 +421,34 @@ func (self *symbols) glbCrossObject(lhs Record, rhs ObjectType) (ConcreteType, e
 	return Record{mapToNamedTypes(mergedMap)}, nil
 }
 
+func (self *symbols) glbNamedObjects(lhs ObjectType, rhs ObjectType) (ObjectType, error) {
+	assert.Neq(lhs.Name, "", "BUG typer: glbNamedObjects called on unnamed object")
+	assert.Neq(rhs.Name, "", "BUG typer: glbNamedObjects called on unnamed object")
+
+	if lhs.Module == rhs.Module && lhs.Name == rhs.Name {
+		return lhs, nil
+	} else if lhs.Module == self.mainModule && rhs.Module != self.mainModule {
+		return lhs, nil
+	} else if lhs.Module != self.mainModule && rhs.Module == self.mainModule {
+		return rhs, nil
+	}
+
+	if ok, err := self.isSubClass(lhs, rhs); err != nil {
+		return ObjectType{}, fmt.Errorf("%w: finding glb of %s and %s", err, lhs, rhs)
+	} else if ok {
+		return lhs, nil
+	}
+
+	if ok, err := self.isSubClass(rhs, lhs); err != nil {
+		return ObjectType{}, fmt.Errorf("%w: finding glb of %s and %s", err, lhs, rhs)
+	} else if ok {
+		return rhs, nil
+	}
+
+	return ObjectType{}, fmt.Errorf("%w %s and %s (or I haven't implemented proper class glb)",
+		ErrTypeMismatch, lhs, rhs)
+}
+
 func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (ConcreteType, error) {
 	type C = ConcreteType
 	if _, rhs, ok := matchPair[Bot, C](lhs0, rhs0); ok {
@@ -548,25 +572,21 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		return lhs, nil
 	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
 		if lhs.Name != "" && rhs.Name != "" {
-			if lhs.Name == rhs.Name {
-				// TODO: will this cause problems in polymorphic classes?
-				return lhs, nil
-			}
-			return nil, fmt.Errorf("class lub of named classes unimplemented: %v and %v", lhs, rhs)
+			return self.lubNamedObjects(lhs, rhs)
 		}
 
-		// return the named class if named <: unnamed
+		// return the named class if named :> unnamed
 		if lhs.Name != "" {
-			if err := self.constrain(lhs, rhs); err != nil {
+			if err := self.constrain(rhs, lhs); err != nil {
 				return nil, fmt.Errorf("unimplemented: lub(named_class, unnamed_class): constrain result: %v", err)
 			}
 
 			return lhs, nil
 		}
 
-		// return the named class if named <: unnamed
+		// return the named class if named :> unnamed
 		if rhs.Name != "" {
-			if err := self.constrain(rhs, lhs); err != nil {
+			if err := self.constrain(lhs, rhs); err != nil {
 				return nil, fmt.Errorf("unimplemented: lub(named_class, unnamed_class): constrain result: %v", err)
 			}
 
@@ -682,6 +702,33 @@ func (self *symbols) lubCrossObject(lhs Record, rhs ObjectType) (ConcreteType, e
 	return Record{Fields: merged}, nil
 }
 
+func (self *symbols) lubNamedObjects(lhs ObjectType, rhs ObjectType) (ObjectType, error) {
+	assert.Neq(lhs.Name, "", "BUG typer: lubNamedObjects called on unnamed object")
+	assert.Neq(rhs.Name, "", "BUG typer: lubNamedObjects called on unnamed object")
+
+	if lhs.Module == rhs.Module && lhs.Name == rhs.Name {
+		return lhs, nil
+	} else if lhs.Module == self.mainModule && rhs.Module != self.mainModule {
+		return rhs, nil
+	} else if lhs.Module != self.mainModule && rhs.Module == self.mainModule {
+		return lhs, nil
+	}
+
+	if ok, err := self.isSubClass(lhs, rhs); err != nil {
+		return ObjectType{}, fmt.Errorf("%w: finding glb of %s and %s", err, lhs, rhs)
+	} else if ok {
+		return rhs, nil
+	}
+
+	if ok, err := self.isSubClass(rhs, lhs); err != nil {
+		return ObjectType{}, fmt.Errorf("%w: finding glb of %s and %s", err, lhs, rhs)
+	} else if ok {
+		return lhs, nil
+	}
+
+	return ObjectType{}, fmt.Errorf("%w %s and %s (or I haven't implemented proper class glb)",
+		ErrTypeMismatch, lhs, rhs)
+}
 func (self *symbols) glb(lhs0 SimpleType, rhs0 SimpleType) (SimpleType, error) {
 	if lhs, rhs, ok := matchPair[ConcreteType, ConcreteType](lhs0, rhs0); ok {
 		return self.glbConcrete(lhs, rhs)
