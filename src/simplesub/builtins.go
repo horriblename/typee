@@ -117,6 +117,13 @@ func builtinTypes() map[string]TypeScheme {
 			TypeParams: opt.Some([]uint{ref_t.Uid()}),
 		},
 		"Object": gobject,
+		"CClosure": Record{
+			Fields: []NamedType{
+				{Name: "func", Type: Primitive{PrimitiveOpaque}},
+				{Name: "data", Type: Primitive{PrimitiveOpaque}},
+				{Name: "cleanup", Type: Primitive{PrimitiveOpaque}},
+			},
+		},
 	}
 	return _builtinTypes
 }
