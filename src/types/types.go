@@ -45,7 +45,7 @@ type Record struct {
 	// it's actually not so important to get O(1) lookup time, but some sort of
 	// ordering should be preserved somewhere for deterministic output. The
 	// only place currently using map lookups is in equality checks for tests.
-	Fields *ordered.Map[string, Type]
+	Fields ordered.Map[string, Type]
 }
 type Union struct {
 	Name     string

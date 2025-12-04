@@ -18,14 +18,14 @@ type Map[K comparable, V any] struct {
 	mapping map[K]V
 }
 
-func NewMap[K comparable, V any]() *Map[K, V] {
-	return &Map[K, V]{
+func NewMap[K comparable, V any]() Map[K, V] {
+	return Map[K, V]{
 		list:    []K{},
 		mapping: map[K]V{},
 	}
 }
 
-func CollectMap[K comparable, V any](seq iter.Seq2[K, V]) *Map[K, V] {
+func CollectMap[K comparable, V any](seq iter.Seq2[K, V]) Map[K, V] {
 	m := NewMap[K, V]()
 	for k, v := range seq {
 		m.Insert(k, v)
@@ -33,7 +33,7 @@ func CollectMap[K comparable, V any](seq iter.Seq2[K, V]) *Map[K, V] {
 	return m
 }
 
-func MapEq[K comparable, V comparable](self *Map[K, V], other *Map[K, V]) bool {
+func MapEq[K comparable, V comparable](self Map[K, V], other Map[K, V]) bool {
 	if len(self.list) != len(other.list) {
 		return false
 	}
@@ -62,7 +62,7 @@ func (self *Map[K, V]) Insert(k K, v V) (existed bool) {
 	return existed
 }
 
-func (self *Map[K, V]) With(k K, v V) *Map[K, V] {
+func (self Map[K, V]) With(k K, v V) Map[K, V] {
 	if _, ok := self.mapping[k]; ok {
 		return self
 	}
@@ -71,20 +71,20 @@ func (self *Map[K, V]) With(k K, v V) *Map[K, V] {
 	return self
 }
 
-func (self *Map[K, V]) Get(x K) (value V, found bool) {
+func (self Map[K, V]) Get(x K) (value V, found bool) {
 	value, found = self.mapping[x]
 	return value, found
 }
 
-func (self *Map[K, V]) Keys() []K {
+func (self Map[K, V]) Keys() []K {
 	return self.list
 }
 
-func (self *Map[K, V]) Len() int {
+func (self Map[K, V]) Len() int {
 	return len(self.list)
 }
 
-func (self *Map[K, V]) Pop() (t K, v V, has bool) {
+func (self Map[K, V]) Pop() (t K, v V, has bool) {
 	var zero K
 	if len(self.list) > 0 {
 		ret := self.list[len(self.list)-1]
@@ -98,7 +98,7 @@ func (self *Map[K, V]) Pop() (t K, v V, has bool) {
 	return zero, v, false
 }
 
-func (self *Map[K, V]) All() iter.Seq2[K, V] {
+func (self Map[K, V]) All() iter.Seq2[K, V] {
 	return func(yield func(K, V) bool) {
 		for _, k := range self.list {
 			v := assert.Get(self.mapping, k, errListItemNotInMapping, k)
@@ -109,7 +109,7 @@ func (self *Map[K, V]) All() iter.Seq2[K, V] {
 	}
 }
 
-func (self *Map[K, V]) Map(f func(V) V) *Map[K, V] {
+func (self Map[K, V]) Map(f func(V) V) Map[K, V] {
 	ret := NewMap[K, V]()
 	for k, v := range self.All() {
 		ret.Insert(k, f(v))
@@ -117,8 +117,8 @@ func (self *Map[K, V]) Map(f func(V) V) *Map[K, V] {
 	return ret
 }
 
-func (self *Map[K, V]) Clone() *Map[K, V] {
-	return &Map[K, V]{
+func (self Map[K, V]) Clone() Map[K, V] {
+	return Map[K, V]{
 		list:    slices.Clone(self.list),
 		mapping: maps.Clone(self.mapping),
 	}
