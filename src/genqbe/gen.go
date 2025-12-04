@@ -784,9 +784,18 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 			panic(fmt.Sprintf("unknown IL type %v", ilTy))
 		}
 
-	case "toCClosure":
-		assert.Eq(len(expr.Children), 2, "BUG toCClosure: wrong arg count at code gen")
+	case "toCClosure", "ptrToI64":
+		assert.Eq(len(expr.Children), 2, "BUG", fnName, "wrong arg count at code gen")
 		return gen(ctx, expr.Children[1])
+
+	case "=":
+		assert.Eq(len(expr.Children), 3, "BUG: wrong arg count at code gen for equality operator")
+		lhs := gen(ctx, expr.Children[1])
+		rhs := gen(ctx, expr.Children[2])
+		res := ctx.il.TempNamedVar(false, "equalityResult")
+		retTy := ctx.toILType(ctx.simplify(expr.ID()))
+		ctx.il.Arithmetic(res.IL(), retTy, "ceq"+retTy.IL(), lhs, rhs)
+		return res
 
 	default:
 		// TODO: local functions
