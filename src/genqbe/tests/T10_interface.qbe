@@ -1,0 +1,111 @@
+type :Str = {l, l, }
+type :GObject = {l, l, l, }
+type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
+type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
+type :GInterfaceInfo = {l, l, l, }
+type :ClosureComponents = {l 3, }
+type :BoxPartial = {l, }
+type :Animal = {}
+type :MainModule.AnimalClass = {:GObjectClass, l, l, }
+type :Object = {:GObject, l, }
+type :Cat = {:Object, l, }
+type :Std.ObjectClass = {:GObjectClass, }
+type :MainModule.CatClass = {:Std.ObjectClass, l, l, }
+type :CatPrivate = {}
+data $_tmp_12 = {b "meow"}
+data $MainModule.Animal_class__name = {b "Animal", b 0}
+data $MainModule.Animal___type__id____once = {l 0}
+data $MainModule.Animal_g__define__type__info = {h 152, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 0, h 0, w 0, l 0, h 0, }
+export function l $MainModule.Animal_get__type() {
+@start
+	%_tmp_2 =l call $g_once_init_enter (l $MainModule.Animal___type__id____once)
+	jnz %_tmp_2, @then_3, @else_4
+@then_3
+	%_tmp_1 =l call $g_type_register_static (l 8, l $MainModule.Animal_class__name, l $MainModule.Animal_g__define__type__info, l 0)
+	call $g_type_interface_add_prerequisite (l %_tmp_1, l 80)
+	call $g_once_init_leave (l $MainModule.Animal___type__id____once, l %_tmp_1)
+@else_4
+	ret $MainModule.Animal___type__id____once
+}
+export function l $MainModule.Animal_construct(l %object_type) {
+@start
+	%_tmp_5 =l call $g_object_new (l %object_type, l 0)
+	ret %_tmp_5
+}
+function l $MainModule.Animal_new(l %self1) {
+@start
+	%ptrTo_GObject.g_class2 =l add %self1, 0
+	%valOf_GObject.g_class3 =l loadl %ptrTo_GObject.g_class2
+	%Animal4 =l call $MainModule.Animal_get__type ()
+	%Animal_Animal_vtable5 =l call $g_type_interface_peek (l %valOf_GObject.g_class3, l %Animal4)
+	jnz %Animal_Animal_vtable5, @then_6, @else_7
+@then_6
+	%ptrTo_MainModule.AnimalClass.new6 =l add %Animal_Animal_vtable5, 144
+	%valOf_MainModule.AnimalClass.new7 =l loadl %ptrTo_MainModule.AnimalClass.new6
+	%_tmp_8 =l call %valOf_MainModule.AnimalClass.new7 (l %self1)
+	ret %_tmp_8
+@else_7
+	ret 0
+}
+function l $MainModule.Animal_doSomething(l %self8) {
+@start
+	%ptrTo_GObject.g_class9 =l add %self8, 0
+	%valOf_GObject.g_class10 =l loadl %ptrTo_GObject.g_class9
+	%Animal11 =l call $MainModule.Animal_get__type ()
+	%Animal_Animal_vtable12 =l call $g_type_interface_peek (l %valOf_GObject.g_class10, l %Animal11)
+	jnz %Animal_Animal_vtable12, @then_9, @else_10
+@then_9
+	%ptrTo_MainModule.AnimalClass.doSomething13 =l add %Animal_Animal_vtable12, 136
+	%valOf_MainModule.AnimalClass.doSomething14 =l loadl %ptrTo_MainModule.AnimalClass.doSomething13
+	%_tmp_11 =l call %valOf_MainModule.AnimalClass.doSomething14 (l %self8)
+	ret %_tmp_11
+@else_10
+	ret 0
+}
+export function l $MainModule.Cat_doSomething(l %self) {
+@start
+	%_tmp_13 =l alloc4 16
+	storel $_tmp_12, %_tmp_13
+	%_tmp_14 =l add %_tmp_13, 8
+	storel 4, %_tmp_14
+	%_tmp_15 =l call $print (:Str %_tmp_13)
+	ret %_tmp_15
+}
+data $MainModule.Cat_class__name = {b "Cat", b 0}
+data $MainModule.Cat___type__id____once = {l 0}
+data $MainModule.Cat_g__define__type__info = {h 152, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 40, h 0, w 0, l 0, h 0, }
+export function l $MainModule.Cat_get__type() {
+@start
+	%_tmp_17 =l call $g_once_init_enter (l $MainModule.Cat___type__id____once)
+	jnz %_tmp_17, @then_18, @else_19
+@then_18
+	%_tmp_16 =l call $g_type_register_static (l 80, l $MainModule.Cat_class__name, l $MainModule.Cat_g__define__type__info, l 0)
+	call $g_once_init_leave (l $MainModule.Cat___type__id____once, l %_tmp_16)
+@else_19
+	ret $MainModule.Cat___type__id____once
+}
+export function l $MainModule.Cat_construct(l %object_type) {
+@start
+	%_tmp_20 =l call $g_object_new (l %object_type, l 0)
+	ret %_tmp_20
+}
+export function l $MainModule.Cat_new() {
+@start
+	%_tmp_21 =l call $MainModule.Cat_get__type ()
+	%_tmp_22 =l call $MainModule.Cat_construct (l %_tmp_21)
+	ret %_tmp_22
+}
+export function l $MainModule.doThing(l %animal) {
+@start
+	%_tmp_23 =l call $MainModule.Animal_doSomething (l %animal)
+	ret %_tmp_23
+}
+export function w $main() {
+@start
+# let assignment of cat = ([Cat.new])
+	%_tmp_24 =l call $MainModule.Cat_new ()
+# let assignment of _ = ([doThing cat])
+	%_tmp_25 =l call $MainModule.doThing (l %_tmp_24)
+# let body
+	ret 2
+}

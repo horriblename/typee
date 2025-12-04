@@ -1,0 +1,16 @@
+(interface Animal {
+	(def doSomething (Self {}) [self])
+})
+
+(class Cat (Object Animal) {
+	(def doSomething (Self {}) [self] 
+		(print "meow"))
+})
+
+(def doThing (Animal {}) [animal] (animal#doSomething))
+
+(def main []
+	(let [
+		cat (Cat.new)
+		_ (doThing cat)]
+		2))
