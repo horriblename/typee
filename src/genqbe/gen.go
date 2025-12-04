@@ -16,6 +16,7 @@ import (
 	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/genqbe/qbeil"
+	"github.com/horriblename/typee/src/internal/ordered"
 	"github.com/horriblename/typee/src/internal/scope"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
@@ -832,9 +833,9 @@ func genClosure(ctx *ctx, e *parse.Fn) qbeil.Value {
 	// assign capture block
 	captures := assert.Get(ctx.allModules[ctx.module].Captures, e.ID(),
 		"BUG codegen: a closure has no capture group: ", e.String())
-	blockFields := map[string]types.Type{}
+	blockFields := ordered.NewMap[string, types.Type]()
 	for _, capture := range captures {
-		blockFields[capture.Name] = ctx.simplify(capture.ID)
+		blockFields.Insert(capture.Name, ctx.simplify(capture.ID))
 	}
 	fields := fun.Map(captures, func(c simplesub.Capture) recordAssignment {
 		val, ok := ctx.vars.Get(c.Name).Unwrap()
@@ -1916,11 +1917,11 @@ func (ctx *ctx) recordToILType(t *types.Record) qbeil.StructType {
 		return il.(qbeil.StructType)
 	}
 
-	fields := make([]qbeil.RepeatType, 0, len(t.Fields))
+	fields := make([]qbeil.RepeatType, 0, t.Fields.Len())
 	layouts := map[string]qbeil.FieldLayout{}
 	offset := 0
 
-	for name, fieldTy := range t.Fields {
+	for name, fieldTy := range t.Fields.All() {
 		ilTy := ctx.toILType(fieldTy)
 		bits, _ := ctx.sizeOf(ilTy) // TODO: align
 		fields = append(fields, qbeil.SingleType(ilTy))

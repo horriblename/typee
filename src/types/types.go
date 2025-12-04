@@ -11,6 +11,7 @@ import (
 
 	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/fun"
+	"github.com/horriblename/typee/src/internal/ordered"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
@@ -41,7 +42,10 @@ type Ref struct {
 	Content opt.Option[Type] // None means opaque pointer
 }
 type Record struct {
-	Fields map[string]Type
+	// it's actually not so important to get O(1) lookup time, but some sort of
+	// ordering should be preserved somewhere for deterministic output. The
+	// only place currently using map lookups is in equality checks for tests.
+	Fields *ordered.Map[string, Type]
 }
 type Union struct {
 	Name     string
@@ -161,22 +165,7 @@ func (f *Record) Eq(other Type) bool {
 		return false
 	}
 
-	if len(f.Fields) != len(o.Fields) {
-		return false
-	}
-
-	for name, val := range f.Fields {
-		oval, has := o.Fields[name]
-		if !has {
-			return false
-		}
-
-		if !val.Eq(oval) {
-			return false
-		}
-	}
-
-	return true
+	return ordered.MapEq(f.Fields, o.Fields)
 }
 func (f *Union) Eq(other Type) bool {
 	o, ok := other.(*Union)
@@ -324,12 +313,12 @@ func (*Float) String() string    { return "Float" }
 func (*Bool) String() string     { return "Bool" }
 func (self *Ref) String() string { return fmt.Sprintf("Ref %s", self.Content.Or(nil)) }
 func (r *Record) String() string {
-	if len(r.Fields) == 0 {
+	if r.Fields.Len() == 0 {
 		return "{}"
 	}
 	b := strings.Builder{}
 	b.WriteString("{")
-	for name, val := range r.Fields {
+	for name, val := range r.Fields.All() {
 		b.WriteString(name)
 		b.WriteString(": ")
 		b.WriteString(val.String())
@@ -665,12 +654,12 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 			return false
 		}
 
-		if len(a.Fields) != len(b.Fields) {
+		if a.Fields.Len() != b.Fields.Len() {
 			return false
 		}
 
-		for name, aval := range a.Fields {
-			bval, ok := b.Fields[name]
+		for name, aval := range a.Fields.All() {
+			bval, ok := b.Fields.Get(name)
 			if !ok {
 				return false
 			}
@@ -782,53 +771,6 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 	panic(fmt.Sprintf("unexpected types.Type: %T", a))
 }
 
-// TODO: remove
-func Clone(typ Type) Type {
-	switch t := typ.(type) {
-	case *String:
-		t2 := *t
-		return &t2
-	case *Int:
-		t2 := *t
-		return &t2
-	case *Float:
-		t2 := *t
-		return &t2
-	case *Bool:
-		t2 := *t
-		return &t2
-	case *Ref:
-		t2 := *t
-		return &t2
-	case *Func:
-		args := fun.Map(t.Args, Clone)
-		ret := Clone(t.Ret)
-
-		return &Func{Args: args, Ret: ret}
-	case *Generic:
-		return &Generic{ID: t.ID, Name: t.Name, Comment: t.Comment}
-	case *TypeScheme:
-		generics := make([]Generic, len(t.Over))
-		copy(generics, t.Over)
-		return &TypeScheme{Over: generics, Body: Clone(t.Body)}
-	case *Record:
-		return &Record{
-			Fields: mapMap(t.Fields, Clone),
-		}
-	}
-
-	panic("unreachable")
-}
-
-func mapMap[K comparable, V1, V2 any](m map[K]V1, f func(V1) V2) map[K]V2 {
-	newMap := map[K]V2{}
-	for k, v := range m {
-		newMap[k] = f(v)
-	}
-
-	return newMap
-}
-
 type PrettyCtx struct {
 	mapping map[TypeID]string
 	counter int
@@ -865,7 +807,7 @@ func (ctx *PrettyCtx) String(typ Type) string {
 	case *Record:
 		var b strings.Builder
 		b.WriteString("{")
-		for k, field := range t.Fields {
+		for k, field := range t.Fields.All() {
 			b.WriteString(k)
 			b.WriteString(": ")
 			b.WriteString(ctx.String(field))

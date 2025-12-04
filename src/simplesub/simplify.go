@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/horriblename/typee/src/fun"
+	"github.com/horriblename/typee/src/internal/ordered"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/types"
@@ -199,9 +200,9 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 	case SliceType:
 		return &types.Slice{Type: coalesceTypeInner(ty.ElType, polarity)}
 	case Record:
-		fields := map[string]types.Type{}
+		fields := ordered.NewMap[string, types.Type]()
 		for _, field := range ty.Fields {
-			fields[field.Name] = coalesceTypeInner(field.Type, polarity)
+			fields.Insert(field.Name, coalesceTypeInner(field.Type, polarity))
 		}
 		return &types.Record{Fields: fields}
 	case Union:

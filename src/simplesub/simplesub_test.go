@@ -9,6 +9,7 @@ import (
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/can"
 	"github.com/horriblename/typee/src/fun"
+	"github.com/horriblename/typee/src/internal/ordered"
 	orderedset "github.com/horriblename/typee/src/internal/ordered_set"
 	"github.com/horriblename/typee/src/internal/scope"
 	"github.com/horriblename/typee/src/opt"
@@ -71,10 +72,9 @@ func TestTypeExpr(t *testing.T) {
 			desc:  "record literal",
 			input: `{x: 1, y: true}`,
 			typ: &types.Record{
-				Fields: map[string]types.Type{
-					"x": &tI64,
-					"y": &types.Bool{},
-				},
+				Fields: ordered.NewMap[string, types.Type]().
+					With("x", &tI64).
+					With("y", &types.Bool{}),
 			},
 		},
 		{
@@ -127,16 +127,15 @@ func TestTypeExpr(t *testing.T) {
 			desc:  "local let expr does not generalize",
 			input: "(let [f (fn [x] x)] (let [y (f 3)] {f: f, y: y}))",
 			typ: &types.Record{
-				Fields: map[string]types.Type{
-					"f": &types.Func{
+				Fields: ordered.NewMap[string, types.Type]().
+					With("f", &types.Func{
 						Args: []types.Type{&types.Generic{ID: 1}},
 						Ret: &types.Join{
 							Lhs: &types.Generic{ID: 1},
 							Rhs: &tI64,
 						},
-					},
-					"y": &tI64,
-				},
+					}).
+					With("y", &tI64),
 			},
 		},
 		{
@@ -312,19 +311,17 @@ func TestTypeProgram(t *testing.T) {
 					&types.Func{
 						Args: []types.Type{tApp("Foo")},
 						Ret: &types.Record{
-							Fields: map[string]types.Type{
-								"nothing": &types.Record{},
-								"foo":     tApp("Foo"),
-							},
+							Fields: ordered.NewMap[string, types.Type]().
+								With("nothing", &types.Record{}).
+								With("foo", tApp("Foo")),
 						},
 					},
 					&types.Func{
 						Args: []types.Type{},
 						Ret: &types.Record{
-							Fields: map[string]types.Type{
-								"nothing": &types.Record{},
-								"foo":     tApp("Foo"),
-							},
+							Fields: ordered.NewMap[string, types.Type]().
+								With("nothing", &types.Record{}).
+								With("foo", tApp("Foo")),
 						},
 					},
 				}
@@ -518,9 +515,8 @@ func TestTypeProgram(t *testing.T) {
 				&types.Func{
 					Args: []types.Type{},
 					Ret: &types.Record{
-						Fields: map[string]types.Type{
-							"x": &tI64,
-						},
+						Fields: ordered.NewMap[string, types.Type]().
+							With("x", &tI64),
 					},
 				},
 			},
@@ -531,7 +527,7 @@ func TestTypeProgram(t *testing.T) {
 			typ: []types.Type{&types.Func{
 				Args: []types.Type{},
 				Ret: &types.Record{
-					Fields: map[string]types.Type{},
+					Fields: ordered.NewMap[string, types.Type](),
 				}},
 			},
 		},
@@ -573,9 +569,8 @@ func TestTypeProgram(t *testing.T) {
 			`,
 			typ: func() []types.Type {
 				wrappedInt := types.Record{
-					Fields: map[string]types.Type{
-						"x": &tI64,
-					},
+					Fields: ordered.NewMap[string, types.Type]().
+						With("x", &tI64),
 				}
 				wrapper := types.Func{
 					Args: []types.Type{&tI64},
@@ -600,9 +595,8 @@ func TestTypeProgram(t *testing.T) {
 					&types.Func{
 						Args: []types.Type{&types.Generic{ID: 1}},
 						Ret: &types.Record{
-							Fields: map[string]types.Type{
-								"x": &types.Generic{ID: 1},
-							},
+							Fields: ordered.NewMap[string, types.Type]().
+								With("x", &types.Generic{ID: 1}),
 						},
 					},
 					&types.Func{
@@ -670,11 +664,10 @@ func TestTypeProgram(t *testing.T) {
 					&types.Func{
 						Args: []types.Type{tApp("Grade"), tApp("Status")},
 						Ret: &types.Record{
-							Fields: map[string]types.Type{
-								"res":    &tI64,
-								"grade":  tApp("Grade"),
-								"status": tApp("Status"),
-							},
+							Fields: ordered.NewMap[string, types.Type]().
+								With("res", &tI64).
+								With("grade", tApp("Grade")).
+								With("status", tApp("Status")),
 						},
 					},
 					status,
@@ -775,14 +768,12 @@ func TestTypeProgram(t *testing.T) {
 			`,
 			typ: func() []types.Type {
 				bar := types.Record{
-					Fields: map[string]types.Type{
-						"y": &tI64,
-					},
+					Fields: ordered.NewMap[string, types.Type]().
+						With("y", &tI64),
 				}
 				foo := types.Record{
-					Fields: map[string]types.Type{
-						"x": tApp("Bar"),
-					},
+					Fields: ordered.NewMap[string, types.Type]().
+						With("x", tApp("Bar")),
 				}
 				return []types.Type{
 					&types.Func{
