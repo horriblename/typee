@@ -63,7 +63,7 @@ type closure struct {
 	name string
 	expr *parse.Fn
 
-	captureData qbeil.StructType
+	captureData *qbeil.StructType
 }
 
 func Gen(
@@ -288,7 +288,7 @@ func Gen(
 				Extern:    false,
 				Synth:     true,
 			}
-			genFunc(&ctx, "", &def, &closure.captureData)
+			genFunc(&ctx, "", &def, true, closure.captureData)
 		}
 	}
 
@@ -319,7 +319,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 	case *parse.FuncDef:
 		ctx.funcInProcess = e.Name
 		defer func() { ctx.funcInProcess = "" }()
-		return genFunc(ctx, "", e, nil)
+		return genFunc(ctx, "", e, false, nil)
 	case *parse.Fn:
 		return genClosure(ctx, e)
 	case *parse.Form:
@@ -388,6 +388,9 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		return strPtr
 
 	case *parse.Record:
+		if len(e.Fields) == 0 {
+			return qbeil.IntLiteral{Value: 0}
+		}
 		ilTy := ctx.toILType(ctx.simplify(e.ID()))
 		aggTy, ok := ilTy.(qbeil.StructType)
 		if !ok {
@@ -477,6 +480,7 @@ func genFunc(
 	ctx *ctx,
 	class string,
 	expr *parse.FuncDef,
+	closure bool,
 	captureBlock *qbeil.StructType,
 ) (val qbeil.Value) {
 	defer func() {
@@ -526,7 +530,7 @@ func genFunc(
 		ctx.vars.Insert(expr.Args[i], val)
 	}
 	// closures take an extra void* for captures
-	if captureBlock != nil {
+	if closure {
 		argTyps = append(argTyps, qbeil.NewTypedVar(ctx.ptrType, qbeil.Var{
 			Global: false,
 			Name:   "_captures",
@@ -545,7 +549,7 @@ func genFunc(
 
 	// re-expose captures as normal variables by emulating let bindings
 	// TODO: can we merge into gen(LetExpr) code?
-	if captureBlock != nil {
+	if closure && captureBlock != nil {
 		ctx.vars.NewScope()
 		defer ctx.vars.PopScope()
 
@@ -847,13 +851,21 @@ func genClosure(ctx *ctx, e *parse.Fn) qbeil.Value {
 			value: val,
 		}
 	})
-	captureBlockTy := types.Record{
-		Fields: blockFields,
-	}
-	captureBlockIlTy := ctx.recordToILType(&captureBlockTy)
+	var captureBlock qbeil.Value
+	var captureBlockIlTy *qbeil.StructType
+	if blockFields.Len() == 0 {
+		// currently empty records have IL type of ptrType
+		captureBlock = qbeil.IntLiteral{Value: 0}
+	} else {
+		captureBlockTy := types.Record{
+			Fields: blockFields,
+		}
+		c := ctx.recordToILType(&captureBlockTy)
+		captureBlockIlTy = &c
 
-	// TODO: should be on the heap but, uh yeah
-	captureBlock := genRecordLiteral(ctx, captureBlockIlTy, fields)
+		// TODO: should be on the heap but, uh yeah
+		captureBlock = genRecordLiteral(ctx, c, fields)
+	}
 
 	funcPtr := qbeil.Var{
 		Global: true,
@@ -992,7 +1004,7 @@ func genMethodDefs(ctx *ctx, e *parse.ObjectTypeDef, classTy *types.Class) {
 			continue
 		}
 
-		genFunc(ctx, classTy.Name, method.Func, nil)
+		genFunc(ctx, classTy.Name, method.Func, false, nil)
 	}
 }
 
@@ -1741,8 +1753,10 @@ type recordAssignment struct {
 	value qbeil.Value
 }
 
-func genRecordLiteral(ctx *ctx, ilTy qbeil.StructType, fields []recordAssignment) qbeil.Var {
+func genRecordLiteral(ctx *ctx, ilTy qbeil.StructType, fields []recordAssignment) qbeil.Value {
 	structBits, _ := ctx.sizeOf(ilTy)
+	assert.Neq(0, structBits,
+		"BUG codegen: genRecordLiteral cannot be used on zero-sized records")
 
 	rcdPtr := ctx.il.TempNamedVar(false, "record_literal_")
 
@@ -1839,6 +1853,14 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	case *types.Class:
 		return ctx.ptrType
 	case *types.Record:
+		if t.Fields.Len() == 0 {
+			// HACK: massive hack, I really should make empty records zero
+			// width, but that would mean rewriting a lot of things so that
+			// function calls don't have to return something.
+			// This is also completely wrong ABI-wise (returning an empty
+			// record should mean no return value in C ABI)
+			return ctx.ptrType
+		}
 		return ctx.recordToILType(t)
 
 	case *types.Func:
@@ -1916,6 +1938,8 @@ func (ctx *ctx) toABIType(typ types.Type) qbeil.ABIType {
 }
 
 func (ctx *ctx) recordToILType(t *types.Record) qbeil.StructType {
+	assert.Neq(0, t.Fields.Len(),
+		"BUG codegen: recordToILType does not accept empty record")
 	if il, ok := ctx.generatedTranslation[t]; ok {
 		return il.(qbeil.StructType)
 	}
