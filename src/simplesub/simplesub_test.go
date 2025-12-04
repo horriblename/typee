@@ -992,6 +992,74 @@ func TestTypeProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc: "class up-casting",
+			input: `
+				(class Animal {
+					pub name Str,
+				})
+				(class Mammal (Animal) {})
+				(class Cat (Mammal) {})
+
+				(def animalName (Animal Str) [a] a.name)
+				(def test [] (print (animalName (Cat.new))))
+			`,
+			typ: []types.Type{
+				&types.Class{
+					Module: mainModule,
+					Kind:   parse.Class,
+					Name:   "Animal",
+					Supers: []*types.Application{},
+					Fields: map[string]types.Member{
+						"name": {
+							Access: parse.AccessPublic,
+							Type:   &types.String{},
+						},
+					},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{
+						"new": ctorMember("Animal"),
+					},
+					Top: false,
+				},
+				&types.Class{
+					Module:  mainModule,
+					Kind:    parse.Class,
+					Name:    "Mammal",
+					Supers:  []*types.Application{},
+					Fields:  map[string]types.Member{},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{
+						"new": ctorMember("Mammal"),
+					},
+					Top: false,
+				},
+				&types.Class{
+					Module:  mainModule,
+					Kind:    parse.Class,
+					Name:    "Cat",
+					Supers:  []*types.Application{},
+					Fields:  map[string]types.Member{},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{
+						"new": ctorMember("Cat"),
+					},
+					Top: false,
+				},
+				&types.Func{
+					Args: []types.Type{
+						tApp("Animal"),
+					},
+					Ret:    &types.String{},
+					Method: false,
+				},
+				&types.Func{
+					Args:   []types.Type{},
+					Ret:    &types.Record{},
+					Method: false,
+				},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
