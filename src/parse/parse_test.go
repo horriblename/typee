@@ -492,9 +492,26 @@ func TestParse(t *testing.T) {
 			desc:  "type alias",
 			input: "(type Foo Str)",
 			output: []Expr{&TypeAlias{
-				id:   1,
-				Name: "Foo",
-				Type: TypeName{"", "Str"},
+				id:     1,
+				Name:   "Foo",
+				Params: []string{},
+				Type:   TypeName{"", "Str"},
+			}},
+		},
+		{
+			desc:  "type alias with type params",
+			input: "(type (Init state) (fn [] state))",
+			output: []Expr{&TypeAlias{
+				id:     1,
+				Name:   "Init",
+				Params: []string{"state"},
+				Type: FnType{
+					Args: []TypeRepr{},
+					Ret: TypeName{
+						Module: "",
+						Name:   "state",
+					},
+				},
 			}},
 		},
 		{

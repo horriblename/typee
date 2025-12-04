@@ -211,9 +211,10 @@ type EnumAccess struct {
 }
 
 type TypeAlias struct {
-	id   int
-	Name string
-	Type TypeRepr
+	id     int
+	Name   string
+	Params []string
+	Type   TypeRepr
 }
 
 type ExternCall struct {

@@ -371,7 +371,10 @@ func typeAlias(in []lex.Token) ([]lex.Token, Expr, error) {
 		combinator.WithPrefix(
 			kwType,
 			combinator.Then(
-				symbolName,
+				combinator.Or(
+					symbolName,
+					typeAliasLeftWithParams,
+				),
 				typeRepr,
 			),
 		),
@@ -382,13 +385,45 @@ func typeAlias(in []lex.Token) ([]lex.Token, Expr, error) {
 		return nil, nil, err
 	}
 
+	var name string
+	params := []string{}
+	if l, r, right := res.One.Which(); right {
+		name = r.name
+		params = r.params
+	} else {
+		name = l
+	}
+
 	expr := TypeAlias{
-		id:   newId(),
-		Name: res.One,
-		Type: res.Two,
+		id:     newId(),
+		Name:   name,
+		Params: params,
+		Type:   res.Two,
 	}
 
 	return in, &expr, nil
+}
+
+type typeAliasLeftParams struct {
+	name   string
+	params []string
+}
+
+func typeAliasLeftWithParams(in []lex.Token) ([]lex.Token, typeAliasLeftParams, error) {
+	in, res, err := combinator.Surround(
+		lparen,
+		combinator.Many(symbolName),
+		rparen,
+	)(in)
+
+	if err != nil {
+		return nil, typeAliasLeftParams{}, err
+	}
+
+	return in, typeAliasLeftParams{
+		name:   res[0],
+		params: res[1:],
+	}, err
 }
 
 func dbg[I, O any](tag string, p combinator.Parser[[]I, O]) combinator.Parser[[]I, O] {
