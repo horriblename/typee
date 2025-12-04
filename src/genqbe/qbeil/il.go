@@ -145,8 +145,10 @@ func (b *Builder) Call(target *Var, typ ABIType, name Var, args []ABITypedValue)
 	}
 }
 
-func (b *Builder) Comment(s string) {
-	fmt.Fprintf(&b.Buf, "# %s\n", s)
+func (b *Builder) Comment(format string, args ...any) {
+	fmt.Fprint(&b.Buf, "# ")
+	fmt.Fprintf(&b.Buf, format, args...)
+	fmt.Fprintln(&b.Buf)
 }
 
 func (b *Builder) TempVar(global bool) Var {
