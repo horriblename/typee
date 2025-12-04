@@ -30,6 +30,12 @@ func (b *Builder) Jnz(val Value, then Label, otherwise Label) {
 	b.Buf.WriteString("\n")
 }
 
+func (b *Builder) Jump(label Label) {
+	b.indented([]byte("jmp "))
+	b.Buf.WriteString(label.IL())
+	b.Buf.WriteString("\n")
+}
+
 func (b *Builder) InsertLabel(l Label) {
 	b.Buf.Write([]byte(l.IL()))
 	b.Buf.WriteByte('\n')

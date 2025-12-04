@@ -407,6 +407,9 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 
 	case *parse.LetExpr:
 		return genLet(ctx, e)
+
+	case *parse.IfExpr:
+		return genIf(ctx, e)
 	}
 
 	panic("unimpl gen " + expr.String())
@@ -939,6 +942,36 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 
 	ctx.il.Comment("let body")
 	return gen(ctx, expr.Body)
+}
+
+func genIf(ctx *ctx, expr *parse.IfExpr) qbeil.Value {
+	thenLabel := ctx.il.TempLabel("then_")
+	elseLabel := ctx.il.TempLabel("else_")
+	endLabel := ctx.il.TempLabel("endif_")
+
+	retType := ctx.toILType(ctx.simplify(expr.ID()))
+	retSizeBits, _ := ctx.sizeOf(retType)
+	retPtr := ctx.il.TempNamedVar(false, "if_expr_val")
+
+	ctx.il.Arithmetic(retPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{
+		Value: int64(retSizeBits / 8),
+	})
+
+	cond := gen(ctx, expr.Condition)
+	ctx.il.Jnz(cond, thenLabel, elseLabel)
+
+	ctx.il.Label(thenLabel.Name)
+	thenVal := gen(ctx, expr.Consequence)
+	genCopyToPtr(ctx, retPtr, retType, thenVal)
+	ctx.il.Jump(endLabel)
+
+	ctx.il.Label(elseLabel.Name)
+	elseVal := gen(ctx, expr.Alternative)
+	genCopyToPtr(ctx, retPtr, retType, elseVal)
+	ctx.il.Jump(endLabel)
+
+	ctx.il.Label(endLabel.Name)
+	return retPtr
 }
 
 func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
@@ -1766,26 +1799,39 @@ func genRecordLiteral(ctx *ctx, ilTy qbeil.StructType, fields []recordAssignment
 		layout := ilTy.Layouts[field.name]
 		offsetBits := layout.OffsetBits
 
-		fieldBits, _ := ctx.sizeOf(layout.Type)
+		fieldBitsFromLayout, _ := ctx.sizeOf(layout.Type)
+		fieldBitsValType, _ := ctx.sizeOf(field.typ)
+
+		assert.Eq(fieldBitsFromLayout, fieldBitsValType,
+			fmt.Sprintf(
+				"BUG record literal: field size different in layout and value, layout: %d, value: %d",
+				fieldBitsFromLayout, fieldBitsValType,
+			))
+
 		fieldPtr := ctx.il.TempNamedVar(false, "record_literal_field_"+field.name)
 		ctx.il.Arithmetic(fieldPtr.IL(), ctx.ptrType, "add", rcdPtr, qbeil.IntLiteral{Value: int64(offsetBits / 8)})
 
-		switch ilTy1 := field.typ.(type) {
-		case qbeil.BaseType:
-			ctx.il.Command("store"+ilTy1.IL(), field.value, fieldPtr)
-		case qbeil.ExtraType:
-			ctx.il.Command("store"+ilTy1.IL(), field.value, fieldPtr)
-		case qbeil.AggregateType: // struct or union type
-			// TODO: gen returns a pointer right?
-			// TODO: memcpy is preferred for large sized copies
-			bytes := int64(bitsToBytesRoundedUp(fieldBits))
-			ctx.il.Command("blit", field.value, fieldPtr, qbeil.IntLiteral{Value: bytes})
-		default:
-			panic(fmt.Sprintf("unexpected IL type: %v", ilTy))
-		}
+		genCopyToPtr(ctx, fieldPtr, field.typ, field.value)
 	}
 
 	return rcdPtr
+}
+
+func genCopyToPtr(ctx *ctx, fieldPtr qbeil.Var, ilTy qbeil.Type, src qbeil.Value) {
+	fieldBits, _ := ctx.sizeOf(ilTy)
+	switch ilTy1 := ilTy.(type) {
+	case qbeil.BaseType:
+		ctx.il.Command("store"+ilTy1.IL(), src, fieldPtr)
+	case qbeil.ExtraType:
+		ctx.il.Command("store"+ilTy1.IL(), src, fieldPtr)
+	case qbeil.AggregateType: // struct or union type
+		// TODO: gen returns a pointer right?
+		// TODO: memcpy is preferred for large sized copies
+		bytes := int64(bitsToBytesRoundedUp(fieldBits))
+		ctx.il.Command("blit", src, fieldPtr, qbeil.IntLiteral{Value: bytes})
+	default:
+		panic(fmt.Sprintf("unexpected IL type: %v", ilTy))
+	}
 }
 
 func (ctx *ctx) finish() {
