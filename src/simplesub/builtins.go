@@ -68,6 +68,9 @@ func builtinVars() map[string]TypeScheme {
 				Method: false,
 			},
 		},
+		"ptrToI64": PolymorphicType{
+			Body: Func{Args: []SimpleType{Primitive{PrimitiveOpaque}}, Ret: I64},
+		},
 	}
 	return _builtinVars
 }
