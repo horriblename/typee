@@ -1,0 +1,32 @@
+(import Gtk)
+(import Gio)
+(import GObject)
+
+(extern def g_signal_connect_data
+		(Opaque Opaque Opaque Opaque Opaque GObject.ConnectFlags {}) 
+		[obj signalName func data destroy flags])
+
+(def addWindow (Gtk.Application Gtk.Window {}) [app window] (app#addWindow window))
+(def runGLib (Gio.Application I32) [app] (app#run (i64ToI32 0) (emptyList)))
+(def run (Gtk.Application I32) [app] (runGLib app))
+
+(def main []
+	(let [
+		app (Gtk.Application.new null Gio.ApplicationFlags::FlagsNone)
+		cclosure (toCClosure (fn (Opaque {}) [x]
+			(let [
+				window (Gtk.Window.new)
+				_ (app#addWindow window)
+				_ (window#setChild (Gtk.Label.new (strToCStr "hello :3")))
+				_ (window#present)
+			]
+				{})))
+		_ (g_signal_connect_data
+			app
+			(strToCStr "activate")
+			cclosure.func
+			cclosure.data
+			null
+			GObject.ConnectFlags::Default)
+	]
+		(run app)))
