@@ -3,6 +3,9 @@
 Makefile
 /.vscode/launch.json
 /*.qbe
+/*.hor
 *.s
 *.o
 a.out
+result*
+*.prof
