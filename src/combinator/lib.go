@@ -202,6 +202,10 @@ func (self Either[L, R]) Right() (r0 R, _ bool) {
 	return self.right, true
 }
 
+func (self Either[L, R]) Which() (l0 L, r0 R, right bool) {
+	return self.left, self.right, self.isRight
+}
+
 func Or[I, L, R any](left Parser[I, L], right Parser[I, R]) Parser[I, Either[L, R]] {
 	return func(i I) (i0 I, _ Either[L, R], _ error) {
 		rest, l, err := left(i)
