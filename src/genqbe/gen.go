@@ -919,10 +919,13 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 	defer ctx.vars.PopScope()
 
 	for _, ass := range expr.Assignments {
+		ctx.il.Comment("let assignment of %s = %s",
+			ass.Var, ass.Value.Pretty())
 		rhsVal := gen(ctx, ass.Value)
 		ctx.vars.Insert(ass.Var, rhsVal)
 	}
 
+	ctx.il.Comment("let body")
 	return gen(ctx, expr.Body)
 }
 
@@ -1741,7 +1744,7 @@ type recordAssignment struct {
 func genRecordLiteral(ctx *ctx, ilTy qbeil.StructType, fields []recordAssignment) qbeil.Var {
 	structBits, _ := ctx.sizeOf(ilTy)
 
-	rcdPtr := ctx.il.TempVar(false)
+	rcdPtr := ctx.il.TempNamedVar(false, "record_literal_")
 
 	ctx.il.Arithmetic(rcdPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(structBits / 8)})
 
@@ -1750,7 +1753,7 @@ func genRecordLiteral(ctx *ctx, ilTy qbeil.StructType, fields []recordAssignment
 		offsetBits := layout.OffsetBits
 
 		fieldBits, _ := ctx.sizeOf(layout.Type)
-		fieldPtr := ctx.il.TempNamedVar(false, "fieldPtr")
+		fieldPtr := ctx.il.TempNamedVar(false, "record_literal_field_"+field.name)
 		ctx.il.Arithmetic(fieldPtr.IL(), ctx.ptrType, "add", rcdPtr, qbeil.IntLiteral{Value: int64(offsetBits / 8)})
 
 		switch ilTy1 := field.typ.(type) {
