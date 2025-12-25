@@ -1388,7 +1388,17 @@ func (self *Typer) parseType(tr parse.TypeRepr) (TypeScheme, error) {
 	}
 }
 
-func (self *symbols) concretizeApplication(app Application) (SimpleType, error) {
+// Repeatedly applies substitutions in an Application, e.g. with
+//
+//	(type Foo a {data: a})
+//	(type Bar a (Foo a))
+//
+// the type Application `(Bar Int)` is expanded into `{data: Int}` , by
+// replacing all occurence of `a` with `Int`.
+//
+// Type alias directly to a Variable should be disallowed, so the returned type
+// is guaranteed to be [ConcreteType]
+func (self *symbols) concretizeApplication(app Application) (ConcreteType, error) {
 	base, err := self.lookupType(app.Module, app.Name)
 	if err != nil {
 		return nil, err
@@ -1398,9 +1408,19 @@ func (self *symbols) concretizeApplication(app Application) (SimpleType, error) 
 	case PolymorphicType:
 		// FIXME: should instantiate + concretize
 		ty := base.instantiate()
+		cty, ok := ty.(ConcreteType)
+		if !ok {
+			panic("TODO: disallow type alias with a single quantified type var as body")
+		}
 
-		return ty, nil
-	case SimpleType:
+		return cty, nil
+	case *Variable:
+		panic("TODO: disallow type alias with a single quantified type var as body")
+	case Application:
+		assert.True(app.Module != base.Module || app.Name != base.Name,
+			"TODO: disallow type alias directly to itself")
+		return self.concretizeApplication(base)
+	case ConcreteType:
 		if len(app.Params) != 0 {
 			panic("TODO: handle wrong parameter count?")
 		}
@@ -1732,6 +1752,8 @@ func freshenType(ty SimpleType) SimpleType {
 
 // substitute mapped type vars with their counterpart
 // does not touch type vars not present in mapping
+// (I made up the name concretize, there's probably a proper name out there
+// already)
 func concretizeType(ty SimpleType, mapping map[uint]SimpleType) SimpleType {
 	// TODO: I'm not sure if substituting the targeted uid is enough, what about representative?
 	// is it possible to get a t1 with representative t2 but we used t1 in the mappings?
