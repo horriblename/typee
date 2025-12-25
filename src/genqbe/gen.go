@@ -99,9 +99,12 @@ func Gen(
 	ptrSizeBits, _ := ctx.sizeOf(ctx.ptrType)
 
 	ctx.declareType("Str", qbeil.StructType{
-		Align:   0,
-		Name:    "Str",
-		Layouts: map[string]qbeil.FieldLayout{},
+		Align: 0,
+		Name:  "Str",
+		Layouts: map[string]qbeil.FieldLayout{
+			"data": {Type: ctx.ptrType, OffsetBits: 0},
+			"size": {Type: ctx.ptrType, OffsetBits: ptrSizeBits},
+		},
 		Fields: []qbeil.RepeatType{
 			qbeil.SingleType(ctx.ptrType),
 			qbeil.SingleType(ctx.ptrType),
@@ -830,6 +833,37 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 			{Type: ctx.intType, Value: exitCode},
 		})
 		return qbeil.IntLiteral{Value: 0} // TODO: there's probably a better way
+	case "assert":
+		assert.Eq(len(expr.Children), 2, `wrong arg count for "assert"`)
+
+		msgStr := "assertion failed: " + expr.Pretty()
+		msgGlobal := ctx.il.TempNamedVar(true, "assert_msg")
+		ctx.statics[msgGlobal] = fmt.Sprintf(`{b "%s", b 0}`, msgStr)
+		strTy := assert.Cast[qbeil.StructType](ctx.userTypes["Str"])
+
+		printFunc := qbeil.Var{Global: true, Name: "print"}
+		failLabel := ctx.il.TempLabel("assert_fail_")
+		okLabel := ctx.il.TempLabel("assert_pass_")
+
+		assertionResult := gen(ctx, expr.Children[1])
+
+		ctx.il.Jnz(assertionResult, okLabel, failLabel)
+
+		ctx.il.Label(failLabel.Name)
+		msg := genRecordLiteral(ctx, strTy, []recordAssignment{
+			{name: "data", typ: ctx.ptrType, value: msgGlobal},
+			{name: "size", typ: ctx.ptrType, value: qbeil.IntLiteral{Value: int64(len(msgStr))}},
+		})
+		ctx.il.Call(nil, nil, printFunc, []qbeil.ABITypedValue{
+			{Type: strTy, Value: msg},
+		})
+		ctx.il.Call(nil, nil, qbeil.Var{Global: true, Name: "exit"}, []qbeil.ABITypedValue{
+			{Type: ctx.intType, Value: qbeil.IntLiteral{Value: 1}},
+		})
+
+		ctx.il.Label(okLabel.Name)
+		return qbeil.IntLiteral{Value: 0} // TODO: there's probably a better way
+
 	case "print":
 		assert.Eq(len(expr.Children), 2, `wrong arg count for "print"`)
 		arg := gen(ctx, expr.Children[1])
@@ -864,6 +898,10 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 		}
 
 		return dataPtr
+
+	case "ptrCast":
+		assert.Eq(len(expr.Children), 2, `wrong arg count for "ptrCast"`)
+		return gen(ctx, expr.Children[1])
 
 	case "ref":
 		assert.Eq(len(expr.Children), 2, `wrong arg count for "ref"`)

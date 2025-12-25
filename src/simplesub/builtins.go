@@ -18,6 +18,7 @@ func builtinVars() map[string]TypeScheme {
 	if _builtinVars != nil {
 		return _builtinVars
 	}
+	ptrCast_t := freshVar()
 	at_t := freshVar()
 	ref_t := freshVar()
 	deref_t := freshVar()
@@ -33,6 +34,16 @@ func builtinVars() map[string]TypeScheme {
 		"=":     intComparatorType,
 		"print": Func{Args: []SimpleType{Str{}}, Ret: Record{}},
 		"exit":  Func{Args: []SimpleType{I64}, Ret: Bot{}},
+		"assert": Func{
+			Args: []SimpleType{Primitive{PrimitiveBool}},
+			Ret:  Record{},
+		},
+		"ptrCast": PolymorphicType{
+			Body: Func{
+				Args: []SimpleType{Primitive{PrimitiveOpaque}},
+				Ret:  Ref{ptrCast_t},
+			},
+		},
 		"at": PolymorphicType{
 			Body: Func{Args: []SimpleType{
 				SliceType{at_t},
