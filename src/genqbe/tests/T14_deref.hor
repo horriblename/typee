@@ -1,3 +1,4 @@
+;exit=6
 (def getX ((Ref {x: I64, y: I64}) I64) [rcd]
   (let [
     val (deref rcd)

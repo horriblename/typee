@@ -20,7 +20,8 @@ export function w $main() {
 @start
 # let assignment of ONE = 1
 # let body
-	%record_literal__5 =l alloc4 8
+# capture data: (Ref {ONE: I64, }) => pointer to :Record_4
+	%record_literal__5 =l call $calloc (l 1, l 8)
 	%record_literal_field_ONE_6 =l add %record_literal__5, 0
 	storel 1, %record_literal_field_ONE_6
 	%record_literal__7 =l alloc4 24

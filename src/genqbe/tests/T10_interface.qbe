@@ -33,7 +33,7 @@ export function l $MainModule.Animal_construct(l %object_type) {
 	%_tmp_5 =l call $g_object_new (l %object_type, l 0)
 	ret %_tmp_5
 }
-function l $MainModule.Animal_new(l %self1) {
+function l $MainModule.Animal_doSomething(l %self1) {
 @start
 	%ptrTo_GObject.g_class2 =l add %self1, 0
 	%tmp_6 =l loadl %ptrTo_GObject.g_class2
@@ -41,14 +41,14 @@ function l $MainModule.Animal_new(l %self1) {
 	%Animal_Animal_vtable4 =l call $g_type_interface_peek (l %tmp_6, l %Animal3)
 	jnz %Animal_Animal_vtable4, @then_7, @else_8
 @then_7
-	%ptrTo_MainModule.AnimalClass.new5 =l add %Animal_Animal_vtable4, 144
-	%tmp_9 =l loadl %ptrTo_MainModule.AnimalClass.new5
+	%ptrTo_MainModule.AnimalClass.doSomething5 =l add %Animal_Animal_vtable4, 136
+	%tmp_9 =l loadl %ptrTo_MainModule.AnimalClass.doSomething5
 	%_tmp_10 =l call %tmp_9 (l %self1)
 	ret %_tmp_10
 @else_8
 	ret 0
 }
-function l $MainModule.Animal_doSomething(l %self6) {
+function l $MainModule.Animal_new(l %self6) {
 @start
 	%ptrTo_GObject.g_class7 =l add %self6, 0
 	%tmp_11 =l loadl %ptrTo_GObject.g_class7
@@ -56,8 +56,8 @@ function l $MainModule.Animal_doSomething(l %self6) {
 	%Animal_Animal_vtable9 =l call $g_type_interface_peek (l %tmp_11, l %Animal8)
 	jnz %Animal_Animal_vtable9, @then_12, @else_13
 @then_12
-	%ptrTo_MainModule.AnimalClass.doSomething10 =l add %Animal_Animal_vtable9, 136
-	%tmp_14 =l loadl %ptrTo_MainModule.AnimalClass.doSomething10
+	%ptrTo_MainModule.AnimalClass.new10 =l add %Animal_Animal_vtable9, 144
+	%tmp_14 =l loadl %ptrTo_MainModule.AnimalClass.new10
 	%_tmp_15 =l call %tmp_14 (l %self6)
 	ret %_tmp_15
 @else_13

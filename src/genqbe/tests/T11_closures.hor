@@ -1,11 +1,12 @@
+;exit=3
 (def foo ((fn [Int] Int) Int Int) [addOne x]
 	(addOne x))
 
 (def main []
-	(let [
-		ONE 1
-	]
-	  (foo 
-		(fn (Int Int) [x]
-			(+ x ONE))
-		2)))
+  (let [
+        ONE 1
+        ]
+    (foo
+      (fn (Int Int) [x]
+          (+ x ONE))
+      2)))
