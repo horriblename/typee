@@ -1,0 +1,13 @@
+(def getX ((Ref {x: I64, y: I64}) I64) [rcd]
+  (let [
+    val (deref rcd)
+  ]
+    (+ val.x val.y)))
+
+(def main []
+  (let [
+    rcd (ref {x: 2, y: 3})
+    num (ref 1)
+    numVal (deref num)
+  ]
+    (+ numVal (getX rcd))))

@@ -1,0 +1,43 @@
+type :Str = {l, l, }
+type :List = {l, l, }
+type :GObject = {l, l, l, }
+type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
+type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
+type :GInterfaceInfo = {l, l, l, }
+type :ClosureComponents = {l 3, }
+type :BoxPartial = {l, }
+type :Record_1 = {l, l, }
+type :Record_2 = {l, l, }
+type :Record_4 = {l, l, }
+type :Record_6 = {l, l, }
+export function l $MainModule.getX(l %rcd) {
+@start
+# let assignment of val = ([deref rcd])
+	%derefedPtr_1 =l alloc4 16
+	blit %rcd, %derefedPtr_1, 16
+# let body
+	%ptrTo_Record_2.x3 =l add %derefedPtr_1, 0
+	%tmp_2 =l loadl %ptrTo_Record_2.x3
+	%ptrTo_Record_4.y5 =l add %derefedPtr_1, 8
+	%tmp_3 =l loadl %ptrTo_Record_4.y5
+	%_tmp_4 =l add %tmp_2, %tmp_3
+	ret %_tmp_4
+}
+export function w $main() {
+@start
+# let assignment of rcd = ([ref {x:2, y:3}])
+	%record_literal__5 =l alloc4 16
+	%record_literal_field_x_6 =l add %record_literal__5, 0
+	storel 2, %record_literal_field_x_6
+	%record_literal_field_y_7 =l add %record_literal__5, 8
+	storel 3, %record_literal_field_y_7
+# let assignment of num = ([ref 1])
+	%ref_8 =l alloc4 8
+	storel 1, %ref_8
+# let assignment of numVal = ([deref num])
+	%derefed_9 =l loadl %ref_8
+# let body
+	%_tmp_10 =l call $MainModule.getX (l %record_literal__5)
+	%_tmp_11 =l add %derefed_9, %_tmp_10
+	ret %_tmp_11
+}
