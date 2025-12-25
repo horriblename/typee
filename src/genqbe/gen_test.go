@@ -2,18 +2,37 @@ package genqbe
 
 import (
 	"bytes"
+	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/can"
+	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
 )
+
+func compileQbe(dir string, qbePath string) (string, error) {
+	fname := path.Base(qbePath)
+	asmFile := path.Join(dir, fname+".s")
+	c := exec.Command("qbe", qbePath, "-o", asmFile)
+	if output, err := c.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("running qbe: %w\noutput:\n%s", err, output)
+	}
+
+	binaryFile := path.Join(dir, fname+".out")
+	c = exec.Command("gcc", asmFile, "-o", binaryFile)
+	if output, err := c.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("assemble: %w\noutput:\n%s", err, output)
+	}
+	return binaryFile, nil
+}
 
 func TestGen(t *testing.T) {
 	entries, err := fs.ReadDir(os.DirFS("."), "tests")
@@ -27,6 +46,7 @@ func TestGen(t *testing.T) {
 		name := strings.TrimSuffix(entry.Name(), ".hor")
 
 		t.Run(name, func(t *testing.T) {
+			tempDir := t.TempDir()
 			assert := assert.NewTestAsserts(t)
 			src, err := os.ReadFile("tests/" + entry.Name())
 			assert.Ok(err)
@@ -34,6 +54,19 @@ func TestGen(t *testing.T) {
 			if bytes.HasPrefix(src, []byte(";skip\n")) {
 				t.Skipf("skipping %s: skip directive found", name)
 				return
+			}
+
+			var expectExitCode = opt.None[int]()
+			if rest, ok := bytes.CutPrefix(src, []byte(";exit=")); ok {
+				if num, _, ok := bytes.Cut(rest, []byte("\n")); ok {
+					// linux exit codes are 8-bit numbers
+					n, err := strconv.ParseInt(string(num), 10, 8)
+					if err != nil {
+						panic("bad exit code in " + name + ": " + string(num))
+					}
+
+					expectExitCode = opt.Some(int(n))
+				}
 			}
 
 			expectFile := path.Join("tests", name+".qbe")
@@ -54,7 +87,7 @@ func TestGen(t *testing.T) {
 
 			got := buf.String()
 			if got != expect {
-				gotFile := path.Join(t.TempDir(), "got.txt")
+				gotFile := path.Join(tempDir, "got.txt")
 				assert.Ok(os.WriteFile(gotFile, []byte(got), 0o644))
 				diff := diff(t, expectFile, gotFile)
 
@@ -63,6 +96,21 @@ func TestGen(t *testing.T) {
 				} else {
 					t.Errorf("updating test expectations...")
 					assert.Ok(os.WriteFile(expectFile, []byte(got), 0o644))
+				}
+			}
+
+			if want, ok := expectExitCode.Unwrap(); ok {
+				binary, err := compileQbe(tempDir, expectFile)
+				assert.Ok(err)
+
+				c := exec.Command(binary)
+
+				if err := c.Run(); err == nil {
+					assert.Eq(0, want, "wrong exit code")
+				} else if e, ok := err.(*exec.ExitError); ok {
+					assert.Eq(e.ExitCode(), want, "wrong exit code")
+				} else {
+					t.Errorf("unexpected error running binary: %v", err)
 				}
 			}
 		})
