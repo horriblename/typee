@@ -1,0 +1,49 @@
+type :Str = {l, l, }
+type :List = {l, l, }
+type :GObject = {l, l, l, }
+type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
+type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
+type :GInterfaceInfo = {l, l, l, }
+type :ClosureComponents = {l 3, }
+type :BoxPartial = {l, }
+type :Record_1 = {l, l, }
+type :Record_2 = {l, l, }
+type :Record_3 = {l, l, }
+type :Record_4 = {l, l, }
+type :Record_7 = {l, l, }
+export function w $main() {
+@start
+# let assignment of items = [1 2 3]
+	%list_ctor_1 =:List call $preallocateList (l 3, l 8)
+	%list_item_ref_3 =l alloc4 8
+	storel 1, %list_item_ref_3
+	%list_ctor_2 =:List call $listAppend (:List %list_ctor_1, l 8, l %list_item_ref_3)
+	%list_item_ref_5 =l alloc4 8
+	storel 2, %list_item_ref_5
+	%list_ctor_4 =:List call $listAppend (:List %list_ctor_2, l 8, l %list_item_ref_5)
+	%list_item_ref_7 =l alloc4 8
+	storel 3, %list_item_ref_7
+	%list_ctor_6 =:List call $listAppend (:List %list_ctor_4, l 8, l %list_item_ref_7)
+# let assignment of compounds = [{x:20, y:101}]
+	%list_ctor_8 =:List call $preallocateList (l 1, l 16)
+	%record_literal__10 =l alloc4 16
+	%record_literal_field_x_11 =l add %record_literal__10, 0
+	storel 20, %record_literal_field_x_11
+	%record_literal_field_y_12 =l add %record_literal__10, 8
+	storel 101, %record_literal_field_y_12
+	%list_ctor_9 =:List call $listAppend (:List %list_ctor_8, l 16, l %record_literal__10)
+# let assignment of c = ([at compounds 0])
+	%at_result_ptr_13 =l alloc4 16
+	call $listGet (:List %list_ctor_9, l 16, l 0, l %at_result_ptr_13)
+# let body
+	%at_result_ptr_14 =l alloc4 8
+	call $listGet (:List %list_ctor_6, l 8, l 1, l %at_result_ptr_14)
+	%at_result_15 =l loadl %at_result_ptr_14
+	%ptrTo_Record_4.x5 =l add %at_result_ptr_13, 0
+	%valOf_Record_4.x6 =l loadl %ptrTo_Record_4.x5
+	%_tmp_16 =l add %at_result_15, %valOf_Record_4.x6
+	%ptrTo_Record_7.y8 =l add %at_result_ptr_13, 8
+	%valOf_Record_7.y9 =l loadl %ptrTo_Record_7.y8
+	%_tmp_17 =l add %_tmp_16, %valOf_Record_7.y9
+	ret %_tmp_17
+}

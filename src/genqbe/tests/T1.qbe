@@ -1,4 +1,5 @@
 type :Str = {l, l, }
+type :List = {l, l, }
 type :GObject = {l, l, l, }
 type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
 type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }

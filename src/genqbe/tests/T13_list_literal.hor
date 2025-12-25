@@ -1,0 +1,7 @@
+(def main []
+  (let [
+    items [1 2 3]
+    compounds [{x: 20, y: 101}]
+    c (at compounds 0)
+  ]
+    (+ (+ (at items 1) c.x) c.y)))
