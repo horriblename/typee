@@ -932,6 +932,31 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 
 		return resultVar
 
+	case "forEach":
+		assert.Eq(len(expr.Children), 3, "BUG", fnName, "wrong arg count at code gen")
+		listTy := assert.Cast[*types.Slice](ctx.simplify(expr.Children[1].ID()))
+		contentTy := listTy.Type
+		listStruct := assert.Get(ctx.userTypes, "List",
+			"BUG codegen: List struct type not defined?")
+		closureStruct := assert.Get(ctx.userTypes, "ClosureComponents",
+			"BUG codegen: ClosureComponents struct type not defined?")
+		bits, _ := ctx.sizeOf(ctx.toILType(contentTy))
+		size := bitsToBytesRoundedUp(bits)
+		sizeVal := qbeil.IntLiteral{Value: int64(size)}
+		funcVar := qbeil.Var{Global: true, Name: "listForEach"}
+
+		list := gen(ctx, expr.Children[1])
+		closure := gen(ctx, expr.Children[2])
+
+		ctx.il.Call(nil, nil, funcVar, []qbeil.ABITypedValue{
+			{Type: listStruct, Value: list},
+			{Type: qbeil.Long, Value: sizeVal},
+			{Type: closureStruct, Value: closure},
+		})
+
+		// should be empty record
+		return qbeil.IntLiteral{Value: 0}
+
 	default:
 		// TODO: local functions
 		fn := ctx.simplify(callee.ID())

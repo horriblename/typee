@@ -20,6 +20,7 @@ func builtinVars() map[string]TypeScheme {
 	}
 	at_t := freshVar()
 	deref_t := freshVar()
+	listForEach_t := freshVar()
 
 	_builtinVars = map[string]TypeScheme{
 		"+":     intBinaryOptType,
@@ -68,6 +69,19 @@ func builtinVars() map[string]TypeScheme {
 			Body: Func{
 				Args:   []SimpleType{},
 				Ret:    SliceType{freshVar()},
+				Method: false,
+			},
+		},
+		"forEach": PolymorphicType{
+			Body: Func{
+				Args: []SimpleType{
+					SliceType{listForEach_t},
+					Func{
+						Args: []SimpleType{listForEach_t},
+						Ret:  Record{},
+					},
+				},
+				Ret:    Record{},
 				Method: false,
 			},
 		},

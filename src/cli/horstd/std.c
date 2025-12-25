@@ -26,6 +26,16 @@ int32_t i64ToI32(int64_t x) { return x; }
 int8_t i64ToI8(int64_t x) { return x; }
 
 /*
+ * Closure
+ */
+
+typedef struct Closure {
+  void *func;
+  void *data;
+  void *cleanup;
+} Closure;
+
+/*
  * Lists
  */
 
@@ -121,6 +131,14 @@ void listGet(List l, int64_t item_size, int64_t i, void *result) {
   assert(l.data);
   assert(i < l.size && i < l.data->size);
   memcpy(result, l.data->data + i * item_size, item_size);
+}
+
+typedef void ListForEachFunc(void *item, void *data);
+
+void listForEach(List l, int64_t item_size, Closure f) {
+  for (int64_t i = 0; i < l.size; i++) {
+    ((ListForEachFunc *)(f.func))(l.data->data + i * item_size, f.data);
+  }
 }
 
 int64_t len(List l) { return l.size; }
