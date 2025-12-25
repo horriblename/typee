@@ -21,6 +21,12 @@ char *strToCStr(Str s) {
 }
 
 void print(Str s) { fwrite(s.data, 1, s.size, stdout); }
+Str i64ToStr(int64_t x) {
+  char *data = calloc(sizeof(char), 20);
+  int64_t len = sprintf(data, "%ld", x);
+  Str str = {.data = data, .size = len};
+  return str;
+}
 
 int32_t i64ToI32(int64_t x) { return x; }
 int8_t i64ToI8(int64_t x) { return x; }
