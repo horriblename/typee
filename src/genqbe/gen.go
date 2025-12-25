@@ -1698,30 +1698,7 @@ func genGetStructPtrField(
 		qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits / 8)},
 	)
 
-	val := qbeil.Var{
-		Name:   ctx.newTempName("valOf_" + structTy.Name + "." + field),
-		Global: false,
-	}
-	if bt, ok := fieldLayout.Type.(qbeil.BaseType); ok {
-		switch bt {
-		case qbeil.Double:
-			ctx.il.Arithmetic(val.IL(), bt, "loadd", addr)
-		case qbeil.Long:
-			ctx.il.Arithmetic(val.IL(), bt, "loadl", addr)
-		case qbeil.Single:
-			ctx.il.Arithmetic(val.IL(), bt, "loads", addr)
-		case qbeil.Word:
-			ctx.il.Arithmetic(val.IL(), bt, "loadw", addr)
-		default:
-			panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", bt))
-		}
-	} else {
-		// FIXME: I am not 100% sure aggregate types should be treated as pointers
-		ctx.il.Arithmetic(val.IL(), ctx.ptrType, "add", structPtr,
-			qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits / 8)})
-	}
-
-	return val
+	return genReturnableValueFromPtr(ctx, addr, fieldLayout.Type)
 }
 
 func genSetStructPtrField(
@@ -1968,6 +1945,26 @@ func genCopyToPtr(ctx *ctx, fieldPtr qbeil.Var, ilTy qbeil.Type, src qbeil.Value
 		ctx.il.Command("blit", src, fieldPtr, qbeil.IntLiteral{Value: bytes})
 	default:
 		panic(fmt.Sprintf("unexpected IL type: %v", ilTy))
+	}
+}
+
+// Takes a pointer,
+//
+//   - if it points to a [qbeil.BaseType] or [qbeil.ExtraType] dereference and
+//     return it
+//   - if it points to a compound type (struct/union), return the pointer untouched
+func genReturnableValueFromPtr(ctx *ctx, ptr qbeil.Var, ilTy qbeil.Type) qbeil.Var {
+	switch bt := ilTy.(type) {
+	case qbeil.BaseType:
+		val := ctx.il.TempNamedVar(false, "tmp")
+		ctx.il.Arithmetic(val.IL(), bt, "load"+ilTy.IL(), ptr)
+		return val
+	case qbeil.ExtraType:
+		panic("TODO: returnable ExtraType")
+	case qbeil.StructType, qbeil.UnionType:
+		return ptr
+	default:
+		panic(fmt.Sprintf("unexpected qbeil.Type: %#v", bt))
 	}
 }
 
