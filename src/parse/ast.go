@@ -159,6 +159,7 @@ type RecordField struct {
 	Value Expr
 }
 
+// I'm using this as a List/slice now, sue me >:3c
 type ArrayLiteral struct {
 	id       int
 	Elements []Expr

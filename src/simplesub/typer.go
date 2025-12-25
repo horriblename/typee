@@ -458,7 +458,7 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 			}
 		}
 
-		return ArrayType{ty, uint(len(expr.Elements))}, nil
+		return SliceType{ty}, nil
 
 	case *parse.Record:
 		fields := make([]NamedType, len(expr.Fields))
@@ -943,8 +943,8 @@ func (self *Typer) typeFunctionCall(expr *parse.Form) (SimpleType, error) {
 		return self.typeMethodCall(meth, expr)
 	}
 
-	// HACK: I can't write a function that accepts arbitrary arity so we get
-	// toCClosure as a magic keyword instead :3
+	// HACK: I can't write a function that accepts a function of arbitrary
+	// arity so we get toCClosure as a magic keyword instead :3
 	if sym, ok := expr.Children[0].(*parse.Symbol); ok && sym.Name == "toCClosure" {
 		if len(expr.Children) != 2 {
 			return nil, fmt.Errorf("%w on toCClosure, expected 1 arguments, got %d",

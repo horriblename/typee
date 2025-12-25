@@ -139,11 +139,10 @@ func TestTypeExpr(t *testing.T) {
 			},
 		},
 		{
-			desc:  "array type",
+			desc:  "list type",
 			input: "(let [x 12] [1 2 x])",
-			typ: &types.Array{
+			typ: &types.Slice{
 				Type: &tI64,
-				Size: 3,
 			},
 		},
 		{
