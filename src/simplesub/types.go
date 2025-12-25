@@ -664,9 +664,6 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		union := map[string]opt.Option[SimpleType]{}
 		maps.Copy(union, lhs.Variants)
 		for tag, rvar := range rhs.Variants {
-			if tag == "c" {
-				println("break")
-			}
 			if lvar, ok := union[tag]; ok {
 				lv, lok := lvar.Unwrap()
 				rv, rok := rvar.Unwrap()

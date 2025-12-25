@@ -209,9 +209,6 @@ func TestTypeExpr(t *testing.T) {
 	for _, tC := range testCases {
 		EnableTrace = true
 		t.Run(tC.desc, func(t *testing.T) {
-			if tC.desc == "case expression" {
-				println("break")
-			}
 			assert := assert.NewTestAsserts(t)
 			checker := NewTyper(mainModule, true)
 

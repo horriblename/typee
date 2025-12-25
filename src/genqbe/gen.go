@@ -1481,9 +1481,6 @@ func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 
 func genClassInitializeIfacesFuncs(ctx *ctx, class *types.Class, parents []*types.Class) {
 	assert.Eq(class.Kind, parse.Class, "codegen", callerName(), ": class must not be an interface")
-	if class.Name == "Cat" {
-		print("debug")
-	}
 	className := typeName{class.Module, class.Name}
 
 	for _, parent := range parents {
