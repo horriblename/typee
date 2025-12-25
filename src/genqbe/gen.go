@@ -673,6 +673,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		// 1. (Module.Type.staticMethod x y z)
 		// 2. (Module.function x y z)
 		// 3. (LocalClass.staticMethod x y z)
+		// 4. (recordVar.field x y z)
 		modulePath := ctx.module
 		var class string
 		switch lhs := callee.Record.(type) {
@@ -680,9 +681,19 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 			if modName, ok := ctx.imports[lhs.Name]; ok {
 				// Module.function
 				modulePath = modName
-			} else {
+			} else if _, ok := ctx.allModules[ctx.module].Types[lhs.Name]; ok {
 				// LocalClass.staticMethod
+				// TODO: check if this is actually a class
 				class = lhs.Name
+			} else {
+				// recordVar.field
+				// TODO: this could be an object?
+				lhsTy := assert.Cast[qbeil.StructType](ctx.toILType(ctx.simplify(lhs.ID())),
+					"BUG codegen: expected LHS of callee", callee.Pretty(), "to be a record type")
+				lhsRcd := gen(ctx, lhs)
+				closurePtr := genGetStructPtrField(ctx, lhsRcd, lhsTy, callee.Field)
+
+				return genCallClosure(ctx, closurePtr, expr)
 			}
 		case *parse.RecordAccess:
 			// Module.Type.staticMethod
