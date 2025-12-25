@@ -92,7 +92,7 @@ type UnionType struct {
 }
 
 type FieldLayout struct {
-	Type
+	Type       Type
 	OffsetBits int
 }
 

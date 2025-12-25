@@ -107,6 +107,16 @@ func Gen(
 		},
 	})
 
+	ctx.declareType("List", qbeil.StructType{
+		Align:   0,
+		Name:    "List",
+		Layouts: map[string]qbeil.FieldLayout{},
+		Fields: []qbeil.RepeatType{
+			qbeil.SingleType(ctx.ptrType),
+			qbeil.SingleType(ctx.ptrType),
+		},
+	})
+
 	// struct GObject {
 	//  GTypeInstance g_type_instance
 	//  guint ref_count; /* atomic */
@@ -434,6 +444,55 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 
 	case *parse.IfExpr:
 		return genIf(ctx, e)
+	case *parse.ArrayLiteral:
+		list := ctx.il.TempNamedVar(false, "list_ctor")
+		// I don't think this can be an Application?
+		listTy := assert.Cast[*types.Slice](ctx.simplify(e.ID()))
+		contentTy := listTy.Type
+		contentIlTy := ctx.toILType(contentTy)
+		listStruct := assert.Get(ctx.userTypes, "List",
+			"BUG codegen: List struct type not defined?")
+		bits, _ := ctx.sizeOf(ctx.toILType(contentTy))
+		size := bitsToBytesRoundedUp(bits)
+		sizeVal := qbeil.IntLiteral{Value: int64(size)}
+		preallocateFuncVar := qbeil.Var{
+			Global: true,
+			Name:   "preallocateList",
+		}
+		ctx.il.Call(&list, listStruct, preallocateFuncVar, []qbeil.ABITypedValue{
+			{Type: qbeil.Long, Value: qbeil.IntLiteral{Value: int64(len(e.Elements))}},
+			{Type: qbeil.Long, Value: sizeVal},
+		})
+
+		appendFuncVar := qbeil.Var{Global: true, Name: "listAppend"}
+
+		// append items
+		for _, item := range e.Elements {
+			newList := ctx.il.TempNamedVar(false, "list_ctor")
+			itemVal := gen(ctx, item)
+			var itemRef qbeil.Value
+			switch contentIlTy.(type) {
+			case qbeil.BaseType:
+				itemRef = ctx.il.TempNamedVar(false, "list_item_ref")
+				ctx.il.Arithmetic(itemRef.IL(), ctx.ptrType, "alloc4", sizeVal)
+				ctx.il.Command("store"+ctx.ptrType.IL(), itemVal, itemRef)
+			case qbeil.ExtraType:
+				panic("codegen: ExtraType in array literal not yet supported")
+			case qbeil.StructType, *qbeil.UnionType:
+				// is already a pointer, pass it to the function directly
+				itemRef = itemVal
+			default:
+				panic(fmt.Sprintf("unexpected qbeil.Type: %#v", contentIlTy))
+			}
+			ctx.il.Call(&newList, listStruct, appendFuncVar, []qbeil.ABITypedValue{
+				{Type: listStruct, Value: list},
+				{Type: qbeil.Long, Value: sizeVal},
+				{Type: ctx.ptrType, Value: itemRef},
+			})
+			list = newList
+		}
+
+		return list
 	}
 
 	panic("unimpl gen " + expr.String())
@@ -835,6 +894,42 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 		retTy := ctx.toILType(ctx.simplify(expr.ID()))
 		ctx.il.Arithmetic(res.IL(), retTy, "ceq"+retTy.IL(), lhs, rhs)
 		return res
+
+	case "at":
+		assert.Eq(len(expr.Children), 3, "BUG", fnName, "wrong arg count at code gen")
+		listTy := assert.Cast[*types.Slice](ctx.simplify(expr.Children[1].ID()))
+		contentTy := listTy.Type
+		listStruct := assert.Get(ctx.userTypes, "List",
+			"BUG codegen: List struct type not defined?")
+		bits, _ := ctx.sizeOf(ctx.toILType(contentTy))
+		size := bitsToBytesRoundedUp(bits)
+		sizeVal := qbeil.IntLiteral{Value: int64(size)}
+		funcVar := qbeil.Var{Global: true, Name: "listGet"}
+
+		resultPtr := ctx.il.TempNamedVar(false, "at_result_ptr")
+
+		list := gen(ctx, expr.Children[1])
+		idx := gen(ctx, expr.Children[2])
+		ctx.il.Arithmetic(resultPtr.IL(), ctx.ptrType, "alloc4", sizeVal)
+
+		ctx.il.Call(nil, nil, funcVar, []qbeil.ABITypedValue{
+			{Type: listStruct, Value: list},
+			{Type: qbeil.Long, Value: sizeVal},
+			{Type: qbeil.Long, Value: idx},
+			{Type: ctx.ptrType, Value: resultPtr},
+		})
+
+		// deref if base type, (maybe can merge with deref code)
+		baseTy, ok := ctx.toILType(contentTy).(qbeil.BaseType)
+		if !ok {
+			return resultPtr
+		}
+
+		resultVar := ctx.il.TempNamedVar(false, "at_result")
+
+		ctx.il.Arithmetic(resultVar.IL(), baseTy, "load"+baseTy.IL(), resultPtr)
+
+		return resultVar
 
 	default:
 		// TODO: local functions
@@ -1961,8 +2056,8 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 		return ilTyp
 
 	case *types.Slice:
-		// FIXME: should be a struct like this: {ptr: ptrType, size: int}
-		return ctx.ptrType
+		return assert.Get(ctx.userTypes, "List",
+			"BUG codegen: List struct type not defined?")
 	default:
 		panic("unimpl: conversion to QBE IL from type " + typ.String())
 	}
