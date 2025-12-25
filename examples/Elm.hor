@@ -1,0 +1,111 @@
+; references:
+; - https://docs.gtk.org/gtk4/drawing-model.html
+(import Gtk)
+(import GObject)
+
+(extern def g_signal_connect_data
+		(Opaque Opaque Opaque Opaque Opaque GObject.ConnectFlags {}) 
+		[obj signalName func data destroy flags])
+
+(type State {
+  counter: I64,
+  temp: I64,
+})
+
+(enum Msg {
+  None:0
+  Inc
+})
+
+; (type View (fn [State] Gtk.Widget))
+
+(type App {
+  init: (fn [] State),
+  update: (fn [State Msg] {state: State, msg: Msg}),
+  view: (fn [Address State] ViewWidget),
+})
+
+(type Address (fn [Msg] {}))
+(type Binding (fn [Gtk.Widget] {}))
+
+(type ViewWidget {
+  ; create the Gtk.Widget
+  build: (fn [] Gtk.Widget),
+
+  ; list of functions that set properties on the Gtk.Widget
+  ; on each view call
+  bindings: [Binding],
+
+  ; child widgets
+  children: [ViewWidget],
+  ; configure: (fn [ViewWidget Gtk.Widget] {}),
+})
+
+; (def widget (Gtk.Widget ViewWidget) [w] {widget: w})
+
+(def doBinding (Gtk.Widget (Ref Binding) {}) [w b]
+  (let [
+    binding (deref b)
+  ]
+    (binding w)))
+
+(def label ([(fn [Gtk.Label] {})] ViewWidget) [bindings] {
+  build: (fn [] (Gtk.Label.new (strToCStr ""))),
+  bindings: bindings,
+  children: [],
+  ; configure: (fn (ViewWidget Gtk.Label {}) [_self label]
+  ;   (forEach
+  ;     _self.bindings
+  ;     (fn [b] (doBinding label b)))),
+})
+
+(def vbox ([(fn [Gtk.Box] {})] [ViewWidget] ViewWidget) [bindings children] {
+  build: (fn (Gtk.Widget) [] (Gtk.Box.new Gtk.Orientation::Vertical (i64ToI32 0))),
+  bindings: bindings,
+  children: children,
+  ; configure: (fn (ViewWidget Gtk.Box ViewWidget) [_self box]
+  ;   (let [
+  ;     _ (forEach
+  ;       _self.bindings
+  ;       (fn [b] (doBinding box b)))
+  ;   ]
+  ;     {
+  ;       build: _self.build,
+  ;       bindings: _self.bindings,
+  ;       children: _self.children,
+  ;       configure: _self.configure,
+  ;     }))
+})
+
+(def noopMsger (Msg {}) [msg] {})
+
+(def initWidget (ViewWidget Gtk.Widget) [viewWidget]
+  (viewWidget.build))
+
+(def run (Gtk.Application App I32) [app e]
+  (let [
+    cclosure (toCClosure (fn (Opaque {}) [_]
+      (let [
+        win (Gtk.ApplicationWindow.new app)
+
+        viewWidget (e.view noopMsger (e.init))
+        root (initWidget viewWidget)
+        applyBinding (fn ((Ref Binding) {}) [b]
+          (let [
+            binding (deref b)
+          ]
+            (binding root)))
+        _ (forEach viewWidget.bindings applyBinding)
+        _ (win#setChild root)
+        _ (win#present)
+      ]
+        {})))
+    _ (g_signal_connect_data
+      app
+      (strToCStr "activate")
+      cclosure.func
+      cclosure.data
+      null
+      GObject.ConnectFlags::Default)
+  ]
+    (app#run (i64ToI32 0) null)))

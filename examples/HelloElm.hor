@@ -1,0 +1,33 @@
+(import Gtk)
+(import Gio)
+(import Elm)
+(import GLib)
+
+(def update
+  (Elm.State Elm.Msg {state: Elm.State, msg: Elm.Msg})
+  [state msg]
+  (let [
+    _ (if [(= msg Elm.Msg::None)]
+      {}
+      {})
+  ]
+    {}))
+
+(def view
+  (Elm.Address Elm.State Elm.ViewWidget)
+  [_ state]
+  (Elm.label [
+    (fn [l]
+      (l#setLabel (strToCStr (i64ToStr state.counter))))
+  ]))
+
+(def main []
+  (let [
+    gapp (Gtk.Application.new null Gio.ApplicationFlags::FlagsNone)
+    app {
+      init: (fn [] {counter: 2, temp: 10}),
+      update: update,
+      view: view,
+    }
+  ]
+    (Elm.run gapp app)))
