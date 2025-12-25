@@ -401,7 +401,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 				// extra data argument (which is null here) when called as a
 				// closure; but this works under SysV ABI so uh, I'll fix it
 				// later
-				return genRecordLiteral(ctx, sTy, []recordAssignment{
+				return genRecordLiteral(ctx, sTy, false, []recordAssignment{
 					{name: "func", typ: ctx.ptrType, value: funcVar},
 					{name: "data", typ: ctx.ptrType, value: qbeil.IntLiteral{Value: 0}},
 					{name: "cleanup", typ: ctx.ptrType, value: qbeil.IntLiteral{Value: 0}},
@@ -467,7 +467,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 				value: gen(ctx, field.Value),
 			}
 		})
-		return genRecordLiteral(ctx, aggTy, ass)
+		return genRecordLiteral(ctx, aggTy, false, ass)
 
 	case *parse.LetExpr:
 		return genLet(ctx, e)
@@ -872,7 +872,7 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 		ctx.il.Jnz(assertionResult, okLabel, failLabel)
 
 		ctx.il.Label(failLabel.Name)
-		msg := genRecordLiteral(ctx, strTy, []recordAssignment{
+		msg := genRecordLiteral(ctx, strTy, false, []recordAssignment{
 			{name: "data", typ: ctx.ptrType, value: msgGlobal},
 			{name: "size", typ: ctx.ptrType, value: qbeil.IntLiteral{Value: int64(len(msgStr))}},
 		})
@@ -1136,8 +1136,8 @@ func genClosure(ctx *ctx, e *parse.Fn) qbeil.Value {
 		c := ctx.recordToILType(&captureBlockTy)
 		captureBlockIlTy = &c
 
-		// TODO: should be on the heap but, uh yeah
-		captureBlock = genRecordLiteral(ctx, c, fields)
+		ctx.il.Comment("capture data: (Ref %s) => pointer to %s", captureBlockTy.String(), captureBlockIlTy.IL())
+		captureBlock = genRecordLiteral(ctx, c, true, fields)
 	}
 
 	funcPtr := qbeil.Var{
@@ -1154,7 +1154,7 @@ func genClosure(ctx *ctx, e *parse.Fn) qbeil.Value {
 		"BUG codegen: ClosureComponents not declared?")
 	closureSTy := assert.Cast[qbeil.StructType](closureTy,
 		"BUG codegen: ClosureComponents is not a StructType?")
-	closureComponents := genRecordLiteral(ctx, closureSTy, []recordAssignment{
+	closureComponents := genRecordLiteral(ctx, closureSTy, false, []recordAssignment{
 		{name: "func", typ: ctx.ptrType, value: funcPtr},
 		{name: "data", typ: ctx.ptrType, value: captureBlock},
 		// TODO
@@ -1990,14 +1990,22 @@ type recordAssignment struct {
 	value qbeil.Value
 }
 
-func genRecordLiteral(ctx *ctx, ilTy qbeil.StructType, fields []recordAssignment) qbeil.Value {
+func genRecordLiteral(ctx *ctx, ilTy qbeil.StructType, heap bool, fields []recordAssignment) qbeil.Value {
 	structBits, _ := ctx.sizeOf(ilTy)
 	assert.Neq(0, structBits,
 		"BUG codegen: genRecordLiteral cannot be used on zero-sized records")
 
 	rcdPtr := ctx.il.TempNamedVar(false, "record_literal_")
 
-	ctx.il.Arithmetic(rcdPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(structBits / 8)})
+	if heap {
+		mallocFunc := qbeil.Var{Global: true, Name: "calloc"}
+		ctx.il.Call(&rcdPtr, ctx.ptrType, mallocFunc, []qbeil.ABITypedValue{
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 1}},
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: int64(bitsToBytesRoundedUp(structBits))}},
+		})
+	} else {
+		ctx.il.Arithmetic(rcdPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(structBits / 8)})
+	}
 
 	for _, field := range fields {
 		layout := ilTy.Layouts[field.name]
