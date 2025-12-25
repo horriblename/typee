@@ -31,6 +31,15 @@ var ErrCannotCompilePolymorphicType = errors.New("tried to compile a polymorphic
 const G_TYPE_OBJECT int = 20 << 2
 const G_TYPE_INTERFACE int = 2 << 2
 
+type exprError struct {
+	expr parse.Expr
+	err  any
+}
+
+func (self exprError) Error() string {
+	return fmt.Sprintf("in expression %s: %v", self.expr.Pretty(), self.err)
+}
+
 type ctx struct {
 	module can.ModuleName
 
@@ -330,6 +339,15 @@ func genTopLevel(ctx *ctx, expr parse.Expr) {
 }
 
 func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
+	defer func() {
+		if e := recover(); e == nil {
+			return
+		} else if ee, ok := e.(exprError); ok {
+			panic(ee)
+		} else {
+			panic(exprError{expr: expr, err: e})
+		}
+	}()
 	switch e := expr.(type) {
 	case *parse.IntLiteral:
 		return qbeil.IntLiteral{Value: e.Number}
