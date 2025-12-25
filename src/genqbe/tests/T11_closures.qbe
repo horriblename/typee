@@ -6,37 +6,37 @@ type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
 type :GInterfaceInfo = {l, l, l, }
 type :ClosureComponents = {l 3, }
 type :BoxPartial = {l, }
-type :Record_6 = {l, }
+type :Record_4 = {l, }
 export function l $MainModule.foo(:ClosureComponents %addOne, l %x) {
 @start
 	%ptrTo_ClosureComponents.func1 =l add %addOne, 0
-	%valOf_ClosureComponents.func2 =l loadl %ptrTo_ClosureComponents.func1
-	%ptrTo_ClosureComponents.data3 =l add %addOne, 8
-	%valOf_ClosureComponents.data4 =l loadl %ptrTo_ClosureComponents.data3
-	%_tmp_1 =l call %valOf_ClosureComponents.func2 (l %x, l %valOf_ClosureComponents.data4)
-	ret %_tmp_1
+	%tmp_1 =l loadl %ptrTo_ClosureComponents.func1
+	%ptrTo_ClosureComponents.data2 =l add %addOne, 8
+	%tmp_2 =l loadl %ptrTo_ClosureComponents.data2
+	%_tmp_3 =l call %tmp_1 (l %x, l %tmp_2)
+	ret %_tmp_3
 }
 export function w $main() {
 @start
 # let assignment of ONE = 1
 # let body
-	%record_literal__3 =l alloc4 8
-	%record_literal_field_ONE_4 =l add %record_literal__3, 0
-	storel 1, %record_literal_field_ONE_4
-	%record_literal__5 =l alloc4 24
-	%record_literal_field_func_6 =l add %record_literal__5, 0
-	storel $MainModule.main.fn5, %record_literal_field_func_6
-	%record_literal_field_data_7 =l add %record_literal__5, 8
-	storel %record_literal__3, %record_literal_field_data_7
-	%record_literal_field_cleanup_8 =l add %record_literal__5, 16
-	storel 0, %record_literal_field_cleanup_8
-	%_tmp_2 =l call $MainModule.foo (:ClosureComponents %record_literal__5, l 2)
-	ret %_tmp_2
+	%record_literal__5 =l alloc4 8
+	%record_literal_field_ONE_6 =l add %record_literal__5, 0
+	storel 1, %record_literal_field_ONE_6
+	%record_literal__7 =l alloc4 24
+	%record_literal_field_func_8 =l add %record_literal__7, 0
+	storel $MainModule.main.fn3, %record_literal_field_func_8
+	%record_literal_field_data_9 =l add %record_literal__7, 8
+	storel %record_literal__5, %record_literal_field_data_9
+	%record_literal_field_cleanup_10 =l add %record_literal__7, 16
+	storel 0, %record_literal_field_cleanup_10
+	%_tmp_4 =l call $MainModule.foo (:ClosureComponents %record_literal__7, l 2)
+	ret %_tmp_4
 }
-export function l $MainModule.main.fn5(l %x, l %_captures) {
+export function l $MainModule.main.fn3(l %x, l %_captures) {
 @start
-	%ptrTo_Record_6.ONE7 =l add %_captures, 0
-	%valOf_Record_6.ONE8 =l loadl %ptrTo_Record_6.ONE7
-	%_tmp_9 =l add %x, %valOf_Record_6.ONE8
-	ret %_tmp_9
+	%ptrTo_Record_4.ONE5 =l add %_captures, 0
+	%tmp_11 =l loadl %ptrTo_Record_4.ONE5
+	%_tmp_12 =l add %x, %tmp_11
+	ret %_tmp_12
 }

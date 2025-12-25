@@ -13,7 +13,7 @@ type :Cat = {:Object, l, }
 type :Std.ObjectClass = {:GObjectClass, }
 type :MainModule.CatClass = {:Std.ObjectClass, l, l, }
 type :CatPrivate = {}
-data $_tmp_12 = {b "meow"}
+data $_tmp_16 = {b "meow"}
 data $MainModule.Animal_class__name = {b "Animal", b 0}
 data $MainModule.Animal___type__id____once = {l 0}
 data $MainModule.Animal_g__define__type__info = {h 152, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 0, h 0, w 0, l 0, h 0, }
@@ -33,80 +33,80 @@ export function l $MainModule.Animal_construct(l %object_type) {
 	%_tmp_5 =l call $g_object_new (l %object_type, l 0)
 	ret %_tmp_5
 }
-function l $MainModule.Animal_doSomething(l %self1) {
+function l $MainModule.Animal_new(l %self1) {
 @start
 	%ptrTo_GObject.g_class2 =l add %self1, 0
-	%valOf_GObject.g_class3 =l loadl %ptrTo_GObject.g_class2
-	%Animal4 =l call $MainModule.Animal_get__type ()
-	%Animal_Animal_vtable5 =l call $g_type_interface_peek (l %valOf_GObject.g_class3, l %Animal4)
-	jnz %Animal_Animal_vtable5, @then_6, @else_7
-@then_6
-	%ptrTo_MainModule.AnimalClass.doSomething6 =l add %Animal_Animal_vtable5, 136
-	%valOf_MainModule.AnimalClass.doSomething7 =l loadl %ptrTo_MainModule.AnimalClass.doSomething6
-	%_tmp_8 =l call %valOf_MainModule.AnimalClass.doSomething7 (l %self1)
-	ret %_tmp_8
-@else_7
+	%tmp_6 =l loadl %ptrTo_GObject.g_class2
+	%Animal3 =l call $MainModule.Animal_get__type ()
+	%Animal_Animal_vtable4 =l call $g_type_interface_peek (l %tmp_6, l %Animal3)
+	jnz %Animal_Animal_vtable4, @then_7, @else_8
+@then_7
+	%ptrTo_MainModule.AnimalClass.new5 =l add %Animal_Animal_vtable4, 144
+	%tmp_9 =l loadl %ptrTo_MainModule.AnimalClass.new5
+	%_tmp_10 =l call %tmp_9 (l %self1)
+	ret %_tmp_10
+@else_8
 	ret 0
 }
-function l $MainModule.Animal_new(l %self8) {
+function l $MainModule.Animal_doSomething(l %self6) {
 @start
-	%ptrTo_GObject.g_class9 =l add %self8, 0
-	%valOf_GObject.g_class10 =l loadl %ptrTo_GObject.g_class9
-	%Animal11 =l call $MainModule.Animal_get__type ()
-	%Animal_Animal_vtable12 =l call $g_type_interface_peek (l %valOf_GObject.g_class10, l %Animal11)
-	jnz %Animal_Animal_vtable12, @then_9, @else_10
-@then_9
-	%ptrTo_MainModule.AnimalClass.new13 =l add %Animal_Animal_vtable12, 144
-	%valOf_MainModule.AnimalClass.new14 =l loadl %ptrTo_MainModule.AnimalClass.new13
-	%_tmp_11 =l call %valOf_MainModule.AnimalClass.new14 (l %self8)
-	ret %_tmp_11
-@else_10
+	%ptrTo_GObject.g_class7 =l add %self6, 0
+	%tmp_11 =l loadl %ptrTo_GObject.g_class7
+	%Animal8 =l call $MainModule.Animal_get__type ()
+	%Animal_Animal_vtable9 =l call $g_type_interface_peek (l %tmp_11, l %Animal8)
+	jnz %Animal_Animal_vtable9, @then_12, @else_13
+@then_12
+	%ptrTo_MainModule.AnimalClass.doSomething10 =l add %Animal_Animal_vtable9, 136
+	%tmp_14 =l loadl %ptrTo_MainModule.AnimalClass.doSomething10
+	%_tmp_15 =l call %tmp_14 (l %self6)
+	ret %_tmp_15
+@else_13
 	ret 0
 }
 export function l $MainModule.Cat_doSomething(l %self) {
 @start
-	%_tmp_13 =l alloc4 16
-	storel $_tmp_12, %_tmp_13
-	%_tmp_14 =l add %_tmp_13, 8
-	storel 4, %_tmp_14
-	%_tmp_15 =l call $print (:Str %_tmp_13)
-	ret %_tmp_15
+	%_tmp_17 =l alloc4 16
+	storel $_tmp_16, %_tmp_17
+	%_tmp_18 =l add %_tmp_17, 8
+	storel 4, %_tmp_18
+	%_tmp_19 =l call $print (:Str %_tmp_17)
+	ret %_tmp_19
 }
 data $MainModule.Cat_class__name = {b "Cat", b 0}
 data $MainModule.Cat___type__id____once = {l 0}
 data $MainModule.Cat_g__define__type__info = {h 152, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 40, h 0, w 0, l 0, h 0, }
 export function l $MainModule.Cat_get__type() {
 @start
-	%_tmp_17 =l call $g_once_init_enter (l $MainModule.Cat___type__id____once)
-	jnz %_tmp_17, @then_18, @else_19
-@then_18
-	%_tmp_16 =l call $g_type_register_static (l 80, l $MainModule.Cat_class__name, l $MainModule.Cat_g__define__type__info, l 0)
-	call $g_once_init_leave (l $MainModule.Cat___type__id____once, l %_tmp_16)
-@else_19
+	%_tmp_21 =l call $g_once_init_enter (l $MainModule.Cat___type__id____once)
+	jnz %_tmp_21, @then_22, @else_23
+@then_22
+	%_tmp_20 =l call $g_type_register_static (l 80, l $MainModule.Cat_class__name, l $MainModule.Cat_g__define__type__info, l 0)
+	call $g_once_init_leave (l $MainModule.Cat___type__id____once, l %_tmp_20)
+@else_23
 	ret $MainModule.Cat___type__id____once
 }
 export function l $MainModule.Cat_construct(l %object_type) {
 @start
-	%_tmp_20 =l call $g_object_new (l %object_type, l 0)
-	ret %_tmp_20
+	%_tmp_24 =l call $g_object_new (l %object_type, l 0)
+	ret %_tmp_24
 }
 export function l $MainModule.Cat_new() {
 @start
-	%_tmp_21 =l call $MainModule.Cat_get__type ()
-	%_tmp_22 =l call $MainModule.Cat_construct (l %_tmp_21)
-	ret %_tmp_22
+	%_tmp_25 =l call $MainModule.Cat_get__type ()
+	%_tmp_26 =l call $MainModule.Cat_construct (l %_tmp_25)
+	ret %_tmp_26
 }
 export function l $MainModule.doThing(l %animal) {
 @start
-	%_tmp_23 =l call $MainModule.Animal_doSomething (l %animal)
-	ret %_tmp_23
+	%_tmp_27 =l call $MainModule.Animal_doSomething (l %animal)
+	ret %_tmp_27
 }
 export function w $main() {
 @start
 # let assignment of cat = ([Cat.new])
-	%_tmp_24 =l call $MainModule.Cat_new ()
+	%_tmp_28 =l call $MainModule.Cat_new ()
 # let assignment of _ = ([doThing cat])
-	%_tmp_25 =l call $MainModule.doThing (l %_tmp_24)
+	%_tmp_29 =l call $MainModule.doThing (l %_tmp_28)
 # let body
 	ret 2
 }

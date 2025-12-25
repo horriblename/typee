@@ -1,0 +1,11 @@
+;; various record field access
+(def main []
+  (let [
+    foo {z: 10, xy: {x: [1 2 3], y: true}}
+    ;; foo.xy.y is failing because the subexpr foo.xy has no type in the typed
+    ;; tree
+    xy foo.xy
+  ]
+    (if [xy.y]
+      (+ foo.z (at xy.x 2))
+      1)))

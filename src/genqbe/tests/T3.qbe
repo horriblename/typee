@@ -1,9 +1,0 @@
-type :Str = {l, l, }
-type :GObject = {l, l, l, }
-type :Foo = {:GObject, l, l, }
-export function l $MainModule.getX(l %foo) {
-@start
-	%_tmp_1 =l add %foo, 24
-	%_tmp_2 =l loadl %_tmp_1
-	ret %_tmp_2
-}

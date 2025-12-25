@@ -10,7 +10,7 @@ type :Record_1 = {l, l, }
 type :Record_2 = {l, l, }
 type :Record_3 = {l, l, }
 type :Record_4 = {l, l, }
-type :Record_7 = {l, l, }
+type :Record_6 = {l, l, }
 export function w $main() {
 @start
 # let assignment of items = [1 2 3]
@@ -40,10 +40,10 @@ export function w $main() {
 	call $listGet (:List %list_ctor_6, l 8, l 1, l %at_result_ptr_14)
 	%at_result_15 =l loadl %at_result_ptr_14
 	%ptrTo_Record_4.x5 =l add %at_result_ptr_13, 0
-	%valOf_Record_4.x6 =l loadl %ptrTo_Record_4.x5
-	%_tmp_16 =l add %at_result_15, %valOf_Record_4.x6
-	%ptrTo_Record_7.y8 =l add %at_result_ptr_13, 8
-	%valOf_Record_7.y9 =l loadl %ptrTo_Record_7.y8
-	%_tmp_17 =l add %_tmp_16, %valOf_Record_7.y9
-	ret %_tmp_17
+	%tmp_16 =l loadl %ptrTo_Record_4.x5
+	%_tmp_17 =l add %at_result_15, %tmp_16
+	%ptrTo_Record_6.y7 =l add %at_result_ptr_13, 8
+	%tmp_18 =l loadl %ptrTo_Record_6.y7
+	%_tmp_19 =l add %_tmp_17, %tmp_18
+	ret %_tmp_19
 }

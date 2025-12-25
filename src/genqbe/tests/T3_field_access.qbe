@@ -1,0 +1,64 @@
+type :Str = {l, l, }
+type :List = {l, l, }
+type :GObject = {l, l, l, }
+type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
+type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
+type :GInterfaceInfo = {l, l, l, }
+type :ClosureComponents = {l 3, }
+type :BoxPartial = {l, }
+type :Record_1 = {:List, l, }
+type :Record_2 = {l, :Record_1, }
+type :Record_3 = {:List, l, }
+type :Record_4 = {:List, l, }
+type :Record_5 = {l, :Record_4, }
+type :Record_7 = {:List, l, }
+type :Record_9 = {:List, l, }
+type :Record_10 = {l, :Record_9, }
+type :Record_12 = {:List, l, }
+export function w $main() {
+@start
+# let assignment of foo = {z:10, xy:{x:[1 2 3], y:true}}
+	%list_ctor_1 =:List call $preallocateList (l 3, l 8)
+	%list_item_ref_3 =l alloc4 8
+	storel 1, %list_item_ref_3
+	%list_ctor_2 =:List call $listAppend (:List %list_ctor_1, l 8, l %list_item_ref_3)
+	%list_item_ref_5 =l alloc4 8
+	storel 2, %list_item_ref_5
+	%list_ctor_4 =:List call $listAppend (:List %list_ctor_2, l 8, l %list_item_ref_5)
+	%list_item_ref_7 =l alloc4 8
+	storel 3, %list_item_ref_7
+	%list_ctor_6 =:List call $listAppend (:List %list_ctor_4, l 8, l %list_item_ref_7)
+	%record_literal__8 =l alloc4 24
+	%record_literal_field_x_9 =l add %record_literal__8, 0
+	blit %list_ctor_6, %record_literal_field_x_9, 16
+	%record_literal_field_y_10 =l add %record_literal__8, 16
+	storel 1, %record_literal_field_y_10
+	%record_literal__11 =l alloc4 32
+	%record_literal_field_z_12 =l add %record_literal__11, 0
+	storel 10, %record_literal_field_z_12
+	%record_literal_field_xy_13 =l add %record_literal__11, 8
+	blit %record_literal__8, %record_literal_field_xy_13, 24
+# let assignment of xy = foo.xy
+	%ptrTo_Record_5.xy6 =l add %record_literal__11, 8
+# let body
+	%if_expr_val_17 =l alloc4 8
+	%ptrTo_Record_7.y8 =l add %ptrTo_Record_5.xy6, 16
+	%tmp_18 =l loadl %ptrTo_Record_7.y8
+	jnz %tmp_18, @then_14, @else_15
+	@then_14
+	%ptrTo_Record_10.z11 =l add %record_literal__11, 0
+	%tmp_19 =l loadl %ptrTo_Record_10.z11
+	%ptrTo_Record_12.x13 =l add %ptrTo_Record_5.xy6, 0
+	%at_result_ptr_20 =l alloc4 8
+	call $listGet (:List %ptrTo_Record_12.x13, l 8, l 2, l %at_result_ptr_20)
+	%at_result_21 =l loadl %at_result_ptr_20
+	%_tmp_22 =l add %tmp_19, %at_result_21
+	storel %_tmp_22, %if_expr_val_17
+	jmp @endif_16
+	@else_15
+	storel 1, %if_expr_val_17
+	jmp @endif_16
+	@endif_16
+	%tmp_23 =l loadl %if_expr_val_17
+	ret %tmp_23
+}
