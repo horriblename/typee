@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"iter"
 	"slices"
+
+	"github.com/horriblename/typee/src/opt"
 )
 
 func Map[T, U any](xs []T, f func(T) U) []U {
@@ -15,6 +17,18 @@ func Map[T, U any](xs []T, f func(T) U) []U {
 	}
 
 	return ys
+}
+
+func MapFilter[T, U any](xs iter.Seq[T], f func(T) opt.Option[U]) iter.Seq[U] {
+	return func(yield func(U) bool) {
+		for x := range xs {
+			if y, ok := f(x).Unwrap(); ok {
+				if !yield(y) {
+					return
+				}
+			}
+		}
+	}
 }
 
 func MapIfOk[T, U any](xs []T, f func(T) (U, error)) ([]U, error) {
