@@ -18,7 +18,20 @@ import (
 	"github.com/horriblename/typee/src/simplesub"
 )
 
-func compileQbe(dir string, qbePath string) (string, error) {
+func compileStdC(t *testing.T) (objPath string) {
+	const STD_SRC = "../cli/horstd/std.c"
+	stdCOut := t.TempDir() + "/std.o"
+	t.Helper()
+
+	log, err := exec.Command("gcc", "-g", "-c", "-o", stdCOut, STD_SRC).CombinedOutput()
+	if err != nil {
+		t.Error(string(log))
+		t.Fatal(err)
+	}
+	return stdCOut
+}
+
+func compileQbe(stdCPath string, dir string, qbePath string) (string, error) {
 	fname := path.Base(qbePath)
 	asmFile := path.Join(dir, fname+".s")
 	c := exec.Command("qbe", qbePath, "-o", asmFile)
@@ -27,7 +40,7 @@ func compileQbe(dir string, qbePath string) (string, error) {
 	}
 
 	binaryFile := path.Join(dir, fname+".out")
-	c = exec.Command("gcc", asmFile, "-o", binaryFile)
+	c = exec.Command("gcc", asmFile, stdCPath, "-o", binaryFile)
 	if output, err := c.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("assemble: %w\noutput:\n%s", err, output)
 	}
@@ -37,6 +50,8 @@ func compileQbe(dir string, qbePath string) (string, error) {
 func TestGen(t *testing.T) {
 	entries, err := fs.ReadDir(os.DirFS("."), "tests")
 	assert.Ok(err)
+
+	stdCPath := compileStdC(t)
 
 	for _, entry := range entries {
 		if !entry.Type().IsRegular() || !strings.HasSuffix(entry.Name(), ".hor") {
@@ -100,12 +115,18 @@ func TestGen(t *testing.T) {
 			}
 
 			if want, ok := expectExitCode.Unwrap(); ok {
-				binary, err := compileQbe(tempDir, expectFile)
+				binary, err := compileQbe(stdCPath, tempDir, expectFile)
 				assert.Ok(err)
 
 				c := exec.Command(binary)
 
-				if err := c.Run(); err == nil {
+				log, err := c.CombinedOutput()
+				lines := bytes.SplitAfter(log, []byte("\n"))
+				for _, line := range lines {
+					t.Logf("%s >\t%s", name, line)
+				}
+
+				if err == nil {
 					assert.Eq(0, want, "wrong exit code")
 				} else if e, ok := err.(*exec.ExitError); ok {
 					assert.Eq(e.ExitCode(), want, "wrong exit code")

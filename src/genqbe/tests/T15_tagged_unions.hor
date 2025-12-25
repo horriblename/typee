@@ -1,0 +1,20 @@
+;exit=45
+
+(def toStr [t] (case t [
+	('one x) (i64ToStr x)
+	('two x) (i64ToStr x)
+	('three x) (i64ToStr x)
+]))
+
+(def addTo [t] (case t [
+	('one x) (+ x 1)
+	('two x) (+ x 2)
+	('three x) (+ x 3)
+]))
+
+(def main [] (
+	let [
+		t ('three 42)
+		_ (print (toStr t))
+	]
+		(addTo t)))

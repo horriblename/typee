@@ -1,0 +1,120 @@
+type :Str = {l, l, }
+type :List = {l, l, }
+type :GObject = {l, l, l, }
+type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
+type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
+type :GInterfaceInfo = {l, l, l, }
+type :ClosureComponents = {l 3, }
+type :BoxPartial = {l, }
+type :TaggedUnion1_Payload = {{ l } { l } { l }}
+type :TaggedUnion1 = {l, :TaggedUnion1_Payload, }
+type :TaggedUnion2_Payload = {{ l } { l } { l }}
+type :TaggedUnion2 = {l, :TaggedUnion2_Payload, }
+type :TaggedUnion4_Payload = {{ l } { l } { l }}
+type :TaggedUnion4 = {l, :TaggedUnion4_Payload, }
+type :TaggedUnion5_Payload = {{ l } { l } { l }}
+type :TaggedUnion5 = {l, :TaggedUnion5_Payload, }
+type :TaggedUnion7_Payload = {{ l } { l } { l }}
+type :TaggedUnion7 = {l, :TaggedUnion7_Payload, }
+type :TaggedUnion8_Payload = {{ l } { l } { l }}
+type :TaggedUnion8 = {l, :TaggedUnion8_Payload, }
+type :TaggedUnion9_Payload = {{ l } { l } { l }}
+type :TaggedUnion9 = {l, :TaggedUnion9_Payload, }
+export function :Str $MainModule.toStr(:TaggedUnion1 %t) {
+@start
+	%case_expr_val_2 =l alloc4 16
+	%ptrTo_TaggedUnion2.tag3 =l add %t, 0
+	%tmp_3 =l loadl %ptrTo_TaggedUnion2.tag3
+# match tag 'one
+	%tagComparisonResult_4 =l ceql %tmp_3, 0
+	jnz %tagComparisonResult_4, @case_matched_one5, @case_failed_one6
+	@case_matched_one5
+# assign tag payload
+	%payloadPtr_7 =l add %t, 8
+	%tmp_8 =l loadl %payloadPtr_7
+	%_tmp_9 =:Str call $i64ToStr (l %tmp_8)
+	blit %_tmp_9, %case_expr_val_2, 16
+	jmp @endcase_1
+	@case_failed_one6
+# match tag 'two
+	%tagComparisonResult_10 =l ceql %tmp_3, 2
+	jnz %tagComparisonResult_10, @case_matched_two11, @case_failed_two12
+	@case_matched_two11
+# assign tag payload
+	%payloadPtr_13 =l add %t, 8
+	%tmp_14 =l loadl %payloadPtr_13
+	%_tmp_15 =:Str call $i64ToStr (l %tmp_14)
+	blit %_tmp_15, %case_expr_val_2, 16
+	jmp @endcase_1
+	@case_failed_two12
+# match tag 'three
+	%tagComparisonResult_16 =l ceql %tmp_3, 1
+	jnz %tagComparisonResult_16, @case_matched_three17, @case_failed_three18
+	@case_matched_three17
+# assign tag payload
+	%payloadPtr_19 =l add %t, 8
+	%tmp_20 =l loadl %payloadPtr_19
+	%_tmp_21 =:Str call $i64ToStr (l %tmp_20)
+	blit %_tmp_21, %case_expr_val_2, 16
+	jmp @endcase_1
+	@case_failed_three18
+	@endcase_1
+	ret %case_expr_val_2
+}
+export function l $MainModule.addTo(:TaggedUnion4 %t) {
+@start
+	%case_expr_val_23 =l alloc4 8
+	%ptrTo_TaggedUnion5.tag6 =l add %t, 0
+	%tmp_24 =l loadl %ptrTo_TaggedUnion5.tag6
+# match tag 'one
+	%tagComparisonResult_25 =l ceql %tmp_24, 0
+	jnz %tagComparisonResult_25, @case_matched_one26, @case_failed_one27
+	@case_matched_one26
+# assign tag payload
+	%payloadPtr_28 =l add %t, 8
+	%tmp_29 =l loadl %payloadPtr_28
+	%_tmp_30 =l add %tmp_29, 1
+	storel %_tmp_30, %case_expr_val_23
+	jmp @endcase_22
+	@case_failed_one27
+# match tag 'two
+	%tagComparisonResult_31 =l ceql %tmp_24, 2
+	jnz %tagComparisonResult_31, @case_matched_two32, @case_failed_two33
+	@case_matched_two32
+# assign tag payload
+	%payloadPtr_34 =l add %t, 8
+	%tmp_35 =l loadl %payloadPtr_34
+	%_tmp_36 =l add %tmp_35, 2
+	storel %_tmp_36, %case_expr_val_23
+	jmp @endcase_22
+	@case_failed_two33
+# match tag 'three
+	%tagComparisonResult_37 =l ceql %tmp_24, 1
+	jnz %tagComparisonResult_37, @case_matched_three38, @case_failed_three39
+	@case_matched_three38
+# assign tag payload
+	%payloadPtr_40 =l add %t, 8
+	%tmp_41 =l loadl %payloadPtr_40
+	%_tmp_42 =l add %tmp_41, 3
+	storel %_tmp_42, %case_expr_val_23
+	jmp @endcase_22
+	@case_failed_three39
+	@endcase_22
+	%tmp_43 =l loadl %case_expr_val_23
+	ret %tmp_43
+}
+export function w $main() {
+@start
+# let assignment of t = ('three 42)
+	%record_literal__44 =l alloc4 16
+	%record_literal_field_tag_45 =l add %record_literal__44, 0
+	storel 1, %record_literal_field_tag_45
+	%record_literal_field_payload_46 =l add %record_literal__44, 8
+	storel 42, %record_literal_field_payload_46
+# let assignment of _ = ([print ([toStr t])])
+	%_tmp_47 =:Str call $MainModule.toStr (:TaggedUnion8 %record_literal__44)
+	%_tmp_48 =l call $print (:Str %_tmp_47)
+# let body
+	%_tmp_49 =l call $MainModule.addTo (:TaggedUnion9 %record_literal__44)
+	ret %_tmp_49
+}
