@@ -787,7 +787,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName string, expr *parse.Form) qbeil.Value {
 	mangled := fnName
 	switch fnName {
-	case "strFromCStr", "strToCStr", "i64ToI32", "emptyList": // don't mangle
+	case "strFromCStr", "strToCStr", "i64ToI32", "i64ToI8", "emptyList": // don't mangle
 	case "typeOf":
 		ty := ctx.resolveTypeApplications(ctx.simplify(expr.Children[1].ID()))
 		ot := assert.Cast[*types.Class](ty, "genqbe: typeOf called on non class type?")

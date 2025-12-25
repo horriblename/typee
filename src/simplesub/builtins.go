@@ -61,6 +61,9 @@ func builtinVars() map[string]TypeScheme {
 		"i64ToI32": PolymorphicType{
 			Body: Func{Args: []SimpleType{I64}, Ret: Int{true, 32}},
 		},
+		"i64ToI8": PolymorphicType{
+			Body: Func{Args: []SimpleType{I64}, Ret: Int{true, 8}},
+		},
 		"emptyList": PolymorphicType{
 			Body: Func{
 				Args:   []SimpleType{},

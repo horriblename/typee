@@ -23,6 +23,7 @@ char *strToCStr(Str s) {
 void print(Str s) { fwrite(s.data, 1, s.size, stdout); }
 
 int32_t i64ToI32(int64_t x) { return x; }
+int8_t i64ToI8(int64_t x) { return x; }
 
 /*
  * Lists
