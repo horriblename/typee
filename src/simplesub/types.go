@@ -230,6 +230,22 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 	} else if lhs, rhs, ok := matchPair[ObjectType, Record](lhs0, rhs0); ok {
 		return self.glbCrossObject(rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[ObjectType, ObjectType](lhs0, rhs0); ok {
+		// TODO: might be better to reformulate glb(ObjectType, ObjectType) in the
+		// same way as record types: i.e. glb(A, B) is an unnamed class with all
+		// the fields & methods of A & B, glb'd if both classes contain a
+		// field/method of the same name. (should also assert that method and field
+		// names don't conflict)
+		//
+		// Then we can maybe add special cases for named types:
+		// (these are all still pretty expensive, especially considering
+		// interfaces)
+		// - if namedA <: namedB then glb(namedA, namedB) = namedA
+		// - same for namedB <: namedA
+		// - otherwise, we walk up type hierarchy until a common supertype is found?
+		//   (would benefit from ID'd types - assign IDs to classes in such a way
+		//   that supertype IDs are always less than subtype IDs - some care should
+		//   be taken in regards to imports, to ensure modules can be processed in
+		//   parallel)
 		if lhs.Name != "" && rhs.Name != "" {
 			return self.glbNamedObjects(lhs, rhs)
 		}
@@ -238,7 +254,7 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		if lhs.Name != "" {
 			if err := self.constrain(lhs, rhs); err != nil {
 				// TODO: how should I handle this
-				return nil, fmt.Errorf("unimplemented: glb(named_class, unnamed_class): constrain result: %v", err)
+				return nil, fmt.Errorf("unimplemented: glb(unnamed_class, named_class): constrain result: %v", err)
 			}
 
 			return lhs, nil
