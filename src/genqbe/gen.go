@@ -1140,7 +1140,7 @@ func genIf(ctx *ctx, expr *parse.IfExpr) qbeil.Value {
 	ctx.il.Jump(endLabel)
 
 	ctx.il.Label(endLabel.Name)
-	return retPtr
+	return genReturnableValueFromPtr(ctx, retPtr, retType)
 }
 
 func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
