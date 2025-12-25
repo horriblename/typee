@@ -851,10 +851,43 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 
 		dataPtr := ctx.il.TempVar(false)
 		ctx.il.Arithmetic(dataPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(bits / 8)})
+
+		switch ilTy.(type) {
+		case qbeil.BaseType:
+			ctx.il.Command("store"+ilTy.IL(), qbeil.IntLiteral{Value: 0}, dataPtr)
+		case qbeil.ExtraType:
+			panic("TODO stackAlloc ExtType")
+		case qbeil.StructType, qbeil.UnionType:
+			// TODO: zero out
+		default:
+			panic(fmt.Sprintf("unexpected qbeil.Type: %#v", ilTy))
+		}
+
 		return dataPtr
 
+	case "ref":
+		assert.Eq(len(expr.Children), 2, `wrong arg count for "ref"`)
+		ty := ctx.simplify(expr.Children[1].ID())
+		ilTy := ctx.toILType(ty)
+		val := gen(ctx, expr.Children[1])
+
+		switch ilTy.(type) {
+		case qbeil.BaseType:
+			bits, _ := ctx.sizeOf(ilTy)
+			ptr := ctx.il.TempNamedVar(false, "ref")
+			ctx.il.Arithmetic(ptr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{Value: int64(bits / 8)})
+			ctx.il.Command("store"+ilTy.IL(), val, ptr)
+			return ptr
+		case qbeil.ExtraType:
+			panic("TODO ref on ExtraType")
+		case qbeil.StructType, qbeil.UnionType:
+			return val
+		default:
+			panic(fmt.Sprintf("unexpected qbeil.Type: %#v", ilTy))
+		}
+
 	case "deref":
-		assert.Eq(len(expr.Children), 2, `wrong arg count for "deref`)
+		assert.Eq(len(expr.Children), 2, `wrong arg count for "deref"`)
 
 		ty := ctx.simplify(expr.Children[1].ID())
 		refTy, ok := ty.(*types.Ref)

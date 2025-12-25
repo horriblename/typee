@@ -19,6 +19,7 @@ func builtinVars() map[string]TypeScheme {
 		return _builtinVars
 	}
 	at_t := freshVar()
+	ref_t := freshVar()
 	deref_t := freshVar()
 	listForEach_t := freshVar()
 
@@ -46,6 +47,9 @@ func builtinVars() map[string]TypeScheme {
 			Body: Func{Args: []SimpleType{}, Ret: Ref{freshVar()}},
 		},
 
+		"ref": PolymorphicType{
+			Body: Func{Args: []SimpleType{ref_t}, Ret: Ref{ref_t}},
+		},
 		"deref": PolymorphicType{
 			Body: Func{Args: []SimpleType{Ref{deref_t}}, Ret: deref_t},
 		},
