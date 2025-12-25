@@ -42,7 +42,13 @@ func captureClosures(ctx *findClosureCtx, expr parse.Expr) {
 			captureClosures(ctx, subexpr)
 		}
 	case *parse.CaseExpr:
-		panic("TODO finding closure in case expr")
+		captureClosures(ctx, e.Match)
+		ctx.vars.NewScope()
+		for _, branch := range e.Branches {
+			ctx.vars.Insert(branch.Pattern.Pattern.Name, ctx.vars.ScopeLevel())
+			captureClosures(ctx, branch.Body)
+		}
+		ctx.vars.PopScope()
 	case *parse.ExternCall:
 		for _, subexpr := range e.Args {
 			captureClosures(ctx, subexpr)
@@ -109,7 +115,7 @@ func captureClosures(ctx *findClosureCtx, expr parse.Expr) {
 		// TODO: should I check this is actually a variable?
 		ctx.checkOutOfScopeAccess(e.Name, e.ID())
 	case *parse.TaggedExpr:
-		panic("TODO tagged expression capture analysis")
+		captureClosures(ctx, e.Body)
 	case *parse.VarDef: // ok did I ever implement var
 		ctx.vars.Insert(e.Name, ctx.vars.ScopeLevel())
 	default:
