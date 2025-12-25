@@ -1598,6 +1598,33 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 			}
 		}
 
+		if ty.Name != "" {
+			// HACK: the way type hierarchy of objects are implemented is
+			// already pretty scuffed, but this part is especially egregious.
+			// This branch is mostly to resolve methods called on an object
+			// with a known named type, e.g. (let [x (Foo.new)] (x#bar 1)).
+			//
+			// Alternatives:
+			// - record inherited methods in [ObjectType.Methods]. This is
+			//   done like in a structurally typed language so it's not a
+			//   completely insane idea.
+			for _, boundMember := range bound.Methods {
+				tyMeth, ok := self.getMethod(ty.Module, ty.Name, boundMember.Name)
+				if !ok {
+					return fmt.Errorf("%w %s: %v\nactual type: %v",
+						ErrMissingMethod, boundMember.Name, boundMember.Type,
+						ty,
+					)
+				}
+
+				if err := self.constrain(tyMeth.instantiate(), boundMember.Type); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+
+		// ty is unnamed
 		tyMembers := namedMembersToMap(ty.Methods)
 		for _, boundMember := range bound.Methods {
 			if tyMember, ok := tyMembers[boundMember.Name]; ok {
@@ -1606,7 +1633,6 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 					return err
 				}
 			} else {
-				fmt.Printf("available methods %v\n\n", tyMembers)
 				return fmt.Errorf("%w %s: %v\nactual type: %v",
 					ErrMissingMethod, boundMember.Name, boundMember.Type,
 					ty,

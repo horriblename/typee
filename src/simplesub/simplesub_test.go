@@ -1076,6 +1076,71 @@ func TestTypeProgram(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc: "call of superclass method",
+			input: `
+				(class Foo {
+					pub (def name (Self Str) [self] "foo")
+				})
+				(class Bar (Foo) {})
+				(def main [] (let [
+					bar (Bar.new)
+				] (print (bar#name))))
+			`,
+			typ: []types.Type{
+				&types.Class{
+					Module:  mainModule,
+					Kind:    parse.Class,
+					Name:    "Foo",
+					Supers:  []*types.Application{},
+					Fields:  map[string]types.Member{},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{
+						"new": {
+							Access: parse.AccessPublic,
+							Type: &types.Func{
+								Args:   []types.Type{},
+								Ret:    tApp("Foo"),
+								Method: false,
+							},
+						},
+						"name": {
+							Access: parse.AccessPublic,
+							Type: &types.Func{
+								Args:   []types.Type{},
+								Ret:    &types.String{},
+								Method: true,
+							},
+						},
+					},
+					Top: false,
+				},
+				&types.Class{
+					Module:  mainModule,
+					Kind:    parse.Class,
+					Name:    "Bar",
+					Supers:  []*types.Application{tApp("Foo")},
+					Fields:  map[string]types.Member{},
+					Statics: map[string]types.Member{},
+					Methods: map[string]types.Member{
+						"new": {
+							Access: parse.AccessPublic,
+							Type: &types.Func{
+								Args:   []types.Type{},
+								Ret:    tApp("Bar"),
+								Method: false,
+							},
+						},
+					},
+					Top: false,
+				},
+				&types.Func{
+					Args:   []types.Type{},
+					Ret:    &types.Record{},
+					Method: false,
+				},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
