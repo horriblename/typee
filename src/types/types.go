@@ -457,7 +457,7 @@ func (self *deepPrintCtx) printClass(r *Class) {
 	b := &self.buf
 
 	if self.visited[r.Name] != nil {
-		fmt.Fprintf(b, "%s{...}", r.Name)
+		fmt.Fprintf(b, "%s.%s{...}", r.Module, r.Name)
 		return
 	}
 
@@ -692,6 +692,10 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 	case *Class:
 		b, ok := b.(*Class)
 		if !ok {
+			return false
+		}
+
+		if a.Module != b.Module {
 			return false
 		}
 

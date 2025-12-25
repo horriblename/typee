@@ -257,6 +257,7 @@ func TestTypeProgram(t *testing.T) {
 			`,
 			typ: func() []types.Type {
 				bar := types.Class{
+					Module: mainModule,
 					Name:   "Bar",
 					Supers: []*types.Application{},
 					Fields: map[string]types.Member{
@@ -383,6 +384,7 @@ func TestTypeProgram(t *testing.T) {
 			input: "(class Foo {pub x Int, pub (def foo (Self Int) [self] self.x)})",
 			typ: func() []types.Type {
 				foo := &types.Class{
+					Module: mainModule,
 					Name:   "Foo",
 					Supers: []*types.Application{},
 					Fields: map[string]types.Member{
@@ -698,7 +700,8 @@ func TestTypeProgram(t *testing.T) {
 			`,
 			typ: []types.Type{
 				&types.Class{
-					Name: "Foo",
+					Module: mainModule,
+					Name:   "Foo",
 					Supers: []*types.Application{
 						{
 							Module: "TestModule.Super",
@@ -796,6 +799,7 @@ func TestTypeProgram(t *testing.T) {
 			`,
 			typ: func() []types.Type {
 				foo := types.Class{
+					Module: mainModule,
 					Name:   "Foo",
 					Supers: []*types.Application{},
 					Fields: map[string]types.Member{"x": {
@@ -839,6 +843,7 @@ func TestTypeProgram(t *testing.T) {
 			`,
 			typ: func() []types.Type {
 				binding := types.Class{
+					Module:  mainModule,
 					Name:    "Binding",
 					Supers:  []*types.Application{},
 					Fields:  map[string]types.Member{},
@@ -883,6 +888,7 @@ func TestTypeProgram(t *testing.T) {
 			`,
 			typ: []types.Type{
 				&types.Class{
+					Module: mainModule,
 					Name:   "Foo",
 					Supers: []*types.Application{},
 					Fields: map[string]types.Member{
@@ -904,6 +910,7 @@ func TestTypeProgram(t *testing.T) {
 					Statics: map[string]types.Member{},
 				},
 				&types.Class{
+					Module: mainModule,
 					Name:   "Bar",
 					Supers: []*types.Application{},
 					Fields: map[string]types.Member{
@@ -939,6 +946,7 @@ func TestTypeProgram(t *testing.T) {
 			`,
 			typ: []types.Type{
 				&types.Class{
+					Module: mainModule,
 					Name:   "Foo",
 					Supers: []*types.Application{},
 					Fields: map[string]types.Member{
@@ -1026,7 +1034,7 @@ func TestTypeProgram(t *testing.T) {
 					Module:  mainModule,
 					Kind:    parse.Class,
 					Name:    "Mammal",
-					Supers:  []*types.Application{},
+					Supers:  []*types.Application{tApp("Animal")},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
 					Methods: map[string]types.Member{
@@ -1038,7 +1046,7 @@ func TestTypeProgram(t *testing.T) {
 					Module:  mainModule,
 					Kind:    parse.Class,
 					Name:    "Cat",
-					Supers:  []*types.Application{},
+					Supers:  []*types.Application{tApp("Mammal")},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
 					Methods: map[string]types.Member{
