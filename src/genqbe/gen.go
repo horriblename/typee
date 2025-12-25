@@ -523,6 +523,23 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		}
 
 		return list
+	case *parse.TaggedExpr:
+		// TODO: I'm pretty sure tagged unions need coercion at some point to
+		// convert from less general to more general tagged union type
+		ty := ctx.simplify(e.ID())
+		tu := assert.Cast[*types.TaggedUnion](ctx.resolveTypeApplications(ty), "BUG")
+		ilTy, _ := ctx.taggedUnionToILType(tu)
+		tagValue := tagValue(tu, e.Tag)
+
+		payload := gen(ctx, e.Body)
+		payloadTy := ctx.toILType(ctx.simplify(e.Body.ID()))
+
+		return genRecordLiteral(ctx, ilTy, false, []recordAssignment{
+			{name: "tag", typ: ctx.ptrType, value: qbeil.IntLiteral{Value: int64(tagValue)}},
+			{name: "payload", typ: payloadTy, value: payload},
+		})
+	case *parse.CaseExpr:
+		return genCaseExpr(ctx, e)
 	}
 
 	panic("unimpl gen " + expr.String())
@@ -596,8 +613,8 @@ func genFunc(
 	ctx *ctx,
 	class string,
 	expr *parse.FuncDef,
-	closure bool,
-	captureBlock *qbeil.StructType,
+	closure bool, // whether this function is a closure, adds a capture block function argument
+	captureBlock *qbeil.StructType, // only used for closures, may be nil if there's no capture data
 ) (val qbeil.Value) {
 	defer func() {
 		if e := recover(); e != nil {
@@ -1239,6 +1256,67 @@ func genIf(ctx *ctx, expr *parse.IfExpr) qbeil.Value {
 	elseVal := gen(ctx, expr.Alternative)
 	genCopyToPtr(ctx, retPtr, retType, elseVal)
 	ctx.il.Jump(endLabel)
+
+	ctx.il.Label(endLabel.Name)
+	return genReturnableValueFromPtr(ctx, retPtr, retType)
+}
+
+func genCaseExpr(ctx *ctx, e *parse.CaseExpr) qbeil.Value {
+	endLabel := ctx.il.TempLabel("endcase_")
+
+	matchTy := ctx.simplify(e.Match.ID())
+	matchTu := assert.Cast[*types.TaggedUnion](ctx.resolveTypeApplications(matchTy),
+		"BUG matched expression in case expression is not a tagged union?")
+	matchIlTy, _ := ctx.taggedUnionToILType(matchTu)
+
+	retType := ctx.toILType(ctx.simplify(e.ID()))
+	retSizeBits, _ := ctx.sizeOf(retType)
+	retPtr := ctx.il.TempNamedVar(false, "case_expr_val")
+
+	ptrSizeBits, _ := ctx.sizeOf(ctx.ptrType)
+	ptrSize := int64(bitsToBytesRoundedUp(ptrSizeBits))
+
+	ctx.il.Arithmetic(retPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{
+		Value: int64(bitsToBytesRoundedUp(retSizeBits)),
+	})
+
+	match := gen(ctx, e.Match)
+	tag := genGetStructPtrField(ctx, match, matchIlTy, "tag")
+
+	for _, branch := range e.Branches {
+		pattTag := tagValue(matchTu, branch.Pattern.Tag)
+
+		checkRes := ctx.il.TempNamedVar(false, "tagComparisonResult")
+		checkResTy := ctx.ptrType
+		ctx.il.Comment("match tag '%s", branch.Pattern.Tag)
+		ctx.il.Arithmetic(checkRes.IL(), checkResTy, "ceq"+checkResTy.IL(),
+			tag, qbeil.IntLiteral{Value: pattTag})
+
+		matchOkLabel := ctx.il.TempLabel("case_matched_" + branch.Pattern.Tag)
+		matchFailLabel := ctx.il.TempLabel("case_failed_" + branch.Pattern.Tag)
+		ctx.il.Jnz(checkRes, matchOkLabel, matchFailLabel)
+
+		ctx.il.Label(matchOkLabel.Name)
+
+		ctx.il.Comment("assign tag payload")
+		maybePayloadTy, ok := matchTu.Variants.Get(branch.Pattern.Tag)
+		assert.True(ok, "BUG codegen: type is missing tag", branch.Pattern.Tag)
+		payloadTy, ok := maybePayloadTy.Unwrap()
+		assert.True(ok, "tag without payload is not yet supported (how did you get here?)")
+		payloadIlTy := ctx.toILType(payloadTy)
+
+		payloadPtr := ctx.il.TempNamedVar(false, "payloadPtr")
+		ctx.il.Arithmetic(payloadPtr.IL(), ctx.ptrType, "add",
+			match, qbeil.IntLiteral{Value: ptrSize})
+		payload := genReturnableValueFromPtr(ctx, payloadPtr, payloadIlTy)
+		ctx.vars.Insert(branch.Pattern.Pattern.Name, payload)
+
+		val := gen(ctx, branch.Body)
+		genCopyToPtr(ctx, retPtr, retType, val)
+		ctx.il.Jump(endLabel)
+
+		ctx.il.Label(matchFailLabel.Name)
+	}
 
 	ctx.il.Label(endLabel.Name)
 	return genReturnableValueFromPtr(ctx, retPtr, retType)
@@ -2176,6 +2254,11 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 	case *types.Slice:
 		return assert.Get(ctx.userTypes, "List",
 			"BUG codegen: List struct type not defined?")
+
+	case *types.TaggedUnion:
+		ty, _ := ctx.taggedUnionToILType(t)
+		return ty
+
 	default:
 		panic("unimpl: conversion to QBE IL from type " + typ.String())
 	}
@@ -2245,6 +2328,56 @@ func (ctx *ctx) recordToILType(t *types.Record) qbeil.StructType {
 	ctx.declareType(name, ilTyp)
 	ctx.generatedTranslation[t] = ilTyp
 	return ilTyp
+}
+
+func (ctx *ctx) taggedUnionToILType(t *types.TaggedUnion) (ty qbeil.StructType, payload qbeil.UnionType) {
+	if il, ok := ctx.generatedTranslation[t]; ok {
+		ty := assert.Cast[qbeil.StructType](il, "BUG cached tagged union IL type is not StructType?")
+		layout := assert.Get(ty.Layouts, "payload", "Tagged union type has no field payload?")
+		payload := assert.Cast[qbeil.UnionType](layout.Type, "Tagged union payload is not a UnionType?")
+		return ty, payload
+	}
+
+	name := t.Name
+	if name == "" {
+		name = ctx.newTempName("TaggedUnion")
+	}
+	variants := slices.Collect(fun.MapFilter(t.Variants.Values(), func(o opt.Option[types.Type]) opt.Option[qbeil.Type] {
+		if ty, ok := o.Unwrap(); ok {
+			return opt.Some(ctx.toILType(ty))
+		}
+		return opt.None[qbeil.Type]()
+	}))
+
+	size := 0
+	for _, v := range variants {
+		bits, _ := ctx.sizeOf(v)
+		size = max(size, (bits))
+	}
+
+	payloadUnion := qbeil.UnionType{
+		Name:     name + "_Payload",
+		Align:    0,
+		Size:     size,
+		Variants: variants,
+	}
+	ctx.declareType(name+"_Payload", payloadUnion)
+
+	ptrBits, _ := qbeil.SizeOf(0, ctx.ptrType)
+	ty = qbeil.StructType{
+		Align: 0,
+		Name:  name,
+		Layouts: map[string]qbeil.FieldLayout{
+			"tag":     {Type: ctx.ptrType, OffsetBits: 0},
+			"payload": {Type: payloadUnion, OffsetBits: ptrBits},
+		},
+		Fields: []qbeil.RepeatType{
+			qbeil.SingleType(ctx.ptrType),
+			qbeil.SingleType(payloadUnion),
+		},
+	}
+	ctx.declareType(name, ty)
+	return ty, payloadUnion
 }
 
 // ensures a class has a declared IL type, useful for imported types, which
@@ -2490,6 +2623,13 @@ func (ctx *ctx) newTempName(name string) string {
 
 func (self *ctx) sizeOf(t qbeil.Type) (bits int, alignBits int) {
 	return qbeil.SizeOf(self.defaultAlign, t)
+}
+
+func tagValue(u *types.TaggedUnion, tag string) int64 {
+	i := int64(slices.Index(u.Variants.Keys(), tag))
+	assert.Neq(i, -1, fmt.Sprintf(
+		"Tag '%s' not found in tag union: %s", tag, u.String()))
+	return i
 }
 
 func flattenModuleAccessPath(expr *parse.RecordAccess) can.ModuleName {
