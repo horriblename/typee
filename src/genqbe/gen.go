@@ -1724,18 +1724,7 @@ func genSetStructPtrField(
 		panic("TODO: getting non-base-typed struct field")
 	}
 
-	switch bt {
-	case qbeil.Double:
-		ctx.il.Command("stored", value, addr)
-	case qbeil.Long:
-		ctx.il.Command("storel", value, addr)
-	case qbeil.Single:
-		ctx.il.Command("stores", value, addr)
-	case qbeil.Word:
-		ctx.il.Command("storew", value, addr)
-	default:
-		panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", bt))
-	}
+	ctx.il.Command("store"+bt.IL(), value, addr)
 }
 
 type typeInfoOpt struct {
