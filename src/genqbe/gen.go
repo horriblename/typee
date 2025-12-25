@@ -649,7 +649,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		return val
 
 	case *parse.MethodAccess:
-		ty := ctx.simplify(callee.Obj.ID())
+		ty := ctx.resolveTypeApplications(ctx.simplify(callee.Obj.ID()))
 		var mod can.ModuleName
 		var class string
 		switch t := ty.(type) {
@@ -660,10 +660,10 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 				"in:", expr.Pretty())
 			mod = methOwner.Module
 			class = methOwner.Name
-		case *types.Application:
-			mod = t.Module
-			class = t.Name
-			assert.Eq(len(t.Params), 0, "parameterized function call not supported yet")
+		case *types.Record:
+			panic("unimplemented: method call on record types")
+		default:
+			panic(fmt.Sprintf("unexpected LHS type of method accessor %T in: %s", ty, callee))
 		}
 		assert.Neq(class, "", "unnamed class not yet supported")
 		return genCallWithFuncName(ctx, mod, class, callee.Method, expr)
