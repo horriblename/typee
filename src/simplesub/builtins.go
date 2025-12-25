@@ -77,7 +77,7 @@ func builtinVars() map[string]TypeScheme {
 				Args: []SimpleType{
 					SliceType{listForEach_t},
 					Func{
-						Args: []SimpleType{listForEach_t},
+						Args: []SimpleType{Ref{listForEach_t}},
 						Ret:  Record{},
 					},
 				},
