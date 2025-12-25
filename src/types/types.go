@@ -468,7 +468,13 @@ func (self *deepPrintCtx) printClass(r *Class) {
 	if r.Name == "" {
 		b.WriteString("_UnknownObjectType")
 	} else {
-		b.WriteString(r.Name)
+		if r.Top {
+			b.WriteRune('⊤')
+		}
+		if r.Kind == parse.Iface {
+			b.WriteRune('ⁱ')
+		}
+		fmt.Fprintf(b, "%s.%s", r.Module, r.Name)
 		b.WriteRune('(')
 		b.WriteString(strings.Join(fun.Map(r.Supers, func(c *Application) string {
 			return fmt.Sprintf("%s.%s", c.Module, c.Name)
@@ -757,7 +763,7 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 				return false
 			}
 		}
-		return true
+		return a.Top == b.Top
 	case *Array:
 		b, ok := b.(*Array)
 		return ok && a.Size == b.Size && structuralEq(ctx, a.Type, b.Type)
