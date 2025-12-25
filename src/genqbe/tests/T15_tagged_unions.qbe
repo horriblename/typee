@@ -12,14 +12,17 @@ type :TaggedUnion2_Payload = {{ l } { l } { l }}
 type :TaggedUnion2 = {l, :TaggedUnion2_Payload, }
 type :TaggedUnion4_Payload = {{ l } { l } { l }}
 type :TaggedUnion4 = {l, :TaggedUnion4_Payload, }
-type :TaggedUnion5_Payload = {{ l } { l } { l }}
-type :TaggedUnion5 = {l, :TaggedUnion5_Payload, }
+type :TaggedUnion6_Payload = {{ l } { l } { l }}
+type :TaggedUnion6 = {l, :TaggedUnion6_Payload, }
 type :TaggedUnion7_Payload = {{ l } { l } { l }}
 type :TaggedUnion7 = {l, :TaggedUnion7_Payload, }
-type :TaggedUnion8_Payload = {{ l } { l } { l }}
-type :TaggedUnion8 = {l, :TaggedUnion8_Payload, }
-type :TaggedUnion9_Payload = {{ l } { l } { l }}
-type :TaggedUnion9 = {l, :TaggedUnion9_Payload, }
+type :Record_8 = {:TaggedUnion7, }
+type :TaggedUnion10_Payload = {{ l } { l } { l }}
+type :TaggedUnion10 = {l, :TaggedUnion10_Payload, }
+type :TaggedUnion12_Payload = {{ l } { l } { l }}
+type :TaggedUnion12 = {l, :TaggedUnion12_Payload, }
+type :TaggedUnion13_Payload = {{ l } { l } { l }}
+type :TaggedUnion13 = {l, :TaggedUnion13_Payload, }
 export function :Str $MainModule.toStr(:TaggedUnion1 %t) {
 @start
 	%case_expr_val_2 =l alloc4 16
@@ -61,60 +64,82 @@ export function :Str $MainModule.toStr(:TaggedUnion1 %t) {
 	@endcase_1
 	ret %case_expr_val_2
 }
-export function l $MainModule.addTo(:TaggedUnion4 %t) {
+export function :ClosureComponents $MainModule.adder(:TaggedUnion4 %t) {
 @start
-	%case_expr_val_23 =l alloc4 8
-	%ptrTo_TaggedUnion5.tag6 =l add %t, 0
-	%tmp_24 =l loadl %ptrTo_TaggedUnion5.tag6
+# capture data: (Ref {t: (tunion {('one enum {})('three enum {})('two enum {})}), }) => pointer to :Record_8
+	%record_literal__22 =l call $calloc (l 1, l 16)
+	%record_literal_field_t_23 =l add %record_literal__22, 0
+	blit %t, %record_literal_field_t_23, 16
+	%record_literal__24 =l alloc4 24
+	%record_literal_field_func_25 =l add %record_literal__24, 0
+	storel $MainModule.adder.fn5, %record_literal_field_func_25
+	%record_literal_field_data_26 =l add %record_literal__24, 8
+	storel %record_literal__22, %record_literal_field_data_26
+	%record_literal_field_cleanup_27 =l add %record_literal__24, 16
+	storel 0, %record_literal_field_cleanup_27
+	ret %record_literal__24
+}
+export function l $MainModule.adder.fn5(l %n, l %_captures) {
+@start
+	%ptrTo_Record_8.t9 =l add %_captures, 0
+	%case_expr_val_29 =l alloc4 8
+	%ptrTo_TaggedUnion10.tag11 =l add %ptrTo_Record_8.t9, 0
+	%tmp_30 =l loadl %ptrTo_TaggedUnion10.tag11
 # match tag 'one
-	%tagComparisonResult_25 =l ceql %tmp_24, 0
-	jnz %tagComparisonResult_25, @case_matched_one26, @case_failed_one27
-	@case_matched_one26
+	%tagComparisonResult_31 =l ceql %tmp_30, 0
+	jnz %tagComparisonResult_31, @case_matched_one32, @case_failed_one33
+	@case_matched_one32
 # assign tag payload
-	%payloadPtr_28 =l add %t, 8
-	%tmp_29 =l loadl %payloadPtr_28
-	%_tmp_30 =l add %tmp_29, 1
-	storel %_tmp_30, %case_expr_val_23
-	jmp @endcase_22
-	@case_failed_one27
-# match tag 'two
-	%tagComparisonResult_31 =l ceql %tmp_24, 2
-	jnz %tagComparisonResult_31, @case_matched_two32, @case_failed_two33
-	@case_matched_two32
-# assign tag payload
-	%payloadPtr_34 =l add %t, 8
+	%payloadPtr_34 =l add %ptrTo_Record_8.t9, 8
 	%tmp_35 =l loadl %payloadPtr_34
-	%_tmp_36 =l add %tmp_35, 2
-	storel %_tmp_36, %case_expr_val_23
-	jmp @endcase_22
-	@case_failed_two33
-# match tag 'three
-	%tagComparisonResult_37 =l ceql %tmp_24, 1
-	jnz %tagComparisonResult_37, @case_matched_three38, @case_failed_three39
-	@case_matched_three38
+	%_tmp_36 =l add %tmp_35, 1
+	%_tmp_37 =l add %_tmp_36, %n
+	storel %_tmp_37, %case_expr_val_29
+	jmp @endcase_28
+	@case_failed_one33
+# match tag 'two
+	%tagComparisonResult_38 =l ceql %tmp_30, 2
+	jnz %tagComparisonResult_38, @case_matched_two39, @case_failed_two40
+	@case_matched_two39
 # assign tag payload
-	%payloadPtr_40 =l add %t, 8
-	%tmp_41 =l loadl %payloadPtr_40
-	%_tmp_42 =l add %tmp_41, 3
-	storel %_tmp_42, %case_expr_val_23
-	jmp @endcase_22
-	@case_failed_three39
-	@endcase_22
-	%tmp_43 =l loadl %case_expr_val_23
-	ret %tmp_43
+	%payloadPtr_41 =l add %ptrTo_Record_8.t9, 8
+	%tmp_42 =l loadl %payloadPtr_41
+	%_tmp_43 =l add %tmp_42, 2
+	%_tmp_44 =l add %_tmp_43, %n
+	storel %_tmp_44, %case_expr_val_29
+	jmp @endcase_28
+	@case_failed_two40
+# match tag 'three
+	%tagComparisonResult_45 =l ceql %tmp_30, 1
+	jnz %tagComparisonResult_45, @case_matched_three46, @case_failed_three47
+	@case_matched_three46
+# assign tag payload
+	%payloadPtr_48 =l add %ptrTo_Record_8.t9, 8
+	%tmp_49 =l loadl %payloadPtr_48
+	%_tmp_50 =l add %tmp_49, 3
+	%_tmp_51 =l add %_tmp_50, %n
+	storel %_tmp_51, %case_expr_val_29
+	jmp @endcase_28
+	@case_failed_three47
+	@endcase_28
+	%tmp_52 =l loadl %case_expr_val_29
+	ret %tmp_52
 }
 export function w $main() {
 @start
 # let assignment of t = ('three 42)
-	%record_literal__44 =l alloc4 16
-	%record_literal_field_tag_45 =l add %record_literal__44, 0
-	storel 1, %record_literal_field_tag_45
-	%record_literal_field_payload_46 =l add %record_literal__44, 8
-	storel 42, %record_literal_field_payload_46
-# let assignment of _ = ([print ([toStr t])])
-	%_tmp_47 =:Str call $MainModule.toStr (:TaggedUnion8 %record_literal__44)
-	%_tmp_48 =l call $print (:Str %_tmp_47)
+	%record_literal__53 =l alloc4 16
+	%record_literal_field_tag_54 =l add %record_literal__53, 0
+	storel 1, %record_literal_field_tag_54
+	%record_literal_field_payload_55 =l add %record_literal__53, 8
+	storel 42, %record_literal_field_payload_55
+# let assignment of add = ([adder t])
+	%_tmp_56 =:ClosureComponents call $MainModule.adder (:TaggedUnion13 %record_literal__53)
 # let body
-	%_tmp_49 =l call $MainModule.addTo (:TaggedUnion9 %record_literal__44)
-	ret %_tmp_49
+	%ptrTo_ClosureComponents.func14 =l add %_tmp_56, 0
+	%tmp_57 =l loadl %ptrTo_ClosureComponents.func14
+	%ptrTo_ClosureComponents.data15 =l add %_tmp_56, 8
+	%tmp_58 =l loadl %ptrTo_ClosureComponents.data15
+	%_tmp_59 =l call %tmp_57 (l 1, l %tmp_58)
+	ret %_tmp_59
 }
