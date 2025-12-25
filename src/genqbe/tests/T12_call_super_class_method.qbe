@@ -1,0 +1,79 @@
+type :Str = {l, l, }
+type :GObject = {l, l, l, }
+type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
+type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
+type :GInterfaceInfo = {l, l, l, }
+type :ClosureComponents = {l 3, }
+type :BoxPartial = {l, }
+type :Foo = {:GObject, l, }
+type :MainModule.FooClass = {:GObjectClass, l, l, }
+type :FooPrivate = {}
+type :Bar = {:Foo, l, }
+type :MainModule.BarClass = {:MainModule.FooClass, l, }
+type :BarPrivate = {}
+data $_tmp_1 = {b "foo"}
+export function :Str $MainModule.Foo_name(l %self) {
+@start
+	%_tmp_2 =l alloc4 16
+	storel $_tmp_1, %_tmp_2
+	%_tmp_3 =l add %_tmp_2, 8
+	storel 3, %_tmp_3
+	ret %_tmp_2
+}
+data $MainModule.Foo_class__name = {b "Foo", b 0}
+data $MainModule.Foo___type__id____once = {l 0}
+data $MainModule.Foo_g__define__type__info = {h 152, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 32, h 0, w 0, l 0, h 0, }
+export function l $MainModule.Foo_get__type() {
+@start
+	%_tmp_5 =l call $g_once_init_enter (l $MainModule.Foo___type__id____once)
+	jnz %_tmp_5, @then_6, @else_7
+@then_6
+	%_tmp_4 =l call $g_type_register_static (l 80, l $MainModule.Foo_class__name, l $MainModule.Foo_g__define__type__info, l 0)
+	call $g_once_init_leave (l $MainModule.Foo___type__id____once, l %_tmp_4)
+@else_7
+	ret $MainModule.Foo___type__id____once
+}
+export function l $MainModule.Foo_construct(l %object_type) {
+@start
+	%_tmp_8 =l call $g_object_new (l %object_type, l 0)
+	ret %_tmp_8
+}
+export function l $MainModule.Foo_new() {
+@start
+	%_tmp_9 =l call $MainModule.Foo_get__type ()
+	%_tmp_10 =l call $MainModule.Foo_construct (l %_tmp_9)
+	ret %_tmp_10
+}
+data $MainModule.Bar_class__name = {b "Bar", b 0}
+data $MainModule.Bar___type__id____once = {l 0}
+data $MainModule.Bar_g__define__type__info = {h 160, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 40, h 0, w 0, l 0, h 0, }
+export function l $MainModule.Bar_get__type() {
+@start
+	%_tmp_12 =l call $g_once_init_enter (l $MainModule.Bar___type__id____once)
+	jnz %_tmp_12, @then_13, @else_14
+@then_13
+	%_tmp_11 =l call $g_type_register_static (l 80, l $MainModule.Bar_class__name, l $MainModule.Bar_g__define__type__info, l 0)
+	call $g_once_init_leave (l $MainModule.Bar___type__id____once, l %_tmp_11)
+@else_14
+	ret $MainModule.Bar___type__id____once
+}
+export function l $MainModule.Bar_construct(l %object_type) {
+@start
+	%_tmp_15 =l call $MainModule.Foo_construct (l %object_type)
+	ret %_tmp_15
+}
+export function l $MainModule.Bar_new() {
+@start
+	%_tmp_16 =l call $MainModule.Bar_get__type ()
+	%_tmp_17 =l call $MainModule.Bar_construct (l %_tmp_16)
+	ret %_tmp_17
+}
+export function w $main() {
+@start
+# let assignment of bar = ([Bar.new])
+	%_tmp_18 =l call $MainModule.Bar_new ()
+# let body
+	%_tmp_19 =:Str call $MainModule.Foo_name (l %_tmp_18)
+	%_tmp_20 =l call $print (:Str %_tmp_19)
+	ret %_tmp_20
+}

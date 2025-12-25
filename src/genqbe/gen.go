@@ -630,8 +630,12 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		var class string
 		switch t := ty.(type) {
 		case *types.Class:
-			mod = t.Module
-			class = t.Name
+			// HACK: I really shouldn't be walking the type hierarchy in codegen...
+			methOwner, ok := ctx.findMethodSource(t, callee.Method)
+			assert.True(ok, "BUG codegen: could not find owner of method", callee.Method,
+				"in:", expr.Pretty())
+			mod = methOwner.Module
+			class = methOwner.Name
 		case *types.Application:
 			mod = t.Module
 			class = t.Name

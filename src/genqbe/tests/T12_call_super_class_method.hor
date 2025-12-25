@@ -1,0 +1,10 @@
+(class Foo {
+	pub (def name (Self Str) [self] "foo")
+})
+
+(class Bar(Foo) {})
+
+(def main []
+	(let [
+		bar (Bar.new)
+	] (print (bar#name))))
