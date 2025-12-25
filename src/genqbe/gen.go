@@ -1566,26 +1566,27 @@ func genGetStructPtrField(
 		qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits / 8)},
 	)
 
-	bt, ok := fieldLayout.Type.(qbeil.BaseType)
-	if !ok {
-		panic("TODO: getting non-base-typed struct field")
-	}
-
 	val := qbeil.Var{
 		Name:   ctx.newTempName("valOf_" + structTy.Name + "." + field),
 		Global: false,
 	}
-	switch bt {
-	case qbeil.Double:
-		ctx.il.Arithmetic(val.IL(), bt, "loadd", addr)
-	case qbeil.Long:
-		ctx.il.Arithmetic(val.IL(), bt, "loadl", addr)
-	case qbeil.Single:
-		ctx.il.Arithmetic(val.IL(), bt, "loads", addr)
-	case qbeil.Word:
-		ctx.il.Arithmetic(val.IL(), bt, "loadw", addr)
-	default:
-		panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", bt))
+	if bt, ok := fieldLayout.Type.(qbeil.BaseType); ok {
+		switch bt {
+		case qbeil.Double:
+			ctx.il.Arithmetic(val.IL(), bt, "loadd", addr)
+		case qbeil.Long:
+			ctx.il.Arithmetic(val.IL(), bt, "loadl", addr)
+		case qbeil.Single:
+			ctx.il.Arithmetic(val.IL(), bt, "loads", addr)
+		case qbeil.Word:
+			ctx.il.Arithmetic(val.IL(), bt, "loadw", addr)
+		default:
+			panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", bt))
+		}
+	} else {
+		// FIXME: I am not 100% sure aggregate types should be treated as pointers
+		ctx.il.Arithmetic(val.IL(), ctx.ptrType, "add", structPtr,
+			qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits / 8)})
 	}
 
 	return val
