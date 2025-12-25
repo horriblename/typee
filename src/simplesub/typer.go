@@ -62,6 +62,7 @@ var ErrUseNamedObjectTypeAsRecord = errors.New("cannot use a named object type a
 var ErrIllegalPolymorphicType = errors.New("illegal use of polymorphic type")
 var ErrUnparameterizedTypePassedParams = errors.New("an unparameterized type was passed type parameters")
 var ErrEnumMissingKey = errors.New("enum type is missing a key")
+var ErrTagMissing = errors.New("not all tags present in expected subtype")
 var ErrMethodMissingSignature = errors.New("method must have signature")
 var ErrPolymorphicInSignature = errors.New("illegal polymorphic type in function signature")
 var ErrMethodCallOnStaticMethod = errors.New("tried to call static method on object instance")
@@ -1518,6 +1519,28 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 		return nil
 	} else if lhs, rhs, ok := matchPair[SliceType, SliceType](ty0, bound0); ok {
 		return self.constrain(lhs.ElType, rhs.ElType)
+	} else if lhs, rhs, ok := matchPair[TaggedUnion, TaggedUnion](ty0, bound0); ok {
+		for tag, rvar := range rhs.Variants {
+			lvar, ok := lhs.Variants[tag]
+			if !ok {
+				return fmt.Errorf("%w: %s", ErrTagMissing, tag)
+			}
+
+			lv, lok := lvar.Unwrap()
+			rv, rok := rvar.Unwrap()
+
+			if lok && rok {
+				if err := self.constrain(lv, rv); err != nil {
+					return fmt.Errorf("%w %s: %w", ErrIncompatibleTag, tag, err)
+				}
+			} else if lok != rok {
+				return fmt.Errorf(
+					"%w %s: one side has payload the other doesn't: %v and %v",
+					ErrIncompatibleTag, tag, lvar, rvar)
+			}
+		}
+
+		return nil
 	} else if lhs, rhs, ok := matchPair[Enum, Enum](ty0, bound0); ok {
 		if lhs.Name != "" && rhs.Name != "" && lhs.Name != rhs.Name {
 			return fmt.Errorf("%w: wanted %s got %s", ErrWrongEnumType, rhs.Name, lhs.Name)

@@ -50,6 +50,7 @@ const (
 
 var ErrInvalidCyclicConstraint = errors.New("invalid cyclic constraint")
 var ErrIncompatibleTypes = errors.New("incompatible types")
+var ErrIncompatibleTag = errors.New("incompatible tag")
 var ErrWrongTypeParamCount = errors.New("wrong type parameter count")
 
 // TypeScheme is a type that potentially contains universally quantified type variables.
@@ -387,6 +388,35 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 			return lhs, nil
 		}
 		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
+	} else if lhs, rhs, ok := matchPair[TaggedUnion, TaggedUnion](lhs0, rhs0); ok {
+		// union of both variant sets. overlapping tags are glb'd
+		union := map[string]opt.Option[SimpleType]{}
+		for tag, lvar := range lhs.Variants {
+			union[tag] = lvar
+		}
+		for tag, rvar := range rhs.Variants {
+			if lvar, ok := union[tag]; ok {
+				lv, lok := lvar.Unwrap()
+				rv, rok := rvar.Unwrap()
+				if lok && rok {
+					glb, err := self.glb(lv, rv)
+					if err != nil {
+						return nil, fmt.Errorf("%w %s: %w",
+							ErrIncompatibleTag, tag, err)
+					}
+
+					union[tag] = opt.Some(glb)
+				} else if lok != rok {
+					return nil, fmt.Errorf(
+						"%w %s: one side has payload the other doesn't: %v and %v",
+						ErrIncompatibleTag, tag, lvar, rvar)
+				}
+			}
+		}
+		return TaggedUnion{
+			Name:     "", // FIXME: fuck I was not thinking about this
+			Variants: union,
+		}, nil
 	} else if lhs, rhs, ok := matchPair[Enum, Enum](lhs0, rhs0); ok {
 		// same non-empty name
 		if lhs.Name == rhs.Name && lhs.Name != "" {
@@ -632,6 +662,32 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		}
 
 		return nil, fmt.Errorf("%w: %s cannot be used as %s and vice versa", ErrIncompatibleTypes, rhs, lhs)
+	} else if lhs, rhs, ok := matchPair[TaggedUnion, TaggedUnion](lhs0, rhs0); ok {
+		inter := map[string]opt.Option[SimpleType]{}
+		for tag, lvar := range lhs.Variants {
+			if rvar, ok := rhs.Variants[tag]; ok {
+				lv, lok := lvar.Unwrap()
+				rv, rok := rvar.Unwrap()
+
+				if lok && rok {
+					lub, err := self.lub(lv, rv)
+					if err != nil {
+						return nil, fmt.Errorf("%w %s: %w",
+							ErrIncompatibleTag, tag, err)
+					}
+
+					inter[tag] = opt.Some(lub)
+				} else if lok != rok {
+					return nil, fmt.Errorf(
+						"%w %s: one side has payload the other doesn't: %v and %v",
+						ErrIncompatibleTag, tag, lvar, rvar)
+				}
+			}
+		}
+		return TaggedUnion{
+			Name:     "", // FIXME: put something
+			Variants: inter,
+		}, nil
 	} else if lhs, rhs, ok := matchPair[Enum, Enum](lhs0, rhs0); ok {
 		if lhs.Name != rhs.Name {
 			return nil, fmt.Errorf("different enum types: %s and %s", lhs.Name, rhs.Name)
@@ -893,6 +949,10 @@ type Enum struct {
 	Name   string
 	Values map[string]opt.Option[int64]
 }
+type TaggedUnion struct {
+	Name     string
+	Variants map[string]opt.Option[SimpleType]
+}
 type ObjectType struct {
 	Module  can.ModuleName
 	Kind    parse.ObjectKind
@@ -915,19 +975,20 @@ type Application struct {
 	Params []SimpleType
 }
 
-func (self Top) instantiate() SimpleType        { return self }
-func (self Bot) instantiate() SimpleType        { return self }
-func (self Func) instantiate() SimpleType       { return self }
-func (self Record) instantiate() SimpleType     { return self }
-func (self ObjectType) instantiate() SimpleType { return self }
-func (self ArrayType) instantiate() SimpleType  { return self }
-func (self SliceType) instantiate() SimpleType  { return self }
-func (self Primitive) instantiate() SimpleType  { return self }
-func (self Int) instantiate() SimpleType        { return self }
-func (self Str) instantiate() SimpleType        { return self }
-func (self Ref) instantiate() SimpleType        { return self }
-func (self Union) instantiate() SimpleType      { return self }
-func (self Enum) instantiate() SimpleType       { return self }
+func (self Top) instantiate() SimpleType         { return self }
+func (self Bot) instantiate() SimpleType         { return self }
+func (self Func) instantiate() SimpleType        { return self }
+func (self Record) instantiate() SimpleType      { return self }
+func (self ObjectType) instantiate() SimpleType  { return self }
+func (self ArrayType) instantiate() SimpleType   { return self }
+func (self SliceType) instantiate() SimpleType   { return self }
+func (self Primitive) instantiate() SimpleType   { return self }
+func (self Int) instantiate() SimpleType         { return self }
+func (self Str) instantiate() SimpleType         { return self }
+func (self Ref) instantiate() SimpleType         { return self }
+func (self Union) instantiate() SimpleType       { return self }
+func (self Enum) instantiate() SimpleType        { return self }
+func (self TaggedUnion) instantiate() SimpleType { return self }
 func (self Application) instantiate() SimpleType {
 	return Application{
 		Module: self.Module,
@@ -966,6 +1027,15 @@ func (self Union) children() []SimpleType {
 	return fun.Map(self.Variants, func(c ConcreteType) SimpleType { return c })
 }
 func (self Enum) children() []SimpleType { return []SimpleType{} }
+func (self TaggedUnion) children() []SimpleType {
+	children := []SimpleType{}
+	for _, variant := range self.Variants {
+		if v, ok := variant.Unwrap(); ok {
+			children = append(children, v)
+		}
+	}
+	return children
+}
 
 // TODO: should probably at the very least return Application.Params
 func (self Application) children() []SimpleType { return []SimpleType{} }
@@ -983,6 +1053,7 @@ func (self Str) concrete()         {}
 func (self Ref) concrete()         {}
 func (self Union) concrete()       {}
 func (self Enum) concrete()        {}
+func (self TaggedUnion) concrete() {}
 func (self Application) concrete() {}
 
 func (self Top) String() string { return "⊤" }
@@ -1022,6 +1093,23 @@ func (self Union) String() string {
 		return st.String()
 	})
 	return fmt.Sprintf("(union %s {%s})", self.Name, strings.Join(variants, " "))
+}
+func (self TaggedUnion) String() string {
+	var b strings.Builder
+	b.WriteString("(tunion ")
+	b.WriteString(self.Name)
+	b.WriteString("{ ")
+	for name, val := range self.Variants {
+		b.WriteString("('")
+		b.WriteString(name)
+		b.WriteRune(' ')
+		if v, ok := val.Unwrap(); ok {
+			b.WriteString(v.String())
+		}
+		b.WriteString("), ")
+	}
+	b.WriteString("})")
+	return b.String()
 }
 func (self Enum) String() string {
 	var b strings.Builder
@@ -1246,6 +1334,21 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 		return left.Name != right.Name
 	} else if left, right, ok := matchPair[Enum, Enum](lhs, rhs); ok {
 		return left.Name != right.Name
+	} else if left, right, ok := matchPair[TaggedUnion, TaggedUnion](lhs, rhs); ok {
+		if len(left.Variants) != len(right.Variants) {
+			return false
+		}
+		for tag, lvar := range left.Variants {
+			if rvar, ok := right.Variants[tag]; !ok {
+				return false
+			} else {
+				if l, ok := lvar.Unwrap(); ok {
+					return l == rvar.Or(nil)
+				}
+				return !rvar.IsSome()
+			}
+		}
+		return true
 	} else if left, right, ok := matchPair[Application, Application](lhs, rhs); ok {
 		return left.Module == right.Module && left.Name == right.Name
 	} else if left, right, ok := matchPair[ObjectType, ObjectType](lhs, rhs); ok {
