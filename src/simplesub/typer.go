@@ -575,10 +575,24 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 			}
 		}
 
-		self.constrain(matchTy, TaggedUnion{
+		// constraining matchTy both ways is needed in order for codegen to not
+		// infer the matched expression as bottom type. It also technically
+		// enforces exhaustiveness, though when I add an "else" case I should
+		// find a way to handle it as "open union"
+
+		if err := self.constrain(matchTy, TaggedUnion{
 			Name:     "",
 			Variants: branches,
-		})
+		}); err != nil {
+			return nil, err
+		}
+
+		if err := self.constrain(TaggedUnion{
+			Name:     "",
+			Variants: branches,
+		}, matchTy); err != nil {
+			return nil, err
+		}
 
 		return retTy, nil
 
@@ -622,12 +636,20 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 			return nil, err
 		}
 
-		return TaggedUnion{
+		// FIXME: using a freshvar here allows tagged expressions to upcast
+		// to another tagged union when used in an if/case:
+		//	(if [...] ('a 1) ('b "string"))
+		// both tagged expressions are "casted" to (tunion ('a Int) ('b Str))
+		// I should replace these hacks by generating an explicit cast
+		ret := freshVar()
+		self.constrain(TaggedUnion{
 			Name: "",
 			Variants: map[string]opt.Option[SimpleType]{
 				expr.Tag: opt.Some(payload),
 			},
-		}, nil
+		}, ret)
+
+		return ret, nil
 	case *parse.ExternCall:
 		for _, arg := range expr.Args {
 			if _, err := self.TypeTerm(arg); err != nil {
