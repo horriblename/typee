@@ -6,10 +6,6 @@
 		(Opaque Opaque Opaque Opaque Opaque GObject.ConnectFlags {}) 
 		[obj signalName func data destroy flags])
 
-(def addWindow (Gtk.Application Gtk.Window {}) [app window] (app#addWindow window))
-(def runGLib (Gio.Application I32) [app] (app#run (i64ToI32 0) (emptyList)))
-(def run (Gtk.Application I32) [app] (runGLib app))
-
 (def main []
 	(let [
 		app (Gtk.Application.new null Gio.ApplicationFlags::FlagsNone)
@@ -29,4 +25,4 @@
 			null
 			GObject.ConnectFlags::Default)
 	]
-		(run app)))
+		(app#run (i64ToI32 0) (emptyList))))
