@@ -344,7 +344,31 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		if val, ok := ctx.vars.Get(e.Name).Unwrap(); ok {
 			return val
 		} else if _, ok := ctx.globals[e.Name]; ok {
-			return qbeil.Var{Global: true, Name: e.Name}
+			mangled := mangleName(mangleOpts{
+				module: ctx.module,
+				class:  "",
+				name:   e.Name,
+			})
+			funcVar := qbeil.Var{Global: true, Name: mangled}
+			if _, ok := ctx.resolveTypeApplications(ctx.simplify(e.ID())).(*types.Func); ok {
+				// FIXME: this should be handled as a coercion somewhere else probably?
+				// I also need to separate raw function pointer types and closures
+				ilTy := assert.Get(ctx.userTypes, "ClosureComponents",
+					"BUG codegen: IL type ClosureComponents not defined?")
+				sTy := assert.Cast[qbeil.StructType](ilTy,
+					"BUG codegen: IL Type of ClosureComponents is not a StructType?")
+				// HACK: this is not correct, the function will be passed an
+				// extra data argument (which is null here) when called as a
+				// closure; but this works under SysV ABI so uh, I'll fix it
+				// later
+				return genRecordLiteral(ctx, sTy, []recordAssignment{
+					{name: "func", typ: ctx.ptrType, value: funcVar},
+					{name: "data", typ: ctx.ptrType, value: qbeil.IntLiteral{Value: 0}},
+					{name: "cleanup", typ: ctx.ptrType, value: qbeil.IntLiteral{Value: 0}},
+				})
+			} else {
+				return funcVar
+			}
 		}
 		panic("BUG: an undefined variable made it's way to code gen phase: " + e.Name)
 
