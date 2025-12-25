@@ -1560,14 +1560,18 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 		return self.constrain(ty.Ret, bound.Ret)
 	} else if ty, bound, ok := matchPair[Record, Record](ty0, bound0); ok {
 		tyFields := namedTypesToMap(ty.Fields)
+		missing := []NamedType{}
 		for _, boundField := range bound.Fields {
 			if tyField, ok := tyFields[boundField.Name]; ok {
 				if err := self.constrain(tyField, boundField.Type); err != nil {
 					return err
 				}
 			} else {
-				return fmt.Errorf("%w: missing field %s: %v", ErrMissingField, boundField.Name, boundField.Type)
+				missing = append(missing, boundField)
 			}
+		}
+		if len(missing) != 0 {
+			return fmt.Errorf("%w: missing field %v", ErrMissingField, missing)
 		}
 
 		return nil
