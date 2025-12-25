@@ -336,6 +336,16 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		}
 
 		return Ref{content}, nil
+	} else if lhs, rhs, ok := matchPair[Ref, Primitive](lhs0, rhs0); ok {
+		if rhs.Kind == PrimitiveOpaque {
+			return lhs, nil
+		}
+		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
+	} else if lhs, _, ok := matchPair[Primitive, Ref](lhs0, rhs0); ok {
+		if lhs.Kind == PrimitiveOpaque {
+			return rhs, nil
+		}
+		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
 	} else if _, rhs, ok := matchPair[ObjectType, Primitive](lhs0, rhs0); ok {
 		if rhs.Kind == PrimitiveOpaque {
 			return rhs, nil
@@ -629,6 +639,16 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		}
 
 		return Ref{content}, nil
+	} else if _, rhs, ok := matchPair[Ref, Primitive](lhs0, rhs0); ok {
+		if rhs.Kind == PrimitiveOpaque {
+			return rhs, nil
+		}
+		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
+	} else if lhs, _, ok := matchPair[Primitive, Ref](lhs0, rhs0); ok {
+		if lhs.Kind == PrimitiveOpaque {
+			return rhs, nil
+		}
+		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
 	} else if lhs, rhs, ok := matchPair[ObjectType, Primitive](lhs0, rhs0); ok {
 		if rhs.Kind == PrimitiveOpaque {
 			return lhs, nil
@@ -981,8 +1001,7 @@ func (self Enum) String() string {
 }
 func (self Application) String() string {
 	var b strings.Builder
-	b.WriteString("( ")
-	b.WriteString(self.Name)
+	fmt.Fprintf(&b, "(%s.%s", self.Module, self.Name)
 	for _, param := range self.Params {
 		b.WriteString(" ")
 		b.WriteString(param.String())
