@@ -701,7 +701,7 @@ func TestTypeProgram(t *testing.T) {
 					Name: "Foo",
 					Supers: []*types.Application{
 						{
-							Module: "MainModule",
+							Module: "TestModule.Super",
 							Name:   "Super",
 							Params: []types.Type{},
 						},

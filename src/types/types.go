@@ -467,7 +467,7 @@ func (self *deepPrintCtx) printClass(r *Class) {
 		b.WriteString(r.Name)
 		b.WriteRune('(')
 		b.WriteString(strings.Join(fun.Map(r.Supers, func(c *Application) string {
-			return c.Name
+			return fmt.Sprintf("%s.%s", c.Module, c.Name)
 		}), ", "))
 		b.WriteString(")")
 	}
@@ -705,6 +705,12 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 			return true
 		}
 		ctx.visitedClasses[a.Name] = struct{}{}
+
+		if !slices.EqualFunc(a.Supers, b.Supers, func(a, b *Application) bool {
+			return a.Module == b.Module && a.Name == b.Name
+		}) {
+			return false
+		}
 
 		if len(a.Fields) != len(b.Fields) {
 			return false
