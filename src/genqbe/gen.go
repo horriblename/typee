@@ -577,7 +577,7 @@ func genFunc(
 		})
 
 		for _, field := range fields {
-			val := genRecordAccess(ctx, capturesArg, field.name, captureBlock.Layouts)
+			val := genRecordAccess(ctx, capturesArg, *captureBlock, field.name)
 			ctx.vars.Insert(field.name, val)
 		}
 	}
@@ -917,7 +917,7 @@ func genCallClosure(ctx *ctx, closureComponents qbeil.Value, expr *parse.Form) q
 	ilTy := assert.Get(ctx.userTypes, "ClosureComponents",
 		"BUG codegen ClosureComponents not declared")
 	structTy := ilTy.(qbeil.StructType)
-	funcPtr := genRecordAccess(ctx, closureComponents, "func", structTy.Layouts)
+	funcPtr := genRecordAccess(ctx, closureComponents, structTy, "func")
 
 	args := make([]qbeil.ABITypedValue, 0, len(expr.Children))
 	for _, arg := range expr.Children[1:] {
@@ -930,7 +930,7 @@ func genCallClosure(ctx *ctx, closureComponents qbeil.Value, expr *parse.Form) q
 	}
 
 	// pass captures as the last argument
-	captures := genRecordAccess(ctx, closureComponents, "data", structTy.Layouts)
+	captures := genRecordAccess(ctx, closureComponents, structTy, "data")
 	args = append(args, qbeil.ABITypedValue{
 		Type:  ctx.ptrType,
 		Value: captures,
@@ -938,7 +938,7 @@ func genCallClosure(ctx *ctx, closureComponents qbeil.Value, expr *parse.Form) q
 
 	ret := ctx.il.TempVar(false)
 	retType := ctx.toABIType(ctx.simplify(expr.ID()))
-	ctx.il.Call(&ret, retType, funcPtr.(qbeil.Var), args)
+	ctx.il.Call(&ret, retType, funcPtr, args)
 	return ret
 }
 
@@ -1722,7 +1722,7 @@ func genDotAccessOnExpr(ctx *ctx, lhsTy types.Type, e *parse.RecordAccess) qbeil
 			"BUG: expected LHS to be a struct type but is a %T:\n  %v",
 			ilTy, e.Record))
 		lhs := gen(ctx, e.Record)
-		return genRecordAccess(ctx, lhs, e.Field, structTy.Layouts)
+		return genGetStructPtrField(ctx, lhs, structTy, e.Field)
 
 	default:
 		panic(fmt.Sprintf("unexpected types.Type: %#v, at %v", lhsTy, e))
@@ -1755,42 +1755,9 @@ func genClassAccessByName(ctx *ctx, module can.ModuleName, class string, expr *p
 	)
 }
 
-// Get `layouts` from [qbeil.StructType.Layouts]
-func genRecordAccess(ctx *ctx, lhs qbeil.Value, field string, layouts map[string]qbeil.FieldLayout) qbeil.Value {
-	fieldLayout, ok := layouts[field]
-	if !ok {
-		panic(fmt.Sprintf("typer bug: uncaught use of non-existent record field %s", field))
-	}
-
-	bt, ok := fieldLayout.Type.(qbeil.BaseType)
-	if !ok {
-		panic("unreachable: record field with non-base types currently not allowed")
-	}
-
-	// TODO: 32-bit system
-	addr := ctx.il.TempVar(false)
-	ctx.il.Arithmetic(addr.IL(), ctx.ptrType, "add",
-		lhs,
-		qbeil.IntLiteral{Value: int64(fieldLayout.OffsetBits / 8)},
-	)
-
-	varName := ctx.newTempName("value_of_field_" + field)
-	val := qbeil.Var{Global: false, Name: varName}
-
-	switch bt {
-	case qbeil.Double:
-		ctx.il.Arithmetic(val.IL(), bt, "loadd", addr)
-	case qbeil.Long:
-		ctx.il.Arithmetic(val.IL(), bt, "loadl", addr)
-	case qbeil.Single:
-		ctx.il.Arithmetic(val.IL(), bt, "loads", addr)
-	case qbeil.Word:
-		ctx.il.Arithmetic(val.IL(), bt, "loadw", addr)
-	default:
-		panic(fmt.Sprintf("unexpected qbeil.BaseType: %#v", bt))
-	}
-
-	return val
+// Alias to [genGetStructPtrField]
+func genRecordAccess(ctx *ctx, lhs qbeil.Value, structTy qbeil.StructType, field string) qbeil.Var {
+	return genGetStructPtrField(ctx, lhs, structTy, field)
 }
 
 type recordAssignment struct {
