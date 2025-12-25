@@ -46,23 +46,20 @@ func horType(ti *gi.TypeInfo, cfg typeConfig) string {
 	case gi.TYPE_TAG_UTF8, gi.TYPE_TAG_FILENAME:
 		out.WriteString("Opaque")
 	case gi.TYPE_TAG_ARRAY:
-		size := ti.ArrayFixedSize()
-		out.WriteString("[")
-
-		out.WriteString(horType(ti.ParamType(0), cfg))
-
-		if size != -1 {
-			fmt.Fprintf(&out, " %d", size)
-		}
-		out.WriteString("]")
+		out.WriteString("Opaque")
+		// size := ti.ArrayFixedSize()
+		// out.WriteString("[")
+		//
+		// out.WriteString(horType(ti.ParamType(0), cfg))
+		//
+		// if size != -1 {
+		// 	fmt.Fprintf(&out, " %d", size)
+		// }
+		// out.WriteString("]")
 	case gi.TYPE_TAG_GLIST:
-		out.WriteString("[")
-		out.WriteString(horType(ti.ParamType(0), cfg))
-		out.WriteString("]")
+		out.WriteString("Opaque")
 	case gi.TYPE_TAG_GSLIST:
-		out.WriteString("[")
-		out.WriteString(horType(ti.ParamType(0), cfg))
-		out.WriteString("]")
+		out.WriteString("Opaque")
 	case gi.TYPE_TAG_GHASH:
 		// out.WriteString("map[")
 		// out.WriteString(horType(ti.ParamType(0), cfg.flags))
