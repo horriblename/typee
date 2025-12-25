@@ -18,6 +18,7 @@ import (
 	"github.com/horriblename/typee/src/genqbe/qbeil"
 	"github.com/horriblename/typee/src/internal/ordered"
 	"github.com/horriblename/typee/src/internal/scope"
+	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
 	"github.com/horriblename/typee/src/types"
@@ -287,7 +288,8 @@ func Gen(
 	// generate functions and global vars
 	for _, expr := range ast {
 		genTopLevel(&ctx, expr)
-		for _, closure := range ctx.unprocessedClosures {
+		closure, ok := popSlice(&ctx.unprocessedClosures).Unwrap()
+		for ; ok; closure, ok = popSlice(&ctx.unprocessedClosures).Unwrap() {
 			// reassign captured values to their original names
 			def := parse.FuncDef{
 				Id:        closure.expr.ID(),
@@ -298,9 +300,10 @@ func Gen(
 				Extern:    false,
 				Synth:     true,
 			}
+			ctx.funcInProcess = closure.name
 			genFunc(&ctx, "", &def, true, closure.captureData)
+			ctx.funcInProcess = ""
 		}
-		ctx.unprocessedClosures = []closure{}
 	}
 
 	ctx.finish()
@@ -2449,4 +2452,13 @@ func bitsToBytesRoundedUp(bits int) int {
 func mapHas[K comparable, V any](m map[K]V, key K) bool {
 	_, ok := m[key]
 	return ok
+}
+
+func popSlice[V any](s *[]V) opt.Option[V] {
+	if len(*s) == 0 {
+		return opt.None[V]()
+	}
+	last := (*s)[len(*s)-1]
+	*s = (*s)[:len(*s)-1]
+	return opt.Some(last)
 }
