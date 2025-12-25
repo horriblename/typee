@@ -178,10 +178,40 @@ func TestTypeExpr(t *testing.T) {
 				Method: false,
 			},
 		},
+		{
+			desc: "case expression",
+			input: `
+				(fn [tu] (case tu [
+					('foo y) ('c (print (i64ToStr y)))
+					('bar y) ('a (+ y 1))
+					('baz s) ('c (print s))
+				]))
+			`,
+			err: nil,
+			typ: &types.Func{
+				Args: []types.Type{&types.TaggedUnion{
+					Name: "",
+					Variants: ordered.NewMap[string, opt.Option[types.Type]]().
+						With("bar", opt.Some[types.Type](&tI64)).
+						With("baz", opt.Some[types.Type](&types.String{})).
+						With("foo", opt.Some[types.Type](&tI64)),
+				}},
+				Ret: &types.TaggedUnion{
+					Name: "",
+					Variants: ordered.NewMap[string, opt.Option[types.Type]]().
+						With("a", opt.Some[types.Type](&tI64)).
+						With("c", opt.Some[types.Type](&types.Record{})),
+				},
+				Method: false,
+			},
+		},
 	}
 	for _, tC := range testCases {
 		EnableTrace = true
 		t.Run(tC.desc, func(t *testing.T) {
+			if tC.desc == "case expression" {
+				println("break")
+			}
 			assert := assert.NewTestAsserts(t)
 			checker := NewTyper(mainModule, true)
 

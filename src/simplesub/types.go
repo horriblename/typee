@@ -389,23 +389,20 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		}
 		return nil, fmt.Errorf("%w: %s and %s", ErrIncompatibleTypes, lhs0, rhs0)
 	} else if lhs, rhs, ok := matchPair[TaggedUnion, TaggedUnion](lhs0, rhs0); ok {
-		// union of both variant sets. overlapping tags are glb'd
-		union := map[string]opt.Option[SimpleType]{}
+		inter := map[string]opt.Option[SimpleType]{}
 		for tag, lvar := range lhs.Variants {
-			union[tag] = lvar
-		}
-		for tag, rvar := range rhs.Variants {
-			if lvar, ok := union[tag]; ok {
+			if rvar, ok := rhs.Variants[tag]; ok {
 				lv, lok := lvar.Unwrap()
 				rv, rok := rvar.Unwrap()
+
 				if lok && rok {
-					glb, err := self.glb(lv, rv)
+					lub, err := self.lub(lv, rv)
 					if err != nil {
 						return nil, fmt.Errorf("%w %s: %w",
 							ErrIncompatibleTag, tag, err)
 					}
 
-					union[tag] = opt.Some(glb)
+					inter[tag] = opt.Some(lub)
 				} else if lok != rok {
 					return nil, fmt.Errorf(
 						"%w %s: one side has payload the other doesn't: %v and %v",
@@ -414,8 +411,8 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 			}
 		}
 		return TaggedUnion{
-			Name:     "", // FIXME: fuck I was not thinking about this
-			Variants: union,
+			Name:     "", // FIXME: put something
+			Variants: inter,
 		}, nil
 	} else if lhs, rhs, ok := matchPair[Enum, Enum](lhs0, rhs0); ok {
 		// same non-empty name
@@ -663,30 +660,36 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 
 		return nil, fmt.Errorf("%w: %s cannot be used as %s and vice versa", ErrIncompatibleTypes, rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[TaggedUnion, TaggedUnion](lhs0, rhs0); ok {
-		inter := map[string]opt.Option[SimpleType]{}
-		for tag, lvar := range lhs.Variants {
-			if rvar, ok := rhs.Variants[tag]; ok {
+		// union of both variant sets. overlapping tags are glb'd
+		union := map[string]opt.Option[SimpleType]{}
+		maps.Copy(union, lhs.Variants)
+		for tag, rvar := range rhs.Variants {
+			if tag == "c" {
+				println("break")
+			}
+			if lvar, ok := union[tag]; ok {
 				lv, lok := lvar.Unwrap()
 				rv, rok := rvar.Unwrap()
-
 				if lok && rok {
-					lub, err := self.lub(lv, rv)
+					glb, err := self.glb(lv, rv)
 					if err != nil {
 						return nil, fmt.Errorf("%w %s: %w",
 							ErrIncompatibleTag, tag, err)
 					}
 
-					inter[tag] = opt.Some(lub)
+					union[tag] = opt.Some(glb)
 				} else if lok != rok {
 					return nil, fmt.Errorf(
 						"%w %s: one side has payload the other doesn't: %v and %v",
 						ErrIncompatibleTag, tag, lvar, rvar)
 				}
+			} else {
+				union[tag] = rvar
 			}
 		}
 		return TaggedUnion{
-			Name:     "", // FIXME: put something
-			Variants: inter,
+			Name:     "", // FIXME: fuck I was not thinking about this
+			Variants: union,
 		}, nil
 	} else if lhs, rhs, ok := matchPair[Enum, Enum](lhs0, rhs0); ok {
 		if lhs.Name != rhs.Name {

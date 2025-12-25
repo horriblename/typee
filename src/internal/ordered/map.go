@@ -52,6 +52,24 @@ func MapEq[K comparable, V comparable](self Map[K, V], other Map[K, V]) bool {
 	return true
 }
 
+func MapEqFunc[K comparable, V any](self Map[K, V], other Map[K, V], eq func(V, V) bool) bool {
+	if len(self.list) != len(other.list) {
+		return false
+	}
+	for s, o := range fun.ZipSlicesStrict(self.list, other.list) {
+		if s != o {
+			return false
+		}
+	}
+
+	for k1, v1 := range self.mapping {
+		if !eq(v1, other.mapping[k1]) {
+			return false
+		}
+	}
+
+	return true
+}
 func (self *Map[K, V]) Insert(k K, v V) (existed bool) {
 	_, existed = self.mapping[k]
 	if !existed {

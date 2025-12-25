@@ -2,6 +2,8 @@ package simplesub
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 
 	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/internal/ordered"
@@ -54,6 +56,12 @@ func analyze(st SimpleType, pol bool, pos, neg *orderedset.OrderedSet[*Variable]
 			neg.Insert(ty)
 			analyze(ty.UpperBound(), pol, pos, neg)
 		}
+	case TaggedUnion:
+		for _, variant := range ty.Variants {
+			if v, ok := variant.Unwrap(); ok {
+				analyze(v, pol, pos, neg)
+			}
+		}
 	case Ref:
 		analyze(ty.Content, pol, pos, neg)
 	case Application:
@@ -98,6 +106,13 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleTy
 		return ArrayType{transform(ty.ElType, pol, mapping, pos, neg), ty.Size}
 	case SliceType:
 		return SliceType{transform(ty.ElType, pol, mapping, pos, neg)}
+	case TaggedUnion:
+		return TaggedUnion{ty.Name, fun.MapMap(ty.Variants, func(v opt.Option[SimpleType]) opt.Option[SimpleType] {
+			if v, ok := v.Unwrap(); ok {
+				return opt.Some(transform(v, pol, mapping, pos, neg))
+			}
+			return opt.None[SimpleType]()
+		})}
 	case Ref:
 		return Ref{transform(ty.Content, pol, mapping, pos, neg)}
 	case Application:
@@ -215,6 +230,24 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 		return &types.Union{
 			Name:     ty.Name,
 			Variants: set,
+		}
+	case TaggedUnion:
+		tags := slices.Collect(maps.Keys(ty.Variants))
+		slices.Sort(tags)
+		variants := ordered.NewMap[string, opt.Option[types.Type]]()
+
+		for _, tag := range tags {
+			v := ty.Variants[tag]
+			payload := opt.None[types.Type]()
+			if val, ok := v.Unwrap(); ok {
+				payload = opt.Some(coalesceTypeInner(val, polarity))
+			}
+			variants.Insert(tag, payload)
+		}
+
+		return &types.TaggedUnion{
+			Name:     ty.Name,
+			Variants: variants,
 		}
 	case Enum:
 		return &types.Enum{

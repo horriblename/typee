@@ -52,6 +52,10 @@ type Union struct {
 	Name     string
 	Variants *orderedset.OrderedSet[Type]
 }
+type TaggedUnion struct {
+	Name     string
+	Variants ordered.Map[string, opt.Option[Type]]
+}
 type Enum struct {
 	Name   string
 	Values map[string]int64
@@ -109,6 +113,7 @@ func (*Bool) type_()        {}
 func (*Ref) type_()         {}
 func (*Record) type_()      {}
 func (*Union) type_()       {}
+func (*TaggedUnion) type_() {}
 func (*Enum) type_()        {}
 func (*Class) type_()       {}
 func (*Array) type_()       {}
@@ -128,6 +133,7 @@ func (*Bool) Simple() bool        { return true }
 func (*Ref) Simple() bool         { return true }
 func (*Record) Simple() bool      { return false }
 func (*Union) Simple() bool       { return false }
+func (*TaggedUnion) Simple() bool { return false }
 func (*Enum) Simple() bool        { return false }
 func (*Class) Simple() bool       { return false }
 func (*Array) Simple() bool       { return false }
@@ -184,6 +190,38 @@ func (f *Union) Eq(other Type) bool {
 
 	for _, val := range f.Variants.Slice() {
 		if !o.Variants.Has(val) {
+			return false
+		}
+	}
+
+	return true
+}
+func (self *TaggedUnion) Eq(other Type) bool {
+	o, ok := other.(*TaggedUnion)
+	if !ok {
+		return false
+	}
+
+	if self.Name != "" && self.Name == o.Name {
+		return true
+	}
+
+	if self.Variants.Len() != o.Variants.Len() {
+		return false
+	}
+
+	for tag, val := range self.Variants.All() {
+		oval, ok := o.Variants.Get(tag)
+		if !ok {
+			return false
+		}
+
+		lv, lok := val.Unwrap()
+		rv, rok := oval.Unwrap()
+
+		if lok && rok {
+			lv.Eq(rv)
+		} else if lok != rok {
 			return false
 		}
 	}
@@ -339,6 +377,22 @@ func (r *Union) String() string {
 		b.WriteString(name.String())
 	}
 	b.WriteString("}")
+
+	return b.String()
+}
+func (r *TaggedUnion) String() string {
+	b := strings.Builder{}
+	b.WriteString(fmt.Sprintf("(tunion %s{", r.Name))
+	for tag, variant := range r.Variants.All() {
+		b.WriteString("('")
+		b.WriteString(tag)
+		b.WriteString(" ")
+		if v, ok := variant.Unwrap(); ok {
+			b.WriteString(v.String())
+		}
+		b.WriteString(")")
+	}
+	b.WriteString("})")
 
 	return b.String()
 }
@@ -696,6 +750,25 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 		// FIXME: structural typing + untagged unions is a nightmare
 		return false
 
+	case *TaggedUnion:
+		b, ok := b.(*TaggedUnion)
+		if !ok {
+			return false
+		}
+		if a.Name != "" && a.Name == b.Name {
+			return true
+		}
+
+		return ordered.MapEqFunc(a.Variants, b.Variants, func(a opt.Option[Type], b opt.Option[Type]) bool {
+			aval, aok := a.Unwrap()
+			bval, bok := b.Unwrap()
+
+			if aok && bok {
+				return structuralEq(ctx, aval, bval)
+			}
+			return aok == bok
+		})
+
 	case *Enum:
 		b, ok := b.(*Enum)
 		if !ok {
@@ -847,6 +920,20 @@ func (ctx *PrettyCtx) String(typ Type) string {
 				b.WriteString(" ")
 			}
 			b.WriteString(ctx.String(t))
+		}
+		b.WriteString("}")
+		return b.String()
+	case *TaggedUnion:
+		var b strings.Builder
+		b.WriteString("{")
+		for tag, ty := range t.Variants.All() {
+			b.WriteString("(")
+			b.WriteString(tag)
+			b.WriteString(" ")
+			if t, ok := ty.Unwrap(); ok {
+				b.WriteString(ctx.String(t))
+			}
+			b.WriteString(")")
 		}
 		b.WriteString("}")
 		return b.String()

@@ -548,6 +548,40 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		return self.TypeTerm(expr.Body)
 
 	case *parse.CaseExpr:
+		self.vars.NewScope()
+		defer self.vars.PopScope()
+		retTy := freshVar()
+		matchTy, err := self.TypeTerm(expr.Match)
+		if err != nil {
+			return nil, err
+		}
+
+		branches := map[string]opt.Option[SimpleType]{}
+
+		for _, branch := range expr.Branches {
+			patt := branch.Pattern
+			if patt.Pattern != nil {
+				ty := freshVar()
+				self.vars.Insert(patt.Pattern.Name, ty)
+				branches[patt.Tag] = opt.Some[SimpleType](ty)
+			} else {
+				branches[patt.Tag] = opt.None[SimpleType]()
+			}
+
+			if branchTy, err := self.TypeTerm(branch.Body); err != nil {
+				return nil, err
+			} else if err := self.constrain(branchTy, retTy); err != nil {
+				return nil, err
+			}
+		}
+
+		self.constrain(matchTy, TaggedUnion{
+			Name:     "",
+			Variants: branches,
+		})
+
+		return retTy, nil
+
 	case *parse.Set:
 		varTy, ok := self.vars.Get(expr.Name).Unwrap()
 		if !ok {
@@ -582,6 +616,18 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 		return Record{[]NamedType{}}, err
 
 	case *parse.TaggedExpr:
+		assert.Neq(expr.Body, nil, "TODO type tags without a body: ", expr.Pretty())
+		payload, err := self.TypeTerm(expr.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		return TaggedUnion{
+			Name: "",
+			Variants: map[string]opt.Option[SimpleType]{
+				expr.Tag: opt.Some(payload),
+			},
+		}, nil
 	case *parse.ExternCall:
 		for _, arg := range expr.Args {
 			if _, err := self.TypeTerm(arg); err != nil {
