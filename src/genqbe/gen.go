@@ -1518,7 +1518,7 @@ func genClassInitializeIfacesFuncs(ctx *ctx, class *types.Class, parents []*type
 				// TODO: all methods of ancestors of parent
 				ifaceType := ctx.ensureObjectTypeDeclared(parent)
 				for meth := range ifaceType.Layouts {
-					_, ok := class.Methods[meth]
+					_, ok := class.Methods.Get(meth)
 					if !ok {
 						continue // TODO: is this an error?
 					}
@@ -1712,7 +1712,7 @@ func genInterfaceMethodWrappers(
 	ct *types.Class,
 	ifaceType qbeil.StructType,
 ) {
-	for name, meth := range ct.Methods {
+	for name, meth := range ct.Methods.All() {
 		mangled := mangleName(mangleOpts{
 			module: ctx.module,
 			class:  ifaceName,
@@ -2312,7 +2312,7 @@ func (ctx *ctx) ensureObjectTypeDeclared(t *types.Class) qbeil.StructType {
 	fields := []qbeil.RepeatType{qbeil.SingleType(parentClass)}
 	layouts := map[string]qbeil.FieldLayout{}
 	ptrBits, _ := ctx.sizeOf(ctx.ptrType)
-	for meth := range t.Methods {
+	for _, meth := range t.Methods.Keys() {
 		fields = append(fields, qbeil.SingleType(ctx.ptrType))
 		layouts[meth] = qbeil.FieldLayout{
 			Type:       ctx.ptrType,

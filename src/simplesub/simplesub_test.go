@@ -266,9 +266,8 @@ func TestTypeProgram(t *testing.T) {
 						},
 					},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Bar"),
-					},
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Bar")),
 				}
 				foo := types.Class{
 					Name: "Foo",
@@ -284,24 +283,23 @@ func TestTypeProgram(t *testing.T) {
 						},
 					},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Foo"),
-						"getx": {
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Foo")).
+						With("getx", types.Member{
 							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args:   []types.Type{},
 								Ret:    &tI64,
 								Method: true,
 							},
-						},
-						"print": {
+						}).
+						With("print", types.Member{
 							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args: []types.Type{&types.String{}},
 								Ret:  &types.Record{},
 							},
-						},
-					},
+						}),
 					Module: mainModule,
 					Top:    false,
 				}
@@ -346,9 +344,8 @@ func TestTypeProgram(t *testing.T) {
 					}},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Baz"),
-					},
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Baz")),
 					Top: false,
 				},
 				&types.Class{
@@ -357,9 +354,8 @@ func TestTypeProgram(t *testing.T) {
 					Supers:  []*types.Application{},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Foo"),
-					},
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Foo")),
 					Top: false,
 				},
 				&types.Class{
@@ -372,9 +368,8 @@ func TestTypeProgram(t *testing.T) {
 					}},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Bar"),
-					},
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Bar")),
 					Top: false,
 				},
 			},
@@ -394,17 +389,16 @@ func TestTypeProgram(t *testing.T) {
 						},
 					},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Foo"),
-						"foo": {
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Foo")).
+						With("foo", types.Member{
 							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args:   []types.Type{},
 								Ret:    &tI64,
 								Method: true,
 							},
-						},
-					},
+						}),
 				}
 				return []types.Type{foo}
 			}(),
@@ -509,7 +503,7 @@ func TestTypeProgram(t *testing.T) {
 									},
 								},
 								Statics: map[string]types.Member{},
-								Methods: map[string]types.Member{},
+								Methods: ordered.NewMap[string, types.Member](),
 							},
 						},
 					},
@@ -710,9 +704,8 @@ func TestTypeProgram(t *testing.T) {
 							Params: []types.Type{},
 						},
 					},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Foo"),
-					},
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Foo")),
 					Top: false,
 				},
 				&types.Func{
@@ -806,17 +799,16 @@ func TestTypeProgram(t *testing.T) {
 					Fields: map[string]types.Member{"x": {
 						Access: parse.AccessPrivate, Type: &tI64}},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Foo"),
-						"addOne": {
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Foo")).
+						With("addOne", types.Member{
 							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args:   []types.Type{},
 								Ret:    &tI64,
 								Method: true,
 							},
-						},
-					},
+						}),
 				}
 				return []types.Type{
 					&types.Func{
@@ -850,25 +842,24 @@ func TestTypeProgram(t *testing.T) {
 					Supers:  []*types.Application{},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Binding"),
-						"dupSource": {
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Binding")).
+						With("dupSource", types.Member{
 							Access: 0,
 							Type: &types.Func{
 								Args:   []types.Type{},
 								Ret:    &tI32,
 								Method: true,
 							},
-						},
-						"dupTarget": {
+						}).
+						With("dupTarget", types.Member{
 							Access: 0,
 							Type: &types.Func{
 								Args:   []types.Type{},
 								Ret:    &tI32,
 								Method: true,
 							},
-						},
-					},
+						}),
 					Top: false,
 				}
 				return []types.Type{
@@ -900,17 +891,16 @@ func TestTypeProgram(t *testing.T) {
 							Type:   &tI64,
 							Access: parse.AccessPrivate,
 						}},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Foo"),
-						"add": {
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Foo")).
+						With("add", types.Member{
 							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args:   []types.Type{tApp("Bar")},
 								Ret:    &tI64,
 								Method: true,
 							},
-						},
-					},
+						}),
 					Top:     false,
 					Statics: map[string]types.Member{},
 				},
@@ -925,17 +915,16 @@ func TestTypeProgram(t *testing.T) {
 						},
 					},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Bar"),
-						"add": {
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Bar")).
+						With("add", types.Member{
 							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args:   []types.Type{tApp("Foo")},
 								Ret:    &tI64,
 								Method: true,
 							},
-						},
-					},
+						}),
 					Top: false,
 				},
 			},
@@ -962,17 +951,16 @@ func TestTypeProgram(t *testing.T) {
 						},
 					},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Foo"),
-						"hello": {
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Foo")).
+						With("hello", types.Member{
 							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args:   []types.Type{},
 								Ret:    &types.Record{},
 								Method: true,
 							},
-						},
-					},
+						}),
 					Top: false,
 				},
 				&types.Func{
@@ -1032,9 +1020,8 @@ func TestTypeProgram(t *testing.T) {
 						},
 					},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Animal"),
-					},
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Animal")),
 					Top: false,
 				},
 				&types.Class{
@@ -1044,9 +1031,8 @@ func TestTypeProgram(t *testing.T) {
 					Supers:  []*types.Application{tApp("Animal")},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Mammal"),
-					},
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Mammal")),
 					Top: false,
 				},
 				&types.Class{
@@ -1056,9 +1042,8 @@ func TestTypeProgram(t *testing.T) {
 					Supers:  []*types.Application{tApp("Mammal")},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": ctorMember("Cat"),
-					},
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", ctorMember("Cat")),
 					Top: false,
 				},
 				&types.Func{
@@ -1094,24 +1079,23 @@ func TestTypeProgram(t *testing.T) {
 					Supers:  []*types.Application{},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": {
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", types.Member{
 							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args:   []types.Type{},
 								Ret:    tApp("Foo"),
 								Method: false,
 							},
-						},
-						"name": {
+						}).
+						With("name", types.Member{
 							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args:   []types.Type{},
 								Ret:    &types.String{},
 								Method: true,
 							},
-						},
-					},
+						}),
 					Top: false,
 				},
 				&types.Class{
@@ -1121,16 +1105,15 @@ func TestTypeProgram(t *testing.T) {
 					Supers:  []*types.Application{tApp("Foo")},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
-					Methods: map[string]types.Member{
-						"new": {
+					Methods: ordered.NewMap[string, types.Member]().
+						With("new", types.Member{
 							Access: parse.AccessPublic,
 							Type: &types.Func{
 								Args:   []types.Type{},
 								Ret:    tApp("Bar"),
 								Method: false,
 							},
-						},
-					},
+						}),
 					Top: false,
 				},
 				&types.Func{

@@ -63,7 +63,7 @@ type Class struct {
 	Supers  []*Application
 	Fields  map[string]Member
 	Statics map[string]Member
-	Methods map[string]Member
+	Methods ordered.Map[string, Member]
 	Top     bool
 }
 type Array struct {
@@ -213,7 +213,7 @@ func (f *Class) Eq(other Type) bool {
 		return false
 	}
 
-	for name, val := range joinSeq2(maps.All(f.Fields), maps.All(f.Methods)) {
+	for name, val := range joinSeq2(maps.All(f.Fields), f.Methods.All()) {
 		oval, has := o.Fields[name]
 		if !has {
 			return false
@@ -491,7 +491,7 @@ func (self *deepPrintCtx) printClass(r *Class) {
 		)
 	}
 	b.WriteString("methods: ")
-	for name, val := range r.Methods {
+	for name, val := range r.Methods.All() {
 		fmt.Fprintf(b, "%s %s: %s,",
 			val.Access.String(),
 			name,
@@ -524,7 +524,7 @@ func (r *Class) DeepPrint() string {
 		b.WriteString(", ")
 	}
 	b.WriteString("methods: ")
-	for name, val := range r.Methods {
+	for name, val := range r.Methods.All() {
 		b.WriteString(val.Access.String())
 		b.WriteRune(' ')
 		b.WriteString(name)
@@ -747,12 +747,12 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 			}
 		}
 
-		if len(a.Methods) != len(b.Methods) {
+		if a.Methods.Len() != b.Methods.Len() {
 			return false
 		}
 
-		for name, aval := range a.Methods {
-			bval, ok := b.Methods[name]
+		for name, aval := range a.Methods.All() {
+			bval, ok := b.Methods.Get(name)
 			if !ok {
 				return false
 			}

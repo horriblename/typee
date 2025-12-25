@@ -235,12 +235,12 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 			}
 		}
 
-		methods := map[string]types.Member{}
+		methods := ordered.NewMap[string, types.Member]()
 		for _, meth := range ty.Methods {
-			methods[meth.Name] = types.Member{
+			methods.Insert(meth.Name, types.Member{
 				Access: meth.Access,
 				Type:   coalesceTypeInner(meth.Type, polarity),
-			}
+			})
 		}
 
 		supers := fun.Map(ty.Supers, func(o Application) *types.Application {

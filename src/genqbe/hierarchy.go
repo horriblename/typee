@@ -6,7 +6,7 @@ import (
 )
 
 func (self *ctx) findMethodSource(c *types.Class, meth string) (_ *types.Class, ok bool) {
-	if _, ok := c.Methods[meth]; ok {
+	if _, ok := c.Methods.Get(meth); ok {
 		return c, true
 	}
 
