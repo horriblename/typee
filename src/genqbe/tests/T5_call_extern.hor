@@ -1,4 +1,4 @@
-;; callExtern
+;exit=3
 (def die ({}) [] (callExtern exit 3))
 (def main [] (die))
 			
