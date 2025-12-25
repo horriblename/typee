@@ -88,7 +88,7 @@ type Variable struct {
 
 func (self *Variable) instantiate() SimpleType { return self }
 func (self *Variable) children() []SimpleType {
-	return []SimpleType{self.lowerBound, self.upperBound}
+	return []SimpleType{self.LowerBound(), self.UpperBound()}
 }
 func (self *Variable) Uid() uint {
 	return self.Representative().uid
