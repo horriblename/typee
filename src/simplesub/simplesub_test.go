@@ -290,8 +290,9 @@ func TestTypeProgram(t *testing.T) {
 						"getx": {
 							Access: parse.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{},
-								Ret:  &tI64,
+								Args:   []types.Type{},
+								Ret:    &tI64,
+								Method: true,
 							},
 						},
 						"print": {
@@ -399,8 +400,9 @@ func TestTypeProgram(t *testing.T) {
 						"foo": {
 							Access: parse.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{},
-								Ret:  &tI64,
+								Args:   []types.Type{},
+								Ret:    &tI64,
+								Method: true,
 							},
 						},
 					},
@@ -810,8 +812,9 @@ func TestTypeProgram(t *testing.T) {
 						"addOne": {
 							Access: parse.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{},
-								Ret:  &tI64,
+								Args:   []types.Type{},
+								Ret:    &tI64,
+								Method: true,
 							},
 						},
 					},
@@ -853,15 +856,17 @@ func TestTypeProgram(t *testing.T) {
 						"dupSource": {
 							Access: 0,
 							Type: &types.Func{
-								Args: []types.Type{},
-								Ret:  &tI32,
+								Args:   []types.Type{},
+								Ret:    &tI32,
+								Method: true,
 							},
 						},
 						"dupTarget": {
 							Access: 0,
 							Type: &types.Func{
-								Args: []types.Type{},
-								Ret:  &tI32,
+								Args:   []types.Type{},
+								Ret:    &tI32,
+								Method: true,
 							},
 						},
 					},
@@ -901,8 +906,9 @@ func TestTypeProgram(t *testing.T) {
 						"add": {
 							Access: parse.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{tApp("Bar")},
-								Ret:  &tI64,
+								Args:   []types.Type{tApp("Bar")},
+								Ret:    &tI64,
+								Method: true,
 							},
 						},
 					},
@@ -925,8 +931,9 @@ func TestTypeProgram(t *testing.T) {
 						"add": {
 							Access: parse.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{tApp("Foo")},
-								Ret:  &tI64,
+								Args:   []types.Type{tApp("Foo")},
+								Ret:    &tI64,
+								Method: true,
 							},
 						},
 					},
@@ -961,8 +968,9 @@ func TestTypeProgram(t *testing.T) {
 						"hello": {
 							Access: parse.AccessPublic,
 							Type: &types.Func{
-								Args: []types.Type{},
-								Ret:  &types.Record{},
+								Args:   []types.Type{},
+								Ret:    &types.Record{},
+								Method: true,
 							},
 						},
 					},

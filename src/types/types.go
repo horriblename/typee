@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -440,6 +441,9 @@ func (self *deepPrintCtx) print(ty Type) {
 	case *Class:
 		self.printClass(t)
 	case *Func:
+		if t.Method {
+			self.buf.WriteRune('#')
+		}
 		for i, arg := range t.Args {
 			if i != 0 {
 				self.buf.WriteString(", ")
@@ -611,6 +615,10 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 	case *Func:
 		b, ok := b.(*Func)
 		if !ok || len(b.Args) != len(a.Args) {
+			return false
+		}
+
+		if a.Method != b.Method {
 			return false
 		}
 
