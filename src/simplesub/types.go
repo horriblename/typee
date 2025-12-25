@@ -1,3 +1,23 @@
+// # Type Hierarchy
+//
+// There are 3 overarching types: [TypeScheme], [SimpleType], and
+// [ConcreteType].
+//
+//	       ┌──────────┐
+//	       │TypeScheme│
+//	       └──────────┘
+//	            ▲
+//	      ┌─────┴────────┐
+//	      │         ┌────┴─────┐
+//	PolymorphicType │SimpleType│
+//	                └──────────┘
+//	                     ▲
+//	             ┌───────┴────────┐
+//	             │          ┌────────────┐
+//	          Variable      │ConcreteType│
+//	                        └────────────┘
+//	                              ▲
+//	                              └─ Top, Bot, Int, Record, ...
 package simplesub
 
 import (
@@ -179,15 +199,26 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 			return lhs, nil
 		}
 
-		return nil, fmt.Errorf("coercion between named types not yet supported: %v and %v", lhs, rhs)
+		lhsCon, err := self.concretizeApplication(lhs)
+		if err != nil {
+			return nil, err
+		}
+
+		rhsCon, err := self.concretizeApplication(rhs)
+		if err != nil {
+			return nil, err
+		}
+
+		return self.glbConcrete(lhsCon, rhsCon)
 	} else if lhs, rhs, ok := matchPair[C, Application](lhs0, rhs0); ok {
 		return self.glbConcrete(rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[Application, C](lhs0, rhs0); ok {
-		if err := self.constrain(rhs, lhs); err != nil {
-			return nil, fmt.Errorf("TODO currently only implemented glb of Application types if the Application type is greater: glb(%v, %v)", lhs, rhs)
+		lhsCon, err := self.concretizeApplication(lhs)
+		if err != nil {
+			return nil, err
 		}
 
-		return lhs, nil
+		return self.glbConcrete(lhsCon, rhs)
 	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
 		args := make([]SimpleType, 0, len(lhs.Args))
 		assert.Eq(len(lhs.Args), len(rhs.Args),
@@ -490,15 +521,26 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 			return lhs, nil
 		}
 
-		return nil, fmt.Errorf("coercion between named types not yet supported: %v and %v", lhs, rhs)
+		lhsCon, err := self.concretizeApplication(lhs)
+		if err != nil {
+			return nil, err
+		}
+
+		rhsCon, err := self.concretizeApplication(rhs)
+		if err != nil {
+			return nil, err
+		}
+
+		return self.lubConcrete(lhsCon, rhsCon)
 	} else if lhs, rhs, ok := matchPair[C, Application](lhs0, rhs0); ok {
 		return self.lubConcrete(rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[Application, C](lhs0, rhs0); ok {
-		if err := self.constrain(lhs, rhs); err != nil {
-			return nil, fmt.Errorf("TODO currently only implemented lub of Application types if the Application type is greater: lub(%v, %v)", lhs, rhs)
+		lhsCon, err := self.concretizeApplication(lhs)
+		if err != nil {
+			return nil, err
 		}
 
-		return lhs, nil
+		return self.lubConcrete(lhsCon, rhs)
 	} else if lhs, rhs, ok := matchPair[Func, Func](lhs0, rhs0); ok {
 		assert.Eq(len(lhs.Args), len(rhs.Args), "different arg count")
 
