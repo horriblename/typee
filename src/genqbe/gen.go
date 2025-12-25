@@ -808,6 +808,10 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 		}
 		return genCallWithFuncName(ctx, ctx.module, "", callee.Name, expr)
 
+	case *parse.Fn:
+		closure := genClosure(ctx, callee)
+		return genCallClosure(ctx, closure, expr)
+
 	default:
 		panic("unimpl: genCall for callee of the form " + expr.Pretty())
 	}
