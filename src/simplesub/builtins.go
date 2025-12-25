@@ -69,6 +69,10 @@ func builtinVars() map[string]TypeScheme {
 		"i64ToI8": PolymorphicType{
 			Body: Func{Args: []SimpleType{I64}, Ret: Int{true, 8}},
 		},
+		"i64ToStr": PolymorphicType{
+			Body: Func{Args: []SimpleType{I64}, Ret: Str{}},
+		},
+		// fake news, this returns a null pointer :p
 		"emptyList": PolymorphicType{
 			Body: Func{
 				Args:   []SimpleType{},
