@@ -1566,7 +1566,7 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 					return err
 				}
 			} else {
-				return fmt.Errorf("%w: missing field %s: %#v", ErrMissingField, boundField.Name, boundField.Type)
+				return fmt.Errorf("%w: missing field %s: %v", ErrMissingField, boundField.Name, boundField.Type)
 			}
 		}
 
@@ -1587,7 +1587,7 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 					return err
 				}
 			} else {
-				return fmt.Errorf("%w: missing field %s: %#v", ErrMissingField, boundField.Name, boundField.Type)
+				return fmt.Errorf("%w: missing field %s: %v", ErrMissingField, boundField.Name, boundField.Type)
 			}
 		}
 
