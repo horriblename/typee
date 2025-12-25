@@ -31,6 +31,8 @@ const (
 //go:embed horstd/std.c
 var stdCSrc string
 
+var defaultStdPath = "src/cli/horstd/std.c"
+
 type buildParams struct {
 	targetStage    stage
 	inFile         string
@@ -41,6 +43,8 @@ type buildParams struct {
 	printTypedTree bool
 	traceTyper     bool
 	externalQbe    bool
+	stdlibPath     string
+	embeddedStdlib bool
 	logLevel       slog.Level
 }
 
@@ -132,8 +136,14 @@ func buildProgram(params buildParams) error {
 	}
 
 	stdObj := "std.o"
-	stdCompiler := exec.Command("gcc", "-c", "-o", stdObj, "-x", "c", "-")
-	stdCompiler.Stdin = bytes.NewBufferString(stdCSrc)
+	stdSrcFile := params.stdlibPath
+	if params.embeddedStdlib {
+		stdSrcFile = "-" // pass embedded stdlib via stdin
+	}
+	stdCompiler := exec.Command("gcc", "-g", "-c", "-o", stdObj, "-x", "c", stdSrcFile)
+	if params.embeddedStdlib {
+		stdCompiler.Stdin = bytes.NewBufferString(stdCSrc)
+	}
 	stdCompiler.Stdout = os.Stdout
 	stdCompiler.Stderr = os.Stderr
 	if err := stdCompiler.Run(); err != nil {

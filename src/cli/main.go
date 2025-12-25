@@ -166,6 +166,12 @@ const helpLogLevel = "Log level. Lower means more verbose. -4 for debug logs, 8 
 const flagExternalQbe = "external-qbe"
 const helpExternalQbe = "Use qbe executable from PATH"
 
+const flagStdlibPath = "stdlib-path"
+const helpStdlibPath = "Path to stdlib implementation C file. Use -embedded-stdlib if you don't have a copy of the stdlib source code"
+
+const flagEmbeddedStdlib = "embedded-stdlib"
+const helpEmbeddedStdlib = `Use embedded stdlib: debug symbols will not work. If enabled, -stdlib-path is ignored`
+
 func cmdBuild() error {
 	outPath := flag.String(flagOut, defaultOut, helpOut)
 	outPathLong := flag.String(flagOutLong, defaultOut, helpOut)
@@ -176,6 +182,8 @@ func cmdBuild() error {
 	printTypedTree := flag.Bool(flagPrintTypedTree, false, helpPrintTypedTree)
 	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
 	externalQbe := flag.Bool(flagExternalQbe, false, helpExternalQbe)
+	stdlibPath := flag.String(flagStdlibPath, defaultStdPath, helpStdlibPath)
+	embeddedStdlib := flag.Bool(flagEmbeddedStdlib, false, helpEmbeddedStdlib)
 
 	if *outPathLong != defaultOut {
 		*outPath = *outPathLong
@@ -198,6 +206,8 @@ func cmdBuild() error {
 		linkerFlags:    ldFlags,
 		traceTyper:     *traceTyper,
 		externalQbe:    *externalQbe,
+		stdlibPath:     *stdlibPath,
+		embeddedStdlib: *embeddedStdlib,
 		logLevel:       slog.Level(*logLevel),
 	}
 
@@ -214,6 +224,8 @@ func cmdRun() error {
 	printTypedTree := flag.Bool(flagPrintTypedTree, false, helpPrintTypedTree)
 	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
 	externalQbe := flag.Bool(flagExternalQbe, false, helpExternalQbe)
+	stdlibPath := flag.String(flagStdlibPath, defaultStdPath, helpStdlibPath)
+	embeddedStdlib := flag.Bool(flagEmbeddedStdlib, false, helpEmbeddedStdlib)
 
 	if *outPathLong != defaultOut {
 		*outPath = *outPathLong
@@ -236,6 +248,8 @@ func cmdRun() error {
 		linkerFlags:    ldFlags,
 		traceTyper:     *traceTyper,
 		externalQbe:    *externalQbe,
+		stdlibPath:     *stdlibPath,
+		embeddedStdlib: *embeddedStdlib,
 		logLevel:       slog.Level(*logLevel),
 	}
 
