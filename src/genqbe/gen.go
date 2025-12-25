@@ -300,6 +300,7 @@ func Gen(
 			}
 			genFunc(&ctx, "", &def, true, closure.captureData)
 		}
+		ctx.unprocessedClosures = []closure{}
 	}
 
 	ctx.finish()
