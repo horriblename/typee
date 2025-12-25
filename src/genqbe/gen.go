@@ -348,6 +348,11 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 		return qbeil.IntLiteral{
 			Value: val,
 		}
+	case *parse.BoolLiteral:
+		if e.Value {
+			return qbeil.IntLiteral{Value: 1}
+		}
+		return qbeil.IntLiteral{Value: 0}
 	case *parse.SelfLiteral:
 		return qbeil.Var{Global: false, Name: "self"}
 
