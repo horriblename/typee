@@ -536,7 +536,7 @@ func casePattern(in []lex.Token) (_ []lex.Token, _ CasePattern, err error) {
 		lparen,
 		combinator.Then(
 			tagName,
-			symbolName,
+			combinator.Maybe(symbolName),
 		),
 		rparen,
 	)(in)
@@ -545,7 +545,14 @@ func casePattern(in []lex.Token) (_ []lex.Token, _ CasePattern, err error) {
 		return nil, CasePattern{}, err
 	}
 
-	return in, CasePattern{Tag: out.One, Pattern: out.Two}, nil
+	var sym *Symbol
+	if s, ok := out.Two.Unwrap(); ok {
+		sym = &Symbol{
+			Name: s,
+			id:   newId(),
+		}
+	}
+	return in, CasePattern{Tag: out.One, Pattern: sym}, nil
 }
 
 func caseBranch(in []lex.Token) (_ []lex.Token, _ CaseBranch, err error) {

@@ -248,28 +248,42 @@ func TestParse(t *testing.T) {
 			input: `(case x [
 				('foo y) y
 				('bar y) (+ y 1)
+				('baz)  0
 			])`,
 			output: []Expr{&CaseExpr{
-				id:    7,
+				id:    10,
 				Match: &Symbol{id: 1, Name: "x"},
 				Branches: []CaseBranch{
 					{
-						Pattern: CasePattern{Tag: "foo", Pattern: "y"},
+						Pattern: CasePattern{
+							Tag:     "foo",
+							Pattern: &Symbol{"y", 2},
+						},
 						Body: &Symbol{
-							id:   2,
+							id:   3,
 							Name: "y",
 						},
 					},
 					{
-						Pattern: CasePattern{Tag: "bar", Pattern: "y"},
+						Pattern: CasePattern{
+							Tag:     "bar",
+							Pattern: &Symbol{"y", 4},
+						},
 						Body: &Form{
-							id: 6,
+							id: 8,
 							Children: []Expr{
-								&Symbol{id: 3, Name: "+"},
-								&Symbol{id: 4, Name: "y"},
-								&IntLiteral{Number: 1, id: 5},
+								&Symbol{id: 5, Name: "+"},
+								&Symbol{id: 6, Name: "y"},
+								&IntLiteral{Number: 1, id: 7},
 							},
 						},
+					},
+					{
+						Pattern: CasePattern{
+							Tag:     "baz",
+							Pattern: nil,
+						},
+						Body: &IntLiteral{Number: 0, id: 9},
 					},
 				},
 			}},

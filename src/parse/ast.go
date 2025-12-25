@@ -140,7 +140,7 @@ type CaseBranch struct {
 
 type CasePattern struct {
 	Tag     string
-	Pattern string
+	Pattern *Symbol
 }
 
 type Record struct {
