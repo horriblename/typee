@@ -70,6 +70,9 @@ type ctx struct {
 }
 
 type varInfo struct {
+	// unique IL name (just make sure this doesn't clash with other local vars)
+	uname string
+
 	val qbeil.Value
 	typ types.Type
 
@@ -671,9 +674,10 @@ func genFunc(
 			val,
 		))
 		ctx.vars.Insert(expr.Args[i], varInfo{
-			val,
-			argTyp,
-			opt.None[parse.ID](),
+			uname:   expr.Args[i],
+			val:     val,
+			typ:     argTyp,
+			lastUse: opt.None[parse.ID](),
 		})
 	}
 	// closures take an extra void* for captures
@@ -723,9 +727,10 @@ func genFunc(
 		for _, field := range fields {
 			val := genRecordAccess(ctx, capturesArg, *captureBlock, field.name)
 			ctx.vars.Insert(field.name, varInfo{
-				val,
-				capturesType[field.name],
-				opt.None[parse.ID](),
+				uname:   field.name,
+				val:     val,
+				typ:     capturesType[field.name],
+				lastUse: opt.None[parse.ID](),
 			})
 		}
 	}
@@ -1250,20 +1255,20 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 
 		rhsVal := gen(ctx, ass.Value)
 
-		// reassign values to our new name so we can garbage collect later
-		varType := ctx.toILType(ctx.simplify(expr.ID()))
+		ctx.il.Comment("reassign to var name for garbage collection later")
+		varPtr := qbeil.Var{Global: false, Name: ctx.newTempName(ass.Var)}
+		varType := ctx.toILType(ctx.simplify(ass.Value.ID()))
 		varSizeBits, _ := ctx.sizeOf(varType)
-		varPtr := qbeil.Var{Global: false, Name: ass.Var}
 		ctx.il.Arithmetic(varPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{
 			Value: int64(bitsToBytesRoundedUp(varSizeBits)),
 		})
-		// FIXME: broken
 		genCopyToPtr(ctx, varPtr, varType, rhsVal)
 
 		ctx.vars.Insert(ass.Var, varInfo{
-			varPtr,
-			ctx.simplify(ass.Value.ID()),
-			opt.None[parse.ID](),
+			uname:   varPtr.Name,
+			val:     genReturnableValueFromPtr(ctx, varPtr, varType),
+			typ:     ctx.simplify(ass.Value.ID()),
+			lastUse: opt.None[parse.ID](),
 		})
 	}
 
@@ -1350,9 +1355,10 @@ func genCaseExpr(ctx *ctx, e *parse.CaseExpr) qbeil.Value {
 			match, qbeil.IntLiteral{Value: ptrSize})
 		payload := genReturnableValueFromPtr(ctx, payloadPtr, payloadIlTy)
 		ctx.vars.Insert(branch.Pattern.Pattern.Name, varInfo{
-			payload,
-			payloadTy,
-			opt.None[parse.ID](),
+			uname:   payloadPtr.Name,
+			val:     payload,
+			typ:     payloadTy,
+			lastUse: opt.None[parse.ID](),
 		})
 
 		val := gen(ctx, branch.Body)
@@ -2180,7 +2186,7 @@ func genReturnableValueFromPtr(ctx *ctx, ptr qbeil.Var, ilTy qbeil.Type) qbeil.V
 		switch bt {
 		case qbeil.Byte, qbeil.HalfWord:
 			val := ctx.il.TempNamedVar(false, "temp")
-			ctx.il.Arithmetic(val.IL(), bt, "load"+ilTy.IL(), ptr)
+			ctx.il.Arithmetic(val.IL(), qbeil.Word, "loadw", ptr)
 			return val
 		default:
 			panic(fmt.Sprintf("unexpected qbeil.ExtraType: %#v", bt))
@@ -2197,10 +2203,9 @@ func genUnrefAndPopScope(ctx *ctx) {
 	scope := ctx.vars.PopScope()
 	for _, v := range scope {
 		if val, ok := v.Value.Unwrap(); ok {
-			println("cleanup ", v.Key)
 			genUnref(ctx, qbeil.Var{
 				Global: false,
-				Name:   v.Key,
+				Name:   val.uname,
 			}, val.typ)
 		}
 	}
@@ -2210,7 +2215,6 @@ func genUnref(ctx *ctx, v qbeil.Var, ty types.Type) {
 	ty = ctx.resolveTypeApplications(ty)
 	switch ty.(type) {
 	case *types.Class:
-		println("generating unref on class")
 		unref := qbeil.Var{
 			Global: true,
 			Name:   "g_unref",
