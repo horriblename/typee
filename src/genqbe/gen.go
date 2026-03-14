@@ -59,7 +59,7 @@ type ctx struct {
 	recordTypes    map[int]qbeil.AggregateType
 	externs        map[string]struct{}
 	imports        map[string]can.ModuleName
-	vars           scope.ScopedMap[qbeil.Value]
+	vars           scope.ScopedMap[varInfo]
 	classInProcess *types.Class
 
 	funcInProcess       string
@@ -67,6 +67,13 @@ type ctx struct {
 
 	idGenerator          int64
 	generatedTranslation map[types.Type]qbeil.AggregateType
+}
+
+type varInfo struct {
+	val qbeil.Value
+
+	// currently unused
+	lastUse opt.Option[parse.ID]
 }
 
 type closure struct {
@@ -101,7 +108,7 @@ func Gen(
 		recordTypes:          map[int]qbeil.AggregateType{},
 		externs:              map[string]struct{}{},
 		imports:              map[string]can.ModuleName{},
-		vars:                 scope.NewScopedMap[qbeil.Value](),
+		vars:                 scope.NewScopedMap[varInfo](),
 		idGenerator:          0,
 		generatedTranslation: map[types.Type]qbeil.AggregateType{},
 	}
@@ -382,7 +389,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 			return qbeil.IntLiteral{Value: 0}
 		}
 		if val, ok := ctx.vars.Get(e.Name).Unwrap(); ok {
-			return val
+			return val.val
 		} else if _, ok := ctx.globals[e.Name]; ok {
 			mangled := mangleName(mangleOpts{
 				module: ctx.module,
@@ -613,8 +620,8 @@ func genFunc(
 	ctx *ctx,
 	class string,
 	expr *parse.FuncDef,
-	closure bool, // whether this function is a closure, adds a capture block function argument
-	captureBlock *qbeil.StructType, // only used for closures, may be nil if there's no capture data
+	closure bool, // whether this function is a closure. Adds a capture block function argument
+	captureBlock *qbeil.StructType, // only used for closures. May be nil if there's no capture data
 ) (val qbeil.Value) {
 	defer func() {
 		if e := recover(); e != nil {
@@ -660,7 +667,7 @@ func genFunc(
 			ctx.toABIType(argTyp),
 			val,
 		))
-		ctx.vars.Insert(expr.Args[i], val)
+		ctx.vars.Insert(expr.Args[i], varInfo{val, opt.None[parse.ID]()})
 	}
 	// closures take an extra void* for captures
 	if closure {
@@ -708,7 +715,7 @@ func genFunc(
 
 		for _, field := range fields {
 			val := genRecordAccess(ctx, capturesArg, *captureBlock, field.name)
-			ctx.vars.Insert(field.name, val)
+			ctx.vars.Insert(field.name, varInfo{val, opt.None[parse.ID]()})
 		}
 	}
 
@@ -821,7 +828,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 	case *parse.Symbol:
 		if closure, ok := ctx.vars.Get(callee.Name).Unwrap(); ok {
 			// TODO: is it always a closure?
-			return genCallClosure(ctx, closure, expr)
+			return genCallClosure(ctx, closure.val, expr)
 		}
 		return genCallWithFuncName(ctx, ctx.module, "", callee.Name, expr)
 
@@ -1138,7 +1145,7 @@ func genClosure(ctx *ctx, e *parse.Fn) qbeil.Value {
 		return recordAssignment{
 			name:  c.Name,
 			typ:   ctx.toILType(ctx.simplify(c.ID)),
-			value: val,
+			value: val.val,
 		}
 	})
 	var captureBlock qbeil.Value
@@ -1224,7 +1231,7 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 		ctx.il.Comment("let assignment of %s = %s",
 			ass.Var, ass.Value.Pretty())
 		rhsVal := gen(ctx, ass.Value)
-		ctx.vars.Insert(ass.Var, rhsVal)
+		ctx.vars.Insert(ass.Var, varInfo{rhsVal, opt.None[parse.ID]()})
 	}
 
 	ctx.il.Comment("let body")
@@ -1309,7 +1316,7 @@ func genCaseExpr(ctx *ctx, e *parse.CaseExpr) qbeil.Value {
 		ctx.il.Arithmetic(payloadPtr.IL(), ctx.ptrType, "add",
 			match, qbeil.IntLiteral{Value: ptrSize})
 		payload := genReturnableValueFromPtr(ctx, payloadPtr, payloadIlTy)
-		ctx.vars.Insert(branch.Pattern.Pattern.Name, payload)
+		ctx.vars.Insert(branch.Pattern.Pattern.Name, varInfo{payload, opt.None[parse.ID]()})
 
 		val := gen(ctx, branch.Body)
 		genCopyToPtr(ctx, retPtr, retType, val)
