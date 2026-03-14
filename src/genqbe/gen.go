@@ -697,6 +697,15 @@ func genFunc(
 
 	assert.Ok(ctx.il.Func(linkage, retTyp, thisFunc.IL(), argTyps))
 
+	for i, argTyp := range realArgTys {
+		// TODO: I shouldn't need this - increasing ref count is the caller's
+		// job for owned args, and borrowed args don't need ref() at all,
+		// but currently genUnrefAndPopScope() does not have a concept of
+		// borrowed var
+		val := qbeil.Var{Global: false, Name: expr.Args[i]}
+		genRef(ctx, val, argTyp)
+	}
+
 	// re-expose captures as normal variables by emulating let bindings
 	// TODO: can we merge into gen(LetExpr) code?
 	if closure && captureBlock != nil {
@@ -1255,6 +1264,9 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 
 		rhsVal := gen(ctx, ass.Value)
 
+		// TODO: no reason to copy stuff that does not need gc
+		// I should refactor varInfo to take optional garbage
+		// collection info
 		ctx.il.Comment("reassign to var name for garbage collection later")
 		varPtr := qbeil.Var{Global: false, Name: ctx.newTempName(ass.Var)}
 		varTy := ctx.simplify(ass.Value.ID())
@@ -1265,6 +1277,7 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 		})
 		genCopyToPtr(ctx, varPtr, varIlTy, rhsVal)
 
+		genRef(ctx, rhsVal, varTy)
 		ctx.vars.Insert(ass.Var, varInfo{
 			uname:   varPtr.Name,
 			val:     genReturnableValueFromPtr(ctx, varPtr, varIlTy),
@@ -1346,6 +1359,7 @@ func genCaseExpr(ctx *ctx, e *parse.CaseExpr) qbeil.Value {
 		ctx.il.Jnz(checkRes, matchOkLabel, matchFailLabel)
 
 		ctx.il.Label(matchOkLabel.Name)
+		ctx.vars.NewScope()
 
 		ctx.il.Comment("assign tag payload")
 		maybePayloadTy, ok := matchTu.Variants.Get(branch.Pattern.Tag)
@@ -1358,6 +1372,7 @@ func genCaseExpr(ctx *ctx, e *parse.CaseExpr) qbeil.Value {
 		ctx.il.Arithmetic(payloadPtr.IL(), ctx.ptrType, "add",
 			match, qbeil.IntLiteral{Value: ptrSize})
 		payload := genReturnableValueFromPtr(ctx, payloadPtr, payloadIlTy)
+		genRef(ctx, payload, payloadTy)
 		ctx.vars.Insert(branch.Pattern.Pattern.Name, varInfo{
 			uname:   payloadPtr.Name,
 			val:     payload,
@@ -1367,6 +1382,7 @@ func genCaseExpr(ctx *ctx, e *parse.CaseExpr) qbeil.Value {
 
 		val := gen(ctx, branch.Body)
 		genCopyToPtr(ctx, retPtr, retType, val)
+		genUnrefAndPopScope(ctx)
 		ctx.il.Jump(endLabel)
 
 		ctx.il.Label(matchFailLabel.Name)
@@ -2213,6 +2229,14 @@ func genUnrefAndPopScope(ctx *ctx) {
 	}
 }
 
+func genRef(ctx *ctx, v qbeil.Value, ty types.Type) {
+	switch ty.(type) {
+	case *types.Class:
+		ref := qbeil.Var{Global: true, Name: "g_object_ref"}
+		ctx.il.Call(nil, nil, ref, []qbeil.ABITypedValue{
+			{Type: ctx.ptrType, Value: v},
+		})
+	default:
 	}
 }
 
