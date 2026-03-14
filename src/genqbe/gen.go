@@ -2222,7 +2222,7 @@ func genUnref(ctx *ctx, v qbeil.Var, ty types.Type) {
 	case *types.Class:
 		unref := qbeil.Var{
 			Global: true,
-			Name:   "g_unref",
+			Name:   "g_object_unref",
 		}
 		ctx.il.Call(nil, nil, unref, []qbeil.ABITypedValue{
 			{Type: ctx.ptrType, Value: v},
