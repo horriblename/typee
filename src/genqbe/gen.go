@@ -639,7 +639,6 @@ func genFunc(
 	}()
 
 	ctx.vars.NewScope()
-	defer genUnrefAndPopScope(ctx)
 
 	friendlyName := fmt.Sprintf("%s.%s", class, expr.Name)
 	realArgTys := []types.Type{}
@@ -702,7 +701,7 @@ func genFunc(
 	// TODO: can we merge into gen(LetExpr) code?
 	if closure && captureBlock != nil {
 		ctx.vars.NewScope()
-		defer genUnrefAndPopScope(ctx)
+		defer ctx.vars.PopScope()
 
 		capturesArg := qbeil.Var{Global: false, Name: "_captures"}
 		type layoutInfo struct {
@@ -727,7 +726,7 @@ func genFunc(
 		for _, field := range fields {
 			val := genRecordAccess(ctx, capturesArg, *captureBlock, field.name)
 			ctx.vars.Insert(field.name, varInfo{
-				uname:   field.name,
+				uname:   val.Name,
 				val:     val,
 				typ:     capturesType[field.name],
 				lastUse: opt.None[parse.ID](),
@@ -740,6 +739,8 @@ func genFunc(
 	}
 
 	ret := gen(ctx, expr.Body[len(expr.Body)-1])
+
+	genUnrefAndPopScope(ctx)
 
 	ctx.il.Ret(ret)
 	ctx.il.EndFunc()
@@ -1247,7 +1248,6 @@ func genCallClosure(ctx *ctx, closureComponents qbeil.Value, expr *parse.Form) q
 
 func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 	ctx.vars.NewScope()
-	defer genUnrefAndPopScope(ctx)
 
 	for _, ass := range expr.Assignments {
 		ctx.il.Comment("let assignment of %s = %s",
@@ -1257,23 +1257,27 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 
 		ctx.il.Comment("reassign to var name for garbage collection later")
 		varPtr := qbeil.Var{Global: false, Name: ctx.newTempName(ass.Var)}
-		varType := ctx.toILType(ctx.simplify(ass.Value.ID()))
-		varSizeBits, _ := ctx.sizeOf(varType)
+		varTy := ctx.simplify(ass.Value.ID())
+		varIlTy := ctx.toILType(varTy)
+		varSizeBits, _ := ctx.sizeOf(varIlTy)
 		ctx.il.Arithmetic(varPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{
 			Value: int64(bitsToBytesRoundedUp(varSizeBits)),
 		})
-		genCopyToPtr(ctx, varPtr, varType, rhsVal)
+		genCopyToPtr(ctx, varPtr, varIlTy, rhsVal)
 
 		ctx.vars.Insert(ass.Var, varInfo{
 			uname:   varPtr.Name,
-			val:     genReturnableValueFromPtr(ctx, varPtr, varType),
+			val:     genReturnableValueFromPtr(ctx, varPtr, varIlTy),
 			typ:     ctx.simplify(ass.Value.ID()),
 			lastUse: opt.None[parse.ID](),
 		})
 	}
 
 	ctx.il.Comment("let body")
-	return gen(ctx, expr.Body)
+	ret := gen(ctx, expr.Body)
+	genUnrefAndPopScope(ctx)
+
+	return ret
 }
 
 func genIf(ctx *ctx, expr *parse.IfExpr) qbeil.Value {
@@ -2154,7 +2158,7 @@ func genRecordLiteral(ctx *ctx, ilTy qbeil.StructType, heap bool, fields []recor
 	return rcdPtr
 }
 
-func genCopyToPtr(ctx *ctx, fieldPtr qbeil.Var, ilTy qbeil.Type, src qbeil.Value) {
+func genCopyToPtr(ctx *ctx, fieldPtr qbeil.Value, ilTy qbeil.Type, src qbeil.Value) {
 	fieldBits, _ := ctx.sizeOf(ilTy)
 	switch ilTy1 := ilTy.(type) {
 	case qbeil.BaseType:
@@ -2201,13 +2205,14 @@ func genReturnableValueFromPtr(ctx *ctx, ptr qbeil.Var, ilTy qbeil.Type) qbeil.V
 func genUnrefAndPopScope(ctx *ctx) {
 	// FIXME: take ownership into account
 	scope := ctx.vars.PopScope()
-	for _, v := range scope {
-		if val, ok := v.Value.Unwrap(); ok {
-			genUnref(ctx, qbeil.Var{
-				Global: false,
-				Name:   val.uname,
-			}, val.typ)
-		}
+	for val := range scope.Values() {
+		genUnref(ctx, qbeil.Var{
+			Global: false,
+			Name:   val.uname,
+		}, val.typ)
+	}
+}
+
 	}
 }
 
