@@ -2177,7 +2177,14 @@ func genReturnableValueFromPtr(ctx *ctx, ptr qbeil.Var, ilTy qbeil.Type) qbeil.V
 		ctx.il.Arithmetic(val.IL(), bt, "load"+ilTy.IL(), ptr)
 		return val
 	case qbeil.ExtraType:
-		panic("TODO: returnable ExtraType")
+		switch bt {
+		case qbeil.Byte, qbeil.HalfWord:
+			val := ctx.il.TempNamedVar(false, "temp")
+			ctx.il.Arithmetic(val.IL(), bt, "load"+ilTy.IL(), ptr)
+			return val
+		default:
+			panic(fmt.Sprintf("unexpected qbeil.ExtraType: %#v", bt))
+		}
 	case qbeil.StructType, qbeil.UnionType:
 		return ptr
 	default:
