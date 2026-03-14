@@ -21,8 +21,10 @@ type :TaggedUnion10_Payload = {{ l } { l } { l }}
 type :TaggedUnion10 = {l, :TaggedUnion10_Payload, }
 type :TaggedUnion12_Payload = {{ l } { l } { l }}
 type :TaggedUnion12 = {l, :TaggedUnion12_Payload, }
-type :TaggedUnion13_Payload = {{ l } { l } { l }}
-type :TaggedUnion13 = {l, :TaggedUnion13_Payload, }
+type :TaggedUnion14_Payload = {{ l } { l } { l }}
+type :TaggedUnion14 = {l, :TaggedUnion14_Payload, }
+type :TaggedUnion15_Payload = {{ l } { l } { l }}
+type :TaggedUnion15 = {l, :TaggedUnion15_Payload, }
 export function :Str $MainModule.toStr(:TaggedUnion1 %t) {
 @start
 	%case_expr_val_2 =l alloc4 16
@@ -133,13 +135,19 @@ export function w $main() {
 	storel 1, %record_literal_field_tag_54
 	%record_literal_field_payload_55 =l add %record_literal__53, 8
 	storel 42, %record_literal_field_payload_55
+# reassign to var name for garbage collection later
+	%t13 =l alloc4 16
+	blit %record_literal__53, %t13, 16
 # let assignment of add = ([adder t])
-	%_tmp_56 =:ClosureComponents call $MainModule.adder (:TaggedUnion13 %record_literal__53)
+	%_tmp_56 =:ClosureComponents call $MainModule.adder (:TaggedUnion15 %t13)
+# reassign to var name for garbage collection later
+	%add16 =l alloc4 24
+	blit %_tmp_56, %add16, 24
 # let body
-	%ptrTo_ClosureComponents.func14 =l add %_tmp_56, 0
-	%tmp_57 =l loadl %ptrTo_ClosureComponents.func14
-	%ptrTo_ClosureComponents.data15 =l add %_tmp_56, 8
-	%tmp_58 =l loadl %ptrTo_ClosureComponents.data15
+	%ptrTo_ClosureComponents.func17 =l add %add16, 0
+	%tmp_57 =l loadl %ptrTo_ClosureComponents.func17
+	%ptrTo_ClosureComponents.data18 =l add %add16, 8
+	%tmp_58 =l loadl %ptrTo_ClosureComponents.data18
 	%_tmp_59 =l call %tmp_57 (l 1, l %tmp_58)
 	ret %_tmp_59
 }

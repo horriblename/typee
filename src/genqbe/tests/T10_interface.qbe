@@ -105,8 +105,16 @@ export function w $main() {
 @start
 # let assignment of cat = ([Cat.new])
 	%_tmp_28 =l call $MainModule.Cat_new ()
+# reassign to var name for garbage collection later
+	%cat11 =l alloc4 8
+	storel %_tmp_28, %cat11
+	%tmp_29 =l loadl %cat11
 # let assignment of _ = ([doThing cat])
-	%_tmp_29 =l call $MainModule.doThing (l %_tmp_28)
+	%_tmp_30 =l call $MainModule.doThing (l %tmp_29)
+# reassign to var name for garbage collection later
+	%_12 =l alloc4 8
+	storel %_tmp_30, %_12
+	%tmp_31 =l loadl %_12
 # let body
 	ret 2
 }

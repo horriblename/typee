@@ -73,8 +73,12 @@ export function w $main() {
 @start
 # let assignment of bar = ([Bar.new])
 	%_tmp_18 =l call $MainModule.Bar_new ()
+# reassign to var name for garbage collection later
+	%bar1 =l alloc4 8
+	storel %_tmp_18, %bar1
+	%tmp_19 =l loadl %bar1
 # let body
-	%_tmp_19 =:Str call $MainModule.Foo_name (l %_tmp_18)
-	%_tmp_20 =l call $print (:Str %_tmp_19)
-	ret %_tmp_20
+	%_tmp_20 =:Str call $MainModule.Foo_name (l %tmp_19)
+	%_tmp_21 =l call $print (:Str %_tmp_20)
+	ret %_tmp_21
 }

@@ -10,7 +10,11 @@ export function w $main() {
 @start
 # let assignment of x = ([+ 2 3])
 	%_tmp_1 =l add 2, 3
+# reassign to var name for garbage collection later
+	%x1 =l alloc4 8
+	storel %_tmp_1, %x1
+	%tmp_2 =l loadl %x1
 # let body
-	call $exit (l %_tmp_1)
+	call $exit (l %tmp_2)
 	ret 0
 }

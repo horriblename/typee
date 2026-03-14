@@ -6,11 +6,12 @@ type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
 type :GInterfaceInfo = {l, l, l, }
 type :ClosureComponents = {l 3, }
 type :BoxPartial = {l, }
-type :Record_1 = {l, l, }
 type :Record_2 = {l, l, }
 type :Record_3 = {l, l, }
-type :Record_4 = {l, l, }
-type :Record_6 = {l, l, }
+type :Record_5 = {l, l, }
+type :Record_7 = {l, l, }
+type :Record_8 = {l, l, }
+type :Record_10 = {l, l, }
 export function w $main() {
 @start
 # let assignment of items = [1 2 3]
@@ -24,6 +25,9 @@ export function w $main() {
 	%list_item_ref_7 =l alloc4 8
 	storel 3, %list_item_ref_7
 	%list_ctor_6 =:List call $listAppend (:List %list_ctor_4, l 8, l %list_item_ref_7)
+# reassign to var name for garbage collection later
+	%items1 =l alloc4 16
+	blit %list_ctor_6, %items1, 16
 # let assignment of compounds = [{x:20, y:101}]
 	%list_ctor_8 =:List call $preallocateList (l 1, l 16)
 	%record_literal__10 =l alloc4 16
@@ -32,18 +36,24 @@ export function w $main() {
 	%record_literal_field_y_12 =l add %record_literal__10, 8
 	storel 101, %record_literal_field_y_12
 	%list_ctor_9 =:List call $listAppend (:List %list_ctor_8, l 16, l %record_literal__10)
+# reassign to var name for garbage collection later
+	%compounds4 =l alloc4 16
+	blit %list_ctor_9, %compounds4, 16
 # let assignment of c = ([at compounds 0])
 	%at_result_ptr_13 =l alloc4 16
-	call $listGet (:List %list_ctor_9, l 16, l 0, l %at_result_ptr_13)
+	call $listGet (:List %compounds4, l 16, l 0, l %at_result_ptr_13)
+# reassign to var name for garbage collection later
+	%c6 =l alloc4 16
+	blit %at_result_ptr_13, %c6, 16
 # let body
 	%at_result_ptr_14 =l alloc4 8
-	call $listGet (:List %list_ctor_6, l 8, l 1, l %at_result_ptr_14)
+	call $listGet (:List %items1, l 8, l 1, l %at_result_ptr_14)
 	%at_result_15 =l loadl %at_result_ptr_14
-	%ptrTo_Record_4.x5 =l add %at_result_ptr_13, 0
-	%tmp_16 =l loadl %ptrTo_Record_4.x5
+	%ptrTo_Record_8.x9 =l add %c6, 0
+	%tmp_16 =l loadl %ptrTo_Record_8.x9
 	%_tmp_17 =l add %at_result_15, %tmp_16
-	%ptrTo_Record_6.y7 =l add %at_result_ptr_13, 8
-	%tmp_18 =l loadl %ptrTo_Record_6.y7
+	%ptrTo_Record_10.y11 =l add %c6, 8
+	%tmp_18 =l loadl %ptrTo_Record_10.y11
 	%_tmp_19 =l add %_tmp_17, %tmp_18
 	ret %_tmp_19
 }

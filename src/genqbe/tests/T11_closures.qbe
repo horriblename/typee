@@ -6,7 +6,7 @@ type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
 type :GInterfaceInfo = {l, l, l, }
 type :ClosureComponents = {l 3, }
 type :BoxPartial = {l, }
-type :Record_4 = {l, }
+type :Record_5 = {l, }
 export function l $MainModule.foo(:ClosureComponents %addOne, l %x) {
 @start
 	%ptrTo_ClosureComponents.func1 =l add %addOne, 0
@@ -19,25 +19,29 @@ export function l $MainModule.foo(:ClosureComponents %addOne, l %x) {
 export function w $main() {
 @start
 # let assignment of ONE = 1
+# reassign to var name for garbage collection later
+	%ONE3 =l alloc4 8
+	storel 1, %ONE3
+	%tmp_4 =l loadl %ONE3
 # let body
-# capture data: (Ref {ONE: I64, }) => pointer to :Record_4
-	%record_literal__5 =l call $calloc (l 1, l 8)
-	%record_literal_field_ONE_6 =l add %record_literal__5, 0
-	storel 1, %record_literal_field_ONE_6
-	%record_literal__7 =l alloc4 24
-	%record_literal_field_func_8 =l add %record_literal__7, 0
-	storel $MainModule.main.fn3, %record_literal_field_func_8
-	%record_literal_field_data_9 =l add %record_literal__7, 8
-	storel %record_literal__5, %record_literal_field_data_9
-	%record_literal_field_cleanup_10 =l add %record_literal__7, 16
-	storel 0, %record_literal_field_cleanup_10
-	%_tmp_4 =l call $MainModule.foo (:ClosureComponents %record_literal__7, l 2)
-	ret %_tmp_4
+# capture data: (Ref {ONE: I64, }) => pointer to :Record_5
+	%record_literal__6 =l call $calloc (l 1, l 8)
+	%record_literal_field_ONE_7 =l add %record_literal__6, 0
+	storel %tmp_4, %record_literal_field_ONE_7
+	%record_literal__8 =l alloc4 24
+	%record_literal_field_func_9 =l add %record_literal__8, 0
+	storel $MainModule.main.fn4, %record_literal_field_func_9
+	%record_literal_field_data_10 =l add %record_literal__8, 8
+	storel %record_literal__6, %record_literal_field_data_10
+	%record_literal_field_cleanup_11 =l add %record_literal__8, 16
+	storel 0, %record_literal_field_cleanup_11
+	%_tmp_5 =l call $MainModule.foo (:ClosureComponents %record_literal__8, l 2)
+	ret %_tmp_5
 }
-export function l $MainModule.main.fn3(l %x, l %_captures) {
+export function l $MainModule.main.fn4(l %x, l %_captures) {
 @start
-	%ptrTo_Record_4.ONE5 =l add %_captures, 0
-	%tmp_11 =l loadl %ptrTo_Record_4.ONE5
-	%_tmp_12 =l add %x, %tmp_11
-	ret %_tmp_12
+	%ptrTo_Record_5.ONE6 =l add %_captures, 0
+	%tmp_12 =l loadl %ptrTo_Record_5.ONE6
+	%_tmp_13 =l add %x, %tmp_12
+	ret %_tmp_13
 }

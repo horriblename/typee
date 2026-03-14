@@ -9,12 +9,13 @@ type :BoxPartial = {l, }
 type :Record_1 = {:List, l, }
 type :Record_2 = {l, :Record_1, }
 type :Record_3 = {:List, l, }
-type :Record_4 = {:List, l, }
-type :Record_5 = {l, :Record_4, }
-type :Record_7 = {:List, l, }
+type :Record_5 = {:List, l, }
+type :Record_6 = {l, :Record_5, }
 type :Record_9 = {:List, l, }
-type :Record_10 = {l, :Record_9, }
+type :Record_10 = {:List, l, }
 type :Record_12 = {:List, l, }
+type :Record_13 = {l, :Record_12, }
+type :Record_15 = {:List, l, }
 export function w $main() {
 @start
 # let assignment of foo = {z:10, xy:{x:[1 2 3], y:true}}
@@ -38,19 +39,25 @@ export function w $main() {
 	storel 10, %record_literal_field_z_12
 	%record_literal_field_xy_13 =l add %record_literal__11, 8
 	blit %record_literal__8, %record_literal_field_xy_13, 24
+# reassign to var name for garbage collection later
+	%foo4 =l alloc4 32
+	blit %record_literal__11, %foo4, 32
 # let assignment of xy = foo.xy
-	%ptrTo_Record_5.xy6 =l add %record_literal__11, 8
+	%ptrTo_Record_6.xy7 =l add %foo4, 8
+# reassign to var name for garbage collection later
+	%xy8 =l alloc4 24
+	blit %ptrTo_Record_6.xy7, %xy8, 24
 # let body
 	%if_expr_val_17 =l alloc4 8
-	%ptrTo_Record_7.y8 =l add %ptrTo_Record_5.xy6, 16
-	%tmp_18 =l loadl %ptrTo_Record_7.y8
+	%ptrTo_Record_10.y11 =l add %xy8, 16
+	%tmp_18 =l loadl %ptrTo_Record_10.y11
 	jnz %tmp_18, @then_14, @else_15
 	@then_14
-	%ptrTo_Record_10.z11 =l add %record_literal__11, 0
-	%tmp_19 =l loadl %ptrTo_Record_10.z11
-	%ptrTo_Record_12.x13 =l add %ptrTo_Record_5.xy6, 0
+	%ptrTo_Record_13.z14 =l add %foo4, 0
+	%tmp_19 =l loadl %ptrTo_Record_13.z14
+	%ptrTo_Record_15.x16 =l add %xy8, 0
 	%at_result_ptr_20 =l alloc4 8
-	call $listGet (:List %ptrTo_Record_12.x13, l 8, l 2, l %at_result_ptr_20)
+	call $listGet (:List %ptrTo_Record_15.x16, l 8, l 2, l %at_result_ptr_20)
 	%at_result_21 =l loadl %at_result_ptr_20
 	%_tmp_22 =l add %tmp_19, %at_result_21
 	storel %_tmp_22, %if_expr_val_17
