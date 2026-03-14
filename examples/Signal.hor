@@ -25,4 +25,4 @@
 			null
 			GObject.ConnectFlags::Default)
 	]
-		(app#run (i64ToI32 0) (emptyList))))
+		(app#run (i64ToI32 0) null)))
