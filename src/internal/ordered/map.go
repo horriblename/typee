@@ -127,6 +127,17 @@ func (self Map[K, V]) All() iter.Seq2[K, V] {
 	}
 }
 
+func (self Map[K, V]) Values() iter.Seq[V] {
+	return func(yield func(V) bool) {
+		for _, k := range self.list {
+			v := assert.Get(self.mapping, k, errListItemNotInMapping, k)
+			if !yield(v) {
+				return
+			}
+		}
+	}
+}
+
 func (self Map[K, V]) Map(f func(V) V) Map[K, V] {
 	ret := NewMap[K, V]()
 	for k, v := range self.All() {
