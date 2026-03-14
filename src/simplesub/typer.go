@@ -662,7 +662,6 @@ func (self *Typer) TypeTerm(term parse.Expr) (a SimpleType, _ error) {
 	default:
 		panic(fmt.Sprintf("unexpected parse.Expr: %#v", expr))
 	}
-	panic(fmt.Sprintf("unhandled: TypeTerm(%s)", term.Pretty()))
 }
 
 func (self *Typer) externDef(e *parse.FuncDef) (SimpleType, error) {
@@ -1517,10 +1516,15 @@ func (self *symbols) lookupType(module can.ModuleName, name string) (TypeScheme,
 	return nil, fmt.Errorf("%w: %s", ErrUndefinedModule, module)
 }
 
-func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
+func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) (e error) {
 	trace("constrain %v <: %v", ty0, bound0)
 	indentLvl++
-	defer func() { indentLvl-- }()
+	defer func() {
+		indentLvl--
+		if e != nil {
+			trace("!error: %s", e)
+		}
+	}()
 
 	// TODO: simpler-sub used type equality I think?
 	if lhs, rhs, ok := matchPair[Primitive, Primitive](ty0, bound0); ok {
@@ -1588,8 +1592,8 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) error {
 	} else if lhs, rhs, ok := matchPair[SliceType, SliceType](ty0, bound0); ok {
 		return self.constrain(lhs.ElType, rhs.ElType)
 	} else if lhs, rhs, ok := matchPair[TaggedUnion, TaggedUnion](ty0, bound0); ok {
-		for tag, rvar := range rhs.Variants {
-			lvar, ok := lhs.Variants[tag]
+		for tag, lvar := range lhs.Variants {
+			rvar, ok := rhs.Variants[tag]
 			if !ok {
 				return fmt.Errorf("%w: %s", ErrTagMissing, tag)
 			}

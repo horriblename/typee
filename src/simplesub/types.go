@@ -396,13 +396,13 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 				rv, rok := rvar.Unwrap()
 
 				if lok && rok {
-					lub, err := self.lub(lv, rv)
+					glb, err := self.glb(lv, rv)
 					if err != nil {
 						return nil, fmt.Errorf("%w %s: %w",
 							ErrIncompatibleTag, tag, err)
 					}
 
-					inter[tag] = opt.Some(lub)
+					inter[tag] = opt.Some(glb)
 				} else if lok != rok {
 					return nil, fmt.Errorf(
 						"%w %s: one side has payload the other doesn't: %v and %v",
@@ -660,7 +660,7 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 
 		return nil, fmt.Errorf("%w: %s cannot be used as %s and vice versa", ErrIncompatibleTypes, rhs, lhs)
 	} else if lhs, rhs, ok := matchPair[TaggedUnion, TaggedUnion](lhs0, rhs0); ok {
-		// union of both variant sets. overlapping tags are glb'd
+		// union of both variant sets. overlapping tags are lub'd
 		union := map[string]opt.Option[SimpleType]{}
 		maps.Copy(union, lhs.Variants)
 		for tag, rvar := range rhs.Variants {
@@ -668,13 +668,13 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 				lv, lok := lvar.Unwrap()
 				rv, rok := rvar.Unwrap()
 				if lok && rok {
-					glb, err := self.glb(lv, rv)
+					lub, err := self.lub(lv, rv)
 					if err != nil {
 						return nil, fmt.Errorf("%w %s: %w",
 							ErrIncompatibleTag, tag, err)
 					}
 
-					union[tag] = opt.Some(glb)
+					union[tag] = opt.Some(lub)
 				} else if lok != rok {
 					return nil, fmt.Errorf(
 						"%w %s: one side has payload the other doesn't: %v and %v",
