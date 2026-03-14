@@ -1,11 +1,12 @@
 #include "std.c"
 #include <stdio.h>
+#include <string.h>
 
 #define TEST(msg, steps)                                                       \
   do {                                                                         \
     int _test_failed = 0;                                                      \
     fprintf(stderr, "=============\nRunning test: %s\n", (msg));               \
-    steps;                                                                     \
+    (steps);                                                                   \
     if (_test_failed) {                                                        \
       fprintf(stderr, "\x1b[31m FAIL \x1b[0m%s\n", (msg));                     \
     } else {                                                                   \
