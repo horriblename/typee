@@ -2199,7 +2199,7 @@ func genCopyToPtr(ctx *ctx, fieldPtr qbeil.Value, ilTy qbeil.Type, src qbeil.Val
 func genReturnableValueFromPtr(ctx *ctx, ptr qbeil.Var, ilTy qbeil.Type) qbeil.Var {
 	switch bt := ilTy.(type) {
 	case qbeil.BaseType:
-		val := ctx.il.TempNamedVar(false, "tmp")
+		val := ctx.il.TempNamedVar(false, "dataAt_"+ptr.Name)
 		ctx.il.Arithmetic(val.IL(), bt, "load"+ilTy.IL(), ptr)
 		return val
 	case qbeil.ExtraType:
