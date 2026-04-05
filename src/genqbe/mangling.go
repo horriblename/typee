@@ -63,3 +63,9 @@ func mangledClassIfaceInit(class typeName, iface typeName) string {
 		name:   "init",
 	})
 }
+
+// debugging function to mangle arbitrary string with spaces into a valid QBE
+// identifier
+func debugMangle(s string) string {
+	return strings.ReplaceAll(s, " ", "_")
+}
