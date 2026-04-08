@@ -1026,6 +1026,33 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 			panic(fmt.Sprintf("unknown IL type %v", ilTy))
 		}
 
+	case "retain":
+		assert.Eq(len(expr.Children), 2, `wrong arg count for "retain"`)
+
+		// TODO: actually increase ref count for other types
+		ty := ctx.simplify(expr.Children[1].ID())
+		val := gen(ctx, expr.Children[1])
+
+		// TODO: error when called on value types?
+		genRef(ctx, val, ty, "")
+
+		return val
+
+	case "own":
+		assert.Eq(len(expr.Children), 2, `wrong arg count for "own"`)
+
+		ty := ctx.simplify(expr.Children[1].ID())
+		ownTy, ok := ty.(*types.ExplicitOwnership)
+		if !ok {
+			panic(fmt.Sprintf("during codegen: `own` expects an Unowned type, got: %v", ty))
+		}
+
+		assert.Eq(ownTy.Kind, parse.Unowned,
+			"during codegen: `own` expects first argument to be an Unowned type, got: %s", ownTy.String())
+
+		// TODO: actually increase ref count
+		return gen(ctx, expr.Children[1])
+
 	case "toCClosure", "ptrToI64":
 		assert.Eq(len(expr.Children), 2, "BUG", fnName, "wrong arg count at code gen")
 		return gen(ctx, expr.Children[1])
