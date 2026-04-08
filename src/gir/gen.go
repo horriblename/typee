@@ -514,8 +514,9 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	// TODO: gi.TRANSFER_CONTAINER?
 
 	needsWrapUnowned := fi.CallerOwns() == gi.TRANSFER_NOTHING &&
-		fi.ReturnType().Tag() != gi.TYPE_TAG_VOID &&
-		!fi.ReturnType().IsPointer() && // <- TODO: is this needed
+		// ignore functions with no return value
+		!(fi.ReturnType().Tag() == gi.TYPE_TAG_VOID &&
+			!fi.ReturnType().IsPointer()) &&
 		!tagIsValueType(fi.ReturnType().Tag())
 
 	// call to extern function
