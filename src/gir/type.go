@@ -3,6 +3,7 @@ package gir
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"unsafe"
 
 	"github.com/linuxdeepin/go-gir/generator/gi"
@@ -48,7 +49,7 @@ func horType(ti *gi.TypeInfo, cfg typeConfig) string {
 		}
 		return horTypeForValueTypeTag(tag, cfg)
 	}
-	return cfg.flags.maybeWrapOwnership(horTypeForRefTypes(ti, cfg))
+	return horTypeForRefTypes(ti, cfg)
 }
 
 func horTypeForRefTypes(ti *gi.TypeInfo, cfg typeConfig) string {
@@ -57,14 +58,14 @@ func horTypeForRefTypes(ti *gi.TypeInfo, cfg typeConfig) string {
 	switch tag := ti.Tag(); tag {
 	case gi.TYPE_TAG_VOID:
 		if ti.IsPointer() {
-			out.WriteString("Opaque")
+			out.WriteString(cfg.flags.maybeWrapOwnership("Opaque"))
 			break
 		}
 		panic("Non-pointer void type is not supported")
 	case gi.TYPE_TAG_UTF8, gi.TYPE_TAG_FILENAME:
-		out.WriteString("Opaque")
+		out.WriteString(cfg.flags.maybeWrapOwnership("Opaque"))
 	case gi.TYPE_TAG_ARRAY:
-		out.WriteString("Opaque")
+		out.WriteString(cfg.flags.maybeWrapOwnership("Opaque"))
 		// size := ti.ArrayFixedSize()
 		// out.WriteString("[")
 		//
@@ -75,22 +76,22 @@ func horTypeForRefTypes(ti *gi.TypeInfo, cfg typeConfig) string {
 		// }
 		// out.WriteString("]")
 	case gi.TYPE_TAG_GLIST:
-		out.WriteString("Opaque")
+		out.WriteString(cfg.flags.maybeWrapOwnership("Opaque"))
 	case gi.TYPE_TAG_GSLIST:
-		out.WriteString("Opaque")
+		out.WriteString(cfg.flags.maybeWrapOwnership("Opaque"))
 	case gi.TYPE_TAG_GHASH:
 		// out.WriteString("map[")
 		// out.WriteString(horType(ti.ParamType(0), cfg.flags))
 		// out.WriteString("]")
 		// out.WriteString(horType(ti.ParamType(1), cfg.flags))
 		// panic("GHash not supported yet")
-		out.WriteString("TempGHash")
+		out.WriteString(cfg.flags.maybeWrapOwnership("TempGHash"))
 	case gi.TYPE_TAG_ERROR:
 		// TODO: should be a GLib.Error
 		if cfg.namespace == "GLib" {
-			out.WriteString("Error")
+			out.WriteString(cfg.flags.maybeWrapOwnership("Error"))
 		} else {
-			out.WriteString("GLib.Error")
+			out.WriteString(cfg.flags.maybeWrapOwnership("GLib.Error"))
 		}
 	case gi.TYPE_TAG_INTERFACE:
 		// TODO
@@ -205,10 +206,6 @@ func horTypeForValueTypeTag(tag gi.TypeTag, cfg typeConfig) string {
 }
 
 func horTypeForInterface(bi *gi.BaseInfo, cfg typeConfig) string {
-	var out bytes.Buffer
-	p := printerTo(&out)
-	ns := bi.Namespace()
-
 	if cfg.flags&typeListMember != 0 {
 		switch bi.Type() {
 		case gi.INFO_TYPE_OBJECT, gi.INFO_TYPE_INTERFACE:
@@ -220,6 +217,9 @@ func horTypeForInterface(bi *gi.BaseInfo, cfg typeConfig) string {
 
 	switch t := bi.Type(); t {
 	case gi.INFO_TYPE_OBJECT, gi.INFO_TYPE_INTERFACE:
+		var out bytes.Buffer
+		p := printerTo(&out)
+		ns := bi.Namespace()
 		if cfg.flags&(typeReturn|typeReceiver) != 0 && cfg.flags&typePointer != 0 {
 			// receivers and return values are actual types,
 			// and a pointer most likely
@@ -234,20 +234,27 @@ func horTypeForInterface(bi *gi.BaseInfo, cfg typeConfig) string {
 		// just use the original type name even with
 		// [typeExact] for readability
 		p(bi.Name())
+		return cfg.flags.maybeWrapOwnership(out.String())
 
 	case gi.INFO_TYPE_CALLBACK:
 		if cfg.flags&typeExact != 0 {
-			p("Opaque")
-			break
+			return "Opaque"
 		}
-		goto handle_default
-	case gi.INFO_TYPE_STRUCT:
-		goto handle_default
+	case gi.INFO_TYPE_ENUM, gi.INFO_TYPE_FLAGS:
+		return horTypeForBasicInterface(bi, cfg)
+	case gi.INFO_TYPE_STRUCT, gi.INFO_TYPE_UNION:
 	default:
-		goto handle_default
+		panic("horTypeForInterface: unexpected InfoType " + t.String())
 	}
-	return out.String()
-handle_default:
+
+	return cfg.flags.maybeWrapOwnership(horTypeForBasicInterface(bi, cfg))
+}
+
+func horTypeForBasicInterface(bi *gi.BaseInfo, cfg typeConfig) string {
+	out := strings.Builder{}
+	p := printerTo(&out)
+	ns := bi.Namespace()
+
 	if cfg.namespace != bi.Namespace() {
 		p("%s.", ns)
 	}
@@ -341,7 +348,10 @@ func (self typeFlags) maybeWrapOwnership(ty string) string {
 
 // Note that the [gi.TypeInfo] that wraps this tag may still be a pointer
 // ([gi.TypeInfo.IsPointer]).
-// Non-value tags may be [gi.TYPE_TAG_VOID] or boxed types
+// Non-value tags may be [gi.TYPE_TAG_VOID] or boxed types.
+//
+// Note that enum has [gi.TYPE_TAG_INTERFACE] tag and therefore is not a value
+// type. WE LOVE GOBJECT
 func tagIsValueType(tag gi.TypeTag) bool {
 	switch tag {
 	case gi.TYPE_TAG_VOID, gi.TYPE_TAG_UTF8, gi.TYPE_TAG_FILENAME,
