@@ -179,31 +179,16 @@ func TestTypeExpr(t *testing.T) {
 			},
 		},
 		{
-			desc: "case expression",
-			input: `
-				(fn [tu] (case tu [
-					('foo y) ('c (print (i64ToStr y)))
-					('bar y) ('a (+ y 1))
-					('baz s) ('c (print s))
-				]))
-			`,
-			err: nil,
-			typ: &types.Func{
-				Args: []types.Type{&types.TaggedUnion{
-					Name: "",
-					Variants: ordered.NewMap[string, opt.Option[types.Type]]().
-						With("bar", opt.Some[types.Type](&tI64)).
-						With("baz", opt.Some[types.Type](&types.String{})).
-						With("foo", opt.Some[types.Type](&tI64)),
-				}},
-				Ret: &types.TaggedUnion{
-					Name: "",
-					Variants: ordered.NewMap[string, opt.Option[types.Type]]().
-						With("a", opt.Some[types.Type](&tI64)).
-						With("c", opt.Some[types.Type](&types.Record{})),
-				},
-				Method: false,
-			},
+			desc:  "case expr",
+			input: "(case (if [false] ('a 12) ('b false)) [('a x) (+ x 1) ('b x) 0])",
+			err:   nil,
+			typ:   &tI64,
+		},
+		{
+			desc:  "case expr exhaustiveness is (technically) checked",
+			input: "(case (if [false] ('a 12) ('b false)) [('a x) (+ x 1)])",
+			err:   ErrTagMissing,
+			typ:   nil,
 		},
 	}
 	for _, tC := range testCases {
@@ -229,7 +214,7 @@ func TestTypeExpr(t *testing.T) {
 			typ := CoalesceType(tySimp)
 
 			t.Logf("coalesced type: %v\n", typ)
-			assert.NEq(tC.typ, nil, "bad test case")
+			assert.NEq(tC.typ, nil, "bad test case: err and typ are nil")
 			assert.True(types.StructuralEq(tC.typ, typ), "expected type", tC.typ, ", got:", typ)
 		})
 	}
@@ -1146,6 +1131,44 @@ func TestTypeProgram(t *testing.T) {
 				&types.Func{
 					Args:   []types.Type{},
 					Ret:    &types.Record{},
+					Method: false,
+				},
+			},
+		},
+		{
+			desc: "case expression",
+			input: `
+				(def f [tu] (case tu [
+					('foo y) ('c (print (i64ToStr y)))
+					('bar y) ('a (+ y 1))
+					('baz s) ('c (print s))
+				]))
+				(def main []
+					(let [
+						_ (f ('bar 23))
+					]
+						0))
+			`,
+			typ: []types.Type{
+				&types.Func{
+					Args: []types.Type{&types.TaggedUnion{
+						Name: "",
+						Variants: ordered.NewMap[string, opt.Option[types.Type]]().
+							With("bar", opt.Some[types.Type](&tI64)).
+							With("baz", opt.Some[types.Type](&types.String{})).
+							With("foo", opt.Some[types.Type](&tI64)),
+					}},
+					Ret: &types.TaggedUnion{
+						Name: "",
+						Variants: ordered.NewMap[string, opt.Option[types.Type]]().
+							With("a", opt.Some[types.Type](&tI64)).
+							With("c", opt.Some[types.Type](&types.Record{})),
+					},
+					Method: false,
+				},
+				&types.Func{
+					Args:   []types.Type{},
+					Ret:    &tI64,
 					Method: false,
 				},
 			},
