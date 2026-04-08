@@ -53,6 +53,16 @@ var ErrIncompatibleTypes = errors.New("incompatible types")
 var ErrIncompatibleTag = errors.New("incompatible tag")
 var ErrWrongTypeParamCount = errors.New("wrong type parameter count")
 
+// this translates to object transfers:
+// https://gi.readthedocs.io/en/latest/annotations/giannotations.html#transfer
+type OwnershipKind int
+
+const (
+	Unowned OwnershipKind = iota
+	Container
+	FullOwned
+)
+
 // TypeScheme is a type that potentially contains universally quantified type variables.
 // can be instantiated to a given level
 type TypeScheme interface {
@@ -941,6 +951,10 @@ type Int struct {
 }
 type Str struct{}
 type Ref struct{ Content SimpleType }
+type ExplicitOwnership struct {
+	Content SimpleType
+	Kind    OwnershipKind
+}
 type Union struct {
 	Name     string
 	Variants []ConcreteType
@@ -975,17 +989,23 @@ type Application struct {
 	Params []SimpleType
 }
 
-func (self Top) instantiate() SimpleType         { return self }
-func (self Bot) instantiate() SimpleType         { return self }
-func (self Func) instantiate() SimpleType        { return self }
-func (self Record) instantiate() SimpleType      { return self }
-func (self ObjectType) instantiate() SimpleType  { return self }
-func (self ArrayType) instantiate() SimpleType   { return self }
-func (self SliceType) instantiate() SimpleType   { return self }
-func (self Primitive) instantiate() SimpleType   { return self }
-func (self Int) instantiate() SimpleType         { return self }
-func (self Str) instantiate() SimpleType         { return self }
-func (self Ref) instantiate() SimpleType         { return self }
+func (self Top) instantiate() SimpleType        { return self }
+func (self Bot) instantiate() SimpleType        { return self }
+func (self Func) instantiate() SimpleType       { return self }
+func (self Record) instantiate() SimpleType     { return self }
+func (self ObjectType) instantiate() SimpleType { return self }
+func (self ArrayType) instantiate() SimpleType  { return self }
+func (self SliceType) instantiate() SimpleType  { return self }
+func (self Primitive) instantiate() SimpleType  { return self }
+func (self Int) instantiate() SimpleType        { return self }
+func (self Str) instantiate() SimpleType        { return self }
+func (self Ref) instantiate() SimpleType        { return self }
+func (self ExplicitOwnership) instantiate() SimpleType {
+	return ExplicitOwnership{
+		Content: self.Content.instantiate(),
+		Kind:    self.Kind,
+	}
+}
 func (self Union) instantiate() SimpleType       { return self }
 func (self Enum) instantiate() SimpleType        { return self }
 func (self TaggedUnion) instantiate() SimpleType { return self }
@@ -1023,6 +1043,9 @@ func (self Primitive) children() []SimpleType { return []SimpleType{} }
 func (self Int) children() []SimpleType       { return []SimpleType{} }
 func (self Str) children() []SimpleType       { return []SimpleType{} }
 func (self Ref) children() []SimpleType       { return []SimpleType{} }
+func (self ExplicitOwnership) children() []SimpleType {
+	return []SimpleType{self.Content}
+}
 func (self Union) children() []SimpleType {
 	return fun.Map(self.Variants, func(c ConcreteType) SimpleType { return c })
 }
@@ -1040,21 +1063,22 @@ func (self TaggedUnion) children() []SimpleType {
 // TODO: should probably at the very least return Application.Params
 func (self Application) children() []SimpleType { return []SimpleType{} }
 
-func (self Top) concrete()         {}
-func (self Bot) concrete()         {}
-func (self Func) concrete()        {}
-func (self Record) concrete()      {}
-func (self ObjectType) concrete()  {}
-func (self ArrayType) concrete()   {}
-func (self SliceType) concrete()   {}
-func (self Primitive) concrete()   {}
-func (self Int) concrete()         {}
-func (self Str) concrete()         {}
-func (self Ref) concrete()         {}
-func (self Union) concrete()       {}
-func (self Enum) concrete()        {}
-func (self TaggedUnion) concrete() {}
-func (self Application) concrete() {}
+func (self Top) concrete()               {}
+func (self Bot) concrete()               {}
+func (self Func) concrete()              {}
+func (self Record) concrete()            {}
+func (self ObjectType) concrete()        {}
+func (self ArrayType) concrete()         {}
+func (self SliceType) concrete()         {}
+func (self Primitive) concrete()         {}
+func (self Int) concrete()               {}
+func (self Str) concrete()               {}
+func (self Ref) concrete()               {}
+func (self ExplicitOwnership) concrete() {}
+func (self Union) concrete()             {}
+func (self Enum) concrete()              {}
+func (self TaggedUnion) concrete()       {}
+func (self Application) concrete()       {}
 
 func (self Top) String() string { return "⊤" }
 func (self Bot) String() string { return "⊥" }
@@ -1088,6 +1112,9 @@ func (self Int) String() string {
 }
 func (self Str) String() string { return "Str" }
 func (self Ref) String() string { return fmt.Sprintf("(Ref %s)", self.Content) }
+func (self ExplicitOwnership) String() string {
+	return fmt.Sprintf("(owned %s %s)", self.Kind, self.Content)
+}
 func (self Union) String() string {
 	variants := fun.Map(self.Variants, func(st ConcreteType) string {
 		return st.String()
@@ -1138,6 +1165,19 @@ func (self Application) String() string {
 	}
 	b.WriteString(")")
 	return b.String()
+}
+
+func (self OwnershipKind) String() string {
+	switch self {
+	case Container:
+		return "owned Container"
+	case FullOwned:
+		return "owned"
+	case Unowned:
+		return "unowned"
+	default:
+		panic(fmt.Sprintf("unexpected simplesub.OwnershipKind: %#v", self))
+	}
 }
 
 type deepPrintCtx struct {

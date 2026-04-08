@@ -130,6 +130,8 @@ func builtinTypes() map[string]TypeScheme {
 	}
 
 	ref_t := freshVar()
+	unowned_t := freshVar()
+	owned_t := freshVar()
 
 	_builtinTypes = map[string]TypeScheme{
 		"Int":    I64,
@@ -155,6 +157,34 @@ func builtinTypes() map[string]TypeScheme {
 			},
 			TypeParams: opt.Some([]uint{ref_t.Uid()}),
 		},
+		"Unowned": PolymorphicType{
+			Body:       ExplicitOwnership{unowned_t, Unowned},
+			TypeParams: opt.Some([]uint{unowned_t.Uid()}),
+		},
+		"Owned": PolymorphicType{
+			Body:       ExplicitOwnership{owned_t, FullOwned},
+			TypeParams: opt.Some([]uint{owned_t.Uid()}),
+		},
+		// TODO: Box should be a separate type from Ref,
+		// Ref are meant to be "unowned" pointers with no cleanup
+		// Box needs to be freed
+		// "Box": PolymorphicType{
+		// 	Body: Ref{
+		// 		Content: Record{
+		// 			Fields: []NamedType{
+		// 				{
+		// 					Name: "refCount",
+		// 					Type: I64,
+		// 				},
+		// 				{
+		// 					Name: "data",
+		// 					Type: box_t,
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// 	TypeParams: opt.Some([]uint{box_t.Uid()}),
+		// },
 		"Object": gobject,
 		"CClosure": Record{
 			Fields: []NamedType{
