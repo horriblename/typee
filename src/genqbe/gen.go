@@ -697,15 +697,6 @@ func genFunc(
 
 	assert.Ok(ctx.il.Func(linkage, retTyp, thisFunc.IL(), argTyps))
 
-	for i, argTyp := range realArgTys {
-		// TODO: I shouldn't need this - increasing ref count is the caller's
-		// job for owned args, and borrowed args don't need ref() at all,
-		// but currently genUnrefAndPopScope() does not have a concept of
-		// borrowed var
-		val := qbeil.Var{Global: false, Name: expr.Args[i]}
-		genRef(ctx, val, argTyp)
-	}
-
 	// re-expose captures as normal variables by emulating let bindings
 	// TODO: can we merge into gen(LetExpr) code?
 	if closure && captureBlock != nil {
@@ -749,10 +740,11 @@ func genFunc(
 
 	ret := gen(ctx, expr.Body[len(expr.Body)-1])
 
-	genUnrefAndPopScope(ctx)
-
 	ctx.il.Ret(ret)
 	ctx.il.EndFunc()
+	// NOTE: arguments are borrowed by default, and caller is responsible for
+	// increasing owned references.
+	ctx.vars.PopScope()
 	return thisFunc
 }
 
