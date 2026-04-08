@@ -1939,6 +1939,16 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 		return SliceType{substitute(t.ElType)}
 	case Ref:
 		return Ref{substitute(t.Content)}
+	case TaggedUnion:
+		return TaggedUnion{
+			Name: t.Name,
+			Variants: fun.MapMap(t.Variants, func(ty opt.Option[SimpleType]) opt.Option[SimpleType] {
+				if t, ok := ty.Unwrap(); ok {
+					return opt.Some(substitute(t))
+				}
+				return opt.None[SimpleType]()
+			}),
+		}
 	case Application:
 		return Application{
 			Module: t.Module,
