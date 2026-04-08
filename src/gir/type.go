@@ -35,11 +35,23 @@ func (self typeConfig) withFlag(flags typeFlags) typeConfig {
 	return self
 }
 
-func horType(ti *gi.TypeInfo, cfg typeConfig) string {
-	return cfg.flags.maybeWrapOwnership(horTypeInner(ti, cfg))
+func (self typeFlags) has(flags typeFlags) bool {
+	return self&flags != 0
 }
 
-func horTypeInner(ti *gi.TypeInfo, cfg typeConfig) string {
+func horType(ti *gi.TypeInfo, cfg typeConfig) string {
+	tag := ti.Tag()
+	if tagIsValueType(tag) {
+		// TODO
+		if ti.IsPointer() {
+			cfg.flags |= typePointer
+		}
+		return horTypeForValueTypeTag(tag, cfg)
+	}
+	return cfg.flags.maybeWrapOwnership(horTypeForRefTypes(ti, cfg))
+}
+
+func horTypeForRefTypes(ti *gi.TypeInfo, cfg typeConfig) string {
 	var out bytes.Buffer
 
 	switch tag := ti.Tag(); tag {
@@ -87,21 +99,22 @@ func horTypeInner(ti *gi.TypeInfo, cfg typeConfig) string {
 		}
 		out.WriteString(horTypeForInterface(ti.Interface(), cfg))
 	default:
-		// TODO
-		if ti.IsPointer() {
-			cfg.flags |= typePointer
-		}
-		out.WriteString(horTypeForTag(tag, cfg))
+		panic(fmt.Sprintf("horTypeForRefTypes called with a value type? %v", tag))
 	}
 	return out.String()
 }
 
 // For basic types (or their pointer form)
-func horTypeForTag(tag gi.TypeTag, cfg typeConfig) string {
+func horTypeForValueTypeTag(tag gi.TypeTag, cfg typeConfig) string {
 	var out bytes.Buffer
 	p := printerTo(&out)
 
-	if cfg.flags&typePointer != 0 {
+	if cfg.flags.has(typePointer) {
+		if cfg.flags.has(typeReturn) && cfg.flags.has(typeReturnUnowned) {
+			p("(Unowend ")
+		} else if cfg.flags.has(typeArgOwned) {
+			p("(Owned ")
+		}
 		p("(Ref ")
 	}
 
@@ -180,8 +193,12 @@ func horTypeForTag(tag gi.TypeTag, cfg typeConfig) string {
 		}
 	}
 
-	if cfg.flags&typePointer != 0 {
+	if cfg.flags.has(typePointer) {
 		p(")")
+		if cfg.flags.has(typeArgOwned) ||
+			cfg.flags.has(typeReturn) && cfg.flags.has(typeReturnUnowned) {
+			p(")")
+		}
 	}
 
 	return out.String()
@@ -320,6 +337,20 @@ func (self typeFlags) maybeWrapOwnership(ty string) string {
 		return "(Owned " + ty + ")"
 	}
 	return ty
+}
+
+// Note that the [gi.TypeInfo] that wraps this tag may still be a pointer
+// ([gi.TypeInfo.IsPointer]).
+// Non-value tags may be [gi.TYPE_TAG_VOID] or boxed types
+func tagIsValueType(tag gi.TypeTag) bool {
+	switch tag {
+	case gi.TYPE_TAG_VOID, gi.TYPE_TAG_UTF8, gi.TYPE_TAG_FILENAME,
+		gi.TYPE_TAG_ARRAY, gi.TYPE_TAG_GLIST, gi.TYPE_TAG_GSLIST,
+		gi.TYPE_TAG_GHASH, gi.TYPE_TAG_ERROR, gi.TYPE_TAG_INTERFACE:
+		return false
+	default:
+		return true
+	}
 }
 
 func typeSizeForInterface(bi *gi.BaseInfo, flags typeFlags) int {

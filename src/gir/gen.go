@@ -511,8 +511,19 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 			conversionArgs[i] = "(retain " + argName + ")"
 		}
 	}
+	// TODO: gi.TRANSFER_CONTAINER?
+
+	needsWrapUnowned := fi.CallerOwns() == gi.TRANSFER_NOTHING &&
+		fi.ReturnType().Tag() != gi.TYPE_TAG_VOID &&
+		!fi.ReturnType().IsPointer() && // <- TODO: is this needed
+		!tagIsValueType(fi.ReturnType().Tag())
+
 	// call to extern function
-	p("    ret (%s", fi.Symbol())
+	p("    ret ")
+	if needsWrapUnowned {
+		p("(own ")
+	}
+	p("(%s", fi.Symbol())
 
 	if needSelfArg {
 		if self.inStruct {
@@ -532,7 +543,11 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		}
 	}
 
-	p(")\n  ]\n    ")
+	p(")")
+	if needsWrapUnowned {
+		p(")")
+	}
+	p("\n  ]\n    ")
 
 	// wrapper return value
 
@@ -612,7 +627,13 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 				extern("%s) [", container.Name())
 			}
 		} else {
-			extern("%s) [", horType(fi.ReturnType(), typeConfig{typeNone, self.namespace}))
+			// TODO: TRANSFER_CONTAINER?
+			flag := typeReturn
+			if needsWrapUnowned {
+				flag |= typeReturnUnowned
+			}
+			typ := horType(fi.ReturnType(), typeConfig{flag, self.namespace})
+			extern("%s) [", typ)
 		}
 	}
 
