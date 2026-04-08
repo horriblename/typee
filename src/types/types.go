@@ -96,6 +96,10 @@ type Application struct {
 	Name   string
 	Params []Type
 }
+type ExplicitOwnership struct {
+	Content Type
+	Kind    parse.OwnershipKind
+}
 type Top struct{}
 type Join struct {
 	Lhs Type
@@ -106,45 +110,47 @@ type Inter struct {
 	Rhs Type
 }
 
-func (*String) type_()      {}
-func (*Int) type_()         {}
-func (*Float) type_()       {}
-func (*Bool) type_()        {}
-func (*Ref) type_()         {}
-func (*Record) type_()      {}
-func (*Union) type_()       {}
-func (*TaggedUnion) type_() {}
-func (*Enum) type_()        {}
-func (*Class) type_()       {}
-func (*Array) type_()       {}
-func (*Slice) type_()       {}
-func (*Func) type_()        {}
-func (*Generic) type_()     {}
-func (*TypeScheme) type_()  {}
-func (*Application) type_() {}
-func (*Top) type_()         {}
-func (*Join) type_()        {}
-func (*Inter) type_()       {}
+func (*String) type_()            {}
+func (*Int) type_()               {}
+func (*Float) type_()             {}
+func (*Bool) type_()              {}
+func (*Ref) type_()               {}
+func (*Record) type_()            {}
+func (*Union) type_()             {}
+func (*TaggedUnion) type_()       {}
+func (*Enum) type_()              {}
+func (*Class) type_()             {}
+func (*Array) type_()             {}
+func (*Slice) type_()             {}
+func (*Func) type_()              {}
+func (*Generic) type_()           {}
+func (*TypeScheme) type_()        {}
+func (*Application) type_()       {}
+func (*Top) type_()               {}
+func (*Join) type_()              {}
+func (*Inter) type_()             {}
+func (*ExplicitOwnership) type_() {}
 
-func (*String) Simple() bool      { return true }
-func (*Int) Simple() bool         { return true }
-func (*Float) Simple() bool       { return true }
-func (*Bool) Simple() bool        { return true }
-func (*Ref) Simple() bool         { return true }
-func (*Record) Simple() bool      { return false }
-func (*Union) Simple() bool       { return false }
-func (*TaggedUnion) Simple() bool { return false }
-func (*Enum) Simple() bool        { return false }
-func (*Class) Simple() bool       { return false }
-func (*Array) Simple() bool       { return false }
-func (*Slice) Simple() bool       { return false }
-func (*Func) Simple() bool        { return false }
-func (*Generic) Simple() bool     { return false }
-func (*TypeScheme) Simple() bool  { return false }
-func (*Application) Simple() bool { return false }
-func (*Top) Simple() bool         { return true }  // only used by biunification
-func (*Join) Simple() bool        { return false } // only used by biunification
-func (*Inter) Simple() bool       { return false } // only used by biunification
+func (*String) Simple() bool            { return true }
+func (*Int) Simple() bool               { return true }
+func (*Float) Simple() bool             { return true }
+func (*Bool) Simple() bool              { return true }
+func (*Ref) Simple() bool               { return true }
+func (*Record) Simple() bool            { return false }
+func (*Union) Simple() bool             { return false }
+func (*TaggedUnion) Simple() bool       { return false }
+func (*Enum) Simple() bool              { return false }
+func (*Class) Simple() bool             { return false }
+func (*Array) Simple() bool             { return false }
+func (*Slice) Simple() bool             { return false }
+func (*Func) Simple() bool              { return false }
+func (*Generic) Simple() bool           { return false }
+func (*TypeScheme) Simple() bool        { return false }
+func (*Application) Simple() bool       { return false }
+func (*Top) Simple() bool               { return true }  // only used by biunification
+func (*Join) Simple() bool              { return false } // only used by biunification
+func (*Inter) Simple() bool             { return false } // only used by biunification
+func (*ExplicitOwnership) Simple() bool { return false }
 
 func (*String) Eq(other Type) bool {
 	_, ok := other.(*String)
@@ -339,6 +345,10 @@ func (self *Inter) Eq(other Type) bool {
 	}
 	return self.Lhs.Eq(o.Lhs) && self.Rhs.Eq(o.Rhs)
 }
+func (self *ExplicitOwnership) Eq(other Type) bool {
+	o, ok := other.(*ExplicitOwnership)
+	return ok && self.Kind == o.Kind && self.Content.Eq(o.Content)
+}
 
 func (*String) String() string { return "String" }
 func (self *Int) String() string {
@@ -478,6 +488,9 @@ func (self *Application) String() string {
 func (self *Top) String() string   { return "⊤" }
 func (self *Join) String() string  { return fmt.Sprintf("(%s ∪ %s)", self.Lhs, self.Rhs) }
 func (self *Inter) String() string { return fmt.Sprintf("(%s ∩ %s)", self.Lhs, self.Rhs) }
+func (self *ExplicitOwnership) String() string {
+	return fmt.Sprintf("(%s %s)", self.Kind, self.Content)
+}
 
 type deepPrintCtx struct {
 	visited map[string]Type
@@ -863,6 +876,12 @@ func structuralEq(ctx structuralEqCtx, a, b Type) bool {
 			}
 		}
 		return true
+	case *ExplicitOwnership:
+		b, ok := b.(*ExplicitOwnership)
+		if !ok {
+			return false
+		}
+		return a.Kind == b.Kind && structuralEq(ctx, a.Content, b.Content)
 	}
 
 	panic(fmt.Sprintf("unexpected types.Type: %T", a))
@@ -948,6 +967,8 @@ func (ctx *PrettyCtx) String(typ Type) string {
 		}
 		b.WriteString("}")
 		return b.String()
+	case *ExplicitOwnership:
+		return t.String()
 	}
 
 	panic("unreachable")
