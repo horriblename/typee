@@ -511,13 +511,8 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 			conversionArgs[i] = "(retain " + argName + ")"
 		}
 	}
-	// TODO: gi.TRANSFER_CONTAINER?
 
-	needsWrapUnowned := fi.CallerOwns() == gi.TRANSFER_NOTHING &&
-		// ignore functions with no return value
-		!(fi.ReturnType().Tag() == gi.TYPE_TAG_VOID &&
-			!fi.ReturnType().IsPointer()) &&
-		!tagIsValueType(fi.ReturnType().Tag())
+	needsWrapUnowned := returnTypeNeedsWrapUnowned(fi)
 
 	// call to extern function
 	p("    ret ")
@@ -738,6 +733,28 @@ func (self *Generator) processObjectInfo(oi *gi.ObjectInfo) {
 		p(", ")
 	}
 	p("})\n")
+}
+
+func returnTypeNeedsWrapUnowned(fi *gi.FunctionInfo) bool {
+	retTy := fi.ReturnType()
+
+	// TODO: gi.TRANSFER_CONTAINER?
+	if fi.CallerOwns() != gi.TRANSFER_NOTHING ||
+		// ignore functions with no return value
+		(retTy.Tag() == gi.TYPE_TAG_VOID && !retTy.IsPointer()) ||
+		tagIsValueType(retTy.Tag()) {
+		return false
+	}
+
+	// edge cases not covered in [tagIsValueType] c:
+	if retTy.Tag() == gi.TYPE_TAG_INTERFACE {
+		ii := retTy.Interface()
+		return ii.Type() != gi.INFO_TYPE_ENUM &&
+			ii.Type() != gi.INFO_TYPE_FLAGS &&
+			!retTy.IsPointer()
+	}
+
+	return true
 }
 
 func printerTo(w io.Writer) func(format string, args ...any) {
