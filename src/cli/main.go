@@ -315,7 +315,9 @@ const flagAutoOut = "O"
 const helpAutoOut = `Infer output file name from input file name, or "out.hor"`
 const flagRecursive = "r"
 const flagRecursiveLong = "recursive"
-const helpRecursive = "Generate recursively to the target directory provided by -o (or current working directory)"
+const helpRecursive = `Generate recursively to the target directory provided by -o (or current working directory).
+-config is treated as a directory where the config file of each module is expected to be at <config>/<Module>/config.json.
+`
 
 func cmdGlueGir() error {
 	configFile := flag.String(flagGlueConfig, "config.json", helpGlueConfig)
@@ -323,8 +325,8 @@ func cmdGlueGir() error {
 	out := flag.String(flagOut, "", helpOut)
 	outLong := flag.String(flagOutLong, "", helpOut)
 	autoOut := flag.Bool(flagAutoOut, false, helpAutoOut)
-	recursive := flag.String(flagRecursive, "", helpRecursive)
-	recLong := flag.String(flagRecursiveLong, "", helpRecursive)
+	recursive := flag.Bool(flagRecursive, false, "Alias to -recursive")
+	recLong := flag.Bool(flagRecursiveLong, false, helpRecursive)
 	dbgConfig := flag.Bool(flagDbgPrintConfig, false, helpDbgPrintConfig)
 	flag.Parse()
 	prof := maybeProfileCpu()
@@ -343,11 +345,11 @@ func cmdGlueGir() error {
 	if *autoOut {
 		*out = inputMod + ".hor"
 	}
-	if *recLong != "" {
-		*recursive = *recLong
-	}
-
-	if *recursive == "" {
+	if *recursive || *recLong {
+		if err := gir.GenRecursively(inputMod, "", *configFile, *out); err != nil {
+			return err
+		}
+	} else {
 		var outFile *os.File = os.Stdout
 		if *out != "" {
 			var err error
@@ -379,10 +381,6 @@ func cmdGlueGir() error {
 
 		_, err = outFile.Write(o)
 		if err != nil {
-			return err
-		}
-	} else {
-		if err := gir.GenRecursively(inputMod, "", *configFile, *out); err != nil {
 			return err
 		}
 	}
