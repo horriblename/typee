@@ -52,16 +52,7 @@ var ErrInvalidCyclicConstraint = errors.New("invalid cyclic constraint")
 var ErrIncompatibleTypes = errors.New("incompatible types")
 var ErrIncompatibleTag = errors.New("incompatible tag")
 var ErrWrongTypeParamCount = errors.New("wrong type parameter count")
-
-// this translates to object transfers:
-// https://gi.readthedocs.io/en/latest/annotations/giannotations.html#transfer
-type OwnershipKind int
-
-const (
-	Unowned OwnershipKind = iota
-	Container
-	FullOwned
-)
+var ErrMismatchedOwnership = errors.New("mismatched ownership")
 
 // TypeScheme is a type that potentially contains universally quantified type variables.
 // can be instantiated to a given level
@@ -953,7 +944,7 @@ type Str struct{}
 type Ref struct{ Content SimpleType }
 type ExplicitOwnership struct {
 	Content SimpleType
-	Kind    OwnershipKind
+	Kind    parse.OwnershipKind
 }
 type Union struct {
 	Name     string
@@ -1113,7 +1104,7 @@ func (self Int) String() string {
 func (self Str) String() string { return "Str" }
 func (self Ref) String() string { return fmt.Sprintf("(Ref %s)", self.Content) }
 func (self ExplicitOwnership) String() string {
-	return fmt.Sprintf("(owned %s %s)", self.Kind, self.Content)
+	return fmt.Sprintf("(%s %s)", self.Kind, self.Content)
 }
 func (self Union) String() string {
 	variants := fun.Map(self.Variants, func(st ConcreteType) string {
@@ -1165,19 +1156,6 @@ func (self Application) String() string {
 	}
 	b.WriteString(")")
 	return b.String()
-}
-
-func (self OwnershipKind) String() string {
-	switch self {
-	case Container:
-		return "owned Container"
-	case FullOwned:
-		return "owned"
-	case Unowned:
-		return "unowned"
-	default:
-		panic(fmt.Sprintf("unexpected simplesub.OwnershipKind: %#v", self))
-	}
 }
 
 type deepPrintCtx struct {

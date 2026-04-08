@@ -20,8 +20,11 @@ func builtinVars() map[string]TypeScheme {
 	}
 	ptrCast_t := freshVar()
 	at_t := freshVar()
+	retain_t := freshVar()
+	own_t := freshVar()
 	ref_t := freshVar()
 	deref_t := freshVar()
+	len_t := freshVar()
 	listForEach_t := freshVar()
 
 	_builtinVars = map[string]TypeScheme{
@@ -56,6 +59,13 @@ func builtinVars() map[string]TypeScheme {
 
 		"stackAlloc": PolymorphicType{
 			Body: Func{Args: []SimpleType{}, Ret: Ref{freshVar()}},
+		},
+
+		"retain": PolymorphicType{
+			Body: Func{Args: []SimpleType{retain_t}, Ret: ExplicitOwnership{retain_t, parse.FullOwned}},
+		},
+		"own": PolymorphicType{
+			Body: Func{Args: []SimpleType{ExplicitOwnership{own_t, parse.Unowned}}, Ret: own_t},
 		},
 
 		"ref": PolymorphicType{
@@ -158,11 +168,11 @@ func builtinTypes() map[string]TypeScheme {
 			TypeParams: opt.Some([]uint{ref_t.Uid()}),
 		},
 		"Unowned": PolymorphicType{
-			Body:       ExplicitOwnership{unowned_t, Unowned},
+			Body:       ExplicitOwnership{unowned_t, parse.Unowned},
 			TypeParams: opt.Some([]uint{unowned_t.Uid()}),
 		},
 		"Owned": PolymorphicType{
-			Body:       ExplicitOwnership{owned_t, FullOwned},
+			Body:       ExplicitOwnership{owned_t, parse.FullOwned},
 			TypeParams: opt.Some([]uint{owned_t.Uid()}),
 		},
 		// TODO: Box should be a separate type from Ref,

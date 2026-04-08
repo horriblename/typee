@@ -33,9 +33,30 @@ func (self AccessLvl) String() string {
 	}
 }
 
+func (self OwnershipKind) String() string {
+	switch self {
+	case Container:
+		return "owned(Container)"
+	case FullOwned:
+		return "owned"
+	case Unowned:
+		return "unowned"
+	default:
+		panic(fmt.Sprintf("unexpected parse.OwnershipKind: %#v", self))
+	}
+}
+
 const (
 	Class ObjectKind = 0
 	Iface ObjectKind = 1
+)
+
+type OwnershipKind int
+
+const (
+	Unowned OwnershipKind = iota
+	Container
+	FullOwned
 )
 
 type Expr interface {
