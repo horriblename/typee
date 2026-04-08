@@ -123,6 +123,11 @@ func transformConcrete(st ConcreteType, pol bool, mapping map[*Variable]SimpleTy
 				return transform(param, pol, mapping, pos, neg)
 			}),
 		}
+	case ExplicitOwnership:
+		return ExplicitOwnership{
+			Content: transform(ty.Content, pol, mapping, pos, neg),
+			Kind:    ty.Kind,
+		}
 	case Primitive, Int, Str, Top, Bot, Union, Enum: // Union bans generics
 		return st
 	}
@@ -302,6 +307,11 @@ func coalesceTypeInner(st SimpleType, polarity bool) types.Type {
 			Params: fun.Map(ty.Params, func(param SimpleType) types.Type {
 				return coalesceTypeInner(param, polarity)
 			}),
+		}
+	case ExplicitOwnership:
+		return &types.ExplicitOwnership{
+			Content: coalesceTypeInner(ty.Content, polarity),
+			Kind:    0,
 		}
 
 	default:
