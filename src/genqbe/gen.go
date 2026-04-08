@@ -2365,6 +2365,9 @@ func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
 		ty, _ := ctx.taggedUnionToILType(t)
 		return ty
 
+	case *types.ExplicitOwnership:
+		return ctx.toILType(t.Content)
+
 	default:
 		panic("unimpl: conversion to QBE IL from type " + typ.String())
 	}
