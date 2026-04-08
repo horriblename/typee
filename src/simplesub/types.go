@@ -362,6 +362,17 @@ func (self *symbols) glbConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		return lhs, nil
 	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
 		return Str{}, nil
+	} else if lhs, rhs, ok := matchPair[ExplicitOwnership, ExplicitOwnership](lhs0, rhs0); ok {
+		if lhs.Kind != rhs.Kind {
+			return nil, fmt.Errorf("%w: %s and %s", ErrMismatchedOwnership, lhs.Kind, rhs.Kind)
+		}
+
+		content, err := self.glb(lhs.Content, rhs.Content)
+		if err != nil {
+			return nil, err
+		}
+
+		return ExplicitOwnership{content, lhs.Kind}, nil
 	} else if lhs, rhs, ok := matchPair[Ref, Ref](lhs0, rhs0); ok {
 		content, err := self.glb(lhs.Content, rhs.Content)
 		if err != nil {
@@ -731,6 +742,17 @@ func (self *symbols) lubConcrete(lhs0 ConcreteType, rhs0 ConcreteType) (Concrete
 		return lhs, nil
 	} else if _, _, ok := matchPair[Str, Str](lhs0, rhs0); ok {
 		return Str{}, nil
+	} else if lhs, rhs, ok := matchPair[ExplicitOwnership, ExplicitOwnership](lhs0, rhs0); ok {
+		if lhs.Kind != rhs.Kind {
+			return nil, fmt.Errorf("%w: %s and %s", ErrMismatchedOwnership, lhs.Kind, rhs.Kind)
+		}
+
+		content, err := self.lub(lhs, rhs)
+		if err != nil {
+			return nil, err
+		}
+
+		return ExplicitOwnership{content, lhs.Kind}, nil
 	} else if lhs, rhs, ok := matchPair[Ref, Ref](lhs0, rhs0); ok {
 		content, err := self.lub(lhs.Content, rhs.Content)
 		if err != nil {

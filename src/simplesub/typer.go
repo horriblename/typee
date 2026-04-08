@@ -1571,6 +1571,11 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) (e error) {
 	} else if _, _, ok := matchPair[Enum, Int](ty0, bound0); ok {
 		// TODO: why did I allow this??
 		return nil
+	} else if lhs, rhs, ok := matchPair[ExplicitOwnership, ExplicitOwnership](ty0, bound0); ok {
+		if lhs.Kind != rhs.Kind {
+			return fmt.Errorf("%w: %s and %s", ErrMismatchedOwnership, lhs.Kind, rhs.Kind)
+		}
+		return nil
 	} else if lhs, rhs, ok := matchPair[Ref, Ref](ty0, bound0); ok {
 		return self.constrain(lhs.Content, rhs.Content)
 	} else if _, rhs, ok := matchPair[Ref, Primitive](ty0, bound0); ok {
@@ -1956,6 +1961,11 @@ func substituteVarsInConcrete(ty ConcreteType, substitute func(SimpleType) Simpl
 			Params: fun.Map(t.Params, func(param SimpleType) SimpleType {
 				return substitute(param)
 			}),
+		}
+	case ExplicitOwnership:
+		return ExplicitOwnership{
+			Content: substitute(t.Content),
+			Kind:    t.Kind,
 		}
 	case Primitive, Bot, Str, Top, Union, Enum: // terminals and Union, because generics are banned in Union
 	default:
