@@ -1374,6 +1374,8 @@ func concreteEq(lhs, rhs ConcreteType) bool {
 		return left.Name != right.Name
 	} else if left, right, ok := matchPair[Enum, Enum](lhs, rhs); ok {
 		return left.Name != right.Name
+	} else if left, right, ok := matchPair[ExplicitOwnership, ExplicitOwnership](lhs, rhs); ok {
+		return left.Kind == right.Kind && concreteEq_(left.Content, right.Content)
 	} else if left, right, ok := matchPair[TaggedUnion, TaggedUnion](lhs, rhs); ok {
 		if len(left.Variants) != len(right.Variants) {
 			return false
