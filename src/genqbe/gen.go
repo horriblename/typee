@@ -1269,7 +1269,7 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 		})
 		genCopyToPtr(ctx, varPtr, varIlTy, rhsVal)
 
-		genRef(ctx, rhsVal, varTy)
+		genRef(ctx, rhsVal, varTy, "let_"+ass.Var)
 		ctx.vars.Insert(ass.Var, varInfo{
 			uname:   varPtr.Name,
 			val:     genReturnableValueFromPtr(ctx, varPtr, varIlTy),
@@ -1280,7 +1280,7 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 
 	ctx.il.Comment("let body")
 	ret := gen(ctx, expr.Body)
-	genUnrefAndPopScope(ctx)
+	genUnrefAndPopScope(ctx, "let")
 
 	return ret
 }
@@ -1364,7 +1364,7 @@ func genCaseExpr(ctx *ctx, e *parse.CaseExpr) qbeil.Value {
 		ctx.il.Arithmetic(payloadPtr.IL(), ctx.ptrType, "add",
 			match, qbeil.IntLiteral{Value: ptrSize})
 		payload := genReturnableValueFromPtr(ctx, payloadPtr, payloadIlTy)
-		genRef(ctx, payload, payloadTy)
+		genRef(ctx, payload, payloadTy, "case")
 		ctx.vars.Insert(branch.Pattern.Pattern.Name, varInfo{
 			uname:   payloadPtr.Name,
 			val:     payload,
@@ -1374,7 +1374,7 @@ func genCaseExpr(ctx *ctx, e *parse.CaseExpr) qbeil.Value {
 
 		val := gen(ctx, branch.Body)
 		genCopyToPtr(ctx, retPtr, retType, val)
-		genUnrefAndPopScope(ctx)
+		genUnrefAndPopScope(ctx, "case")
 		ctx.il.Jump(endLabel)
 
 		ctx.il.Label(matchFailLabel.Name)
@@ -2210,20 +2210,28 @@ func genReturnableValueFromPtr(ctx *ctx, ptr qbeil.Var, ilTy qbeil.Type) qbeil.V
 	}
 }
 
-func genUnrefAndPopScope(ctx *ctx) {
+func genUnrefAndPopScope(ctx *ctx, comment string) {
 	// FIXME: take ownership into account
 	scope := ctx.vars.PopScope()
 	for val := range scope.Values() {
 		genUnref(ctx, qbeil.Var{
 			Global: false,
 			Name:   val.uname,
-		}, val.typ)
+		}, val.typ, fmt.Sprintf("%s.%s_%s", ctx.module, comment, val.uname))
 	}
 }
 
-func genRef(ctx *ctx, v qbeil.Value, ty types.Type) {
+func genRef(ctx *ctx, v qbeil.Value, ty types.Type, comment string) {
 	switch ty.(type) {
 	case *types.Class:
+		if comment != "" {
+			ctx.il.Comment("%s", comment)
+			// commentVar := qbeil.Var{Global: true, Name: debugMangle(comment)}
+			// ctx.statics[commentVar] = fmt.Sprintf(`{ b "%s\n", b 0 }`, "ref: "+comment)
+			// ctx.il.Call(nil, nil, qbeil.Var{Global: true, Name: "printf"}, []qbeil.ABITypedValue{
+			// 	{Type: ctx.ptrType, Value: commentVar},
+			// })
+		}
 		ref := qbeil.Var{Global: true, Name: "g_object_ref"}
 		ctx.il.Call(nil, nil, ref, []qbeil.ABITypedValue{
 			{Type: ctx.ptrType, Value: v},
@@ -2232,16 +2240,20 @@ func genRef(ctx *ctx, v qbeil.Value, ty types.Type) {
 	}
 }
 
-func genUnref(ctx *ctx, v qbeil.Var, ty types.Type) {
+func genUnref(ctx *ctx, v qbeil.Var, ty types.Type, comment string) {
 	ty = ctx.resolveTypeApplications(ty)
 	switch ty.(type) {
 	case *types.Class:
-		unref := qbeil.Var{
-			Global: true,
-			Name:   "g_object_unref",
+		if comment != "" {
+			ctx.il.Comment("%s", comment)
+			// commentVar := qbeil.Var{Global: true, Name: debugMangle(comment)}
+			// ctx.statics[commentVar] = fmt.Sprintf(`{ b "%s", b 0 }`, comment)
 		}
+
+		unref := qbeil.Var{Global: true, Name: "g_object_unref"}
 		ctx.il.Call(nil, nil, unref, []qbeil.ABITypedValue{
 			{Type: ctx.ptrType, Value: v},
+			// {Type: ctx.ptrType, Value: commentVar},
 		})
 	default:
 	}
