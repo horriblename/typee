@@ -14,6 +14,8 @@ const (
 	typeNone    typeFlags = 0
 	typePointer typeFlags = 1 << iota
 	typeReturn
+	typeReturnUnowned
+	typeArgOwned
 	typeListMember
 	typeReceiver
 
@@ -34,6 +36,10 @@ func (self typeConfig) withFlag(flags typeFlags) typeConfig {
 }
 
 func horType(ti *gi.TypeInfo, cfg typeConfig) string {
+	return cfg.flags.maybeWrapOwnership(horTypeInner(ti, cfg))
+}
+
+func horTypeInner(ti *gi.TypeInfo, cfg typeConfig) string {
 	var out bytes.Buffer
 
 	switch tag := ti.Tag(); tag {
@@ -90,6 +96,7 @@ func horType(ti *gi.TypeInfo, cfg typeConfig) string {
 	return out.String()
 }
 
+// For basic types (or their pointer form)
 func horTypeForTag(tag gi.TypeTag, cfg typeConfig) string {
 	var out bytes.Buffer
 	p := printerTo(&out)
@@ -302,6 +309,17 @@ func typeSizeForTag(tag gi.TypeTag, flags typeFlags) int {
 		return 4
 	}
 	panic("unreachable: " + tag.String())
+}
+
+func (self typeFlags) maybeWrapOwnership(ty string) string {
+	if self&typeReturn != 0 {
+		if self&typeReturnUnowned != 0 {
+			return "(Unowned " + ty + ")"
+		}
+	} else if self&typeArgOwned != 0 {
+		return "(Owned " + ty + ")"
+	}
+	return ty
 }
 
 func typeSizeForInterface(bi *gi.BaseInfo, flags typeFlags) int {

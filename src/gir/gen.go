@@ -486,18 +486,18 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 	conversionArgs := map[int]string{}
 	p("(let [\n")
 	for i, arg := range fb.orig_args {
+		argName := sanitize(snake_case_to_camelCase(arg.Name()))
 		if arg.Type().Tag() == gi.TYPE_TAG_INTERFACE && arg.Type().Interface().Type() == gi.INFO_TYPE_CALLBACK {
 			closure := arg.Closure()
 			destroy := arg.Destroy()
-			name := sanitize(snake_case_to_camelCase(arg.Name()))
-			cclosureName := name + "_closure"
+			cclosureName := argName + "_closure"
 			if _, ok := conversionArgs[i]; ok {
 				// cleanup functions also (sometimes?) count as calllbacks,
 				// we skip those or it will override the actual cleanup function
 				continue
 			}
 
-			p("    %s (toCClosure %s)\n", cclosureName, name)
+			p("    %s (toCClosure %s)\n", cclosureName, argName)
 			conversionArgs[i] = cclosureName + ".func"
 			if closure != -1 {
 				conversionArgs[closure] = cclosureName + ".data"
@@ -507,6 +507,8 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 			}
 		} else if arg.Direction() == gi.DIRECTION_OUT || arg.Direction() == gi.DIRECTION_INOUT {
 			p("    %s (stackAlloc)\n", sanitize(snake_case_to_camelCase(arg.Name())))
+		} else if arg.OwnershipTransfer() == gi.TRANSFER_CONTAINER || arg.OwnershipTransfer() == gi.TRANSFER_EVERYTHING {
+			conversionArgs[i] = "(retain " + argName + ")"
 		}
 	}
 	// call to extern function
@@ -586,9 +588,16 @@ func (self *Generator) processFunctionInfo(fi *gi.FunctionInfo) {
 		if arg.Direction() == gi.DIRECTION_OUT || arg.Direction() == gi.DIRECTION_INOUT {
 			// note: wrap Ref outside of horType to allow potential (Ref Opaque), and
 			// maybe (Ref (Ref _)) types
+			// TODO: handle ownership transfer?
 			extern("(Ref %s) ", horType(arg.Type(), typeConfig{typeNone, self.namespace}))
 		} else {
-			extern("%s ", horType(arg.Type(), typeConfig{typeExact, self.namespace}))
+			flag := typeExact
+			if arg.OwnershipTransfer() == gi.TRANSFER_CONTAINER || arg.OwnershipTransfer() == gi.TRANSFER_EVERYTHING {
+				// TODO: handle container vs all?
+				flag |= typeArgOwned
+			}
+
+			extern("%s ", horType(arg.Type(), typeConfig{flag, self.namespace}))
 		}
 	}
 	if fi.ReturnType().Tag() == gi.TYPE_TAG_VOID && !fi.ReturnType().IsPointer() {
