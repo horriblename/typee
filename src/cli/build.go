@@ -39,6 +39,7 @@ type buildParams struct {
 	outFile        string
 	assemblerFlags []string
 	linkerFlags    []string
+	printAst       bool
 	printTypes     bool
 	printTypedTree bool
 	traceTyper     bool
@@ -83,6 +84,12 @@ func buildProgram(params buildParams) error {
 	if err != nil {
 		errorf("could not parse source: %s", err)
 		os.Exit(1)
+	}
+
+	if params.printAst {
+		for _, expr := range ast {
+			errorf("%s", expr)
+		}
 	}
 
 	modName := can.ModuleName(mainModule)

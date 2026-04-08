@@ -124,6 +124,10 @@ const flagOutLong = "out"
 const defaultOut = "a.out"
 const helpOut = "Output file name"
 
+const flagPrintAst = "print-ast"
+const defaultPrintAst = false
+const helpPrintAst = "Print the ID-annotated AST"
+
 const flagPrintTypes = "print-types"
 const defaultPrintTypes = false
 const helpPrintTypes = "Print top-level type info to stdout"
@@ -133,6 +137,7 @@ const helpPrintTypedTree = "Print typed-annotated AST"
 
 func cmdCheck() error {
 	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
+	printAst := flag.Bool(flagPrintAst, defaultPrintAst, helpPrintAst)
 	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
 	printTypedTree := flag.Bool(flagPrintTypedTree, false, helpPrintTypedTree)
 	flag.Parse()
@@ -147,6 +152,7 @@ func cmdCheck() error {
 		targetStage:    check,
 		inFile:         flag.Arg(0),
 		outFile:        "",
+		printAst:       *printAst,
 		printTypes:     *printTypes,
 		printTypedTree: *printTypedTree,
 	}
@@ -178,6 +184,7 @@ func cmdBuild() error {
 	assemblerFlags := flag.String(flagAssemblerFlags, "", helpAssemblerFlags)
 	linkerFlags := flag.String(flagLinkerFlags, "", helpLinkerFlags)
 	logLevel := flag.Int(flagLogLevel, int(slog.LevelInfo.Level()), helpLogLevel)
+	printAst := flag.Bool(flagPrintAst, defaultPrintAst, helpPrintAst)
 	printTypes := flag.Bool(flagPrintTypes, defaultPrintTypes, helpPrintTypes)
 	printTypedTree := flag.Bool(flagPrintTypedTree, false, helpPrintTypedTree)
 	traceTyper := flag.Bool(flagTraceTyper, false, helpTraceTyper)
@@ -200,6 +207,7 @@ func cmdBuild() error {
 		targetStage:    build,
 		inFile:         flag.Arg(0),
 		outFile:        *outPath,
+		printAst:       *printAst,
 		printTypes:     *printTypes,
 		printTypedTree: *printTypedTree,
 		assemblerFlags: asmFlags,
