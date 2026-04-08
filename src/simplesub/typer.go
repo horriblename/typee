@@ -1575,7 +1575,7 @@ func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) (e error) {
 		if lhs.Kind != rhs.Kind {
 			return fmt.Errorf("%w: %s and %s", ErrMismatchedOwnership, lhs.Kind, rhs.Kind)
 		}
-		return nil
+		return self.constrain(lhs.Content, rhs.Content)
 	} else if lhs, rhs, ok := matchPair[Ref, Ref](ty0, bound0); ok {
 		return self.constrain(lhs.Content, rhs.Content)
 	} else if _, rhs, ok := matchPair[Ref, Primitive](ty0, bound0); ok {
