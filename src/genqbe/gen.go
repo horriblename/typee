@@ -629,6 +629,8 @@ func genFunc(
 	captureBlock *qbeil.StructType, // only used for closures. May be nil if there's no capture data
 	capturesType map[string]types.Type, // only used for closures
 ) (val qbeil.Value) {
+	// TODO: I should just set funcInProcess here directly
+	// assert.Neq(ctx.funcInProcess, "", "BUG codegen: genFunc called without funcInProcess")
 	defer func() {
 		if e := recover(); e != nil {
 			if class != "" {

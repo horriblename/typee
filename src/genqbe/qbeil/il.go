@@ -95,6 +95,8 @@ func (b *Builder) Ret(maybeVal Value) {
 		b.indented(fmt.Appendf(nil, "ret %s\n", maybeVal.IL()))
 	}
 }
+
+// TODO: ret should be ABIType
 func (b *Builder) Arithmetic(target string, ret Type, op string, args ...Value) {
 	retStr := ""
 	if ret != nil {
