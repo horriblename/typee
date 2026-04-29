@@ -114,6 +114,13 @@ func builtinVars() map[string]TypeScheme {
 				Method: false,
 			},
 		},
+		"len": PolymorphicType{
+			Body: Func{
+				Args:   []SimpleType{SliceType{ElType: len_t}},
+				Ret:    I64,
+				Method: false,
+			},
+		},
 		"ptrToI64": PolymorphicType{
 			Body: Func{Args: []SimpleType{Primitive{PrimitiveOpaque}}, Ret: I64},
 		},
