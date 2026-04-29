@@ -38,6 +38,17 @@
     _test_failed = 1;                                                          \
   }
 
+static int saidHi = 0;
+void sayHi(void *data) {
+  printf("hi %s\n", (char *)data);
+  saidHi = 1;
+}
+typedef void F0(void *data);
+void callClosure(void *c, void *data) {
+  Closure *closure = c;
+  ((F0 *)closure->func)(closure->data);
+}
+
 int main() {
   TEST("list append: empty buffer", {
     List l = newList();
@@ -110,5 +121,26 @@ int main() {
 
     CHECK_EQ(result0, item0);
     CHECK_EQ(result1, item1);
+  })
+
+  TEST("list foreach: call closures", {
+    List l = newList();
+    Closure item0;
+    item0.func = sayHi;
+    item0.data = "John";
+    item0.cleanup = NULL;
+    l = listAppend(l, sizeof(Closure), &item0);
+
+    Closure caller = {0};
+    caller.func = callClosure;
+    CHECK_EQ(saidHi, 0);
+    listForEach(l, sizeof(Closure), caller);
+    CHECK_EQ(saidHi, 1);
+  })
+
+  TEST("i64ToStr", {
+    Str s = i64ToStr(12345);
+    CHECK_EQ(s.size, 5);
+    CHECK_EQ(strncmp(s.data, "12345", s.size), 0);
   })
 }
