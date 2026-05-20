@@ -1,0 +1,121 @@
+type :Str = {l, l, }
+type :List = {l, l, }
+type :GObject = {l, l, l, }
+type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
+type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
+type :GInterfaceInfo = {l, l, l, }
+type :ClosureComponents = {l 3, }
+type :BoxPartial = {l, }
+type :Foo = {:GObject, l, }
+type :MainModule.FooClass = {:GObjectClass, l, l, }
+type :FooPrivate = {}
+type :Bar = {:Foo, l, }
+type :MainModule.BarClass = {:MainModule.FooClass, l, l, }
+type :BarPrivate = {}
+type :Baz = {:Bar, l, }
+type :MainModule.BazClass = {:MainModule.BarClass, l, l, }
+type :BazPrivate = {}
+export function l $MainModule.Foo_val(l %self) {
+@start
+	ret 4
+}
+data $MainModule.Foo_class__name = {b "Foo", b 0}
+data $MainModule.Foo___type__id____once = {l 0}
+data $MainModule.Foo_g__define__type__info = {h 152, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 32, h 0, l 0, l 0, }
+export function l $MainModule.Foo_get__type() {
+@start
+	%_tmp_2 =l call $g_once_init_enter (l $MainModule.Foo___type__id____once)
+	jnz %_tmp_2, @then_3, @else_4
+@then_3
+	%_tmp_1 =l call $g_type_register_static (l 80, l $MainModule.Foo_class__name, l $MainModule.Foo_g__define__type__info, l 0)
+	call $g_once_init_leave (l $MainModule.Foo___type__id____once, l %_tmp_1)
+@else_4
+	%gtype_val_5 =l loadl $MainModule.Foo___type__id____once
+	ret %gtype_val_5
+}
+export function l $MainModule.Foo_construct(l %object_type) {
+@start
+	%_tmp_6 =l call $g_object_new (l %object_type, l 0)
+	ret %_tmp_6
+}
+export function l $MainModule.Foo_new() {
+@start
+	%_tmp_7 =l call $MainModule.Foo_get__type ()
+	%_tmp_8 =l call $MainModule.Foo_construct (l %_tmp_7)
+	ret %_tmp_8
+}
+export function l $MainModule.Bar_increment(l %self) {
+@start
+	%_tmp_9 =l call $MainModule.Foo_val (l %self)
+	%_tmp_10 =l add 1, %_tmp_9
+	ret %_tmp_10
+}
+data $MainModule.Bar_class__name = {b "Bar", b 0}
+data $MainModule.Bar___type__id____once = {l 0}
+data $MainModule.Bar_g__define__type__info = {h 168, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 40, h 0, l 0, l 0, }
+export function l $MainModule.Bar_get__type() {
+@start
+	%_tmp_12 =l call $g_once_init_enter (l $MainModule.Bar___type__id____once)
+	jnz %_tmp_12, @then_13, @else_14
+@then_13
+	%_tmp_11 =l call $g_type_register_static (l 80, l $MainModule.Bar_class__name, l $MainModule.Bar_g__define__type__info, l 0)
+	call $g_once_init_leave (l $MainModule.Bar___type__id____once, l %_tmp_11)
+@else_14
+	%gtype_val_15 =l loadl $MainModule.Bar___type__id____once
+	ret %gtype_val_15
+}
+export function l $MainModule.Bar_construct(l %object_type) {
+@start
+	%_tmp_16 =l call $MainModule.Foo_construct (l %object_type)
+	ret %_tmp_16
+}
+export function l $MainModule.Bar_new() {
+@start
+	%_tmp_17 =l call $MainModule.Bar_get__type ()
+	%_tmp_18 =l call $MainModule.Bar_construct (l %_tmp_17)
+	ret %_tmp_18
+}
+export function l $MainModule.Baz_decrementBy(l %self, l %x) {
+@start
+	%_tmp_19 =l call $MainModule.Foo_val (l %self)
+	%_tmp_20 =l sub %_tmp_19, %x
+	ret %_tmp_20
+}
+data $MainModule.Baz_class__name = {b "Baz", b 0}
+data $MainModule.Baz___type__id____once = {l 0}
+data $MainModule.Baz_g__define__type__info = {h 184, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 48, h 0, l 0, l 0, }
+export function l $MainModule.Baz_get__type() {
+@start
+	%_tmp_22 =l call $g_once_init_enter (l $MainModule.Baz___type__id____once)
+	jnz %_tmp_22, @then_23, @else_24
+@then_23
+	%_tmp_21 =l call $g_type_register_static (l 80, l $MainModule.Baz_class__name, l $MainModule.Baz_g__define__type__info, l 0)
+	call $g_once_init_leave (l $MainModule.Baz___type__id____once, l %_tmp_21)
+@else_24
+	%gtype_val_25 =l loadl $MainModule.Baz___type__id____once
+	ret %gtype_val_25
+}
+export function l $MainModule.Baz_construct(l %object_type) {
+@start
+	%_tmp_26 =l call $MainModule.Bar_construct (l %object_type)
+	ret %_tmp_26
+}
+export function l $MainModule.Baz_new() {
+@start
+	%_tmp_27 =l call $MainModule.Baz_get__type ()
+	%_tmp_28 =l call $MainModule.Baz_construct (l %_tmp_27)
+	ret %_tmp_28
+}
+export function l $MainModule.sum(l %b) {
+@start
+	%_tmp_29 =l call $MainModule.Bar_increment (l %b)
+	%_tmp_30 =l call $MainModule.Baz_decrementBy (l %b, l 2)
+	%_tmp_31 =l mul %_tmp_29, %_tmp_30
+	ret %_tmp_31
+}
+export function w $main() {
+@start
+	%_tmp_33 =l call $MainModule.Baz_new ()
+	%_tmp_32 =l call $MainModule.sum (l %_tmp_33)
+	ret %_tmp_32
+}

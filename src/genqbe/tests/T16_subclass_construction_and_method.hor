@@ -1,0 +1,18 @@
+;exit=10
+;; subclass construction + type annotated method
+(class Foo {
+	pub (def val (Self Int) [self] 4),
+})
+
+(class Bar (Foo) {
+	pub (def increment (Self Int) [self] (+ 1 (self#val)))
+})
+
+(class Baz (Bar) {
+	pub (def decrementBy (Self Int Int) [self x] (- (self#val) x))
+})
+
+(def sum (Baz Int) [b] (* (b#increment) (b#decrementBy 2)))
+(def main []
+	 (sum (Baz.new)))
+

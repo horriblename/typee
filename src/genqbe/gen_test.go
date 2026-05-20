@@ -13,6 +13,7 @@ import (
 
 	"github.com/horriblename/typee/src/assert"
 	"github.com/horriblename/typee/src/can"
+	"github.com/horriblename/typee/src/fun"
 	"github.com/horriblename/typee/src/opt"
 	"github.com/horriblename/typee/src/parse"
 	"github.com/horriblename/typee/src/simplesub"
@@ -34,15 +35,26 @@ func compileStdC(t *testing.T) (objPath string) {
 func compileQbe(stdCPath string, dir string, qbePath string) (string, error) {
 	fname := path.Base(qbePath)
 	asmFile := path.Join(dir, fname+".s")
+	binaryFile := path.Join(dir, fname+".out")
 	c := exec.Command("qbe", qbePath, "-o", asmFile)
 	if output, err := c.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("running qbe: %w\noutput:\n%s", err, output)
 	}
 
-	binaryFile := path.Join(dir, fname+".out")
-	c = exec.Command("gcc", asmFile, stdCPath, "-o", binaryFile)
+	libFlagsRaw, err := exec.Command("pkg-config", "--libs", "gobject-2.0").Output()
+	if err != nil {
+		return "", fmt.Errorf("generating linker flags: %w", err)
+	}
+
+	libFlags := fun.Map(
+		bytes.Split(bytes.Trim(libFlagsRaw, "\n"), []byte(" ")),
+		func(f []byte) string {
+			return string(f)
+		})
+	args := append(libFlags, asmFile, stdCPath, "-o", binaryFile)
+	c = exec.Command("gcc", args...)
 	if output, err := c.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("assemble: %w\noutput:\n%s", err, output)
+		return "", fmt.Errorf("linking: %w\noutput:\n%s", err, output)
 	}
 	return binaryFile, nil
 }
