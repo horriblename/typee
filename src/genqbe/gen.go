@@ -882,13 +882,14 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 	callee := expr.Children[0]
 
 	switch fnName {
-	case "+":
+	case "+", "-", "*", "/":
 		assert.Eq(len(expr.Children), 3, "wrong function arg count")
 
+		instr := getArithmeticInstruction(fnName)
 		left := gen(ctx, expr.Children[1])
 		right := gen(ctx, expr.Children[2])
 		target := ctx.il.TempVar(false)
-		ctx.il.Arithmetic(target.IL(), qbeil.Long, "add", left, right)
+		ctx.il.Arithmetic(target.IL(), qbeil.Long, instr, left, right)
 
 		return target
 	case "exit":
@@ -1166,6 +1167,21 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 		ctx.il.Call(&target, ctx.toABIType(funcSig.Ret), funcVar, args)
 
 		return target
+	}
+}
+
+func getArithmeticInstruction(op string) string {
+	switch op {
+	case "+":
+		return "add"
+	case "-":
+		return "sub"
+	case "*":
+		return "mul"
+	case "/":
+		return "div"
+	default:
+		panic("unknown operator: " + op)
 	}
 }
 
