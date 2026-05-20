@@ -2037,30 +2037,26 @@ func genConstDefineTypeInfo(
 			Align:   0,
 		},
 		qbeil.DataItems([]qbeil.TypedDataItem{
+			// class_size
 			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: int64(typeInfo.classSize)}},
 
-			// padding TODO: pad automatically
+			// manual padding lmao TODO: pad automatically
 			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: 0}},
 			{Type: qbeil.Word, Value: qbeil.IntLiteral{Value: 0}},
 
-			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
-			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}}, // base_init
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}}, // base_finalize
+
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}}, // class_init
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}}, // class_finalize
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}}, // class_data
 
 			// should be (type)_class_init
-			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
-			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
-			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
+			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: int64(typeInfo.instanceSize)}}, // instance_size
+			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: 0}},                            // n_preallocs
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},                               // instance_init
 
-			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: int64(typeInfo.instanceSize)}},
-			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: 0}},
-
-			// padding TODO: pad automatically
-			{Type: qbeil.Word, Value: qbeil.IntLiteral{Value: 0}},
-
-			// should be (type)_instance_init
-			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}},
-
-			{Type: qbeil.HalfWord, Value: qbeil.IntLiteral{Value: 0}},
+			{Type: ctx.ptrType, Value: qbeil.IntLiteral{Value: 0}}, // value_table
 		}),
 	)
 }
