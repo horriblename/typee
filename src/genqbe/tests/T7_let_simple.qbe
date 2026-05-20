@@ -13,8 +13,8 @@ export function w $main() {
 # reassign to var name for garbage collection later
 	%x1 =l alloc4 8
 	storel %_tmp_1, %x1
-	%tmp_2 =l loadl %x1
+	%dataAt_x1_2 =l loadl %x1
 # let body
-	call $exit (l %tmp_2)
+	call $exit (l %dataAt_x1_2)
 	ret 0
 }

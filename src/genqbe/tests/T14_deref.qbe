@@ -21,10 +21,10 @@ export function l $MainModule.getX(l %rcd) {
 	blit %derefedPtr_1, %val2, 16
 # let body
 	%ptrTo_Record_4.x5 =l add %val2, 0
-	%tmp_2 =l loadl %ptrTo_Record_4.x5
+	%dataAt_ptrTo_Record_4.x5_2 =l loadl %ptrTo_Record_4.x5
 	%ptrTo_Record_6.y7 =l add %val2, 8
-	%tmp_3 =l loadl %ptrTo_Record_6.y7
-	%_tmp_4 =l add %tmp_2, %tmp_3
+	%dataAt_ptrTo_Record_6.y7_3 =l loadl %ptrTo_Record_6.y7
+	%_tmp_4 =l add %dataAt_ptrTo_Record_4.x5_2, %dataAt_ptrTo_Record_6.y7_3
 	ret %_tmp_4
 }
 export function w $main() {
@@ -38,22 +38,22 @@ export function w $main() {
 # reassign to var name for garbage collection later
 	%rcd9 =l alloc4 8
 	storel %record_literal__5, %rcd9
-	%tmp_8 =l loadl %rcd9
+	%dataAt_rcd9_8 =l loadl %rcd9
 # let assignment of num = ([ref 1])
 	%ref_9 =l alloc4 8
 	storel 1, %ref_9
 # reassign to var name for garbage collection later
 	%num10 =l alloc4 8
 	storel %ref_9, %num10
-	%tmp_10 =l loadl %num10
+	%dataAt_num10_10 =l loadl %num10
 # let assignment of numVal = ([deref num])
-	%derefed_11 =l loadl %tmp_10
+	%derefed_11 =l loadl %dataAt_num10_10
 # reassign to var name for garbage collection later
 	%numVal11 =l alloc4 8
 	storel %derefed_11, %numVal11
-	%tmp_12 =l loadl %numVal11
+	%dataAt_numVal11_12 =l loadl %numVal11
 # let body
-	%_tmp_13 =l call $MainModule.getX (l %tmp_8)
-	%_tmp_14 =l add %tmp_12, %_tmp_13
+	%_tmp_13 =l call $MainModule.getX (l %dataAt_rcd9_8)
+	%_tmp_14 =l add %dataAt_numVal11_12, %_tmp_13
 	ret %_tmp_14
 }

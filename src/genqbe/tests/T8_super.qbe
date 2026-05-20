@@ -17,7 +17,7 @@ type :MainModule.BazClass = {:MainModule.BarClass, l, }
 type :BazPrivate = {}
 data $MainModule.Foo_class__name = {b "Foo", b 0}
 data $MainModule.Foo___type__id____once = {l 0}
-data $MainModule.Foo_g__define__type__info = {h 144, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 48, h 0, w 0, l 0, h 0, }
+data $MainModule.Foo_g__define__type__info = {h 144, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 48, h 0, l 0, l 0, }
 export function l $MainModule.Foo_get__type() {
 @start
 	%_tmp_2 =l call $g_once_init_enter (l $MainModule.Foo___type__id____once)
@@ -26,77 +26,84 @@ export function l $MainModule.Foo_get__type() {
 	%_tmp_1 =l call $g_type_register_static (l 80, l $MainModule.Foo_class__name, l $MainModule.Foo_g__define__type__info, l 0)
 	call $g_once_init_leave (l $MainModule.Foo___type__id____once, l %_tmp_1)
 @else_4
-	ret $MainModule.Foo___type__id____once
+	%gtype_val_5 =l loadl $MainModule.Foo___type__id____once
+	ret %gtype_val_5
 }
 export function l $MainModule.Foo_construct(l %object_type) {
 @start
-	%_tmp_5 =l call $g_object_new (l %object_type, l 0)
-	ret %_tmp_5
+	%_tmp_6 =l call $g_object_new (l %object_type, l 0)
+	ret %_tmp_6
 }
 export function l $MainModule.Foo_new() {
 @start
-	%_tmp_6 =l call $MainModule.Foo_get__type ()
-	%_tmp_7 =l call $MainModule.Foo_construct (l %_tmp_6)
-	ret %_tmp_7
+	%_tmp_7 =l call $MainModule.Foo_get__type ()
+	%_tmp_8 =l call $MainModule.Foo_construct (l %_tmp_7)
+	ret %_tmp_8
 }
 data $MainModule.Bar_class__name = {b "Bar", b 0}
 data $MainModule.Bar___type__id____once = {l 0}
-data $MainModule.Bar_g__define__type__info = {h 152, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 64, h 0, w 0, l 0, h 0, }
+data $MainModule.Bar_g__define__type__info = {h 152, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 64, h 0, l 0, l 0, }
 export function l $MainModule.Bar_get__type() {
 @start
-	%_tmp_9 =l call $g_once_init_enter (l $MainModule.Bar___type__id____once)
-	jnz %_tmp_9, @then_10, @else_11
-@then_10
-	%_tmp_8 =l call $g_type_register_static (l 80, l $MainModule.Bar_class__name, l $MainModule.Bar_g__define__type__info, l 0)
-	call $g_once_init_leave (l $MainModule.Bar___type__id____once, l %_tmp_8)
-@else_11
-	ret $MainModule.Bar___type__id____once
+	%_tmp_10 =l call $g_once_init_enter (l $MainModule.Bar___type__id____once)
+	jnz %_tmp_10, @then_11, @else_12
+@then_11
+	%_tmp_9 =l call $g_type_register_static (l 80, l $MainModule.Bar_class__name, l $MainModule.Bar_g__define__type__info, l 0)
+	call $g_once_init_leave (l $MainModule.Bar___type__id____once, l %_tmp_9)
+@else_12
+	%gtype_val_13 =l loadl $MainModule.Bar___type__id____once
+	ret %gtype_val_13
 }
 export function l $MainModule.Bar_construct(l %object_type) {
 @start
-	%_tmp_12 =l call $MainModule.Foo_construct (l %object_type)
-	ret %_tmp_12
+	%_tmp_14 =l call $MainModule.Foo_construct (l %object_type)
+	ret %_tmp_14
 }
 export function l $MainModule.Bar_new() {
 @start
-	%_tmp_13 =l call $MainModule.Bar_get__type ()
-	%_tmp_14 =l call $MainModule.Bar_construct (l %_tmp_13)
-	ret %_tmp_14
+	%_tmp_15 =l call $MainModule.Bar_get__type ()
+	%_tmp_16 =l call $MainModule.Bar_construct (l %_tmp_15)
+	ret %_tmp_16
 }
 data $MainModule.Baz_class__name = {b "Baz", b 0}
 data $MainModule.Baz___type__id____once = {l 0}
-data $MainModule.Baz_g__define__type__info = {h 160, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 80, h 0, w 0, l 0, h 0, }
+data $MainModule.Baz_g__define__type__info = {h 160, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 80, h 0, l 0, l 0, }
 export function l $MainModule.Baz_get__type() {
 @start
-	%_tmp_16 =l call $g_once_init_enter (l $MainModule.Baz___type__id____once)
-	jnz %_tmp_16, @then_17, @else_18
-@then_17
-	%_tmp_15 =l call $g_type_register_static (l 80, l $MainModule.Baz_class__name, l $MainModule.Baz_g__define__type__info, l 0)
-	call $g_once_init_leave (l $MainModule.Baz___type__id____once, l %_tmp_15)
-@else_18
-	ret $MainModule.Baz___type__id____once
+	%_tmp_18 =l call $g_once_init_enter (l $MainModule.Baz___type__id____once)
+	jnz %_tmp_18, @then_19, @else_20
+@then_19
+	%_tmp_17 =l call $g_type_register_static (l 80, l $MainModule.Baz_class__name, l $MainModule.Baz_g__define__type__info, l 0)
+	call $g_once_init_leave (l $MainModule.Baz___type__id____once, l %_tmp_17)
+@else_20
+	%gtype_val_21 =l loadl $MainModule.Baz___type__id____once
+	ret %gtype_val_21
 }
 export function l $MainModule.Baz_construct(l %object_type) {
 @start
-	%_tmp_19 =l call $MainModule.Bar_construct (l %object_type)
-	ret %_tmp_19
+	%_tmp_22 =l call $MainModule.Bar_construct (l %object_type)
+	ret %_tmp_22
 }
 export function l $MainModule.Baz_new() {
 @start
-	%_tmp_20 =l call $MainModule.Baz_get__type ()
-	%_tmp_21 =l call $MainModule.Baz_construct (l %_tmp_20)
-	ret %_tmp_21
+	%_tmp_23 =l call $MainModule.Baz_get__type ()
+	%_tmp_24 =l call $MainModule.Baz_construct (l %_tmp_23)
+	ret %_tmp_24
 }
 export function w $main() {
 @start
 # let assignment of baz = ([Baz.new])
-	%_tmp_22 =l call $MainModule.Baz_new ()
+	%_tmp_25 =l call $MainModule.Baz_new ()
 # reassign to var name for garbage collection later
 	%baz1 =l alloc4 8
-	storel %_tmp_22, %baz1
-	%tmp_23 =l loadl %baz1
+	storel %_tmp_25, %baz1
+# let_baz
+	call $g_object_ref (l %_tmp_25)
+	%dataAt_baz1_26 =l loadl %baz1
 # let body
-	%ptrTo_Baz.a2 =l add %tmp_23, 9
-	%tmp_24 =l loadl %ptrTo_Baz.a2
-	ret %tmp_24
+	%ptrTo_Baz.a2 =l add %dataAt_baz1_26, 9
+	%dataAt_ptrTo_Baz.a2_27 =l loadl %ptrTo_Baz.a2
+# MainModule.let_baz1
+	call $g_object_unref (l %baz1)
+	ret %dataAt_ptrTo_Baz.a2_27
 }

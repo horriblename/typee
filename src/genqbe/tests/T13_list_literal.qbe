@@ -50,10 +50,10 @@ export function w $main() {
 	call $listGet (:List %items1, l 8, l 1, l %at_result_ptr_14)
 	%at_result_15 =l loadl %at_result_ptr_14
 	%ptrTo_Record_8.x9 =l add %c6, 0
-	%tmp_16 =l loadl %ptrTo_Record_8.x9
-	%_tmp_17 =l add %at_result_15, %tmp_16
+	%dataAt_ptrTo_Record_8.x9_16 =l loadl %ptrTo_Record_8.x9
+	%_tmp_17 =l add %at_result_15, %dataAt_ptrTo_Record_8.x9_16
 	%ptrTo_Record_10.y11 =l add %c6, 8
-	%tmp_18 =l loadl %ptrTo_Record_10.y11
-	%_tmp_19 =l add %_tmp_17, %tmp_18
+	%dataAt_ptrTo_Record_10.y11_18 =l loadl %ptrTo_Record_10.y11
+	%_tmp_19 =l add %_tmp_17, %dataAt_ptrTo_Record_10.y11_18
 	ret %_tmp_19
 }

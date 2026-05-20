@@ -10,10 +10,10 @@ type :Record_5 = {l, }
 export function l $MainModule.foo(:ClosureComponents %addOne, l %x) {
 @start
 	%ptrTo_ClosureComponents.func1 =l add %addOne, 0
-	%tmp_1 =l loadl %ptrTo_ClosureComponents.func1
+	%dataAt_ptrTo_ClosureComponents.func1_1 =l loadl %ptrTo_ClosureComponents.func1
 	%ptrTo_ClosureComponents.data2 =l add %addOne, 8
-	%tmp_2 =l loadl %ptrTo_ClosureComponents.data2
-	%_tmp_3 =l call %tmp_1 (l %x, l %tmp_2)
+	%dataAt_ptrTo_ClosureComponents.data2_2 =l loadl %ptrTo_ClosureComponents.data2
+	%_tmp_3 =l call %dataAt_ptrTo_ClosureComponents.func1_1 (l %x, l %dataAt_ptrTo_ClosureComponents.data2_2)
 	ret %_tmp_3
 }
 export function w $main() {
@@ -22,12 +22,12 @@ export function w $main() {
 # reassign to var name for garbage collection later
 	%ONE3 =l alloc4 8
 	storel 1, %ONE3
-	%tmp_4 =l loadl %ONE3
+	%dataAt_ONE3_4 =l loadl %ONE3
 # let body
 # capture data: (Ref {ONE: I64, }) => pointer to :Record_5
 	%record_literal__6 =l call $calloc (l 1, l 8)
 	%record_literal_field_ONE_7 =l add %record_literal__6, 0
-	storel %tmp_4, %record_literal_field_ONE_7
+	storel %dataAt_ONE3_4, %record_literal_field_ONE_7
 	%record_literal__8 =l alloc4 24
 	%record_literal_field_func_9 =l add %record_literal__8, 0
 	storel $MainModule.main.fn4, %record_literal_field_func_9
@@ -41,7 +41,7 @@ export function w $main() {
 export function l $MainModule.main.fn4(l %x, l %_captures) {
 @start
 	%ptrTo_Record_5.ONE6 =l add %_captures, 0
-	%tmp_12 =l loadl %ptrTo_Record_5.ONE6
-	%_tmp_13 =l add %x, %tmp_12
+	%dataAt_ptrTo_Record_5.ONE6_12 =l loadl %ptrTo_Record_5.ONE6
+	%_tmp_13 =l add %x, %dataAt_ptrTo_Record_5.ONE6_12
 	ret %_tmp_13
 }

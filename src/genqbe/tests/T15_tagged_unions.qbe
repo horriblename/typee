@@ -29,37 +29,37 @@ export function :Str $MainModule.toStr(:TaggedUnion1 %t) {
 @start
 	%case_expr_val_2 =l alloc4 16
 	%ptrTo_TaggedUnion2.tag3 =l add %t, 0
-	%tmp_3 =l loadl %ptrTo_TaggedUnion2.tag3
+	%dataAt_ptrTo_TaggedUnion2.tag3_3 =l loadl %ptrTo_TaggedUnion2.tag3
 # match tag 'one
-	%tagComparisonResult_4 =l ceql %tmp_3, 0
+	%tagComparisonResult_4 =l ceql %dataAt_ptrTo_TaggedUnion2.tag3_3, 0
 	jnz %tagComparisonResult_4, @case_matched_one5, @case_failed_one6
 	@case_matched_one5
 # assign tag payload
 	%payloadPtr_7 =l add %t, 8
-	%tmp_8 =l loadl %payloadPtr_7
-	%_tmp_9 =:Str call $i64ToStr (l %tmp_8)
+	%dataAt_payloadPtr_7_8 =l loadl %payloadPtr_7
+	%_tmp_9 =:Str call $i64ToStr (l %dataAt_payloadPtr_7_8)
 	blit %_tmp_9, %case_expr_val_2, 16
 	jmp @endcase_1
 	@case_failed_one6
 # match tag 'two
-	%tagComparisonResult_10 =l ceql %tmp_3, 2
+	%tagComparisonResult_10 =l ceql %dataAt_ptrTo_TaggedUnion2.tag3_3, 2
 	jnz %tagComparisonResult_10, @case_matched_two11, @case_failed_two12
 	@case_matched_two11
 # assign tag payload
 	%payloadPtr_13 =l add %t, 8
-	%tmp_14 =l loadl %payloadPtr_13
-	%_tmp_15 =:Str call $i64ToStr (l %tmp_14)
+	%dataAt_payloadPtr_13_14 =l loadl %payloadPtr_13
+	%_tmp_15 =:Str call $i64ToStr (l %dataAt_payloadPtr_13_14)
 	blit %_tmp_15, %case_expr_val_2, 16
 	jmp @endcase_1
 	@case_failed_two12
 # match tag 'three
-	%tagComparisonResult_16 =l ceql %tmp_3, 1
+	%tagComparisonResult_16 =l ceql %dataAt_ptrTo_TaggedUnion2.tag3_3, 1
 	jnz %tagComparisonResult_16, @case_matched_three17, @case_failed_three18
 	@case_matched_three17
 # assign tag payload
 	%payloadPtr_19 =l add %t, 8
-	%tmp_20 =l loadl %payloadPtr_19
-	%_tmp_21 =:Str call $i64ToStr (l %tmp_20)
+	%dataAt_payloadPtr_19_20 =l loadl %payloadPtr_19
+	%_tmp_21 =:Str call $i64ToStr (l %dataAt_payloadPtr_19_20)
 	blit %_tmp_21, %case_expr_val_2, 16
 	jmp @endcase_1
 	@case_failed_three18
@@ -86,46 +86,46 @@ export function l $MainModule.adder.fn5(l %n, l %_captures) {
 	%ptrTo_Record_8.t9 =l add %_captures, 0
 	%case_expr_val_29 =l alloc4 8
 	%ptrTo_TaggedUnion10.tag11 =l add %ptrTo_Record_8.t9, 0
-	%tmp_30 =l loadl %ptrTo_TaggedUnion10.tag11
+	%dataAt_ptrTo_TaggedUnion10.tag11_30 =l loadl %ptrTo_TaggedUnion10.tag11
 # match tag 'one
-	%tagComparisonResult_31 =l ceql %tmp_30, 0
+	%tagComparisonResult_31 =l ceql %dataAt_ptrTo_TaggedUnion10.tag11_30, 0
 	jnz %tagComparisonResult_31, @case_matched_one32, @case_failed_one33
 	@case_matched_one32
 # assign tag payload
 	%payloadPtr_34 =l add %ptrTo_Record_8.t9, 8
-	%tmp_35 =l loadl %payloadPtr_34
-	%_tmp_36 =l add %tmp_35, 1
+	%dataAt_payloadPtr_34_35 =l loadl %payloadPtr_34
+	%_tmp_36 =l add %dataAt_payloadPtr_34_35, 1
 	%_tmp_37 =l add %_tmp_36, %n
 	storel %_tmp_37, %case_expr_val_29
 	jmp @endcase_28
 	@case_failed_one33
 # match tag 'two
-	%tagComparisonResult_38 =l ceql %tmp_30, 2
+	%tagComparisonResult_38 =l ceql %dataAt_ptrTo_TaggedUnion10.tag11_30, 2
 	jnz %tagComparisonResult_38, @case_matched_two39, @case_failed_two40
 	@case_matched_two39
 # assign tag payload
 	%payloadPtr_41 =l add %ptrTo_Record_8.t9, 8
-	%tmp_42 =l loadl %payloadPtr_41
-	%_tmp_43 =l add %tmp_42, 2
+	%dataAt_payloadPtr_41_42 =l loadl %payloadPtr_41
+	%_tmp_43 =l add %dataAt_payloadPtr_41_42, 2
 	%_tmp_44 =l add %_tmp_43, %n
 	storel %_tmp_44, %case_expr_val_29
 	jmp @endcase_28
 	@case_failed_two40
 # match tag 'three
-	%tagComparisonResult_45 =l ceql %tmp_30, 1
+	%tagComparisonResult_45 =l ceql %dataAt_ptrTo_TaggedUnion10.tag11_30, 1
 	jnz %tagComparisonResult_45, @case_matched_three46, @case_failed_three47
 	@case_matched_three46
 # assign tag payload
 	%payloadPtr_48 =l add %ptrTo_Record_8.t9, 8
-	%tmp_49 =l loadl %payloadPtr_48
-	%_tmp_50 =l add %tmp_49, 3
+	%dataAt_payloadPtr_48_49 =l loadl %payloadPtr_48
+	%_tmp_50 =l add %dataAt_payloadPtr_48_49, 3
 	%_tmp_51 =l add %_tmp_50, %n
 	storel %_tmp_51, %case_expr_val_29
 	jmp @endcase_28
 	@case_failed_three47
 	@endcase_28
-	%tmp_52 =l loadl %case_expr_val_29
-	ret %tmp_52
+	%dataAt_case_expr_val_29_52 =l loadl %case_expr_val_29
+	ret %dataAt_case_expr_val_29_52
 }
 export function w $main() {
 @start
@@ -145,9 +145,9 @@ export function w $main() {
 	blit %_tmp_56, %add16, 24
 # let body
 	%ptrTo_ClosureComponents.func17 =l add %add16, 0
-	%tmp_57 =l loadl %ptrTo_ClosureComponents.func17
+	%dataAt_ptrTo_ClosureComponents.func17_57 =l loadl %ptrTo_ClosureComponents.func17
 	%ptrTo_ClosureComponents.data18 =l add %add16, 8
-	%tmp_58 =l loadl %ptrTo_ClosureComponents.data18
-	%_tmp_59 =l call %tmp_57 (l 1, l %tmp_58)
+	%dataAt_ptrTo_ClosureComponents.data18_58 =l loadl %ptrTo_ClosureComponents.data18
+	%_tmp_59 =l call %dataAt_ptrTo_ClosureComponents.func17_57 (l 1, l %dataAt_ptrTo_ClosureComponents.data18_58)
 	ret %_tmp_59
 }

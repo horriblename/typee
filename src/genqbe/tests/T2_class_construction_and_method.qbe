@@ -25,7 +25,7 @@ export function :Str $MainModule.Foo_name2(l %self) {
 }
 data $MainModule.Foo_class__name = {b "Foo", b 0}
 data $MainModule.Foo___type__id____once = {l 0}
-data $MainModule.Foo_g__define__type__info = {h 160, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 32, h 0, w 0, l 0, h 0, }
+data $MainModule.Foo_g__define__type__info = {h 160, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 32, h 0, l 0, l 0, }
 export function l $MainModule.Foo_get__type() {
 @start
 	%_tmp_6 =l call $g_once_init_enter (l $MainModule.Foo___type__id____once)
@@ -34,28 +34,29 @@ export function l $MainModule.Foo_get__type() {
 	%_tmp_5 =l call $g_type_register_static (l 80, l $MainModule.Foo_class__name, l $MainModule.Foo_g__define__type__info, l 0)
 	call $g_once_init_leave (l $MainModule.Foo___type__id____once, l %_tmp_5)
 @else_8
-	ret $MainModule.Foo___type__id____once
+	%gtype_val_9 =l loadl $MainModule.Foo___type__id____once
+	ret %gtype_val_9
 }
 export function l $MainModule.Foo_construct(l %object_type) {
 @start
-	%_tmp_9 =l call $g_object_new (l %object_type, l 0)
-	ret %_tmp_9
+	%_tmp_10 =l call $g_object_new (l %object_type, l 0)
+	ret %_tmp_10
 }
 export function l $MainModule.Foo_new() {
 @start
-	%_tmp_10 =l call $MainModule.Foo_get__type ()
-	%_tmp_11 =l call $MainModule.Foo_construct (l %_tmp_10)
-	ret %_tmp_11
+	%_tmp_11 =l call $MainModule.Foo_get__type ()
+	%_tmp_12 =l call $MainModule.Foo_construct (l %_tmp_11)
+	ret %_tmp_12
 }
 export function :Str $MainModule.bar(l %foo) {
 @start
-	%_tmp_12 =:Str call $MainModule.Foo_name (l %foo)
-	ret %_tmp_12
+	%_tmp_13 =:Str call $MainModule.Foo_name (l %foo)
+	ret %_tmp_13
 }
 export function w $main() {
 @start
-	%_tmp_14 =l call $MainModule.Foo_new ()
-	%_tmp_13 =:Str call $MainModule.bar (l %_tmp_14)
-	%_tmp_15 =l call $print (:Str %_tmp_13)
-	ret %_tmp_15
+	%_tmp_15 =l call $MainModule.Foo_new ()
+	%_tmp_14 =:Str call $MainModule.bar (l %_tmp_15)
+	%_tmp_16 =l call $print (:Str %_tmp_14)
+	ret %_tmp_16
 }

@@ -50,22 +50,22 @@ export function w $main() {
 # let body
 	%if_expr_val_17 =l alloc4 8
 	%ptrTo_Record_10.y11 =l add %xy8, 16
-	%tmp_18 =l loadl %ptrTo_Record_10.y11
-	jnz %tmp_18, @then_14, @else_15
+	%dataAt_ptrTo_Record_10.y11_18 =l loadl %ptrTo_Record_10.y11
+	jnz %dataAt_ptrTo_Record_10.y11_18, @then_14, @else_15
 	@then_14
 	%ptrTo_Record_13.z14 =l add %foo4, 0
-	%tmp_19 =l loadl %ptrTo_Record_13.z14
+	%dataAt_ptrTo_Record_13.z14_19 =l loadl %ptrTo_Record_13.z14
 	%ptrTo_Record_15.x16 =l add %xy8, 0
 	%at_result_ptr_20 =l alloc4 8
 	call $listGet (:List %ptrTo_Record_15.x16, l 8, l 2, l %at_result_ptr_20)
 	%at_result_21 =l loadl %at_result_ptr_20
-	%_tmp_22 =l add %tmp_19, %at_result_21
+	%_tmp_22 =l add %dataAt_ptrTo_Record_13.z14_19, %at_result_21
 	storel %_tmp_22, %if_expr_val_17
 	jmp @endif_16
 	@else_15
 	storel 1, %if_expr_val_17
 	jmp @endif_16
 	@endif_16
-	%tmp_23 =l loadl %if_expr_val_17
-	ret %tmp_23
+	%dataAt_if_expr_val_17_23 =l loadl %if_expr_val_17
+	ret %dataAt_if_expr_val_17_23
 }
