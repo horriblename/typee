@@ -1643,7 +1643,9 @@ func genObjectTypeGetTypeFunc(ctx *ctx, opt objectTypeBoilerplateOpt) {
 	}
 
 	ctx.il.InsertLabel(elseLabel)
-	ctx.il.Ret(typeIdVarOnce)
+	gtypeVar := ctx.il.TempNamedVar(false, "gtype_val")
+	ctx.il.Arithmetic(gtypeVar.IL(), ctx.ptrType, "load"+ctx.ptrType.IL(), typeIdVarOnce)
+	ctx.il.Ret(gtypeVar)
 
 	ctx.il.EndFunc()
 }
