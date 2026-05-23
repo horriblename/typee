@@ -1,6 +1,7 @@
 type :Str = {l, l, }
 type :List = {l, l, }
 type :GObject = {l, l, l, }
+type :GTypeClass = {l, }
 type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
 type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
 type :GInterfaceInfo = {l, l, l, }
@@ -8,7 +9,8 @@ type :ClosureComponents = {l 3, }
 type :BoxPartial = {l, }
 type :Record_1 = {l, }
 type :Record_2 = {l, }
-type :Foo1 = {:GObject, l, l, }
+type :Object = {:GObject, l, }
+type :Foo1 = {:Object, l, l, }
 export function l $MainModule.foo(:Record_1 %f) {
 @start
 	%ptrTo_Record_2.x3 =l add %f, 0
@@ -17,7 +19,7 @@ export function l $MainModule.foo(:Record_1 %f) {
 }
 export function l $MainModule.foo1(l %f) {
 @start
-	%ptrTo_Foo1.x4 =l add %f, 4
+	%ptrTo_Foo1.x4 =l add %f, 5
 	%dataAt_ptrTo_Foo1.x4_2 =l loadl %ptrTo_Foo1.x4
 	ret %dataAt_ptrTo_Foo1.x4_2
 }

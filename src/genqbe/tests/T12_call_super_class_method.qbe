@@ -1,13 +1,16 @@
 type :Str = {l, l, }
 type :List = {l, l, }
 type :GObject = {l, l, l, }
+type :GTypeClass = {l, }
 type :GTypeInfo = {h, l, l, l, l, l, h, h, l, l, }
 type :GObjectClass = {l, l, l, l, l, l, l, l, l, l, l, l, l, l, l 3, }
 type :GInterfaceInfo = {l, l, l, }
 type :ClosureComponents = {l 3, }
 type :BoxPartial = {l, }
-type :Foo = {:GObject, l, }
-type :MainModule.FooClass = {:GObjectClass, l, l, }
+type :Object = {:GObject, l, }
+type :Foo = {:Object, l, }
+type :Std.ObjectClass = {:GObjectClass, }
+type :MainModule.FooClass = {:Std.ObjectClass, l, l, }
 type :FooPrivate = {}
 type :Bar = {:Foo, l, }
 type :MainModule.BarClass = {:MainModule.FooClass, l, }
@@ -23,7 +26,7 @@ export function :Str $MainModule.Foo_name(l %self) {
 }
 data $MainModule.Foo_class__name = {b "Foo", b 0}
 data $MainModule.Foo___type__id____once = {l 0}
-data $MainModule.Foo_g__define__type__info = {h 152, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 32, h 0, l 0, l 0, }
+data $MainModule.Foo_g__define__type__info = {h 152, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 40, h 0, l 0, l 0, }
 export function l $MainModule.Foo_get__type() {
 @start
 	%_tmp_5 =l call $g_once_init_enter (l $MainModule.Foo___type__id____once)
@@ -48,7 +51,7 @@ export function l $MainModule.Foo_new() {
 }
 data $MainModule.Bar_class__name = {b "Bar", b 0}
 data $MainModule.Bar___type__id____once = {l 0}
-data $MainModule.Bar_g__define__type__info = {h 160, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 40, h 0, l 0, l 0, }
+data $MainModule.Bar_g__define__type__info = {h 160, h 0, w 0, l 0, l 0, l 0, l 0, l 0, h 48, h 0, l 0, l 0, }
 export function l $MainModule.Bar_get__type() {
 @start
 	%_tmp_13 =l call $g_once_init_enter (l $MainModule.Bar___type__id____once)
