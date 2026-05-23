@@ -81,8 +81,9 @@ func builtinVars() map[string]TypeScheme {
 		"strToCStr": PolymorphicType{
 			Body: Func{Args: []SimpleType{Str{}}, Ret: Primitive{PrimitiveOpaque}},
 		},
+		// technically returns GType
 		"typeOf": PolymorphicType{
-			Body: Func{Args: []SimpleType{Primitive{PrimitiveOpaque}}, Ret: Primitive{PrimitiveOpaque}},
+			Body: Func{Args: []SimpleType{gobject}, Ret: Primitive{PrimitiveOpaque}},
 		},
 		"i64ToI32": PolymorphicType{
 			Body: Func{Args: []SimpleType{I64}, Ret: Int{true, 32}},
