@@ -17,7 +17,7 @@ func (self *symbols) isSubClass(sub ObjectType, target ObjectType) (bool, error)
 			return true, nil
 		}
 
-		ty, err := self.lookupType(sup.Module, sup.Name)
+		ty, err := self.lookupRecursive(sup)
 		if err != nil {
 			return false, err
 		}

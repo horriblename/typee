@@ -1524,6 +1524,25 @@ func (self *symbols) lookupType(module can.ModuleName, name string) (TypeScheme,
 	return nil, fmt.Errorf("%w: %s", ErrUndefinedModule, module)
 }
 
+// NOTE: since Application is used to break cycles, it might be dangerous to
+// use it anywhere cycles may occur. Using this in subtyping for example is
+// acceptable, since there can't be cycles in the subtyping lattice
+func (self *symbols) lookupRecursive(app Application) (TypeScheme, error) {
+	var err error
+	var ty TypeScheme = app
+	for {
+		a, ok := ty.(Application)
+		if !ok {
+			return ty, nil
+		}
+
+		ty, err = self.lookupType(a.Module, a.Name)
+		if err != nil {
+			return nil, err
+		}
+	}
+}
+
 func (self *symbols) constrain(ty0 SimpleType, bound0 SimpleType) (e error) {
 	trace("constrain %v <: %v", ty0, bound0)
 	indentLvl++
