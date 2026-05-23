@@ -776,6 +776,14 @@ func (self *Typer) parseClassOutline(classDef *parse.ObjectTypeDef) (SimpleType,
 		}
 	}
 
+	if len(classDef.Supers) == 0 {
+		supers = []Application{{
+			Module: "Std",
+			Name:   "Object",
+			Params: []SimpleType{},
+		}}
+	}
+
 	selfTy := Application{
 		Module: self.mainModule,
 		Name:   classDef.Name,
