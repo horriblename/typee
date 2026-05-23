@@ -167,6 +167,21 @@ func Gen(
 		Align: 0,
 	})
 
+	// struct GTypeClass {
+	//   GType g_type;
+	// }
+	ctx.declareType("GTypeClass", qbeil.StructType{
+		Name: "GTypeClass",
+		Layouts: map[string]qbeil.FieldLayout{
+			"g_type": {
+				Type: ctx.ptrType,
+			},
+		},
+		Fields: []qbeil.RepeatType{
+			qbeil.SingleType(ctx.ptrType),
+		},
+	})
+
 	// struct _GTypeInfo {
 	//   /* interface types, classed types, instantiated types */
 	//   guint16                class_size;
@@ -866,9 +881,15 @@ func genCallWithFuncName(ctx *ctx, module can.ModuleName, class string, fnName s
 	switch fnName {
 	case "strFromCStr", "strToCStr", "i64ToI32", "i64ToI8", "i64ToStr", "emptyList": // don't mangle
 	case "typeOf":
+		// derived from G_OBJECT_TYPE:
+		// gtype(instance) = (instance as GTypeInstance*)->g_class->g_type
+		assert.Eq(len(expr.Children), 2, "genqbe: wrong arg count in typeOf")
 		ty := ctx.resolveTypeApplications(ctx.simplify(expr.Children[1].ID()))
-		ot := assert.Cast[*types.Class](ty, "genqbe: typeOf called on non class type?")
-		mangled = mangledClassTypeGetter(ot.Module, ot.Name)
+		assert.Cast[*types.Class](ty, "genqbe: typeOf called on non class type?")
+		val := gen(ctx, expr.Children[1])
+		gClass := genGetStructPtrField(ctx, val, ctx.gObject(), "g_class")
+		gType := genGetStructPtrField(ctx, gClass, ctx.gTypeClass(), "g_type")
+		return gType
 	default:
 		if !mapHas(ctx.externs, fnName) /* FIXME: might get shadowed */ {
 			mangled = mangleName(mangleOpts{module: module, class: class, name: fnName})
@@ -1930,10 +1951,8 @@ func genInterfaceMethodWrappers(
 			self := argVals[0].Value
 
 			// g_type_interface_peek(((GTypeInstance*) ip)->g_class, gt)
-			gobjectType := assert.Cast[qbeil.StructType](ctx.userTypes["GObject"],
-				"BUG: Object qbe type is not a struct type")
 			// type_inst = ((GTypeInstance*) self)->g_class
-			type_inst := genGetStructPtrField(ctx, self, gobjectType, "g_class")
+			type_inst := genGetStructPtrField(ctx, self, ctx.gObject(), "g_class")
 
 			// ifaceType := animal_get_type()
 			ifaceTypeVar := qbeil.Var{Name: ctx.newTempName(ifaceName), Global: false}
@@ -2775,6 +2794,20 @@ func (ctx *ctx) declareType(name string, t qbeil.AggregateType) {
 
 	_, err = ctx.typeDecl.Write([]byte{'\n'})
 	assert.Ok(err)
+}
+
+func (ctx *ctx) gObject() qbeil.StructType {
+	return assert.Cast[qbeil.StructType](
+		assert.Get(ctx.userTypes, "GObject", "genqbe: GObject not declared?"),
+		"genqbe: GObject is not StructType?",
+	)
+}
+
+func (ctx *ctx) gTypeClass() qbeil.StructType {
+	return assert.Cast[qbeil.StructType](
+		assert.Get(ctx.userTypes, "GTypeClass", "genqbe: GTypeClass not declared?"),
+		"genqbe: GTypeClass is not StructType?",
+	)
 }
 
 func (ctx *ctx) newTempName(name string) string {
