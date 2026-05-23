@@ -20,6 +20,11 @@ import (
 var tI64 = types.Int{Signed: true, BitSize: 64}
 var tI32 = types.Int{Signed: true, BitSize: 32}
 var appI64 = types.Application{Name: "I64"}
+var appObject = types.Application{
+	Module: "Std",
+	Name:   "Object",
+	Params: []types.Type{},
+}
 
 const mainModule = "MainModule"
 
@@ -270,7 +275,7 @@ func TestTypeProgram(t *testing.T) {
 				bar := types.Class{
 					Module: mainModule,
 					Name:   "Bar",
-					Supers: []*types.Application{},
+					Supers: []*types.Application{&appObject},
 					Fields: map[string]types.Member{
 						"y": {
 							Access: parse.AccessPrivate,
@@ -363,7 +368,7 @@ func TestTypeProgram(t *testing.T) {
 				&types.Class{
 					Module:  mainModule,
 					Name:    "Foo",
-					Supers:  []*types.Application{},
+					Supers:  []*types.Application{&appObject},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
 					Methods: ordered.NewMap[string, types.Member]().
@@ -393,7 +398,7 @@ func TestTypeProgram(t *testing.T) {
 				foo := &types.Class{
 					Module: mainModule,
 					Name:   "Foo",
-					Supers: []*types.Application{},
+					Supers: []*types.Application{&appObject},
 					Fields: map[string]types.Member{
 						"x": {
 							Access: parse.AccessPublic,
@@ -807,7 +812,7 @@ func TestTypeProgram(t *testing.T) {
 				foo := types.Class{
 					Module: mainModule,
 					Name:   "Foo",
-					Supers: []*types.Application{},
+					Supers: []*types.Application{&appObject},
 					Fields: map[string]types.Member{"x": {
 						Access: parse.AccessPrivate, Type: &tI64}},
 					Statics: map[string]types.Member{},
@@ -851,7 +856,7 @@ func TestTypeProgram(t *testing.T) {
 				binding := types.Class{
 					Module:  mainModule,
 					Name:    "Binding",
-					Supers:  []*types.Application{},
+					Supers:  []*types.Application{&appObject},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
 					Methods: ordered.NewMap[string, types.Member]().
@@ -897,7 +902,7 @@ func TestTypeProgram(t *testing.T) {
 				&types.Class{
 					Module: mainModule,
 					Name:   "Foo",
-					Supers: []*types.Application{},
+					Supers: []*types.Application{&appObject},
 					Fields: map[string]types.Member{
 						"x": {
 							Type:   &tI64,
@@ -919,7 +924,7 @@ func TestTypeProgram(t *testing.T) {
 				&types.Class{
 					Module: mainModule,
 					Name:   "Bar",
-					Supers: []*types.Application{},
+					Supers: []*types.Application{&appObject},
 					Fields: map[string]types.Member{
 						"y": {
 							Access: parse.AccessPrivate,
@@ -955,7 +960,7 @@ func TestTypeProgram(t *testing.T) {
 				&types.Class{
 					Module: mainModule,
 					Name:   "Foo",
-					Supers: []*types.Application{},
+					Supers: []*types.Application{&appObject},
 					Fields: map[string]types.Member{
 						"x": {
 							Access: parse.AccessPrivate,
@@ -1024,7 +1029,7 @@ func TestTypeProgram(t *testing.T) {
 					Module: mainModule,
 					Kind:   parse.Class,
 					Name:   "Animal",
-					Supers: []*types.Application{},
+					Supers: []*types.Application{&appObject},
 					Fields: map[string]types.Member{
 						"name": {
 							Access: parse.AccessPublic,
@@ -1088,7 +1093,7 @@ func TestTypeProgram(t *testing.T) {
 					Module:  mainModule,
 					Kind:    parse.Class,
 					Name:    "Foo",
-					Supers:  []*types.Application{},
+					Supers:  []*types.Application{&appObject},
 					Fields:  map[string]types.Member{},
 					Statics: map[string]types.Member{},
 					Methods: ordered.NewMap[string, types.Member]().
