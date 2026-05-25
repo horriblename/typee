@@ -73,7 +73,7 @@ type varInfo struct {
 	// unique IL name (just make sure this doesn't clash with other local vars)
 	uname string
 
-	val qbeil.Value
+	val qbeil.Var
 	typ types.Type
 
 	// currently unused
@@ -1325,20 +1325,14 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 		// TODO: no reason to copy stuff that does not need gc
 		// I should refactor varInfo to take optional garbage
 		// collection info
-		ctx.il.Comment("reassign to var name for garbage collection later")
-		varPtr := qbeil.Var{Global: false, Name: ctx.newTempName(ass.Var)}
 		varTy := ctx.simplify(ass.Value.ID())
-		varIlTy := ctx.toILType(varTy)
-		varSizeBits, _ := ctx.sizeOf(varIlTy)
-		ctx.il.Arithmetic(varPtr.IL(), ctx.ptrType, "alloc4", qbeil.IntLiteral{
-			Value: int64(bitsToBytesRoundedUp(varSizeBits)),
-		})
-		genCopyToPtr(ctx, varPtr, varIlTy, rhsVal)
+
+		rhsVar, _ := rhsVal.(qbeil.Var)
 
 		genRef(ctx, rhsVal, varTy, "let_"+ass.Var)
 		ctx.vars.Insert(ass.Var, varInfo{
-			uname:   varPtr.Name,
-			val:     genReturnableValueFromPtr(ctx, varPtr, varIlTy),
+			uname:   rhsVar.Name,
+			val:     rhsVar,
 			typ:     ctx.simplify(ass.Value.ID()),
 			lastUse: opt.None[parse.ID](),
 		})
