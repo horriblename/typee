@@ -39,15 +39,13 @@ func NewTypedVar(typ ABIType, name Var) TypedVar {
 	return TypedVar{Type: typ, Name: name}
 }
 
-func (b *Builder) indented(l []byte) error {
+func (b *Builder) indented(l []byte) {
 	b.Buf.Write(bytes.Repeat(indentSym, b.indentLvl))
 	b.Buf.Write(l)
-
-	return nil
 }
 
 // ret can be nil
-func (b *Builder) Func(linkage Linkage, maybeRet ABIType, name string, args []TypedVar) error {
+func (b *Builder) Func(linkage Linkage, maybeRet ABIType, name string, args []TypedVar) {
 	linkageStr := linkage.String()
 	if linkageStr != "" {
 		linkageStr += " "
@@ -58,10 +56,7 @@ func (b *Builder) Func(linkage Linkage, maybeRet ABIType, name string, args []Ty
 		returnType = maybeRet.IL() + " "
 	}
 
-	err := b.indented(fmt.Appendf(nil, "%sfunction %s%s(", linkageStr, returnType, name))
-	if err != nil {
-		return err
-	}
+	b.indented(fmt.Appendf(nil, "%sfunction %s%s(", linkageStr, returnType, name))
 
 	if len(args) > 0 {
 		b.Buf.Write([]byte(args[0].IL()))
@@ -75,8 +70,6 @@ func (b *Builder) Func(linkage Linkage, maybeRet ABIType, name string, args []Ty
 	b.Buf.Write([]byte(") {\n"))
 	b.Label("start")
 	b.indentLvl++
-
-	return nil
 }
 
 func (b *Builder) EndFunc() {

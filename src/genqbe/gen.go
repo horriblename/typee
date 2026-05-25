@@ -658,7 +658,7 @@ func genFunc(
 	ctx.vars.NewScope()
 
 	friendlyName := fmt.Sprintf("%s.%s", class, expr.Name)
-	realArgTys := []types.Type{}
+	var realArgTys []types.Type
 	var retTy types.Type
 	{
 		funcTyp, ok := ctx.simplify(expr.ID()).(*types.Func)
@@ -712,7 +712,7 @@ func genFunc(
 		retTyp = qbeil.Word
 	}
 
-	assert.Ok(ctx.il.Func(linkage, retTyp, thisFunc.IL(), argTyps))
+	ctx.il.Func(linkage, retTyp, thisFunc.IL(), argTyps)
 
 	// re-expose captures as normal variables by emulating let bindings
 	// TODO: can we merge into gen(LetExpr) code?
@@ -1232,8 +1232,8 @@ func genClosure(ctx *ctx, e *parse.Fn) qbeil.Value {
 			value: val.val,
 		}
 	})
-	var captureTypes map[string]types.Type
-	captureTypes = make(map[string]types.Type)
+
+	captureTypes := make(map[string]types.Type)
 	for _, c := range captures {
 		captureTypes[c.Name] = ctx.simplify(c.ID)
 	}
