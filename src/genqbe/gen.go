@@ -1464,16 +1464,6 @@ func genClassDef(ctx *ctx, e *parse.ObjectTypeDef) {
 	genMethodDefs(ctx, e, classTy)
 
 	if e.Extern {
-		// external type, just treat as pointer
-		// TODO: ok, this isn't exactly a pointer but I promise I will fix later
-		ctx.declareType(e.Name, qbeil.StructType{
-			Align:   0,
-			Name:    e.Name,
-			Layouts: map[string]qbeil.FieldLayout{},
-			Fields: []qbeil.RepeatType{
-				qbeil.SingleType(ctx.ptrType),
-			},
-		})
 		return
 	}
 
