@@ -73,8 +73,8 @@ type varInfo struct {
 	// unique IL name (just make sure this doesn't clash with other local vars)
 	uname string
 
-	val qbeil.Var
-	typ types.Type
+	maybeToUnref qbeil.Var
+	typ          types.Type
 
 	// currently unused
 	lastUse opt.Option[parse.ID]
@@ -409,7 +409,7 @@ func gen(ctx *ctx, expr parse.Expr) qbeil.Value {
 			return qbeil.IntLiteral{Value: 0}
 		}
 		if val, ok := ctx.vars.Get(e.Name).Unwrap(); ok {
-			return val.val
+			return val.maybeToUnref
 		} else if _, ok := ctx.globals[e.Name]; ok {
 			mangled := mangleName(mangleOpts{
 				module: ctx.module,
@@ -690,10 +690,10 @@ func genFunc(
 			val,
 		))
 		ctx.vars.Insert(expr.Args[i], varInfo{
-			uname:   expr.Args[i],
-			val:     val,
-			typ:     argTyp,
-			lastUse: opt.None[parse.ID](),
+			uname:        expr.Args[i],
+			maybeToUnref: val,
+			typ:          argTyp,
+			lastUse:      opt.None[parse.ID](),
 		})
 	}
 	// closures take an extra void* for captures
@@ -743,10 +743,10 @@ func genFunc(
 		for _, field := range fields {
 			val := genRecordAccess(ctx, capturesArg, *captureBlock, field.name)
 			ctx.vars.Insert(field.name, varInfo{
-				uname:   val.Name,
-				val:     val,
-				typ:     capturesType[field.name],
-				lastUse: opt.None[parse.ID](),
+				uname:        val.Name,
+				maybeToUnref: val,
+				typ:          capturesType[field.name],
+				lastUse:      opt.None[parse.ID](),
 			})
 		}
 	}
@@ -863,7 +863,7 @@ func genCall(ctx *ctx, expr *parse.Form) qbeil.Value {
 	case *parse.Symbol:
 		if closure, ok := ctx.vars.Get(callee.Name).Unwrap(); ok {
 			// TODO: is it always a closure?
-			return genCallClosure(ctx, closure.val, expr)
+			return genCallClosure(ctx, closure.maybeToUnref, expr)
 		}
 		return genCallWithFuncName(ctx, ctx.module, "", callee.Name, expr)
 
@@ -1229,7 +1229,7 @@ func genClosure(ctx *ctx, e *parse.Fn) qbeil.Value {
 		return recordAssignment{
 			name:  c.Name,
 			typ:   ctx.toILType(ctx.simplify(c.ID)),
-			value: val.val,
+			value: val.maybeToUnref,
 		}
 	})
 
@@ -1327,14 +1327,16 @@ func genLet(ctx *ctx, expr *parse.LetExpr) qbeil.Value {
 		// collection info
 		varTy := ctx.simplify(ass.Value.ID())
 
+		// if it's not a Var it's an int/float literal, which is definitely
+		// not a target for unref, so we can safely ignore those
 		rhsVar, _ := rhsVal.(qbeil.Var)
 
 		genRef(ctx, rhsVal, varTy, "let_"+ass.Var)
 		ctx.vars.Insert(ass.Var, varInfo{
-			uname:   rhsVar.Name,
-			val:     rhsVar,
-			typ:     ctx.simplify(ass.Value.ID()),
-			lastUse: opt.None[parse.ID](),
+			uname:        rhsVar.Name,
+			maybeToUnref: rhsVar,
+			typ:          ctx.simplify(ass.Value.ID()),
+			lastUse:      opt.None[parse.ID](),
 		})
 	}
 
@@ -1426,10 +1428,10 @@ func genCaseExpr(ctx *ctx, e *parse.CaseExpr) qbeil.Value {
 		payload := genReturnableValueFromPtr(ctx, payloadPtr, payloadIlTy)
 		genRef(ctx, payload, payloadTy, "case")
 		ctx.vars.Insert(branch.Pattern.Pattern.Name, varInfo{
-			uname:   payloadPtr.Name,
-			val:     payload,
-			typ:     payloadTy,
-			lastUse: opt.None[parse.ID](),
+			uname:        payloadPtr.Name,
+			maybeToUnref: payload,
+			typ:          payloadTy,
+			lastUse:      opt.None[parse.ID](),
 		})
 
 		val := gen(ctx, branch.Body)
