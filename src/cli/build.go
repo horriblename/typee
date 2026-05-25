@@ -216,7 +216,10 @@ func compileUnit(args compileUnitArgs) (outFile string, _ error) {
 	}
 	defer qbeFile.Close()
 
-	genqbe.Gen(qbeFile, args.module, args.allModules, args.ast, args.typesAst)
+	if err := genqbe.Gen(qbeFile, args.module, args.allModules, args.ast, args.typesAst); err != nil {
+		return "", err
+	}
+
 	qbeFile.Seek(0, 0)
 
 	if args.useExternalQbe {

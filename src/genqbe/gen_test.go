@@ -110,7 +110,7 @@ func TestGen(t *testing.T) {
 			assert.Ok(err, "type error")
 
 			var buf bytes.Buffer
-			Gen(&buf, mod, types, program, types[mod].TypesAst)
+			assert.Ok(Gen(&buf, mod, types, program, types[mod].TypesAst))
 
 			got := buf.String()
 			if got != expect {

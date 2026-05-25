@@ -94,7 +94,7 @@ func Gen(
 	modules map[can.ModuleName]simplesub.ModuleInfo,
 	ast []parse.Expr,
 	typeDefsAst []parse.Expr,
-) {
+) error {
 	mainMod := assert.Get(modules, module, "BUG in qbe gen: missing module info of ", module)
 	ctx := ctx{
 		module:               module,
@@ -345,7 +345,7 @@ func Gen(
 		}
 	}
 
-	ctx.finish()
+	return ctx.finish()
 }
 
 func genTopLevel(ctx *ctx, expr parse.Expr) {
@@ -2311,8 +2311,10 @@ func genUnref(ctx *ctx, v qbeil.Var, ty types.Type, comment string) {
 	}
 }
 
-func (ctx *ctx) finish() {
-	ctx.il.OutFile.Write(ctx.typeDecl.Bytes())
+func (ctx *ctx) finish() error {
+	if _, err := ctx.il.OutFile.Write(ctx.typeDecl.Bytes()); err != nil {
+		return err
+	}
 
 	for name, data := range ctx.statics {
 		_, err := ctx.il.OutFile.Write([]byte("data "))
@@ -2331,7 +2333,8 @@ func (ctx *ctx) finish() {
 		assert.Ok(err)
 	}
 
-	io.Copy(ctx.il.OutFile, &ctx.il.Buf)
+	_, err := io.Copy(ctx.il.OutFile, &ctx.il.Buf)
+	return err
 }
 
 func (ctx *ctx) toILType(typ types.Type) qbeil.Type {
